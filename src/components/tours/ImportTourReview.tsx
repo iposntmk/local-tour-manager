@@ -55,15 +55,20 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
         setGuides(g);
         setNationalities(n);
 
-        // Auto-match using fuzzy search
+        // Auto-match using fuzzy search with higher threshold for better accuracy
         const updatedDraft = items.map(item => {
           const tour = { ...item.tour };
           
           // Fuzzy match company
           if (item.raw.company && !tour.companyRef?.id) {
-            const companyFuse = new Fuse(c, { keys: ['name'], threshold: 0.3 });
+            const companyFuse = new Fuse(c, { 
+              keys: ['name'], 
+              threshold: 0.4,
+              includeScore: true,
+              ignoreLocation: true,
+            });
             const companyMatch = companyFuse.search(item.raw.company);
-            if (companyMatch.length > 0) {
+            if (companyMatch.length > 0 && companyMatch[0].score && companyMatch[0].score < 0.4) {
               const matched = companyMatch[0].item;
               tour.companyRef = { id: matched.id, nameAtBooking: matched.name };
             }
@@ -71,9 +76,14 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
 
           // Fuzzy match guide
           if (item.raw.guide && !tour.guideRef?.id) {
-            const guideFuse = new Fuse(g, { keys: ['name'], threshold: 0.3 });
+            const guideFuse = new Fuse(g, { 
+              keys: ['name'], 
+              threshold: 0.4,
+              includeScore: true,
+              ignoreLocation: true,
+            });
             const guideMatch = guideFuse.search(item.raw.guide);
-            if (guideMatch.length > 0) {
+            if (guideMatch.length > 0 && guideMatch[0].score && guideMatch[0].score < 0.4) {
               const matched = guideMatch[0].item;
               tour.guideRef = { id: matched.id, nameAtBooking: matched.name };
             }
@@ -81,9 +91,14 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
 
           // Fuzzy match nationality
           if (item.raw.nationality && !tour.clientNationalityRef?.id) {
-            const nationalityFuse = new Fuse(n, { keys: ['name', 'iso2'], threshold: 0.3 });
+            const nationalityFuse = new Fuse(n, { 
+              keys: ['name', 'iso2'], 
+              threshold: 0.3,
+              includeScore: true,
+              ignoreLocation: true,
+            });
             const nationalityMatch = nationalityFuse.search(item.raw.nationality);
-            if (nationalityMatch.length > 0) {
+            if (nationalityMatch.length > 0 && nationalityMatch[0].score && nationalityMatch[0].score < 0.3) {
               const matched = nationalityMatch[0].item;
               tour.clientNationalityRef = { id: matched.id, nameAtBooking: matched.name };
             }
@@ -97,7 +112,7 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
       }
     };
     load();
-  }, []);
+  }, [items]);
 
   const allValid = useMemo(() =>
     draft.every(d => d.tour.companyRef?.id && d.tour.guideRef?.id && d.tour.clientNationalityRef?.id),
@@ -184,19 +199,23 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
               <Separator />
 
               <Tabs defaultValue="info" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 bg-muted/50 rounded-md p-1">
-                  <TabsTrigger value="info">Info</TabsTrigger>
-                  <TabsTrigger value="destinations">
-                    Destinations <Badge variant="secondary" className="ml-1">{item.tour.destinations?.length || 0}</Badge>
+                <TabsList className="grid w-full grid-cols-5 h-auto gap-1 bg-muted/50 rounded-md p-1">
+                  <TabsTrigger value="info" className="text-xs sm:text-sm whitespace-nowrap px-1 py-2">Info</TabsTrigger>
+                  <TabsTrigger value="destinations" className="text-xs sm:text-sm flex-col gap-0 px-1 py-1">
+                    <span>Dest.</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.tour.destinations?.length || 0}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="expenses">
-                    Expenses <Badge variant="secondary" className="ml-1">{item.tour.expenses?.length || 0}</Badge>
+                  <TabsTrigger value="expenses" className="text-xs sm:text-sm flex-col gap-0 px-1 py-1">
+                    <span>Exp.</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.tour.expenses?.length || 0}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="meals">
-                    Meals <Badge variant="secondary" className="ml-1">{item.tour.meals?.length || 0}</Badge>
+                  <TabsTrigger value="meals" className="text-xs sm:text-sm flex-col gap-0 px-1 py-1">
+                    <span>Meals</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.tour.meals?.length || 0}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="allowances">
-                    Allowances <Badge variant="secondary" className="ml-1">{item.tour.allowances?.length || 0}</Badge>
+                  <TabsTrigger value="allowances" className="text-xs sm:text-sm flex-col gap-0 px-1 py-1">
+                    <span>Allow.</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.tour.allowances?.length || 0}</Badge>
                   </TabsTrigger>
                 </TabsList>
 
