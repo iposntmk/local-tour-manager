@@ -67,7 +67,49 @@ const Tours = () => {
   const importMutation = useMutation({
     mutationFn: async (tours: Partial<Tour>[]) => {
       const results = await Promise.all(
-        tours.map(tour => store.createTour(tour as any))
+        tours.map(async (tour) => {
+          // Create the main tour record
+          const createdTour = await store.createTour({
+            tourCode: tour.tourCode!,
+            companyRef: tour.companyRef!,
+            guideRef: tour.guideRef!,
+            clientNationalityRef: tour.clientNationalityRef!,
+            clientName: tour.clientName!,
+            adults: tour.adults!,
+            children: tour.children!,
+            driverName: tour.driverName,
+            clientPhone: tour.clientPhone,
+            startDate: tour.startDate!,
+            endDate: tour.endDate!,
+          });
+
+          // Add subcollections
+          if (tour.destinations && tour.destinations.length > 0) {
+            await Promise.all(
+              tour.destinations.map(dest => store.addDestination(createdTour.id, dest))
+            );
+          }
+
+          if (tour.expenses && tour.expenses.length > 0) {
+            await Promise.all(
+              tour.expenses.map(exp => store.addExpense(createdTour.id, exp))
+            );
+          }
+
+          if (tour.meals && tour.meals.length > 0) {
+            await Promise.all(
+              tour.meals.map(meal => store.addMeal(createdTour.id, meal))
+            );
+          }
+
+          if (tour.allowances && tour.allowances.length > 0) {
+            await Promise.all(
+              tour.allowances.map(allowance => store.addAllowance(createdTour.id, allowance))
+            );
+          }
+
+          return createdTour;
+        })
       );
       return results;
     },
@@ -75,7 +117,8 @@ const Tours = () => {
       queryClient.invalidateQueries({ queryKey: ['tours'] });
       toast.success(`${tours.length} tour(s) imported successfully`);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Import error:', error);
       toast.error('Failed to import tours');
     },
   });
