@@ -705,23 +705,33 @@ export class SupabaseStore implements DataStore {
   }
 
   // Tours
-  async listTours(query?: TourQuery): Promise<Tour[]> {
-    // Fetch tours with nested relations in a single round-trip to avoid N+1 queries
+  async listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<Tour[]> {
+    const includeDetails = options?.includeDetails ?? false;
+
+    // Fetch tours with optional nested relations to avoid unnecessary payload
     let queryBuilder = supabase
       .from('tours')
-      .select(`
+      .select(
+        includeDetails
+          ? `
         *,
         tour_destinations(*),
         tour_expenses(*),
         tour_meals(*),
         tour_allowances(*)
-      `)
-      .order('start_date', { ascending: false })
+      `
+          : '*'
+      )
+      .order('start_date', { ascending: false });
+
+    if (includeDetails) {
       // Ensure nested arrays are consistently ordered by date
-      .order('date', { foreignTable: 'tour_destinations' })
-      .order('date', { foreignTable: 'tour_expenses' })
-      .order('date', { foreignTable: 'tour_meals' })
-      .order('date', { foreignTable: 'tour_allowances' });
+      queryBuilder = queryBuilder
+        .order('date', { foreignTable: 'tour_destinations' })
+        .order('date', { foreignTable: 'tour_expenses' })
+        .order('date', { foreignTable: 'tour_meals' })
+        .order('date', { foreignTable: 'tour_allowances' });
+    }
 
     if (query?.tourCode) queryBuilder = queryBuilder.ilike('tour_code', `%${query.tourCode}%`);
     if (query?.clientName) queryBuilder = queryBuilder.ilike('client_name', `%${query.clientName}%`);
@@ -735,26 +745,28 @@ export class SupabaseStore implements DataStore {
 
     return (data || []).map((row: any) => {
       const tour = this.mapTour(row);
-      tour.destinations = (row.tour_destinations || []).map((d: any) => ({
-        name: d.name,
-        price: Number(d.price) || 0,
-        date: d.date,
-      }));
-      tour.expenses = (row.tour_expenses || []).map((e: any) => ({
-        name: e.name,
-        price: Number(e.price) || 0,
-        date: e.date,
-      }));
-      tour.meals = (row.tour_meals || []).map((m: any) => ({
-        name: m.name,
-        price: Number(m.price) || 0,
-        date: m.date,
-      }));
-      tour.allowances = (row.tour_allowances || []).map((a: any) => ({
-        date: a.date,
-        province: a.province,
-        amount: Number(a.amount) || 0,
-      }));
+      if (includeDetails) {
+        tour.destinations = (row.tour_destinations || []).map((d: any) => ({
+          name: d.name,
+          price: Number(d.price) || 0,
+          date: d.date,
+        }));
+        tour.expenses = (row.tour_expenses || []).map((e: any) => ({
+          name: e.name,
+          price: Number(e.price) || 0,
+          date: e.date,
+        }));
+        tour.meals = (row.tour_meals || []).map((m: any) => ({
+          name: m.name,
+          price: Number(m.price) || 0,
+          date: m.date,
+        }));
+        tour.allowances = (row.tour_allowances || []).map((a: any) => ({
+          date: a.date,
+          province: a.province,
+          amount: Number(a.amount) || 0,
+        }));
+      }
       return tour;
     });
   }
@@ -1066,7 +1078,7 @@ export class SupabaseStore implements DataStore {
       this.listShoppings(),
       this.listExpenseCategories(),
       this.listDetailedExpenses(),
-      this.listTours(),
+      this.listTours(undefined, { includeDetails: true }),
     ]);
 
     return {
