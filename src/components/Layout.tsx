@@ -28,25 +28,19 @@ export function Layout({ children }: LayoutProps) {
       {/* Top Navigation */}
       <nav className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-2 sm:px-4">
-          <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
-            <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0 min-w-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/tours')}
-                className="flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
-                title="Go to Homepage"
-              >
-                <Home className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-              <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-                <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
-                <span className="text-sm sm:text-lg md:text-xl font-bold text-foreground truncate">Tour Manager Tu cao</span>
-              </div>
-            </div>
+          <div className="flex h-14 sm:h-16 items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/tours')}
+              className="flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
+              title="Go to Homepage"
+            >
+              <Home className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
 
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-              {navItems.slice(0, 5).map((item) => (
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1">
+              {navItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
