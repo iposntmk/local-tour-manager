@@ -10,7 +10,7 @@ import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
-import { StatusBadge } from '@/components/master/StatusBadge';
+
 import { GuideDialog } from '@/components/guides/GuideDialog';
 import type { Guide, GuideInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
@@ -18,13 +18,11 @@ import type { SearchQuery } from '@/types/datastore';
 const Guides = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGuide, setEditingGuide] = useState<Guide | undefined>();
 
   const query: SearchQuery = {
     search,
-    status: statusFilter,
   };
 
   const { data: guides = [], isLoading } = useQuery({
@@ -52,14 +50,6 @@ const Guides = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update guide');
-    },
-  });
-
-  const toggleStatusMutation = useMutation({
-    mutationFn: (id: string) => store.toggleGuideStatus(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Status updated');
     },
   });
 
@@ -124,19 +114,6 @@ const Guides = () => {
                 placeholder="Search guides..."
               />
             </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value: any) => setStatusFilter(value)}
-            >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {isLoading ? (
@@ -155,7 +132,6 @@ const Guides = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Note</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -165,9 +141,6 @@ const Guides = () => {
                         <TableCell className="font-medium">{guide.name}</TableCell>
                         <TableCell>{guide.phone || '-'}</TableCell>
                         <TableCell className="max-w-xs truncate">{guide.note || '-'}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={guide.status} />
-                        </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -184,11 +157,7 @@ const Guides = () => {
                                 <Copy className="h-4 w-4 mr-2" />
                                 Duplicate
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(guide.id)}>
-                                <Power className="h-4 w-4 mr-2" />
-                                {guide.status === 'active' ? 'Deactivate' : 'Activate'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => deleteMutation.mutate(guide.id)}
                                 className="text-destructive"
                               >
@@ -228,11 +197,7 @@ const Guides = () => {
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicate
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(guide.id)}>
-                            <Power className="h-4 w-4 mr-2" />
-                            {guide.status === 'active' ? 'Deactivate' : 'Activate'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => deleteMutation.mutate(guide.id)}
                             className="text-destructive"
                           >
@@ -246,7 +211,6 @@ const Guides = () => {
                       {guide.note && (
                         <p className="text-sm text-muted-foreground">{guide.note}</p>
                       )}
-                      <StatusBadge status={guide.status} />
                     </div>
                   </Card>
                 ))}

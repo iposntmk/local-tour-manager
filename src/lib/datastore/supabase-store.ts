@@ -9,8 +9,16 @@ import type {
   Shopping,
   ExpenseCategory,
   DetailedExpense,
+  GuideInput,
+  CompanyInput,
+  NationalityInput,
+  ProvinceInput,
+  TouristDestinationInput,
+  ShoppingInput,
+  ExpenseCategoryInput,
+  DetailedExpenseInput,
 } from '@/types/master';
-import type { Tour, Destination, Expense, Meal, Allowance, TourQuery, EntityRef } from '@/types/tour';
+import type { Tour, Destination, Expense, Meal, Allowance, TourQuery, EntityRef, TourInput } from '@/types/tour';
 import { generateSearchKeywords } from '@/lib/string-utils';
 import { differenceInDays } from 'date-fns';
 
@@ -178,7 +186,7 @@ export class SupabaseStore implements DataStore {
     return data ? this.mapGuide(data) : null;
   }
 
-  async createGuide(guide: Omit<Guide, 'id'>): Promise<Guide> {
+  async createGuide(guide: GuideInput): Promise<Guide> {
     const searchKeywords = generateSearchKeywords(guide.name);
     const { data, error } = await supabase
       .from('guides')
@@ -186,7 +194,7 @@ export class SupabaseStore implements DataStore {
         name: guide.name,
         phone: guide.phone || '',
         note: guide.note || '',
-        status: guide.status,
+        status: 'active',
         search_keywords: searchKeywords,
       })
       .select()
@@ -204,7 +212,6 @@ export class SupabaseStore implements DataStore {
     }
     if (guide.phone !== undefined) updates.phone = guide.phone;
     if (guide.note !== undefined) updates.note = guide.note;
-    if (guide.status !== undefined) updates.status = guide.status;
     
     const { error } = await supabase.from('guides').update(updates).eq('id', id);
     if (error) throw error;
@@ -218,21 +225,49 @@ export class SupabaseStore implements DataStore {
   async duplicateGuide(id: string): Promise<Guide> {
     const original = await this.getGuide(id);
     if (!original) throw new Error('Guide not found');
-    const { id: _, createdAt, updatedAt, searchKeywords, ...rest } = original;
-    return this.createGuide({ ...rest, name: `${original.name} (Copy)`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    return this.createGuide({
+      name: `${original.name} (Copy)`,
+      phone: original.phone,
+      note: original.note,
+    });
   }
 
   async toggleGuideStatus(id: string): Promise<void> {
-    const guide = await this.getGuide(id);
-    if (!guide) throw new Error('Guide not found');
-    await this.updateGuide(id, { status: guide.status === 'active' ? 'inactive' : 'active' });
+    throw new Error('Status toggling is disabled');
+  }
+  
+  async toggleCompanyStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+  
+  async toggleNationalityStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+  
+  async toggleProvinceStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+  
+  async toggleTouristDestinationStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+  
+  async toggleShoppingStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+  
+  async toggleExpenseCategoryStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+  
+  async toggleDetailedExpenseStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
   }
 
   // Companies
   async listCompanies(query?: SearchQuery): Promise<Company[]> {
     let queryBuilder = supabase.from('companies').select('*').order('name');
     
-    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
     const { data, error } = await queryBuilder;
@@ -246,7 +281,7 @@ export class SupabaseStore implements DataStore {
     return data ? this.mapCompany(data) : null;
   }
 
-  async createCompany(company: Omit<Company, 'id'>): Promise<Company> {
+  async createCompany(company: CompanyInput): Promise<Company> {
     const searchKeywords = generateSearchKeywords(company.name);
     const { data, error } = await supabase
       .from('companies')
@@ -256,7 +291,7 @@ export class SupabaseStore implements DataStore {
         phone: company.phone || '',
         email: company.email || '',
         note: company.note || '',
-        status: company.status,
+        status: 'active',
         search_keywords: searchKeywords,
       })
       .select()
@@ -276,7 +311,6 @@ export class SupabaseStore implements DataStore {
     if (company.phone !== undefined) updates.phone = company.phone;
     if (company.email !== undefined) updates.email = company.email;
     if (company.note !== undefined) updates.note = company.note;
-    if (company.status !== undefined) updates.status = company.status;
     
     const { error } = await supabase.from('companies').update(updates).eq('id', id);
     if (error) throw error;
@@ -290,21 +324,19 @@ export class SupabaseStore implements DataStore {
   async duplicateCompany(id: string): Promise<Company> {
     const original = await this.getCompany(id);
     if (!original) throw new Error('Company not found');
-    const { id: _, createdAt, updatedAt, searchKeywords, ...rest } = original;
-    return this.createCompany({ ...rest, name: `${original.name} (Copy)`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-  }
-
-  async toggleCompanyStatus(id: string): Promise<void> {
-    const company = await this.getCompany(id);
-    if (!company) throw new Error('Company not found');
-    await this.updateCompany(id, { status: company.status === 'active' ? 'inactive' : 'active' });
+    return this.createCompany({
+      name: `${original.name} (Copy)`,
+      contactName: original.contactName,
+      phone: original.phone,
+      email: original.email,
+      note: original.note,
+    });
   }
 
   // Nationalities
   async listNationalities(query?: SearchQuery): Promise<Nationality[]> {
     let queryBuilder = supabase.from('nationalities').select('*').order('name');
     
-    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
     const { data, error } = await queryBuilder;
@@ -318,7 +350,7 @@ export class SupabaseStore implements DataStore {
     return data ? this.mapNationality(data) : null;
   }
 
-  async createNationality(nationality: Omit<Nationality, 'id'>): Promise<Nationality> {
+  async createNationality(nationality: NationalityInput): Promise<Nationality> {
     const searchKeywords = generateSearchKeywords(nationality.name);
     const { data, error } = await supabase
       .from('nationalities')
@@ -326,7 +358,7 @@ export class SupabaseStore implements DataStore {
         name: nationality.name,
         iso2: nationality.iso2,
         emoji: nationality.emoji,
-        status: nationality.status,
+        status: 'active',
         search_keywords: searchKeywords,
       })
       .select()
@@ -344,7 +376,6 @@ export class SupabaseStore implements DataStore {
     }
     if (nationality.iso2 !== undefined) updates.iso2 = nationality.iso2;
     if (nationality.emoji !== undefined) updates.emoji = nationality.emoji;
-    if (nationality.status !== undefined) updates.status = nationality.status;
     
     const { error } = await supabase.from('nationalities').update(updates).eq('id', id);
     if (error) throw error;
@@ -358,21 +389,17 @@ export class SupabaseStore implements DataStore {
   async duplicateNationality(id: string): Promise<Nationality> {
     const original = await this.getNationality(id);
     if (!original) throw new Error('Nationality not found');
-    const { id: _, createdAt, updatedAt, ...rest } = original;
-    return this.createNationality({ ...rest, name: `${original.name} (Copy)` });
-  }
-
-  async toggleNationalityStatus(id: string): Promise<void> {
-    const nationality = await this.getNationality(id);
-    if (!nationality) throw new Error('Nationality not found');
-    await this.updateNationality(id, { status: nationality.status === 'active' ? 'inactive' : 'active' });
+    return this.createNationality({
+      name: `${original.name} (Copy)`,
+      iso2: original.iso2,
+      emoji: original.emoji,
+    });
   }
 
   // Provinces
   async listProvinces(query?: SearchQuery): Promise<Province[]> {
     let queryBuilder = supabase.from('provinces').select('*').order('name');
     
-    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
     const { data, error } = await queryBuilder;
@@ -386,13 +413,13 @@ export class SupabaseStore implements DataStore {
     return data ? this.mapProvince(data) : null;
   }
 
-  async createProvince(province: Omit<Province, 'id'>): Promise<Province> {
+  async createProvince(province: ProvinceInput): Promise<Province> {
     const searchKeywords = generateSearchKeywords(province.name);
     const { data, error } = await supabase
       .from('provinces')
       .insert({
         name: province.name,
-        status: province.status,
+        status: 'active',
         search_keywords: searchKeywords,
       })
       .select()
@@ -408,7 +435,6 @@ export class SupabaseStore implements DataStore {
       updates.name = province.name;
       updates.search_keywords = generateSearchKeywords(province.name);
     }
-    if (province.status !== undefined) updates.status = province.status;
     
     const { error } = await supabase.from('provinces').update(updates).eq('id', id);
     if (error) throw error;
@@ -422,21 +448,15 @@ export class SupabaseStore implements DataStore {
   async duplicateProvince(id: string): Promise<Province> {
     const original = await this.getProvince(id);
     if (!original) throw new Error('Province not found');
-    const { id: _, createdAt, updatedAt, ...rest } = original;
-    return this.createProvince({ ...rest, name: `${original.name} (Copy)` });
-  }
-
-  async toggleProvinceStatus(id: string): Promise<void> {
-    const province = await this.getProvince(id);
-    if (!province) throw new Error('Province not found');
-    await this.updateProvince(id, { status: province.status === 'active' ? 'inactive' : 'active' });
+    return this.createProvince({
+      name: `${original.name} (Copy)`,
+    });
   }
 
   // Tourist Destinations
   async listTouristDestinations(query?: SearchQuery): Promise<TouristDestination[]> {
     let queryBuilder = supabase.from('tourist_destinations').select('*').order('name');
     
-    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
     const { data, error } = await queryBuilder;
@@ -450,7 +470,7 @@ export class SupabaseStore implements DataStore {
     return data ? this.mapTouristDestination(data) : null;
   }
 
-  async createTouristDestination(destination: Omit<TouristDestination, 'id'>): Promise<TouristDestination> {
+  async createTouristDestination(destination: TouristDestinationInput): Promise<TouristDestination> {
     const searchKeywords = generateSearchKeywords(destination.name);
     const { data, error } = await supabase
       .from('tourist_destinations')
@@ -459,7 +479,7 @@ export class SupabaseStore implements DataStore {
         price: destination.price,
         province_id: destination.provinceRef.id,
         province_name_at_booking: destination.provinceRef.nameAtBooking,
-        status: destination.status,
+        status: 'active',
         search_keywords: searchKeywords,
       })
       .select()
@@ -494,21 +514,17 @@ export class SupabaseStore implements DataStore {
   async duplicateTouristDestination(id: string): Promise<TouristDestination> {
     const original = await this.getTouristDestination(id);
     if (!original) throw new Error('Tourist destination not found');
-    const { id: _, createdAt, updatedAt, ...rest } = original;
-    return this.createTouristDestination({ ...rest, name: `${original.name} (Copy)` });
-  }
-
-  async toggleTouristDestinationStatus(id: string): Promise<void> {
-    const destination = await this.getTouristDestination(id);
-    if (!destination) throw new Error('Tourist destination not found');
-    await this.updateTouristDestination(id, { status: destination.status === 'active' ? 'inactive' : 'active' });
+    return this.createTouristDestination({
+      name: `${original.name} (Copy)`,
+      price: original.price,
+      provinceRef: original.provinceRef,
+    });
   }
 
   // Shopping
   async listShoppings(query?: SearchQuery): Promise<Shopping[]> {
     let queryBuilder = supabase.from('shoppings').select('*').order('name');
     
-    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
     const { data, error } = await queryBuilder;
@@ -522,13 +538,13 @@ export class SupabaseStore implements DataStore {
     return data ? this.mapShopping(data) : null;
   }
 
-  async createShopping(shopping: Omit<Shopping, 'id'>): Promise<Shopping> {
+  async createShopping(shopping: ShoppingInput): Promise<Shopping> {
     const searchKeywords = generateSearchKeywords(shopping.name);
     const { data, error } = await supabase
       .from('shoppings')
       .insert({
         name: shopping.name,
-        status: shopping.status,
+        status: 'active',
         search_keywords: searchKeywords,
       })
       .select()
@@ -544,7 +560,6 @@ export class SupabaseStore implements DataStore {
       updates.name = shopping.name;
       updates.search_keywords = generateSearchKeywords(shopping.name);
     }
-    if (shopping.status !== undefined) updates.status = shopping.status;
     
     const { error } = await supabase.from('shoppings').update(updates).eq('id', id);
     if (error) throw error;
@@ -558,21 +573,15 @@ export class SupabaseStore implements DataStore {
   async duplicateShopping(id: string): Promise<Shopping> {
     const original = await this.getShopping(id);
     if (!original) throw new Error('Shopping not found');
-    const { id: _, createdAt, updatedAt, ...rest } = original;
-    return this.createShopping({ ...rest, name: `${original.name} (Copy)` });
-  }
-
-  async toggleShoppingStatus(id: string): Promise<void> {
-    const shopping = await this.getShopping(id);
-    if (!shopping) throw new Error('Shopping not found');
-    await this.updateShopping(id, { status: shopping.status === 'active' ? 'inactive' : 'active' });
+    return this.createShopping({
+      name: `${original.name} (Copy)`,
+    });
   }
 
   // Expense Categories
   async listExpenseCategories(query?: SearchQuery): Promise<ExpenseCategory[]> {
     let queryBuilder = supabase.from('expense_categories').select('*').order('name');
     
-    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
     const { data, error } = await queryBuilder;
@@ -586,13 +595,13 @@ export class SupabaseStore implements DataStore {
     return data ? this.mapExpenseCategory(data) : null;
   }
 
-  async createExpenseCategory(category: Omit<ExpenseCategory, 'id'>): Promise<ExpenseCategory> {
+  async createExpenseCategory(category: ExpenseCategoryInput): Promise<ExpenseCategory> {
     const searchKeywords = generateSearchKeywords(category.name);
     const { data, error } = await supabase
       .from('expense_categories')
       .insert({
         name: category.name,
-        status: category.status,
+        status: 'active',
         search_keywords: searchKeywords,
       })
       .select()
@@ -608,7 +617,6 @@ export class SupabaseStore implements DataStore {
       updates.name = category.name;
       updates.search_keywords = generateSearchKeywords(category.name);
     }
-    if (category.status !== undefined) updates.status = category.status;
     
     const { error } = await supabase.from('expense_categories').update(updates).eq('id', id);
     if (error) throw error;
@@ -622,14 +630,9 @@ export class SupabaseStore implements DataStore {
   async duplicateExpenseCategory(id: string): Promise<ExpenseCategory> {
     const original = await this.getExpenseCategory(id);
     if (!original) throw new Error('Expense category not found');
-    const { id: _, createdAt, updatedAt, ...rest } = original;
-    return this.createExpenseCategory({ ...rest, name: `${original.name} (Copy)` });
-  }
-
-  async toggleExpenseCategoryStatus(id: string): Promise<void> {
-    const category = await this.getExpenseCategory(id);
-    if (!category) throw new Error('Expense category not found');
-    await this.updateExpenseCategory(id, { status: category.status === 'active' ? 'inactive' : 'active' });
+    return this.createExpenseCategory({
+      name: `${original.name} (Copy)`,
+    });
   }
 
   // Detailed Expenses
@@ -650,7 +653,7 @@ export class SupabaseStore implements DataStore {
     return data ? this.mapDetailedExpense(data) : null;
   }
 
-  async createDetailedExpense(expense: Omit<DetailedExpense, 'id'>): Promise<DetailedExpense> {
+  async createDetailedExpense(expense: DetailedExpenseInput): Promise<DetailedExpense> {
     const searchKeywords = generateSearchKeywords(expense.name);
     const { data, error } = await supabase
       .from('detailed_expenses')
@@ -659,7 +662,7 @@ export class SupabaseStore implements DataStore {
         price: expense.price,
         category_id: expense.categoryRef.id,
         category_name_at_booking: expense.categoryRef.nameAtBooking,
-        status: expense.status,
+        status: 'active',
         search_keywords: searchKeywords,
       })
       .select()
@@ -694,14 +697,11 @@ export class SupabaseStore implements DataStore {
   async duplicateDetailedExpense(id: string): Promise<DetailedExpense> {
     const original = await this.getDetailedExpense(id);
     if (!original) throw new Error('Detailed expense not found');
-    const { id: _, createdAt, updatedAt, ...rest } = original;
-    return this.createDetailedExpense({ ...rest, name: `${original.name} (Copy)` });
-  }
-
-  async toggleDetailedExpenseStatus(id: string): Promise<void> {
-    const expense = await this.getDetailedExpense(id);
-    if (!expense) throw new Error('Detailed expense not found');
-    await this.updateDetailedExpense(id, { status: expense.status === 'active' ? 'inactive' : 'active' });
+    return this.createDetailedExpense({
+      name: `${original.name} (Copy)`,
+      price: original.price,
+      categoryRef: original.categoryRef,
+    });
   }
 
   // Tours
@@ -746,7 +746,10 @@ export class SupabaseStore implements DataStore {
     return tour;
   }
 
-  async createTour(tour: Omit<Tour, 'id'>): Promise<Tour> {
+  async createTour(tour: TourInput): Promise<Tour> {
+    const totalGuests = (tour.adults || 0) + (tour.children || 0);
+    const totalDays = differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1;
+    
     const { data, error } = await supabase
       .from('tours')
       .insert({
@@ -760,43 +763,19 @@ export class SupabaseStore implements DataStore {
         client_name: tour.clientName,
         adults: tour.adults,
         children: tour.children,
-        total_guests: tour.totalGuests,
-        driver_name: tour.driverName,
-        client_phone: tour.clientPhone,
+        total_guests: totalGuests,
+        driver_name: tour.driverName || '',
+        client_phone: tour.clientPhone || '',
         start_date: tour.startDate,
         end_date: tour.endDate,
-        total_days: tour.totalDays,
+        total_days: totalDays,
       })
       .select()
       .single();
     
+    
     if (error) throw error;
-    
-    const newTour = this.mapTour(data);
-    
-    // Add subcollections
-    if (tour.destinations?.length) {
-      for (const dest of tour.destinations) {
-        await this.addDestination(newTour.id, dest);
-      }
-    }
-    if (tour.expenses?.length) {
-      for (const exp of tour.expenses) {
-        await this.addExpense(newTour.id, exp);
-      }
-    }
-    if (tour.meals?.length) {
-      for (const meal of tour.meals) {
-        await this.addMeal(newTour.id, meal);
-      }
-    }
-    if (tour.allowances?.length) {
-      for (const allowance of tour.allowances) {
-        await this.addAllowance(newTour.id, allowance);
-      }
-    }
-    
-    return this.getTour(newTour.id) as Promise<Tour>;
+    return this.getTour(data.id) as Promise<Tour>;
   }
 
   async updateTour(id: string, tour: Partial<Tour>): Promise<void> {
@@ -836,8 +815,20 @@ export class SupabaseStore implements DataStore {
   async duplicateTour(id: string): Promise<Tour> {
     const original = await this.getTour(id);
     if (!original) throw new Error('Tour not found');
-    const { id: _, createdAt, updatedAt, summary, ...rest } = original;
-    return this.createTour({ ...rest, tourCode: `${original.tourCode}-COPY`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    
+    return this.createTour({
+      tourCode: `${original.tourCode}-COPY`,
+      companyRef: original.companyRef,
+      guideRef: original.guideRef,
+      clientNationalityRef: original.clientNationalityRef,
+      clientName: original.clientName,
+      clientPhone: original.clientPhone,
+      adults: original.adults,
+      children: original.children,
+      driverName: original.driverName,
+      startDate: original.startDate,
+      endDate: original.endDate,
+    });
   }
 
   // Tour Destinations
