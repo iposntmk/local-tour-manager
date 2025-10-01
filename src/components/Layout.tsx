@@ -28,7 +28,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex h-16 items-center justify-between gap-4">
             <div className="flex items-center gap-2 flex-shrink-0">
               <MapPin className="h-6 w-6 text-primary" />
-              <span className="text-lg md:text-xl font-bold text-foreground">Tour Manager</span>
+              <span className="text-lg md:text-xl font-bold text-foreground">Tour Manager Tu cao</span>
             </div>
 
             <div className="hidden md:flex items-center gap-1 overflow-x-auto">
