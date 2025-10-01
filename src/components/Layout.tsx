@@ -1,6 +1,7 @@
-import { NavLink } from 'react-router-dom';
-import { Users, Building2, Globe, MapPin, Map, ShoppingBag, Tag, Receipt, Plane, Settings } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Users, Building2, Globe, MapPin, Map, ShoppingBag, Tag, Receipt, Plane, Settings, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,15 +21,28 @@ const navItems = [
 ];
 
 export function Layout({ children }: LayoutProps) {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
       <nav className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between gap-4">
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <MapPin className="h-6 w-6 text-primary" />
-              <span className="text-lg md:text-xl font-bold text-foreground">Tour Manager Tu cao</span>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/tours')}
+                className="flex-shrink-0"
+                title="Go to Homepage"
+              >
+                <Home className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-6 w-6 text-primary" />
+                <span className="text-lg md:text-xl font-bold text-foreground">Tour Manager Tu cao</span>
+              </div>
             </div>
 
             <div className="hidden md:flex items-center gap-1 overflow-x-auto">
@@ -54,9 +68,23 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </nav>
 
-      {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-card z-50 overflow-x-auto">
+      {/* Bottom Navigation - Always visible */}
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-card z-50 overflow-x-auto">
         <div className="flex items-center px-2 py-2 min-w-max">
+          <NavLink
+            to="/tours"
+            className={({ isActive }) =>
+              cn(
+                'flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors flex-shrink-0 w-[70px]',
+                isActive
+                  ? 'text-primary bg-primary/10'
+                  : 'text-muted-foreground hover:text-foreground'
+              )
+            }
+          >
+            <Home className="h-5 w-5" />
+            <span className="text-center truncate w-full">Home</span>
+          </NavLink>
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -78,7 +106,7 @@ export function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 pb-24 md:pb-6">
+      <main className="container mx-auto px-4 py-6 pb-24">
         {children}
       </main>
     </div>
