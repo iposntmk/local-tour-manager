@@ -1,0 +1,201 @@
+import { Layout } from '@/components/Layout';
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { store } from '@/lib/datastore';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Save, Trash2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TourForm } from '@/components/tours/TourForm';
+import { DestinationsTab } from '@/components/tours/DestinationsTab';
+import { ExpensesTab } from '@/components/tours/ExpensesTab';
+import { MealsTab } from '@/components/tours/MealsTab';
+import { AllowancesTab } from '@/components/tours/AllowancesTab';
+import { SummaryTab } from '@/components/tours/SummaryTab';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import type { Tour, TourInput } from '@/types/tour';
+
+const TourDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<Partial<TourInput> | null>(null);
+  
+  const isNewTour = id === 'new';
+
+  const { data: tour, isLoading } = useQuery({
+    queryKey: ['tour', id],
+    queryFn: () => store.getTour(id!),
+    enabled: !isNewTour,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (input: TourInput) => store.createTour(input),
+    onSuccess: (newTour) => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      toast.success('Tour created successfully');
+      navigate(`/tours/${newTour.id}`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<Tour> }) =>
+      store.updateTour(id, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tour', id] });
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      toast.success('Tour updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => store.deleteTour(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      toast.success('Tour deleted successfully');
+      navigate('/tours');
+    },
+  });
+
+  const handleSave = (data: TourInput) => {
+    if (isNewTour) {
+      createMutation.mutate(data);
+    } else if (id) {
+      updateMutation.mutate({ id, patch: data });
+    }
+  };
+
+  const handleDelete = () => {
+    if (id && !isNewTour) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  if (isLoading && !isNewTour) {
+    return (
+      <Layout>
+        <div className="space-y-6 animate-fade-in">
+          <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+          <div className="h-[400px] bg-muted rounded animate-pulse" />
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/tours')}
+              className="hover-scale"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">
+                {isNewTour ? 'New Tour' : tour?.tourCode || 'Tour Details'}
+              </h1>
+              <p className="text-muted-foreground">
+                {isNewTour ? 'Create a new tour' : 'Manage tour information'}
+              </p>
+            </div>
+          </div>
+          
+          {!isNewTour && (
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="hover-scale"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Tour
+            </Button>
+          )}
+        </div>
+
+        {isNewTour ? (
+          <div className="rounded-lg border bg-card p-6 animate-scale-in">
+            <TourForm onSubmit={handleSave} />
+          </div>
+        ) : tour ? (
+          <Tabs defaultValue="info" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1">
+              <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
+              <TabsTrigger value="destinations" className="text-xs sm:text-sm">Destinations</TabsTrigger>
+              <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expenses</TabsTrigger>
+              <TabsTrigger value="meals" className="text-xs sm:text-sm">Meals</TabsTrigger>
+              <TabsTrigger value="allowances" className="text-xs sm:text-sm">Allowances</TabsTrigger>
+              <TabsTrigger value="summary" className="text-xs sm:text-sm">Summary</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="info" className="animate-fade-in">
+              <div className="rounded-lg border bg-card p-6">
+                <TourForm initialData={tour} onSubmit={handleSave} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="destinations" className="animate-fade-in">
+              <DestinationsTab tourId={tour.id} destinations={tour.destinations} />
+            </TabsContent>
+
+            <TabsContent value="expenses" className="animate-fade-in">
+              <ExpensesTab tourId={tour.id} expenses={tour.expenses} />
+            </TabsContent>
+
+            <TabsContent value="meals" className="animate-fade-in">
+              <MealsTab tourId={tour.id} meals={tour.meals} />
+            </TabsContent>
+
+            <TabsContent value="allowances" className="animate-fade-in">
+              <AllowancesTab tourId={tour.id} allowances={tour.allowances} />
+            </TabsContent>
+
+            <TabsContent value="summary" className="animate-fade-in">
+              <SummaryTab tour={tour} />
+            </TabsContent>
+          </Tabs>
+        ) : null}
+      </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tour</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this tour? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Layout>
+  );
+};
+
+export default TourDetail;
