@@ -1,32 +1,36 @@
 import { forwardRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface CurrencyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
   value?: number;
   onChange?: (value: number) => void;
+  showQuickAmounts?: boolean;
 }
 
 const formatNumber = (num: number): string => {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
+const QUICK_AMOUNTS = [50000, 100000, 120000, 150000, 200000];
+
 export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ value = 0, onChange, ...props }, ref) => {
+  ({ value = 0, onChange, showQuickAmounts = true, ...props }, ref) => {
     const [displayValue, setDisplayValue] = useState(
       value ? formatNumber(value) : ''
     );
 
     const parseNumber = (str: string): number => {
-      const cleaned = str.replace(/,/g, '');
+      const cleaned = str.replace(/\./g, '');
       const parsed = parseFloat(cleaned);
       return isNaN(parsed) ? 0 : parsed;
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const input = e.target.value;
-      const cleaned = input.replace(/[^0-9.]/g, '');
+      const cleaned = input.replace(/[^0-9]/g, '');
       const parsed = parseNumber(cleaned);
-      
+
       setDisplayValue(cleaned ? formatNumber(parsed) : '');
       onChange?.(parsed);
     };
@@ -37,15 +41,38 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       }
     };
 
+    const handleQuickAmount = (amount: number) => {
+      setDisplayValue(formatNumber(amount));
+      onChange?.(amount);
+    };
+
     return (
-      <Input
-        {...props}
-        ref={ref}
-        type="text"
-        value={displayValue}
-        onChange={handleChange}
-        onBlur={handleBlur}
-      />
+      <div className="space-y-2">
+        <Input
+          {...props}
+          ref={ref}
+          type="text"
+          value={displayValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+        />
+        {showQuickAmounts && (
+          <div className="flex flex-wrap gap-2">
+            {QUICK_AMOUNTS.map((amount) => (
+              <Button
+                key={amount}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickAmount(amount)}
+                className="text-xs px-2 py-1 h-7"
+              >
+                {amount >= 1000 ? `${amount / 1000}k` : amount}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 );

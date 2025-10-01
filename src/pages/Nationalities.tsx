@@ -4,12 +4,13 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, MoreVertical, Edit, Copy, Trash2 } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
+import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 import type { Nationality, NationalityInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
 
@@ -89,18 +90,25 @@ const Nationalities = () => {
     setEditingNationality(undefined);
   };
 
+  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('nationalities.headerMode');
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Nationalities</h1>
-            <p className="text-muted-foreground">Manage client nationalities</p>
+        <div className={headerClasses}>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h1 className="text-3xl font-bold">Nationalities</h1>
+              <p className="text-muted-foreground">Manage client nationalities</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => handleOpenDialog()} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Nationality
+              </Button>
+              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
+            </div>
           </div>
-          <Button onClick={() => handleOpenDialog()} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Nationality
-          </Button>
         </div>
 
         <Card className="p-4">
@@ -135,37 +143,47 @@ const Nationalities = () => {
                   </TableHeader>
                   <TableBody>
                     {nationalities.map((nationality) => (
-                      <TableRow key={nationality.id}>
+                      <TableRow
+                        key={nationality.id}
+                        className="cursor-pointer hover:bg-accent/50"
+                        onClick={() => handleOpenDialog(nationality)}
+                      >
                         <TableCell className="font-medium">{nationality.name}</TableCell>
                         <TableCell>{nationality.iso2 || '-'}</TableCell>
                         <TableCell>
                           <span className="text-2xl">{nationality.emoji || '-'}</span>
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover">
-                              <DropdownMenuItem onClick={() => handleOpenDialog(nationality)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => duplicateMutation.mutate(nationality.id)}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => deleteMutation.mutate(nationality.id)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenDialog(nationality)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => duplicateMutation.mutate(nationality.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this nationality?')) {
+                                  deleteMutation.mutate(nationality.id);
+                                }
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -176,7 +194,11 @@ const Nationalities = () => {
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
                 {nationalities.map((nationality) => (
-                  <Card key={nationality.id} className="p-4">
+                  <Card
+                    key={nationality.id}
+                    className="p-4 cursor-pointer hover:bg-accent/50"
+                    onClick={() => handleOpenDialog(nationality)}
+                  >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-3 flex-1">
                         <span className="text-3xl">{nationality.emoji || '🌍'}</span>
@@ -187,30 +209,36 @@ const Nationalities = () => {
                           </p>
                         </div>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover">
-                          <DropdownMenuItem onClick={() => handleOpenDialog(nationality)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => duplicateMutation.mutate(nationality.id)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => deleteMutation.mutate(nationality.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDialog(nationality)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => duplicateMutation.mutate(nationality.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this nationality?')) {
+                              deleteMutation.mutate(nationality.id);
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}

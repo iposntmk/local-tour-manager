@@ -7,12 +7,15 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TourForm } from '@/components/tours/TourForm';
+import { TourInfoForm } from '@/components/tours/TourInfoForm';
 import { DestinationsTab } from '@/components/tours/DestinationsTab';
 import { ExpensesTab } from '@/components/tours/ExpensesTab';
 import { MealsTab } from '@/components/tours/MealsTab';
 import { AllowancesTab } from '@/components/tours/AllowancesTab';
 import { SummaryTab } from '@/components/tours/SummaryTab';
 import { toast } from 'sonner';
+import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +34,7 @@ const TourDetail = () => {
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<TourInput> | null>(null);
+  const [activeTab, setActiveTab] = useState('info');
   
   const isNewTour = id === 'new';
 
@@ -94,11 +98,38 @@ const TourDetail = () => {
     }
   };
 
+  const handleInfoSave = (data: TourInput) => {
+    if (id && !isNewTour) {
+      updateMutation.mutate({ id, patch: data });
+    }
+  };
+
   const handleDelete = () => {
     if (id && !isNewTour) {
       deleteMutation.mutate(id);
     }
   };
+
+  const handleHeaderSave = () => {
+    // Only Info tab needs header save button
+    // Other tabs auto-save when adding/updating/deleting items
+    if (activeTab === 'info') {
+      // Trigger info form submit
+      const form = document.querySelector('form') as HTMLFormElement;
+      if (form) {
+        form.requestSubmit();
+      }
+    }
+  };
+
+  const shouldShowSaveButton = () => {
+    // Only show Save button for Info tab
+    // Other tabs (destinations, expenses, meals, allowances) auto-save
+    // Summary tab is read-only
+    return activeTab === 'info';
+  };
+
+  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('tourdetail.headerMode');
 
   if (isLoading && !isNewTour) {
     return (
@@ -114,56 +145,95 @@ const TourDetail = () => {
   return (
     <Layout>
       <div className="space-y-6 animate-fade-in">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/tours')}
-              className="hover-scale"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
-                {isNewTour ? 'New Tour' : tour?.tourCode || 'Tour Details'}
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                {isNewTour ? 'Create a new tour' : 'Manage tour information'}
-              </p>
-            </div>
-          </div>
-          
-          {!isNewTour && (
-            <Button
-              variant="destructive"
-              onClick={() => setDeleteDialogOpen(true)}
-              className="hover-scale"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Tour
-            </Button>
-          )}
-        </div>
-
         {isNewTour ? (
-          <div className="rounded-lg border bg-card p-4 sm:p-6 animate-scale-in">
-            <TourForm onSubmit={handleSave} />
-          </div>
-        ) : tour ? (
-          <Tabs defaultValue="info" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1">
-              <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
-              <TabsTrigger value="destinations" className="text-xs sm:text-sm">Destinations</TabsTrigger>
-              <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expenses</TabsTrigger>
-              <TabsTrigger value="meals" className="text-xs sm:text-sm">Meals</TabsTrigger>
-              <TabsTrigger value="allowances" className="text-xs sm:text-sm">Allowances</TabsTrigger>
-              <TabsTrigger value="summary" className="text-xs sm:text-sm">Summary</TabsTrigger>
-            </TabsList>
+          <>
+            {/* Header without tabs for new tour */}
+            <div className={headerClasses}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/tours')}
+                    className="hover-scale"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div>
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">New Tour</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground">Create a new tour</p>
+                  </div>
+                </div>
+                <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
+              </div>
+            </div>
 
+            <div className="rounded-lg border bg-card p-4 sm:p-6 animate-scale-in">
+              <TourForm onSubmit={handleSave} />
+            </div>
+          </>
+        ) : tour ? (
+          <Tabs defaultValue="info" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            {/* Header with tabs inside Tabs context */}
+            <div className={headerClasses}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate('/tours')}
+                    className="hover-scale"
+                    title="Back to tours list"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div>
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{tour?.tourCode || 'Tour Details'}</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground">Manage tour information</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {shouldShowSaveButton() && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleHeaderSave}
+                      className="hover-scale"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Info
+                    </Button>
+                  )}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    className="hover-scale"
+                  >
+                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Delete</span>
+                  </Button>
+                  <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1">
+                  <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
+                  <TabsTrigger value="destinations" className="text-xs sm:text-sm">Destinations</TabsTrigger>
+                  <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expenses</TabsTrigger>
+                  <TabsTrigger value="meals" className="text-xs sm:text-sm">Meals</TabsTrigger>
+                  <TabsTrigger value="allowances" className="text-xs sm:text-sm">Allowances</TabsTrigger>
+                  <TabsTrigger value="summary" className="text-xs sm:text-sm">Summary</TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
+
+            {/* Tab contents */}
             <TabsContent value="info" className="animate-fade-in">
               <div className="rounded-lg border bg-card p-6">
-                <TourForm initialData={tour} onSubmit={handleSave} />
+                <TourInfoForm initialData={tour} onSubmit={handleInfoSave} showSubmitButton={false} />
               </div>
             </TabsContent>
 

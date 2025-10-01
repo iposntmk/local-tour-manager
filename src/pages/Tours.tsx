@@ -12,6 +12,8 @@ import { ImportTourDialog } from '@/components/tours/ImportTourDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
+import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 import type { Tour } from '@/types/tour';
 
 const Tours = () => {
@@ -214,35 +216,40 @@ const Tours = () => {
     importMutation.mutate(tours);
   };
 
+  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('tours.headerMode');
+
   return (
     <Layout>
       <div className="space-y-6 animate-fade-in">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Tours</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Manage your tours and itineraries</p>
+        {/* Sticky Header with pin/dock/freeze controls */}
+        <div className={headerClasses}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Tours</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Manage your tours and itineraries</p>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <ImportTourDialog onImport={handleImport} />
+              <Button onClick={handleExportAll} variant="outline" className="hover-scale">
+                <FileDown className="h-4 w-4 mr-2" />
+                Export All
+              </Button>
+              <Button onClick={() => navigate('/tours/new')} className="hover-scale">
+                <Plus className="h-4 w-4 mr-2" />
+                New Tour
+              </Button>
+              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <ImportTourDialog onImport={handleImport} />
-            <Button onClick={handleExportAll} variant="outline" className="hover-scale">
-              <FileDown className="h-4 w-4 mr-2" />
-              Export All
-            </Button>
-            <Button onClick={() => navigate('/tours/new')} className="hover-scale">
-              <Plus className="h-4 w-4 mr-2" />
-              New Tour
-            </Button>
-          </div>
-        </div>
 
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search by tour code or client name..."
-        />
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by tour code or client name..."
+          />
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -286,31 +293,32 @@ const Tours = () => {
           </div>
 
           {hasActiveFilters && (
-            <Button variant="outline" onClick={clearFilters} className="sm:self-end">
-              <X className="h-4 w-4 mr-2" />
-              Clear Filters
-            </Button>
-          )}
-        </div>
-
-        {/* Filter Results Info */}
-        {hasActiveFilters && (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">
-              Showing {filteredTours.length} of {tours.length} tours
-            </span>
-            {nationalityFilter !== 'all' && (
-              <Badge variant="secondary">
-                {nationalities.find(n => n.id === nationalityFilter)?.name}
-              </Badge>
-            )}
-            {monthFilter !== 'all' && (
-              <Badge variant="secondary">
-                {new Date(monthFilter + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
-              </Badge>
+              <Button variant="outline" onClick={clearFilters} className="sm:self-end">
+                <X className="h-4 w-4 mr-2" />
+                Clear Filters
+              </Button>
             )}
           </div>
-        )}
+
+          {/* Filter Results Info */}
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">
+                Showing {filteredTours.length} of {tours.length} tours
+              </span>
+              {nationalityFilter !== 'all' && (
+                <Badge variant="secondary">
+                  {nationalities.find(n => n.id === nationalityFilter)?.name}
+                </Badge>
+              )}
+              {monthFilter !== 'all' && (
+                <Badge variant="secondary">
+                  {new Date(monthFilter + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

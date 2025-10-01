@@ -6,6 +6,9 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { NumberInput } from '@/components/ui/number-input';
+import { DateInput } from '@/components/ui/date-input';
 import {
   Command,
   CommandEmpty,
@@ -343,22 +346,22 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
             {/* Adults */}
             <div className="space-y-2">
               <Label htmlFor="adults">Adults *</Label>
-              <Input
+              <NumberInput
                 id="adults"
-                type="number"
-                min="0"
-                {...register('adults', { required: true, valueAsNumber: true })}
+                value={watch('adults')}
+                onChange={(value) => setValue('adults', value)}
+                min={0}
               />
             </div>
 
             {/* Children */}
             <div className="space-y-2">
               <Label htmlFor="children">Children</Label>
-              <Input
+              <NumberInput
                 id="children"
-                type="number"
-                min="0"
-                {...register('children', { valueAsNumber: true })}
+                value={watch('children')}
+                onChange={(value) => setValue('children', value)}
+                min={0}
               />
             </div>
 
@@ -391,10 +394,10 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
             {/* Start Date */}
             <div className="space-y-2">
               <Label htmlFor="startDate">Start Date *</Label>
-              <Input
+              <DateInput
                 id="startDate"
-                type="date"
-                {...register('startDate', { required: 'Start date is required' })}
+                value={watch('startDate')}
+                onChange={(value) => setValue('startDate', value)}
               />
               {errors.startDate && (
                 <p className="text-sm text-destructive">{errors.startDate.message}</p>
@@ -404,10 +407,10 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
             {/* End Date */}
             <div className="space-y-2">
               <Label htmlFor="endDate">End Date *</Label>
-              <Input
+              <DateInput
                 id="endDate"
-                type="date"
-                {...register('endDate', { required: 'End date is required' })}
+                value={watch('endDate')}
+                onChange={(value) => setValue('endDate', value)}
               />
               {errors.endDate && (
                 <p className="text-sm text-destructive">{errors.endDate.message}</p>
@@ -441,8 +444,8 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <Input type="number" placeholder="Price" value={destForm.price} onChange={(e) => setDestForm({ ...destForm, price: Number(e.target.value) })} />
-              <Input type="date" value={destForm.date} onChange={(e) => setDestForm({ ...destForm, date: e.target.value })} />
+              <CurrencyInput placeholder="Price" value={destForm.price} onChange={(price) => setDestForm({ ...destForm, price })} />
+              <DateInput value={destForm.date} onChange={(date) => setDestForm({ ...destForm, date })} />
             </div>
             <Button type="button" className="mt-4" onClick={() => { if (destForm.name && destForm.date) { setDestinations([...destinations, destForm]); setDestForm({ name: '', price: 0, date: '' }); } }}>
               <Plus className="h-4 w-4 mr-2" />Add
@@ -483,8 +486,8 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <Input type="number" placeholder="Price" value={expForm.price} onChange={(e) => setExpForm({ ...expForm, price: Number(e.target.value) })} />
-              <Input type="date" value={expForm.date} onChange={(e) => setExpForm({ ...expForm, date: e.target.value })} />
+              <CurrencyInput placeholder="Price" value={expForm.price} onChange={(price) => setExpForm({ ...expForm, price })} />
+              <DateInput value={expForm.date} onChange={(date) => setExpForm({ ...expForm, date })} />
             </div>
             <Button type="button" className="mt-4" onClick={() => { if (expForm.name && expForm.date) { setExpenses([...expenses, expForm]); setExpForm({ name: '', price: 0, date: '' }); } }}>
               <Plus className="h-4 w-4 mr-2" />Add
@@ -525,8 +528,8 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <Input type="number" placeholder="Price" value={mealForm.price} onChange={(e) => setMealForm({ ...mealForm, price: Number(e.target.value) })} />
-              <Input type="date" value={mealForm.date} onChange={(e) => setMealForm({ ...mealForm, date: e.target.value })} />
+              <CurrencyInput placeholder="Price" value={mealForm.price} onChange={(price) => setMealForm({ ...mealForm, price })} />
+              <DateInput value={mealForm.date} onChange={(date) => setMealForm({ ...mealForm, date })} />
             </div>
             <Button type="button" className="mt-4" onClick={() => { if (mealForm.name && mealForm.date) { setMeals([...meals, mealForm]); setMealForm({ name: '', price: 0, date: '' }); } }}>
               <Plus className="h-4 w-4 mr-2" />Add
@@ -546,7 +549,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
           <div className="rounded-lg border bg-card p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Add Allowance</h3>
             <div className="grid grid-cols-1 gap-3 sm:gap-4">
-              <Input type="date" value={allowForm.date} onChange={(e) => setAllowForm({ ...allowForm, date: e.target.value })} />
+              <DateInput value={allowForm.date} onChange={(date) => setAllowForm({ ...allowForm, date })} />
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" role="combobox" className="justify-between">
@@ -568,7 +571,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <Input type="number" placeholder="Amount" value={allowForm.amount} onChange={(e) => setAllowForm({ ...allowForm, amount: Number(e.target.value) })} />
+              <CurrencyInput placeholder="Amount" value={allowForm.amount} onChange={(amount) => setAllowForm({ ...allowForm, amount })} />
             </div>
             <Button type="button" className="mt-4" onClick={() => { if (allowForm.date && allowForm.province) { setAllowances([...allowances, allowForm]); setAllowForm({ date: '', province: '', amount: 0 }); } }}>
               <Plus className="h-4 w-4 mr-2" />Add

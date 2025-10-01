@@ -4,12 +4,12 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
+import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 
 import { GuideDialog } from '@/components/guides/GuideDialog';
 import type { Guide, GuideInput } from '@/types/master';
@@ -91,18 +91,25 @@ const Guides = () => {
     setEditingGuide(undefined);
   };
 
+  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('guides.headerMode');
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Guides</h1>
-            <p className="text-muted-foreground">Manage your tour guides</p>
+        <div className={headerClasses}>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h1 className="text-3xl font-bold">Guides</h1>
+              <p className="text-muted-foreground">Manage your tour guides</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => handleOpenDialog()} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Guide
+              </Button>
+              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
+            </div>
           </div>
-          <Button onClick={() => handleOpenDialog()} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Guide
-          </Button>
         </div>
 
         <Card className="p-4">
@@ -137,35 +144,45 @@ const Guides = () => {
                   </TableHeader>
                   <TableBody>
                     {guides.map((guide) => (
-                      <TableRow key={guide.id}>
+                      <TableRow
+                        key={guide.id}
+                        className="cursor-pointer hover:bg-accent/50"
+                        onClick={() => handleOpenDialog(guide)}
+                      >
                         <TableCell className="font-medium">{guide.name}</TableCell>
                         <TableCell>{guide.phone || '-'}</TableCell>
                         <TableCell className="max-w-xs truncate">{guide.note || '-'}</TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover">
-                              <DropdownMenuItem onClick={() => handleOpenDialog(guide)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => duplicateMutation.mutate(guide.id)}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => deleteMutation.mutate(guide.id)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenDialog(guide)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => duplicateMutation.mutate(guide.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this guide?')) {
+                                  deleteMutation.mutate(guide.id);
+                                }
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -176,36 +193,46 @@ const Guides = () => {
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
                 {guides.map((guide) => (
-                  <Card key={guide.id} className="p-4">
+                  <Card
+                    key={guide.id}
+                    className="p-4 cursor-pointer hover:bg-accent/50"
+                    onClick={() => handleOpenDialog(guide)}
+                  >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <h3 className="font-semibold">{guide.name}</h3>
                         <p className="text-sm text-muted-foreground">{guide.phone || 'No phone'}</p>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover">
-                          <DropdownMenuItem onClick={() => handleOpenDialog(guide)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => duplicateMutation.mutate(guide.id)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => deleteMutation.mutate(guide.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDialog(guide)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => duplicateMutation.mutate(guide.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this guide?')) {
+                              deleteMutation.mutate(guide.id);
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       {guide.note && (
