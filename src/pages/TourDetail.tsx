@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Tour, TourInput } from '@/types/tour';
+import type { Tour, TourInput, Destination, Expense, Meal, Allowance } from '@/types/tour';
 
 const TourDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +41,17 @@ const TourDetail = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: TourInput) => store.createTour(input),
+    mutationFn: async (input: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[] }) => {
+      const createdTour = await store.createTour(input);
+      // Add subcollections
+      await Promise.all([
+        ...input.destinations.map(dest => store.addDestination(createdTour.id, dest)),
+        ...input.expenses.map(exp => store.addExpense(createdTour.id, exp)),
+        ...input.meals.map(meal => store.addMeal(createdTour.id, meal)),
+        ...input.allowances.map(allow => store.addAllowance(createdTour.id, allow)),
+      ]);
+      return createdTour;
+    },
     onSuccess: (newTour) => {
       queryClient.invalidateQueries({ queryKey: ['tours'] });
       toast.success('Tour created successfully');
@@ -74,11 +84,13 @@ const TourDetail = () => {
     },
   });
 
-  const handleSave = (data: TourInput) => {
+  const handleSave = (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[] }) => {
     if (isNewTour) {
       createMutation.mutate(data);
     } else if (id) {
-      updateMutation.mutate({ id, patch: data });
+      // For updates, only update the basic tour info (not subcollections here)
+      const { destinations, expenses, meals, allowances, ...tourInput } = data;
+      updateMutation.mutate({ id, patch: tourInput });
     }
   };
 

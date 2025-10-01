@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import Fuse from 'fuse.js';
 import type { Tour, EntityRef } from '@/types/tour';
 import type { Company, Guide, Nationality } from '@/types/master';
 import { store } from '@/lib/datastore';
@@ -13,6 +14,8 @@ import {
 } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { GuideDialog } from '@/components/guides/GuideDialog';
@@ -51,6 +54,44 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
         setCompanies(c);
         setGuides(g);
         setNationalities(n);
+
+        // Auto-match using fuzzy search
+        const updatedDraft = items.map(item => {
+          const tour = { ...item.tour };
+          
+          // Fuzzy match company
+          if (item.raw.company && !tour.companyRef?.id) {
+            const companyFuse = new Fuse(c, { keys: ['name'], threshold: 0.3 });
+            const companyMatch = companyFuse.search(item.raw.company);
+            if (companyMatch.length > 0) {
+              const matched = companyMatch[0].item;
+              tour.companyRef = { id: matched.id, nameAtBooking: matched.name };
+            }
+          }
+
+          // Fuzzy match guide
+          if (item.raw.guide && !tour.guideRef?.id) {
+            const guideFuse = new Fuse(g, { keys: ['name'], threshold: 0.3 });
+            const guideMatch = guideFuse.search(item.raw.guide);
+            if (guideMatch.length > 0) {
+              const matched = guideMatch[0].item;
+              tour.guideRef = { id: matched.id, nameAtBooking: matched.name };
+            }
+          }
+
+          // Fuzzy match nationality
+          if (item.raw.nationality && !tour.clientNationalityRef?.id) {
+            const nationalityFuse = new Fuse(n, { keys: ['name', 'iso2'], threshold: 0.3 });
+            const nationalityMatch = nationalityFuse.search(item.raw.nationality);
+            if (nationalityMatch.length > 0) {
+              const matched = nationalityMatch[0].item;
+              tour.clientNationalityRef = { id: matched.id, nameAtBooking: matched.name };
+            }
+          }
+
+          return { ...item, tour };
+        });
+        setDraft(updatedDraft);
       } catch (e) {
         toast.error('Failed to load master data');
       }
@@ -133,7 +174,7 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">Review and resolve missing fields before importing.</p>
 
-      <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
         {draft.map((item, idx) => (
           <Card key={idx} className="p-4">
             <div className="flex flex-col gap-3">
@@ -143,88 +184,174 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
               </div>
               <Separator />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <Label>Company</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      value={item.tour.companyRef?.id || ''}
-                      onValueChange={(val) => {
-                        const selected = companies.find(c => c.id === val);
-                        if (selected) setRef(idx, 'companyRef', { id: selected.id, nameAtBooking: selected.name });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={item.raw.company ? `Find: ${item.raw.company}` : 'Select company'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companies.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" onClick={() => openAddDialog('company', idx)}>Add</Button>
-                  </div>
-                  {!item.tour.companyRef?.id && <p className="text-xs text-destructive">Required</p>}
-                </div>
+              <Tabs defaultValue="info" className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="info">Info</TabsTrigger>
+                  <TabsTrigger value="destinations">
+                    Destinations <Badge variant="secondary" className="ml-1">{item.tour.destinations?.length || 0}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="expenses">
+                    Expenses <Badge variant="secondary" className="ml-1">{item.tour.expenses?.length || 0}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="meals">
+                    Meals <Badge variant="secondary" className="ml-1">{item.tour.meals?.length || 0}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="allowances">
+                    Allowances <Badge variant="secondary" className="ml-1">{item.tour.allowances?.length || 0}</Badge>
+                  </TabsTrigger>
+                </TabsList>
 
-                <div className="space-y-1">
-                  <Label>Guide</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      value={item.tour.guideRef?.id || ''}
-                      onValueChange={(val) => {
-                        const selected = guides.find(g => g.id === val);
-                        if (selected) setRef(idx, 'guideRef', { id: selected.id, nameAtBooking: selected.name });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={item.raw.guide ? `Find: ${item.raw.guide}` : 'Select guide'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {guides.map(g => (
-                          <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" onClick={() => openAddDialog('guide', idx)}>Add</Button>
-                  </div>
-                  {!item.tour.guideRef?.id && <p className="text-xs text-destructive">Required</p>}
-                </div>
+                <TabsContent value="info" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <Label>Company</Label>
+                      <div className="flex gap-2">
+                        <Select
+                          value={item.tour.companyRef?.id || ''}
+                          onValueChange={(val) => {
+                            const selected = companies.find(c => c.id === val);
+                            if (selected) setRef(idx, 'companyRef', { id: selected.id, nameAtBooking: selected.name });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={item.raw.company ? `Find: ${item.raw.company}` : 'Select company'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {companies.map(c => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" onClick={() => openAddDialog('company', idx)}>Add</Button>
+                      </div>
+                      {!item.tour.companyRef?.id && <p className="text-xs text-destructive">Required</p>}
+                    </div>
 
-                <div className="space-y-1">
-                  <Label>Client Nationality</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      value={item.tour.clientNationalityRef?.id || ''}
-                      onValueChange={(val) => {
-                        const selected = nationalities.find(n => n.id === val);
-                        if (selected) setRef(idx, 'clientNationalityRef', { id: selected.id, nameAtBooking: selected.name });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={item.raw.nationality ? `Find: ${item.raw.nationality}` : 'Select nationality'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {nationalities.map(n => (
-                          <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" onClick={() => openAddDialog('nationality', idx)}>Add</Button>
-                  </div>
-                  {!item.tour.clientNationalityRef?.id && <p className="text-xs text-destructive">Required</p>}
-                </div>
-              </div>
+                    <div className="space-y-1">
+                      <Label>Guide</Label>
+                      <div className="flex gap-2">
+                        <Select
+                          value={item.tour.guideRef?.id || ''}
+                          onValueChange={(val) => {
+                            const selected = guides.find(g => g.id === val);
+                            if (selected) setRef(idx, 'guideRef', { id: selected.id, nameAtBooking: selected.name });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={item.raw.guide ? `Find: ${item.raw.guide}` : 'Select guide'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {guides.map(g => (
+                              <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" onClick={() => openAddDialog('guide', idx)}>Add</Button>
+                      </div>
+                      {!item.tour.guideRef?.id && <p className="text-xs text-destructive">Required</p>}
+                    </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-muted-foreground pt-2">
-                <div>Guests: {item.tour.totalGuests}</div>
-                <div>Driver: {item.tour.driverName || '-'}</div>
-                <div>Destinations: {item.tour.destinations?.length || 0}</div>
-                <div>Expenses: {item.tour.expenses?.length || 0}</div>
-                <div>Meals: {item.tour.meals?.length || 0}</div>
-                <div>Allowances: {item.tour.allowances?.length || 0}</div>
-              </div>
+                    <div className="space-y-1">
+                      <Label>Client Nationality</Label>
+                      <div className="flex gap-2">
+                        <Select
+                          value={item.tour.clientNationalityRef?.id || ''}
+                          onValueChange={(val) => {
+                            const selected = nationalities.find(n => n.id === val);
+                            if (selected) setRef(idx, 'clientNationalityRef', { id: selected.id, nameAtBooking: selected.name });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={item.raw.nationality ? `Find: ${item.raw.nationality}` : 'Select nationality'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {nationalities.map(n => (
+                              <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" onClick={() => openAddDialog('nationality', idx)}>Add</Button>
+                      </div>
+                      {!item.tour.clientNationalityRef?.id && <p className="text-xs text-destructive">Required</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-muted-foreground pt-2">
+                    <div>Guests: {item.tour.totalGuests}</div>
+                    <div>Client: {item.tour.clientName || '-'}</div>
+                    <div>Driver: {item.tour.driverName || '-'}</div>
+                    <div>Days: {item.tour.totalDays || 0}</div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="destinations" className="mt-4">
+                  {item.tour.destinations && item.tour.destinations.length > 0 ? (
+                    <div className="rounded-lg border divide-y">
+                      {item.tour.destinations.map((dest, destIdx) => (
+                        <div key={destIdx} className="p-3 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">{dest.name}</div>
+                            <div className="text-xs text-muted-foreground">{dest.date} • {dest.price.toLocaleString()} ₫</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">No destinations</div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="expenses" className="mt-4">
+                  {item.tour.expenses && item.tour.expenses.length > 0 ? (
+                    <div className="rounded-lg border divide-y">
+                      {item.tour.expenses.map((exp, expIdx) => (
+                        <div key={expIdx} className="p-3 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">{exp.name}</div>
+                            <div className="text-xs text-muted-foreground">{exp.date} • {exp.price.toLocaleString()} ₫</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">No expenses</div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="meals" className="mt-4">
+                  {item.tour.meals && item.tour.meals.length > 0 ? (
+                    <div className="rounded-lg border divide-y">
+                      {item.tour.meals.map((meal, mealIdx) => (
+                        <div key={mealIdx} className="p-3 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">{meal.name}</div>
+                            <div className="text-xs text-muted-foreground">{meal.date} • {meal.price.toLocaleString()} ₫</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">No meals</div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="allowances" className="mt-4">
+                  {item.tour.allowances && item.tour.allowances.length > 0 ? (
+                    <div className="rounded-lg border divide-y">
+                      {item.tour.allowances.map((allow, allowIdx) => (
+                        <div key={allowIdx} className="p-3 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">{allow.province}</div>
+                            <div className="text-xs text-muted-foreground">{allow.date} • {allow.amount.toLocaleString()} ₫</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">No allowances</div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
           </Card>
         ))}
