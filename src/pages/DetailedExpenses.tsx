@@ -8,6 +8,7 @@ import { SearchInput } from '@/components/master/SearchInput';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
 import type { DetailedExpense, DetailedExpenseInput } from '@/types/master';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,7 +146,7 @@ const DetailedExpenses = () => {
                         {expense.price.toLocaleString()} ₫
                       </td>
                       <td className="p-4 text-muted-foreground text-sm">
-                        {new Date(expense.updatedAt).toLocaleDateString()}
+                        {formatDate(expense.updatedAt.split("T")[0])}
                       </td>
                       <td className="p-4 text-right">
                         <DropdownMenu>
@@ -190,7 +191,7 @@ const DetailedExpenses = () => {
                         {expense.categoryRef.nameAtBooking} • {expense.price.toLocaleString()} ₫
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Updated {new Date(expense.updatedAt).toLocaleDateString()}
+                        Updated {formatDate(expense.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <DropdownMenu>

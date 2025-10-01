@@ -8,6 +8,7 @@ import { SearchInput } from '@/components/master/SearchInput';
 import { ExpenseCategoryDialog } from '@/components/expense-categories/ExpenseCategoryDialog';
 import type { ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -139,7 +140,7 @@ const ExpenseCategories = () => {
                     <tr key={category.id} className="border-t hover:bg-muted/50">
                       <td className="p-4 font-medium">{category.name}</td>
                       <td className="p-4 text-muted-foreground text-sm">
-                        {new Date(category.updatedAt).toLocaleDateString()}
+                        {formatDate(category.updatedAt.split("T")[0])}
                       </td>
                       <td className="p-4 text-right">
                         <DropdownMenu>
@@ -181,7 +182,7 @@ const ExpenseCategories = () => {
                     <div className="flex-1">
                       <h3 className="font-medium">{category.name}</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Updated {new Date(category.updatedAt).toLocaleDateString()}
+                        Updated {formatDate(category.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <DropdownMenu>

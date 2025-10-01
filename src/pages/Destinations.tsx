@@ -8,6 +8,7 @@ import { SearchInput } from '@/components/master/SearchInput';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
 import type { TouristDestination, TouristDestinationInput } from '@/types/master';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,7 +146,7 @@ const Destinations = () => {
                         {destination.price.toLocaleString()} ₫
                       </td>
                       <td className="p-4 text-muted-foreground text-sm">
-                        {new Date(destination.updatedAt).toLocaleDateString()}
+                        {formatDate(destination.updatedAt.split("T")[0])}
                       </td>
                       <td className="p-4 text-right">
                         <DropdownMenu>
@@ -190,7 +191,7 @@ const Destinations = () => {
                         {destination.provinceRef.nameAtBooking} • {destination.price.toLocaleString()} ₫
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Updated {new Date(destination.updatedAt).toLocaleDateString()}
+                        Updated {formatDate(destination.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <DropdownMenu>
