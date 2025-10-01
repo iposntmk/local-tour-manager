@@ -172,7 +172,6 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Review and resolve missing fields before importing.</p>
 
       <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
         {draft.map((item, idx) => (
@@ -185,7 +184,7 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
               <Separator />
 
               <Tabs defaultValue="info" className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-5 bg-muted/50 rounded-md p-1">
                   <TabsTrigger value="info">Info</TabsTrigger>
                   <TabsTrigger value="destinations">
                     Destinations <Badge variant="secondary" className="ml-1">{item.tour.destinations?.length || 0}</Badge>
@@ -216,7 +215,7 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                           <SelectTrigger>
                             <SelectValue placeholder={item.raw.company ? `Find: ${item.raw.company}` : 'Select company'} />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-50 bg-popover">
                             {companies.map(c => (
                               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                             ))}
@@ -240,7 +239,7 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                           <SelectTrigger>
                             <SelectValue placeholder={item.raw.guide ? `Find: ${item.raw.guide}` : 'Select guide'} />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-50 bg-popover">
                             {guides.map(g => (
                               <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                             ))}
@@ -264,7 +263,7 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                           <SelectTrigger>
                             <SelectValue placeholder={item.raw.nationality ? `Find: ${item.raw.nationality}` : 'Select nationality'} />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-50 bg-popover">
                             {nationalities.map(n => (
                               <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
                             ))}
@@ -357,7 +356,7 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
         ))}
       </div>
 
-      <div className="flex justify-between">
+      <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-3 border-t mt-2 flex justify-between px-1">
         <Button variant="outline" onClick={onCancel}>Back</Button>
         <Button onClick={() => onConfirm(draft.map(d => d.tour))} disabled={!allValid}>Import {draft.length} tour(s)</Button>
       </div>
