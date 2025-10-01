@@ -5,12 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
-import { StatusBadge } from '@/components/master/StatusBadge';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
 import type { Nationality, NationalityInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
@@ -18,13 +16,11 @@ import type { SearchQuery } from '@/types/datastore';
 const Nationalities = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingNationality, setEditingNationality] = useState<Nationality | undefined>();
 
   const query: SearchQuery = {
     search,
-    status: statusFilter,
   };
 
   const { data: nationalities = [], isLoading } = useQuery({
@@ -52,14 +48,6 @@ const Nationalities = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update nationality');
-    },
-  });
-
-  const toggleStatusMutation = useMutation({
-    mutationFn: (id: string) => store.toggleNationalityStatus(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['nationalities'] });
-      toast.success('Status updated');
     },
   });
 
@@ -124,19 +112,6 @@ const Nationalities = () => {
                 placeholder="Search nationalities..."
               />
             </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value: any) => setStatusFilter(value)}
-            >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {isLoading ? (
@@ -155,7 +130,6 @@ const Nationalities = () => {
                       <TableHead>Country</TableHead>
                       <TableHead>ISO Code</TableHead>
                       <TableHead>Flag</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -166,9 +140,6 @@ const Nationalities = () => {
                         <TableCell>{nationality.iso2 || '-'}</TableCell>
                         <TableCell>
                           <span className="text-2xl">{nationality.emoji || '-'}</span>
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={nationality.status} />
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -185,10 +156,6 @@ const Nationalities = () => {
                               <DropdownMenuItem onClick={() => duplicateMutation.mutate(nationality.id)}>
                                 <Copy className="h-4 w-4 mr-2" />
                                 Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(nationality.id)}>
-                                <Power className="h-4 w-4 mr-2" />
-                                {nationality.status === 'active' ? 'Deactivate' : 'Activate'}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => deleteMutation.mutate(nationality.id)}
@@ -235,10 +202,6 @@ const Nationalities = () => {
                             <Copy className="h-4 w-4 mr-2" />
                             Duplicate
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(nationality.id)}>
-                            <Power className="h-4 w-4 mr-2" />
-                            {nationality.status === 'active' ? 'Deactivate' : 'Activate'}
-                          </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => deleteMutation.mutate(nationality.id)}
                             className="text-destructive"
@@ -249,7 +212,6 @@ const Nationalities = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <StatusBadge status={nationality.status} />
                   </Card>
                 ))}
               </div>

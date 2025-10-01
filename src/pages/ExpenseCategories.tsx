@@ -3,9 +3,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Copy, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
-import { StatusBadge } from '@/components/master/StatusBadge';
 import { ExpenseCategoryDialog } from '@/components/expense-categories/ExpenseCategoryDialog';
 import type { ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
 import { toast } from 'sonner';
@@ -15,25 +14,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const ExpenseCategories = () => {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseCategory | undefined>();
   
   const queryClient = useQueryClient();
 
   const { data: categories = [], isLoading } = useQuery({
-    queryKey: ['expenseCategories', search, statusFilter],
-    queryFn: () => store.listExpenseCategories({ search, status: statusFilter }),
+    queryKey: ['expenseCategories', search],
+    queryFn: () => store.listExpenseCategories({ search }),
   });
 
   const createMutation = useMutation({
@@ -59,14 +50,6 @@ const ExpenseCategories = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message);
-    },
-  });
-
-  const toggleStatusMutation = useMutation({
-    mutationFn: (id: string) => store.toggleExpenseCategoryStatus(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
-      toast.success('Expense category status updated');
     },
   });
 
@@ -131,16 +114,6 @@ const ExpenseCategories = () => {
               placeholder="Search categories..."
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {isLoading ? (
@@ -157,7 +130,6 @@ const ExpenseCategories = () => {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-4 font-medium">Name</th>
-                    <th className="text-left p-4 font-medium">Status</th>
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
@@ -166,9 +138,6 @@ const ExpenseCategories = () => {
                   {categories.map((category) => (
                     <tr key={category.id} className="border-t hover:bg-muted/50">
                       <td className="p-4 font-medium">{category.name}</td>
-                      <td className="p-4">
-                        <StatusBadge status={category.status} />
-                      </td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {new Date(category.updatedAt).toLocaleDateString()}
                       </td>
@@ -187,12 +156,6 @@ const ExpenseCategories = () => {
                             <DropdownMenuItem onClick={() => duplicateMutation.mutate(category.id)}>
                               <Copy className="h-4 w-4 mr-2" />
                               Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => toggleStatusMutation.mutate(category.id)}
-                            >
-                              <Power className="h-4 w-4 mr-2" />
-                              {category.status === 'active' ? 'Deactivate' : 'Activate'}
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => deleteMutation.mutate(category.id)}
@@ -236,12 +199,6 @@ const ExpenseCategories = () => {
                           <Copy className="h-4 w-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => toggleStatusMutation.mutate(category.id)}
-                        >
-                          <Power className="h-4 w-4 mr-2" />
-                          {category.status === 'active' ? 'Deactivate' : 'Activate'}
-                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => deleteMutation.mutate(category.id)}
                           className="text-destructive"
@@ -252,7 +209,6 @@ const ExpenseCategories = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <StatusBadge status={category.status} />
                 </div>
               ))}
             </div>

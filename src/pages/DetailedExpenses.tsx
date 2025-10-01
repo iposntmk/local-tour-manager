@@ -3,9 +3,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Copy, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
-import { StatusBadge } from '@/components/master/StatusBadge';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
 import type { DetailedExpense, DetailedExpenseInput } from '@/types/master';
 import { toast } from 'sonner';
@@ -15,25 +14,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const DetailedExpenses = () => {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<DetailedExpense | undefined>();
   
   const queryClient = useQueryClient();
 
   const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ['detailedExpenses', search, statusFilter],
-    queryFn: () => store.listDetailedExpenses({ search, status: statusFilter }),
+    queryKey: ['detailedExpenses', search],
+    queryFn: () => store.listDetailedExpenses({ search }),
   });
 
   const createMutation = useMutation({
@@ -59,14 +50,6 @@ const DetailedExpenses = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message);
-    },
-  });
-
-  const toggleStatusMutation = useMutation({
-    mutationFn: (id: string) => store.toggleDetailedExpenseStatus(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Detailed expense status updated');
     },
   });
 
@@ -131,16 +114,6 @@ const DetailedExpenses = () => {
               placeholder="Search expenses..."
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {isLoading ? (
@@ -159,7 +132,6 @@ const DetailedExpenses = () => {
                     <th className="text-left p-4 font-medium">Name</th>
                     <th className="text-left p-4 font-medium">Category</th>
                     <th className="text-left p-4 font-medium">Price</th>
-                    <th className="text-left p-4 font-medium">Status</th>
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
@@ -171,9 +143,6 @@ const DetailedExpenses = () => {
                       <td className="p-4 text-muted-foreground">{expense.categoryRef.nameAtBooking}</td>
                       <td className="p-4 text-muted-foreground">
                         {expense.price.toLocaleString()} ₫
-                      </td>
-                      <td className="p-4">
-                        <StatusBadge status={expense.status} />
                       </td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {new Date(expense.updatedAt).toLocaleDateString()}
@@ -193,12 +162,6 @@ const DetailedExpenses = () => {
                             <DropdownMenuItem onClick={() => duplicateMutation.mutate(expense.id)}>
                               <Copy className="h-4 w-4 mr-2" />
                               Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => toggleStatusMutation.mutate(expense.id)}
-                            >
-                              <Power className="h-4 w-4 mr-2" />
-                              {expense.status === 'active' ? 'Deactivate' : 'Activate'}
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => deleteMutation.mutate(expense.id)}
@@ -245,12 +208,6 @@ const DetailedExpenses = () => {
                           <Copy className="h-4 w-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => toggleStatusMutation.mutate(expense.id)}
-                        >
-                          <Power className="h-4 w-4 mr-2" />
-                          {expense.status === 'active' ? 'Deactivate' : 'Activate'}
-                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => deleteMutation.mutate(expense.id)}
                           className="text-destructive"
@@ -261,7 +218,6 @@ const DetailedExpenses = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <StatusBadge status={expense.status} />
                 </div>
               ))}
             </div>
