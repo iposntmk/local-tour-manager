@@ -66,14 +66,29 @@ const Tours = () => {
 
   const importMutation = useMutation({
     mutationFn: async (tours: Partial<Tour>[]) => {
-      const results = await Promise.all(
-        tours.map(async (tour) => {
+      const results = [];
+      const errors = [];
+
+      for (let i = 0; i < tours.length; i++) {
+        const tour = tours[i];
+        try {
+          // Validate that required EntityRefs have valid IDs (not empty strings)
+          if (!tour.companyRef?.id) {
+            throw new Error('Company is required');
+          }
+          if (!tour.guideRef?.id) {
+            throw new Error('Guide is required');
+          }
+          if (!tour.clientNationalityRef?.id) {
+            throw new Error('Client nationality is required');
+          }
+
           // Create the main tour record
           const createdTour = await store.createTour({
             tourCode: tour.tourCode!,
-            companyRef: tour.companyRef!,
-            guideRef: tour.guideRef!,
-            clientNationalityRef: tour.clientNationalityRef!,
+            companyRef: tour.companyRef,
+            guideRef: tour.guideRef,
+            clientNationalityRef: tour.clientNationalityRef,
             clientName: tour.clientName!,
             adults: tour.adults!,
             children: tour.children!,
@@ -108,18 +123,29 @@ const Tours = () => {
             );
           }
 
-          return createdTour;
-        })
-      );
+          results.push(createdTour);
+        } catch (error) {
+          const tourCode = tour.tourCode || `Tour ${i + 1}`;
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          errors.push(`${tourCode}: ${errorMsg}`);
+          console.error(`Failed to import ${tourCode}:`, error);
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(errors.join('\n'));
+      }
+
       return results;
     },
-    onSuccess: (_, tours) => {
+    onSuccess: (results, tours) => {
       queryClient.invalidateQueries({ queryKey: ['tours'] });
-      toast.success(`${tours.length} tour(s) imported successfully`);
+      toast.success(`${results.length} tour(s) imported successfully`);
     },
     onError: (error) => {
       console.error('Import error:', error);
-      toast.error('Failed to import tours');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to import tours';
+      toast.error(errorMessage, { duration: 5000 });
     },
   });
 

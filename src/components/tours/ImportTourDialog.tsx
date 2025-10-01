@@ -41,10 +41,14 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
 
   const findOrCreateEntityRef = async (
     entityType: 'company' | 'guide' | 'nationality',
-    name: string
-  ): Promise<EntityRef> => {
+    name: string,
+    required: boolean = false
+  ): Promise<EntityRef | null> => {
     if (!name || name.trim() === '') {
-      return { id: '', nameAtBooking: '' };
+      if (required) {
+        throw new Error(`${entityType} is required but was empty`);
+      }
+      return null;
     }
 
     try {
@@ -86,7 +90,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       return { id: newEntity.id, nameAtBooking: newEntity.name };
     } catch (error) {
       console.error(`Error finding/creating ${entityType}:`, error);
-      return { id: '', nameAtBooking: name };
+      throw new Error(`Failed to find/create ${entityType}: ${name}`);
     }
   };
 
@@ -95,30 +99,38 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     const tourData = data.tour || data;
     const subcollections = data.subcollections || {};
 
-    const companyRef = await findOrCreateEntityRef('company', tourData.company || '');
-    const guideRef = await findOrCreateEntityRef('guide', tourData.tourGuide || '');
-    const nationalityRef = await findOrCreateEntityRef('nationality', tourData.clientNationality || '');
+    try {
+      const companyRef = await findOrCreateEntityRef('company', tourData.company || '', true);
+      const guideRef = await findOrCreateEntityRef('guide', tourData.tourGuide || '', false);
+      const nationalityRef = await findOrCreateEntityRef('nationality', tourData.clientNationality || '', false);
 
-    return {
-      tourCode: tourData.tourCode,
-      clientName: tourData.clientName || '',
-      adults: tourData.adults || 0,
-      children: tourData.children || 0,
-      totalGuests: tourData.totalGuests || 0,
-      driverName: tourData.driverName || '',
-      clientPhone: tourData.clientPhone || '',
-      startDate: tourData.startDate,
-      endDate: tourData.endDate,
-      totalDays: tourData.totalDays || 0,
-      companyRef,
-      guideRef,
-      clientNationalityRef: nationalityRef,
-      destinations: subcollections.destinations || [],
-      expenses: subcollections.expenses || [],
-      meals: subcollections.meals || [],
-      allowances: subcollections.allowances || [],
-      summary: subcollections.summary || { totalTabs: 0 },
-    };
+      // Use placeholder if guide or nationality is null
+      const defaultGuideRef = guideRef || { id: '', nameAtBooking: '' };
+      const defaultNationalityRef = nationalityRef || { id: '', nameAtBooking: '' };
+
+      return {
+        tourCode: tourData.tourCode,
+        clientName: tourData.clientName || '',
+        adults: tourData.adults || 0,
+        children: tourData.children || 0,
+        totalGuests: tourData.totalGuests || 0,
+        driverName: tourData.driverName || '',
+        clientPhone: tourData.clientPhone || '',
+        startDate: tourData.startDate,
+        endDate: tourData.endDate,
+        totalDays: tourData.totalDays || 0,
+        companyRef: companyRef!,
+        guideRef: defaultGuideRef,
+        clientNationalityRef: defaultNationalityRef,
+        destinations: subcollections.destinations || [],
+        expenses: subcollections.expenses || [],
+        meals: subcollections.meals || [],
+        allowances: subcollections.allowances || [],
+        summary: subcollections.summary || { totalTabs: 0 },
+      };
+    } catch (error) {
+      throw new Error(`Failed to transform tour ${tourData.tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const validateTourData = (data: any): boolean => {
@@ -151,16 +163,24 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
 
       const rawTours = Array.isArray(parsed) ? parsed : [parsed];
       const transformedTours = await Promise.all(
-        rawTours.map(tour => transformImportedTour(tour))
+        rawTours.map(async (tour, index) => {
+          try {
+            return await transformImportedTour(tour);
+          } catch (error) {
+            const tourCode = tour.tour?.tourCode || tour.tourCode || `Tour ${index + 1}`;
+            throw new Error(`${tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        })
       );
       
       onImport(transformedTours);
       setOpen(false);
       setJsonInput('');
-      toast.success(`${transformedTours.length} tour(s) imported successfully`);
+      toast.success(`${transformedTours.length} tour(s) ready to import`);
     } catch (error) {
       console.error('Import error:', error);
-      toast.error('Invalid JSON format or import failed');
+      const errorMessage = error instanceof Error ? error.message : 'Invalid JSON format';
+      toast.error(`Import failed: ${errorMessage}`);
     } finally {
       setIsProcessing(false);
     }
