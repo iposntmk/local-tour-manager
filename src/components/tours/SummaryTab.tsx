@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDate } from '@/lib/utils';
 import type { Tour } from '@/types/tour';
 
 interface SummaryTabProps {
@@ -97,7 +98,7 @@ export function SummaryTab({ tour }: SummaryTabProps) {
             <div>
               <div className="text-sm font-medium text-muted-foreground mb-1">Duration</div>
               <div className="font-medium">
-                {tour.startDate} to {tour.endDate} ({tour.totalDays} days)
+                {formatDate(tour.startDate)} to {formatDate(tour.endDate)} ({tour.totalDays} days)
               </div>
             </div>
             <div>

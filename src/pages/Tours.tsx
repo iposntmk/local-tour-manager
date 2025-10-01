@@ -11,6 +11,7 @@ import { exportTourToExcel, exportAllToursToExcel } from '@/lib/excel-utils';
 import { ImportTourDialog } from '@/components/tours/ImportTourDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { formatDate } from '@/lib/utils';
 import type { Tour } from '@/types/tour';
 
 const Tours = () => {
@@ -360,7 +361,7 @@ const Tours = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4 flex-shrink-0" />
                         <span className="truncate">
-                          {tour.startDate} → {tour.endDate}
+                          {formatDate(tour.startDate)} → {formatDate(tour.endDate)}
                         </span>
                       </div>
                     </div>
