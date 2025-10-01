@@ -20,6 +20,9 @@ import { toast } from 'sonner';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { GuideDialog } from '@/components/guides/GuideDialog';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
+import { DestinationDialog } from '@/components/destinations/DestinationDialog';
+import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
+import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
 
 export interface ReviewItem {
   tour: Partial<Tour>;
@@ -45,7 +48,11 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
   const [openCompanyDialog, setOpenCompanyDialog] = useState(false);
   const [openGuideDialog, setOpenGuideDialog] = useState(false);
   const [openNationalityDialog, setOpenNationalityDialog] = useState(false);
+  const [openDestinationDialog, setOpenDestinationDialog] = useState(false);
+  const [openExpenseDialog, setOpenExpenseDialog] = useState(false);
+  const [openShoppingDialog, setOpenShoppingDialog] = useState(false);
   const [targetIndex, setTargetIndex] = useState<number | null>(null);
+  const [targetItemIndex, setTargetItemIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -273,6 +280,75 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
     }
   };
 
+  const handleCreateDestination = async (data: { name: string; price: number; provinceRef: { id: string; nameAtBooking: string } }) => {
+    try {
+      const created = await store.createTouristDestination(data);
+      setDestinations(prev => [created, ...prev]);
+      if (targetIndex !== null && targetItemIndex !== null) {
+        const tour = draft[targetIndex].tour;
+        if (tour.destinations) {
+          const updatedDest = { ...tour.destinations[targetItemIndex], matchedId: created.id, matchedPrice: created.price };
+          const updatedDestinations = [...tour.destinations];
+          updatedDestinations[targetItemIndex] = updatedDest;
+          setDraft(prev => prev.map((it, i) => 
+            i === targetIndex ? { ...it, tour: { ...it.tour, destinations: updatedDestinations } } : it
+          ));
+        }
+      }
+      setOpenDestinationDialog(false);
+      toast.success('Destination created');
+    } catch (e) {
+      toast.error('Failed to create destination');
+      throw e;
+    }
+  };
+
+  const handleCreateExpense = async (data: { name: string; price: number; categoryRef: { id: string; nameAtBooking: string } }) => {
+    try {
+      const created = await store.createDetailedExpense(data);
+      setExpenses(prev => [created, ...prev]);
+      if (targetIndex !== null && targetItemIndex !== null) {
+        const tour = draft[targetIndex].tour;
+        if (tour.expenses) {
+          const updatedExp = { ...tour.expenses[targetItemIndex], matchedId: created.id, matchedPrice: created.price };
+          const updatedExpenses = [...tour.expenses];
+          updatedExpenses[targetItemIndex] = updatedExp;
+          setDraft(prev => prev.map((it, i) => 
+            i === targetIndex ? { ...it, tour: { ...it.tour, expenses: updatedExpenses } } : it
+          ));
+        }
+      }
+      setOpenExpenseDialog(false);
+      toast.success('Expense created');
+    } catch (e) {
+      toast.error('Failed to create expense');
+      throw e;
+    }
+  };
+
+  const handleCreateShopping = async (data: { name: string }) => {
+    try {
+      const created = await store.createShopping(data);
+      setShoppings(prev => [created, ...prev]);
+      if (targetIndex !== null && targetItemIndex !== null) {
+        const tour = draft[targetIndex].tour;
+        if (tour.meals) {
+          const updatedMeal = { ...tour.meals[targetItemIndex], matchedId: created.id };
+          const updatedMeals = [...tour.meals];
+          updatedMeals[targetItemIndex] = updatedMeal;
+          setDraft(prev => prev.map((it, i) => 
+            i === targetIndex ? { ...it, tour: { ...it.tour, meals: updatedMeals } } : it
+          ));
+        }
+      }
+      setOpenShoppingDialog(false);
+      toast.success('Shopping item created');
+    } catch (e) {
+      toast.error('Failed to create shopping item');
+      throw e;
+    }
+  };
+
   return (
     <div className="space-y-4">
 
@@ -404,31 +480,45 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                               <Badge variant="secondary" className="text-xs">Matched</Badge>
                             )}
                           </div>
-                          <Select
-                            value={(dest as any).matchedId || ''}
-                            onValueChange={(val) => {
-                              const selected = destinations.find(d => d.id === val);
-                              if (selected) {
-                                const updatedDest = { ...dest, matchedId: selected.id, matchedPrice: selected.price };
-                                const updatedDestinations = [...(item.tour.destinations || [])];
-                                updatedDestinations[destIdx] = updatedDest;
-                                setDraft(prev => prev.map((it, i) => 
-                                  i === idx ? { ...it, tour: { ...it.tour, destinations: updatedDestinations } } : it
-                                ));
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Match to master destination" />
-                            </SelectTrigger>
-                            <SelectContent className="z-50 bg-popover">
-                              {destinations.map(d => (
-                                <SelectItem key={d.id} value={d.id} className="text-xs">
-                                  {d.name} - {d.price.toLocaleString()} ₫
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-2">
+                            <Select
+                              value={(dest as any).matchedId || ''}
+                              onValueChange={(val) => {
+                                const selected = destinations.find(d => d.id === val);
+                                if (selected) {
+                                  const updatedDest = { ...dest, matchedId: selected.id, matchedPrice: selected.price };
+                                  const updatedDestinations = [...(item.tour.destinations || [])];
+                                  updatedDestinations[destIdx] = updatedDest;
+                                  setDraft(prev => prev.map((it, i) => 
+                                    i === idx ? { ...it, tour: { ...it.tour, destinations: updatedDestinations } } : it
+                                  ));
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Match to master destination" />
+                              </SelectTrigger>
+                              <SelectContent className="z-50 bg-popover">
+                                {destinations.map(d => (
+                                  <SelectItem key={d.id} value={d.id} className="text-xs">
+                                    {d.name} - {d.price.toLocaleString()} ₫
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 text-xs whitespace-nowrap"
+                              onClick={() => {
+                                setTargetIndex(idx);
+                                setTargetItemIndex(destIdx);
+                                setOpenDestinationDialog(true);
+                              }}
+                            >
+                              Add New
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -451,31 +541,45 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                               <Badge variant="secondary" className="text-xs">Matched</Badge>
                             )}
                           </div>
-                          <Select
-                            value={(exp as any).matchedId || ''}
-                            onValueChange={(val) => {
-                              const selected = expenses.find(e => e.id === val);
-                              if (selected) {
-                                const updatedExp = { ...exp, matchedId: selected.id, matchedPrice: selected.price };
-                                const updatedExpenses = [...(item.tour.expenses || [])];
-                                updatedExpenses[expIdx] = updatedExp;
-                                setDraft(prev => prev.map((it, i) => 
-                                  i === idx ? { ...it, tour: { ...it.tour, expenses: updatedExpenses } } : it
-                                ));
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Match to master expense" />
-                            </SelectTrigger>
-                            <SelectContent className="z-50 bg-popover">
-                              {expenses.map(e => (
-                                <SelectItem key={e.id} value={e.id} className="text-xs">
-                                  {e.name} - {e.price.toLocaleString()} ₫
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-2">
+                            <Select
+                              value={(exp as any).matchedId || ''}
+                              onValueChange={(val) => {
+                                const selected = expenses.find(e => e.id === val);
+                                if (selected) {
+                                  const updatedExp = { ...exp, matchedId: selected.id, matchedPrice: selected.price };
+                                  const updatedExpenses = [...(item.tour.expenses || [])];
+                                  updatedExpenses[expIdx] = updatedExp;
+                                  setDraft(prev => prev.map((it, i) => 
+                                    i === idx ? { ...it, tour: { ...it.tour, expenses: updatedExpenses } } : it
+                                  ));
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Match to master expense" />
+                              </SelectTrigger>
+                              <SelectContent className="z-50 bg-popover">
+                                {expenses.map(e => (
+                                  <SelectItem key={e.id} value={e.id} className="text-xs">
+                                    {e.name} - {e.price.toLocaleString()} ₫
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 text-xs whitespace-nowrap"
+                              onClick={() => {
+                                setTargetIndex(idx);
+                                setTargetItemIndex(expIdx);
+                                setOpenExpenseDialog(true);
+                              }}
+                            >
+                              Add New
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -498,31 +602,45 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                               <Badge variant="secondary" className="text-xs">Matched</Badge>
                             )}
                           </div>
-                          <Select
-                            value={(meal as any).matchedId || ''}
-                            onValueChange={(val) => {
-                              const selected = shoppings.find(s => s.id === val);
-                              if (selected) {
-                                const updatedMeal = { ...meal, matchedId: selected.id };
-                                const updatedMeals = [...(item.tour.meals || [])];
-                                updatedMeals[mealIdx] = updatedMeal;
-                                setDraft(prev => prev.map((it, i) => 
-                                  i === idx ? { ...it, tour: { ...it.tour, meals: updatedMeals } } : it
-                                ));
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Match to shopping item" />
-                            </SelectTrigger>
-                            <SelectContent className="z-50 bg-popover">
-                              {shoppings.map(s => (
-                                <SelectItem key={s.id} value={s.id} className="text-xs">
-                                  {s.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-2">
+                            <Select
+                              value={(meal as any).matchedId || ''}
+                              onValueChange={(val) => {
+                                const selected = shoppings.find(s => s.id === val);
+                                if (selected) {
+                                  const updatedMeal = { ...meal, matchedId: selected.id };
+                                  const updatedMeals = [...(item.tour.meals || [])];
+                                  updatedMeals[mealIdx] = updatedMeal;
+                                  setDraft(prev => prev.map((it, i) => 
+                                    i === idx ? { ...it, tour: { ...it.tour, meals: updatedMeals } } : it
+                                  ));
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Match to shopping item" />
+                              </SelectTrigger>
+                              <SelectContent className="z-50 bg-popover">
+                                {shoppings.map(s => (
+                                  <SelectItem key={s.id} value={s.id} className="text-xs">
+                                    {s.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 text-xs whitespace-nowrap"
+                              onClick={() => {
+                                setTargetIndex(idx);
+                                setTargetItemIndex(mealIdx);
+                                setOpenShoppingDialog(true);
+                              }}
+                            >
+                              Add New
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -592,6 +710,9 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
       <CompanyDialog open={openCompanyDialog} onOpenChange={setOpenCompanyDialog} onSubmit={handleCreateCompany} />
       <GuideDialog open={openGuideDialog} onOpenChange={setOpenGuideDialog} onSubmit={handleCreateGuide} />
       <NationalityDialog open={openNationalityDialog} onOpenChange={setOpenNationalityDialog} onSubmit={handleCreateNationality} />
+      <DestinationDialog open={openDestinationDialog} onOpenChange={setOpenDestinationDialog} onSubmit={handleCreateDestination} />
+      <DetailedExpenseDialog open={openExpenseDialog} onOpenChange={setOpenExpenseDialog} onSubmit={handleCreateExpense} />
+      <ShoppingDialog open={openShoppingDialog} onOpenChange={setOpenShoppingDialog} onSubmit={handleCreateShopping} />
     </div>
   );
 }
