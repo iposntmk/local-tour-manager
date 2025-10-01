@@ -5,7 +5,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Upload, FileJson } from 'lucide-react';
 import { toast } from 'sonner';
+import { store } from '@/lib/datastore';
 import type { Tour } from '@/types/tour';
+import type { EntityRef } from '@/types/tour';
 
 interface ImportTourDialogProps {
   onImport: (tours: Partial<Tour>[]) => void;
@@ -37,19 +39,101 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     reader.readAsText(file);
   };
 
+  const findOrCreateEntityRef = async (
+    entityType: 'company' | 'guide' | 'nationality',
+    name: string
+  ): Promise<EntityRef> => {
+    if (!name || name.trim() === '') {
+      return { id: '', nameAtBooking: '' };
+    }
+
+    try {
+      let entities;
+      switch (entityType) {
+        case 'company':
+          entities = await store.listCompanies({ search: name });
+          break;
+        case 'guide':
+          entities = await store.listGuides({ search: name });
+          break;
+        case 'nationality':
+          entities = await store.listNationalities({ search: name });
+          break;
+      }
+
+      const match = entities.find(e => 
+        e.name.toLowerCase() === name.toLowerCase()
+      );
+
+      if (match) {
+        return { id: match.id, nameAtBooking: match.name };
+      }
+
+      // Create new entity if not found
+      let newEntity;
+      switch (entityType) {
+        case 'company':
+          newEntity = await store.createCompany({ name, note: '', email: '', phone: '', contactName: '' });
+          break;
+        case 'guide':
+          newEntity = await store.createGuide({ name, note: '', phone: '' });
+          break;
+        case 'nationality':
+          newEntity = await store.createNationality({ name, iso2: '', emoji: '' });
+          break;
+      }
+
+      return { id: newEntity.id, nameAtBooking: newEntity.name };
+    } catch (error) {
+      console.error(`Error finding/creating ${entityType}:`, error);
+      return { id: '', nameAtBooking: name };
+    }
+  };
+
+  const transformImportedTour = async (data: any): Promise<Partial<Tour>> => {
+    // Check if it's the new format with tour/subcollections structure
+    const tourData = data.tour || data;
+    const subcollections = data.subcollections || {};
+
+    const companyRef = await findOrCreateEntityRef('company', tourData.company || '');
+    const guideRef = await findOrCreateEntityRef('guide', tourData.tourGuide || '');
+    const nationalityRef = await findOrCreateEntityRef('nationality', tourData.clientNationality || '');
+
+    return {
+      tourCode: tourData.tourCode,
+      clientName: tourData.clientName || '',
+      adults: tourData.adults || 0,
+      children: tourData.children || 0,
+      totalGuests: tourData.totalGuests || 0,
+      driverName: tourData.driverName || '',
+      clientPhone: tourData.clientPhone || '',
+      startDate: tourData.startDate,
+      endDate: tourData.endDate,
+      totalDays: tourData.totalDays || 0,
+      companyRef,
+      guideRef,
+      clientNationalityRef: nationalityRef,
+      destinations: subcollections.destinations || [],
+      expenses: subcollections.expenses || [],
+      meals: subcollections.meals || [],
+      allowances: subcollections.allowances || [],
+      summary: subcollections.summary || { totalTabs: 0 },
+    };
+  };
+
   const validateTourData = (data: any): boolean => {
-    // Check if it's an array or single object
     const tours = Array.isArray(data) ? data : [data];
     
     for (const tour of tours) {
-      if (!tour.tourCode || !tour.startDate || !tour.endDate) {
+      const tourData = tour.tour || tour;
+      if (!tourData.tourCode || !tourData.startDate || !tourData.endDate) {
         return false;
       }
     }
     return true;
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!jsonInput.trim()) {
       toast.error('Please paste JSON data or upload a file');
       return;
@@ -65,13 +149,18 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
         return;
       }
 
-      const tours = Array.isArray(parsed) ? parsed : [parsed];
-      onImport(tours);
+      const rawTours = Array.isArray(parsed) ? parsed : [parsed];
+      const transformedTours = await Promise.all(
+        rawTours.map(tour => transformImportedTour(tour))
+      );
+      
+      onImport(transformedTours);
       setOpen(false);
       setJsonInput('');
-      toast.success(`${tours.length} tour(s) imported successfully`);
+      toast.success(`${transformedTours.length} tour(s) imported successfully`);
     } catch (error) {
-      toast.error('Invalid JSON format');
+      console.error('Import error:', error);
+      toast.error('Invalid JSON format or import failed');
     } finally {
       setIsProcessing(false);
     }
@@ -121,7 +210,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
               id="json-textarea"
               value={jsonInput}
               onChange={(e) => setJsonInput(e.target.value)}
-              placeholder='{"tourCode": "T001", "clientName": "John Doe", "startDate": "2024-01-01", "endDate": "2024-01-10", ...}'
+              placeholder='{"tour": {"tourCode": "T001", "company": "ABC", "tourGuide": "John", "clientName": "Amy", "clientNationality": "USA", "adults": 2, "children": 0, "startDate": "2024-01-01", "endDate": "2024-01-10"}, "subcollections": {"destinations": [], "expenses": [], "meals": [], "allowances": []}}'
               className="min-h-[300px] font-mono text-sm"
             />
           </div>
