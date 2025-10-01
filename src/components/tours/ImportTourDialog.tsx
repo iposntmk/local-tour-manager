@@ -112,7 +112,16 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       expenses: subcollections.expenses || [],
       meals: subcollections.meals || [],
       allowances: subcollections.allowances || [],
-      summary: subcollections.summary || { totalTabs: 0 },
+      summary: {
+        totalTabs: subcollections.summary?.totalTabs || 0,
+        advancePayment: subcollections.summary?.advancePayment || 0,
+        totalAfterAdvance: subcollections.summary?.totalAfterAdvance || 0,
+        companyTip: subcollections.summary?.companyTip || 0,
+        totalAfterTip: subcollections.summary?.totalAfterTip || 0,
+        collectionsForCompany: subcollections.summary?.collectionsForCompany || 0,
+        totalAfterCollections: subcollections.summary?.totalAfterCollections || 0,
+        finalTotal: subcollections.summary?.finalTotal || 0,
+      },
     };
 
     return { tour, raw: { company: tourData.company || '', guide: tourData.tourGuide || '', nationality: tourData.clientNationality || '' } };
@@ -220,7 +229,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
                       localStorage.setItem('tour-import-json', e.target.value);
                     }
                   }}
-                  placeholder='{"tour": {"tourCode": "T001", "company": "ABC", "tourGuide": "John", "clientName": "Amy", "clientNationality": "USA", "adults": 2, "children": 0, "startDate": "2024-01-01", "endDate": "2024-01-10"}, "subcollections": {"destinations": [], "expenses": [], "meals": [], "allowances": []}}'
+                  placeholder='[{"tour": {"tourCode": "T001", "company": "ABC", "tourGuide": "John", "clientName": "Amy", "clientNationality": "USA", "adults": 2, "children": 0, "startDate": "2025-01-01", "endDate": "2025-01-10"}, "subcollections": {"destinations": [], "expenses": [], "meals": [], "allowances": [], "summary": {"totalTabs": 0}}}]'
                   className="min-h-[300px] font-mono text-sm"
                 />
               </div>
