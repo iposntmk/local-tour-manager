@@ -25,7 +25,7 @@ const Tours = () => {
 
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ['tours', search],
-    queryFn: () => store.listTours({ tourCode: search }),
+    queryFn: () => store.listTours({ tourCode: search }, { includeDetails: false }),
   });
 
   const { data: nationalities = [] } = useQuery({
