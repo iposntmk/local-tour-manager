@@ -107,6 +107,12 @@ const TourDetail = () => {
     }
   };
 
+  const handleSummaryUpdate = (summary: TourSummary) => {
+    if (id && !isNewTour) {
+      updateMutation.mutate({ id, patch: { summary } });
+    }
+  };
+
   const handleDelete = () => {
     if (id && !isNewTour) {
       deleteMutation.mutate(id);
@@ -255,7 +261,7 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="summary" className="animate-fade-in">
-              <SummaryTab tour={tour} />
+              <SummaryTab tour={tour} onSummaryUpdate={handleSummaryUpdate} />
             </TabsContent>
           </Tabs>
         ) : null}
