@@ -29,6 +29,13 @@ export interface Allowance {
 
 export interface TourSummary {
   totalTabs: number;
+  advancePayment?: number;
+  totalAfterAdvance?: number;
+  companyTip?: number;
+  totalAfterTip?: number;
+  collectionsForCompany?: number;
+  totalAfterCollections?: number;
+  finalTotal?: number;
 }
 
 export interface Tour {
