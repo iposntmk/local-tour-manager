@@ -10,11 +10,18 @@ import { store } from '@/lib/datastore';
 import type { Tour } from '@/types/tour';
 import type { EntityRef } from '@/types/tour';
 import { ImportTourReview } from '@/components/tours/ImportTourReview';
+import type { Company, Guide, Nationality } from '@/types/master';
 
 interface ImportTourDialogProps {
   onImport: (tours: Partial<Tour>[]) => void;
   trigger?: React.ReactNode;
 }
+
+type EntityCaches = {
+  companies: Company[];
+  guides: Guide[];
+  nationalities: Nationality[];
+};
 
 export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) => {
   const [open, setOpen] = useState(false);
@@ -22,6 +29,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
   const [saveToStorage, setSaveToStorage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [reviewItems, setReviewItems] = useState<{ tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string } }[]>([]);
+  const [entityCaches, setEntityCaches] = useState<EntityCaches | null>(null);
 
   // Load from localStorage when dialog opens
   useEffect(() => {
@@ -54,45 +62,47 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     reader.readAsText(file);
   };
 
-  const findEntityRef = async (
+  const normalizeName = (value: string) => value.trim().toLowerCase();
+
+  const findEntityRef = (
+    caches: EntityCaches,
     entityType: 'company' | 'guide' | 'nationality',
     name: string,
     required: boolean = false
-  ): Promise<EntityRef | null> => {
+  ): EntityRef | null => {
     if (!name || name.trim() === '') {
       return required ? null : null;
     }
 
-    try {
-      let entities: { id: string; name: string }[] = [];
-      switch (entityType) {
-        case 'company':
-          entities = await store.listCompanies({ search: name });
-          break;
-        case 'guide':
-          entities = await store.listGuides({ search: name });
-          break;
-        case 'nationality':
-          entities = await store.listNationalities({ search: name });
-          break;
-      }
+    const normalized = normalizeName(name);
 
-      const match = entities.find(e => e.name.toLowerCase() === name.toLowerCase());
-      if (match) return { id: match.id, nameAtBooking: match.name };
-      return null;
-    } catch (error) {
-      console.error(`Error finding ${entityType}:`, error);
-      return null;
+    let match: Company | Guide | Nationality | undefined;
+    if (entityType === 'company') {
+      match = caches.companies.find(entity => normalizeName(entity.name) === normalized);
+    } else if (entityType === 'guide') {
+      match = caches.guides.find(entity => normalizeName(entity.name) === normalized);
+    } else {
+      match = caches.nationalities.find(entity => {
+        if (normalizeName(entity.name) === normalized) return true;
+        if (entity.iso2 && normalizeName(entity.iso2) === normalized) return true;
+        return false;
+      });
     }
+
+    if (match) {
+      return { id: match.id, nameAtBooking: match.name };
+    }
+
+    return required ? null : null;
   };
 
-  const transformImportedTour = async (data: any): Promise<{ tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string } }> => {
+  const transformImportedTour = (data: any, caches: EntityCaches): { tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string } } => {
     const tourData = data.tour || data;
     const subcollections = data.subcollections || {};
 
-    const companyRef = await findEntityRef('company', tourData.company || '', true);
-    const guideRef = await findEntityRef('guide', tourData.tourGuide || '', true);
-    const nationalityRef = await findEntityRef('nationality', tourData.clientNationality || '', true);
+    const companyRef = findEntityRef(caches, 'company', tourData.company || '', true);
+    const guideRef = findEntityRef(caches, 'guide', tourData.tourGuide || '', true);
+    const nationalityRef = findEntityRef(caches, 'nationality', tourData.clientNationality || '', true);
 
     const tour: Partial<Tour> = {
       tourCode: tourData.tourCode,
@@ -155,16 +165,29 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       }
 
       const rawTours = Array.isArray(parsed) ? parsed : [parsed];
-      const transformed = await Promise.all(
-        rawTours.map(async (tour, index) => {
-          try {
-            return await transformImportedTour(tour);
-          } catch (error) {
-            const tourCode = tour.tour?.tourCode || tour.tourCode || `Tour ${index + 1}`;
-            throw new Error(`${tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        })
-      );
+      let caches = entityCaches;
+      if (!caches) {
+        const [companies, guides, nationalities] = await Promise.all([
+          store.listCompanies({}),
+          store.listGuides({}),
+          store.listNationalities({}),
+        ]);
+        caches = { companies, guides, nationalities };
+        setEntityCaches(caches);
+      }
+
+      if (!caches) {
+        throw new Error('Unable to load entity references');
+      }
+
+      const transformed = rawTours.map((tour, index) => {
+        try {
+          return transformImportedTour(tour, caches);
+        } catch (error) {
+          const tourCode = tour.tour?.tourCode || tour.tourCode || `Tour ${index + 1}`;
+          throw new Error(`${tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      });
 
       setReviewItems(transformed);
       toast.message('Review required', { description: 'Resolve missing fields, then confirm import.' });
@@ -278,6 +301,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
                   // onImport handles toasts
                 }
               }}
+              preloadedEntities={entityCaches ?? undefined}
             />
           )}
         </div>
