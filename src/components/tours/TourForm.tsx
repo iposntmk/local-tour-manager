@@ -23,13 +23,13 @@ import {
 } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign } from 'lucide-react';
+import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign, Calculator } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Tour, TourInput, Destination, Expense, Meal, Allowance } from '@/types/tour';
+import type { Tour, TourInput, Destination, Expense, Meal, Allowance, TourSummary } from '@/types/tour';
 
 interface TourFormProps {
   initialData?: Tour;
-  onSubmit: (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[] }) => void;
+  onSubmit: (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => void;
 }
 
 export function TourForm({ initialData, onSubmit }: TourFormProps) {
@@ -45,6 +45,16 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const [expenses, setExpenses] = useState<Expense[]>(initialData?.expenses || []);
   const [meals, setMeals] = useState<Meal[]>(initialData?.meals || []);
   const [allowances, setAllowances] = useState<Allowance[]>(initialData?.allowances || []);
+  const [summary, setSummary] = useState<TourSummary>(initialData?.summary || {
+    totalTabs: 0,
+    advancePayment: 0,
+    totalAfterAdvance: 0,
+    companyTip: 0,
+    totalAfterTip: 0,
+    collectionsForCompany: 0,
+    totalAfterCollections: 0,
+    finalTotal: 0,
+  });
 
   const [destForm, setDestForm] = useState<Destination>({ name: '', price: 0, date: '' });
   const [expForm, setExpForm] = useState<Expense>({ name: '', price: 0, date: '' });
@@ -127,6 +137,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
       expenses,
       meals,
       allowances,
+      summary,
     });
   };
 
@@ -137,7 +148,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 h-auto">
+        <TabsList className="grid w-full grid-cols-6 h-auto">
           <TabsTrigger value="info" className="flex-col sm:flex-row gap-1 py-2">
             <Info className="h-4 w-4" />
             <span className="hidden sm:inline">Tour Info</span>
@@ -177,6 +188,10 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 {allowances.length}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="summary" className="flex-col sm:flex-row gap-1 py-2">
+            <Calculator className="h-4 w-4" />
+            <span className="hidden sm:inline">Summary</span>
           </TabsTrigger>
         </TabsList>
 
@@ -584,6 +599,85 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 <Button type="button" variant="ghost" size="sm" onClick={() => setAllowances(allowances.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="summary" className="space-y-4 mt-6">
+          <div className="rounded-lg border bg-card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Financial Summary</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="totalTabs">Total Tabs</Label>
+                <CurrencyInput
+                  id="totalTabs"
+                  value={summary.totalTabs}
+                  onChange={(value) => setSummary({ ...summary, totalTabs: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="advancePayment">Advance Payment</Label>
+                <CurrencyInput
+                  id="advancePayment"
+                  value={summary.advancePayment || 0}
+                  onChange={(value) => setSummary({ ...summary, advancePayment: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="totalAfterAdvance">Total After Advance</Label>
+                <CurrencyInput
+                  id="totalAfterAdvance"
+                  value={summary.totalAfterAdvance || 0}
+                  onChange={(value) => setSummary({ ...summary, totalAfterAdvance: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="companyTip">Company Tip</Label>
+                <CurrencyInput
+                  id="companyTip"
+                  value={summary.companyTip || 0}
+                  onChange={(value) => setSummary({ ...summary, companyTip: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="totalAfterTip">Total After Tip</Label>
+                <CurrencyInput
+                  id="totalAfterTip"
+                  value={summary.totalAfterTip || 0}
+                  onChange={(value) => setSummary({ ...summary, totalAfterTip: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="collectionsForCompany">Collections for Company</Label>
+                <CurrencyInput
+                  id="collectionsForCompany"
+                  value={summary.collectionsForCompany || 0}
+                  onChange={(value) => setSummary({ ...summary, collectionsForCompany: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="totalAfterCollections">Total After Collections</Label>
+                <CurrencyInput
+                  id="totalAfterCollections"
+                  value={summary.totalAfterCollections || 0}
+                  onChange={(value) => setSummary({ ...summary, totalAfterCollections: value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="finalTotal">Final Total</Label>
+                <CurrencyInput
+                  id="finalTotal"
+                  value={summary.finalTotal || 0}
+                  onChange={(value) => setSummary({ ...summary, finalTotal: value })}
+                />
+              </div>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

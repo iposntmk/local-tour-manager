@@ -185,6 +185,11 @@ const Tours = () => {
             );
           }
 
+          // Add summary data
+          if (tour.summary) {
+            await store.updateTour(createdTour.id, { summary: tour.summary });
+          }
+
           results.push(createdTour);
         } catch (error) {
           const tourCode = tour.tourCode || `Tour ${i + 1}`;
