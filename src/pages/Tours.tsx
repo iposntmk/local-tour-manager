@@ -193,7 +193,14 @@ const Tours = () => {
           results.push(createdTour);
         } catch (error) {
           const tourCode = tour.tourCode || `Tour ${i + 1}`;
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          let errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          
+          // Check for duplicate tour code error
+          const errorMessage = errorMsg.toLowerCase();
+          if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('tour_code')) {
+            errorMsg = 'Tour code already exists';
+          }
+          
           errors.push(`${tourCode}: ${errorMsg}`);
           console.error(`Failed to import ${tourCode}:`, error);
         }
