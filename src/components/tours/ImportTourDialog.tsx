@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import type { Tour } from '@/types/tour';
 import type { EntityRef } from '@/types/tour';
+import { ImportTourReview } from '@/components/tours/ImportTourReview';
 
 interface ImportTourDialogProps {
   onImport: (tours: Partial<Tour>[]) => void;
@@ -18,6 +19,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
   const [open, setOpen] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [reviewItems, setReviewItems] = useState<{ tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string } }[]>([]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,20 +41,17 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     reader.readAsText(file);
   };
 
-  const findOrCreateEntityRef = async (
+  const findEntityRef = async (
     entityType: 'company' | 'guide' | 'nationality',
     name: string,
     required: boolean = false
   ): Promise<EntityRef | null> => {
     if (!name || name.trim() === '') {
-      if (required) {
-        throw new Error(`${entityType} is required but was empty`);
-      }
-      return null;
+      return required ? null : null;
     }
 
     try {
-      let entities;
+      let entities: { id: string; name: string }[] = [];
       switch (entityType) {
         case 'company':
           entities = await store.listCompanies({ search: name });
@@ -65,72 +64,45 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
           break;
       }
 
-      const match = entities.find(e => 
-        e.name.toLowerCase() === name.toLowerCase()
-      );
-
-      if (match) {
-        return { id: match.id, nameAtBooking: match.name };
-      }
-
-      // Create new entity if not found
-      let newEntity;
-      switch (entityType) {
-        case 'company':
-          newEntity = await store.createCompany({ name, note: '', email: '', phone: '', contactName: '' });
-          break;
-        case 'guide':
-          newEntity = await store.createGuide({ name, note: '', phone: '' });
-          break;
-        case 'nationality':
-          newEntity = await store.createNationality({ name, iso2: '', emoji: '' });
-          break;
-      }
-
-      return { id: newEntity.id, nameAtBooking: newEntity.name };
+      const match = entities.find(e => e.name.toLowerCase() === name.toLowerCase());
+      if (match) return { id: match.id, nameAtBooking: match.name };
+      return null;
     } catch (error) {
-      console.error(`Error finding/creating ${entityType}:`, error);
-      throw new Error(`Failed to find/create ${entityType}: ${name}`);
+      console.error(`Error finding ${entityType}:`, error);
+      return null;
     }
   };
 
-  const transformImportedTour = async (data: any): Promise<Partial<Tour>> => {
-    // Check if it's the new format with tour/subcollections structure
+  const transformImportedTour = async (data: any): Promise<{ tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string } }> => {
     const tourData = data.tour || data;
     const subcollections = data.subcollections || {};
 
-    try {
-      const companyRef = await findOrCreateEntityRef('company', tourData.company || '', true);
-      const guideRef = await findOrCreateEntityRef('guide', tourData.tourGuide || '', false);
-      const nationalityRef = await findOrCreateEntityRef('nationality', tourData.clientNationality || '', false);
+    const companyRef = await findEntityRef('company', tourData.company || '', true);
+    const guideRef = await findEntityRef('guide', tourData.tourGuide || '', true);
+    const nationalityRef = await findEntityRef('nationality', tourData.clientNationality || '', true);
 
-      // Use placeholder if guide or nationality is null
-      const defaultGuideRef = guideRef || { id: '', nameAtBooking: '' };
-      const defaultNationalityRef = nationalityRef || { id: '', nameAtBooking: '' };
+    const tour: Partial<Tour> = {
+      tourCode: tourData.tourCode,
+      clientName: tourData.clientName || '',
+      adults: tourData.adults || 0,
+      children: tourData.children || 0,
+      totalGuests: tourData.totalGuests || 0,
+      driverName: tourData.driverName || '',
+      clientPhone: tourData.clientPhone || '',
+      startDate: tourData.startDate,
+      endDate: tourData.endDate,
+      totalDays: tourData.totalDays || 0,
+      companyRef: companyRef || { id: '', nameAtBooking: '' },
+      guideRef: guideRef || { id: '', nameAtBooking: '' },
+      clientNationalityRef: nationalityRef || { id: '', nameAtBooking: '' },
+      destinations: subcollections.destinations || [],
+      expenses: subcollections.expenses || [],
+      meals: subcollections.meals || [],
+      allowances: subcollections.allowances || [],
+      summary: subcollections.summary || { totalTabs: 0 },
+    };
 
-      return {
-        tourCode: tourData.tourCode,
-        clientName: tourData.clientName || '',
-        adults: tourData.adults || 0,
-        children: tourData.children || 0,
-        totalGuests: tourData.totalGuests || 0,
-        driverName: tourData.driverName || '',
-        clientPhone: tourData.clientPhone || '',
-        startDate: tourData.startDate,
-        endDate: tourData.endDate,
-        totalDays: tourData.totalDays || 0,
-        companyRef: companyRef!,
-        guideRef: defaultGuideRef,
-        clientNationalityRef: defaultNationalityRef,
-        destinations: subcollections.destinations || [],
-        expenses: subcollections.expenses || [],
-        meals: subcollections.meals || [],
-        allowances: subcollections.allowances || [],
-        summary: subcollections.summary || { totalTabs: 0 },
-      };
-    } catch (error) {
-      throw new Error(`Failed to transform tour ${tourData.tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    return { tour, raw: { company: tourData.company || '', guide: tourData.tourGuide || '', nationality: tourData.clientNationality || '' } };
   };
 
   const validateTourData = (data: any): boolean => {
@@ -157,12 +129,11 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       
       if (!validateTourData(parsed)) {
         toast.error('Invalid tour data. Required fields: tourCode, startDate, endDate');
-        setIsProcessing(false);
         return;
       }
 
       const rawTours = Array.isArray(parsed) ? parsed : [parsed];
-      const transformedTours = await Promise.all(
+      const transformed = await Promise.all(
         rawTours.map(async (tour, index) => {
           try {
             return await transformImportedTour(tour);
@@ -172,11 +143,9 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
           }
         })
       );
-      
-      onImport(transformedTours);
-      setOpen(false);
-      setJsonInput('');
-      toast.success(`${transformedTours.length} tour(s) ready to import`);
+
+      setReviewItems(transformed);
+      toast.message('Review required', { description: 'Resolve missing fields, then confirm import.' });
     } catch (error) {
       console.error('Import error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Invalid JSON format';
@@ -199,50 +168,70 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Import Tours from JSON</DialogTitle>
+          <DialogDescription>Upload or paste JSON, then review and fix missing fields before importing.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="json-file" className="flex items-center gap-2 cursor-pointer">
-              <FileJson className="h-4 w-4" />
-              Upload JSON File
-            </Label>
-            <input
-              id="json-file"
-              type="file"
-              accept=".json"
-              onChange={handleFileUpload}
-              className="mt-2"
+          {reviewItems.length === 0 ? (
+            <>
+              <div>
+                <Label htmlFor="json-file" className="flex items-center gap-2 cursor-pointer">
+                  <FileJson className="h-4 w-4" />
+                  Upload JSON File
+                </Label>
+                <input
+                  id="json-file"
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileUpload}
+                  className="mt-2"
+                />
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or paste JSON</span>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="json-textarea">JSON Data</Label>
+                <Textarea
+                  id="json-textarea"
+                  value={jsonInput}
+                  onChange={(e) => setJsonInput(e.target.value)}
+                  placeholder='{"tour": {"tourCode": "T001", "company": "ABC", "tourGuide": "John", "clientName": "Amy", "clientNationality": "USA", "adults": 2, "children": 0, "startDate": "2024-01-01", "endDate": "2024-01-10"}, "subcollections": {"destinations": [], "expenses": [], "meals": [], "allowances": []}}'
+                  className="min-h-[300px] font-mono text-sm"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleImport} disabled={isProcessing}>
+                  {isProcessing ? 'Processing...' : 'Parse & Review'}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <ImportTourReview
+              items={reviewItems}
+              onCancel={() => setReviewItems([])}
+              onConfirm={async (tours) => {
+                try {
+                  await onImport(tours);
+                  setReviewItems([]);
+                  setJsonInput('');
+                  setOpen(false);
+                } catch (e) {
+                  // onImport handles toasts
+                }
+              }}
             />
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or paste JSON</span>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="json-textarea">JSON Data</Label>
-            <Textarea
-              id="json-textarea"
-              value={jsonInput}
-              onChange={(e) => setJsonInput(e.target.value)}
-              placeholder='{"tour": {"tourCode": "T001", "company": "ABC", "tourGuide": "John", "clientName": "Amy", "clientNationality": "USA", "adults": 2, "children": 0, "startDate": "2024-01-01", "endDate": "2024-01-10"}, "subcollections": {"destinations": [], "expenses": [], "meals": [], "allowances": []}}'
-              className="min-h-[300px] font-mono text-sm"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleImport} disabled={isProcessing}>
-              {isProcessing ? 'Importing...' : 'Import'}
-            </Button>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
