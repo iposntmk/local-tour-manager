@@ -779,7 +779,7 @@ export class IndexedDbStore implements DataStore {
   }
 
   // ===== TOURS =====
-  async listTours(query?: TourQuery): Promise<Tour[]> {
+  async listTours(query?: TourQuery, _options?: { includeDetails?: boolean }): Promise<Tour[]> {
     let tours = await db.tours.toArray();
     
     if (query?.tourCode) {
