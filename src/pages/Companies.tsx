@@ -10,7 +10,6 @@ import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 import type { Company, CompanyInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
 
@@ -90,7 +89,7 @@ const Companies = () => {
     setEditingCompany(undefined);
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('companies.headerMode');
+  const { classes: headerClasses } = useHeaderMode('companies.headerMode');
 
   return (
     <Layout>
@@ -106,7 +105,6 @@ const Companies = () => {
                 <Plus className="h-4 w-4" />
                 Add Company
               </Button>
-              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
             </div>
           </div>
         </div>

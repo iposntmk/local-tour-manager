@@ -10,7 +10,6 @@ import type { DetailedExpense, DetailedExpenseInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 
 const DetailedExpenses = () => {
   const [search, setSearch] = useState('');
@@ -89,7 +88,7 @@ const DetailedExpenses = () => {
     setEditingExpense(undefined);
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('detailedexpenses.headerMode');
+  const { classes: headerClasses } = useHeaderMode('detailedexpenses.headerMode');
 
   return (
     <Layout>
@@ -105,7 +104,6 @@ const DetailedExpenses = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Expense
               </Button>
-              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
             </div>
           </div>
         </div>

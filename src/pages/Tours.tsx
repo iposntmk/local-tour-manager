@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 import type { Tour } from '@/types/tour';
 
 const Tours = () => {
@@ -216,12 +215,12 @@ const Tours = () => {
     importMutation.mutate(tours);
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('tours.headerMode');
+  const { classes: headerClasses } = useHeaderMode('tours.headerMode');
 
   return (
     <Layout>
       <div className="space-y-6 animate-fade-in">
-        {/* Sticky Header with pin/dock/freeze controls */}
+        {/* Sticky Header - Always pinned to top */}
         <div className={headerClasses}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -238,7 +237,6 @@ const Tours = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 New Tour
               </Button>
-              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
             </div>
           </div>
 

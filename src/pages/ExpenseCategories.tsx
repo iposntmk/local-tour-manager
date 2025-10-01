@@ -10,7 +10,6 @@ import type { ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 
 const ExpenseCategories = () => {
   const [search, setSearch] = useState('');
@@ -89,7 +88,7 @@ const ExpenseCategories = () => {
     setEditingCategory(undefined);
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('expensecategories.headerMode');
+  const { classes: headerClasses } = useHeaderMode('expensecategories.headerMode');
 
   return (
     <Layout>
@@ -105,7 +104,6 @@ const ExpenseCategories = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Category
               </Button>
-              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
             </div>
           </div>
         </div>
