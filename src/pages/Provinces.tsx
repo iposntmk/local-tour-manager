@@ -3,9 +3,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Copy, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
-import { StatusBadge } from '@/components/master/StatusBadge';
 import { ProvinceDialog } from '@/components/provinces/ProvinceDialog';
 import type { Province, ProvinceInput } from '@/types/master';
 import { toast } from 'sonner';
@@ -15,25 +14,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const Provinces = () => {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProvince, setEditingProvince] = useState<Province | undefined>();
   
   const queryClient = useQueryClient();
 
   const { data: provinces = [], isLoading } = useQuery({
-    queryKey: ['provinces', search, statusFilter],
-    queryFn: () => store.listProvinces({ search, status: statusFilter }),
+    queryKey: ['provinces', search],
+    queryFn: () => store.listProvinces({ search }),
   });
 
   const createMutation = useMutation({
@@ -59,14 +50,6 @@ const Provinces = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message);
-    },
-  });
-
-  const toggleStatusMutation = useMutation({
-    mutationFn: (id: string) => store.toggleProvinceStatus(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['provinces'] });
-      toast.success('Province status updated');
     },
   });
 
@@ -131,16 +114,6 @@ const Provinces = () => {
               placeholder="Search provinces..."
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {isLoading ? (
@@ -157,7 +130,6 @@ const Provinces = () => {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-4 font-medium">Name</th>
-                    <th className="text-left p-4 font-medium">Status</th>
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
@@ -166,9 +138,6 @@ const Provinces = () => {
                   {provinces.map((province) => (
                     <tr key={province.id} className="border-t hover:bg-muted/50">
                       <td className="p-4 font-medium">{province.name}</td>
-                      <td className="p-4">
-                        <StatusBadge status={province.status} />
-                      </td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {new Date(province.updatedAt).toLocaleDateString()}
                       </td>
@@ -187,12 +156,6 @@ const Provinces = () => {
                             <DropdownMenuItem onClick={() => duplicateMutation.mutate(province.id)}>
                               <Copy className="h-4 w-4 mr-2" />
                               Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => toggleStatusMutation.mutate(province.id)}
-                            >
-                              <Power className="h-4 w-4 mr-2" />
-                              {province.status === 'active' ? 'Deactivate' : 'Activate'}
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => deleteMutation.mutate(province.id)}
@@ -236,12 +199,6 @@ const Provinces = () => {
                           <Copy className="h-4 w-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => toggleStatusMutation.mutate(province.id)}
-                        >
-                          <Power className="h-4 w-4 mr-2" />
-                          {province.status === 'active' ? 'Deactivate' : 'Activate'}
-                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => deleteMutation.mutate(province.id)}
                           className="text-destructive"
@@ -252,7 +209,6 @@ const Provinces = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <StatusBadge status={province.status} />
                 </div>
               ))}
             </div>
