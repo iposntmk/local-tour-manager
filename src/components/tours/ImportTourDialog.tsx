@@ -165,7 +165,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Tours from JSON</DialogTitle>
           <DialogDescription>Upload or paste JSON, then review and fix missing fields before importing.</DialogDescription>
