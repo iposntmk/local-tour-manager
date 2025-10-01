@@ -8,6 +8,7 @@ import { SearchInput } from '@/components/master/SearchInput';
 import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
 import type { Shopping, ShoppingInput } from '@/types/master';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -139,7 +140,7 @@ const ShoppingPage = () => {
                     <tr key={shopping.id} className="border-t hover:bg-muted/50">
                       <td className="p-4 font-medium">{shopping.name}</td>
                       <td className="p-4 text-muted-foreground text-sm">
-                        {new Date(shopping.updatedAt).toLocaleDateString()}
+                        {formatDate(shopping.updatedAt.split("T")[0])}
                       </td>
                       <td className="p-4 text-right">
                         <DropdownMenu>
@@ -181,7 +182,7 @@ const ShoppingPage = () => {
                     <div className="flex-1">
                       <h3 className="font-medium">{shopping.name}</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Updated {new Date(shopping.updatedAt).toLocaleDateString()}
+                        Updated {formatDate(shopping.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <DropdownMenu>

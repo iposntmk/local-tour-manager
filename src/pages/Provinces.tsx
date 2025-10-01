@@ -8,6 +8,7 @@ import { SearchInput } from '@/components/master/SearchInput';
 import { ProvinceDialog } from '@/components/provinces/ProvinceDialog';
 import type { Province, ProvinceInput } from '@/types/master';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -139,7 +140,7 @@ const Provinces = () => {
                     <tr key={province.id} className="border-t hover:bg-muted/50">
                       <td className="p-4 font-medium">{province.name}</td>
                       <td className="p-4 text-muted-foreground text-sm">
-                        {new Date(province.updatedAt).toLocaleDateString()}
+                        {formatDate(province.updatedAt.split("T")[0])}
                       </td>
                       <td className="p-4 text-right">
                         <DropdownMenu>
@@ -181,7 +182,7 @@ const Provinces = () => {
                     <div className="flex-1">
                       <h3 className="font-medium">{province.name}</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Updated {new Date(province.updatedAt).toLocaleDateString()}
+                        Updated {formatDate(province.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <DropdownMenu>
