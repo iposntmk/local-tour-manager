@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Fuse from 'fuse.js';
 import type { Tour, EntityRef } from '@/types/tour';
-import type { Company, Guide, Nationality } from '@/types/master';
+import type { Company, Guide, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -36,6 +36,10 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
   const [companies, setCompanies] = useState<Company[]>([]);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [nationalities, setNationalities] = useState<Nationality[]>([]);
+  const [destinations, setDestinations] = useState<TouristDestination[]>([]);
+  const [expenses, setExpenses] = useState<DetailedExpense[]>([]);
+  const [shoppings, setShoppings] = useState<Shopping[]>([]);
+  const [provinces, setProvinces] = useState<Province[]>([]);
   const [draft, setDraft] = useState<ReviewItem[]>(items);
 
   const [openCompanyDialog, setOpenCompanyDialog] = useState(false);
@@ -46,14 +50,22 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
   useEffect(() => {
     const load = async () => {
       try {
-        const [c, g, n] = await Promise.all([
+        const [c, g, n, d, e, s, p] = await Promise.all([
           store.listCompanies({}),
           store.listGuides({}),
           store.listNationalities({}),
+          store.listTouristDestinations({}),
+          store.listDetailedExpenses({}),
+          store.listShoppings({}),
+          store.listProvinces({}),
         ]);
         setCompanies(c);
         setGuides(g);
         setNationalities(n);
+        setDestinations(d);
+        setExpenses(e);
+        setShoppings(s);
+        setProvinces(p);
 
         // Auto-match using fuzzy search with higher threshold for better accuracy
         const updatedDraft = items.map(item => {
@@ -102,6 +114,82 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
               const matched = nationalityMatch[0].item;
               tour.clientNationalityRef = { id: matched.id, nameAtBooking: matched.name };
             }
+          }
+
+          // Fuzzy match destinations
+          if (tour.destinations && tour.destinations.length > 0) {
+            tour.destinations = tour.destinations.map(dest => {
+              if (!dest.name) return dest;
+              const destFuse = new Fuse(d, {
+                keys: ['name'],
+                threshold: 0.4,
+                includeScore: true,
+                ignoreLocation: true,
+              });
+              const destMatch = destFuse.search(dest.name);
+              if (destMatch.length > 0 && destMatch[0].score && destMatch[0].score < 0.4) {
+                const matched = destMatch[0].item;
+                return { ...dest, matchedId: matched.id, matchedPrice: matched.price };
+              }
+              return dest;
+            });
+          }
+
+          // Fuzzy match expenses
+          if (tour.expenses && tour.expenses.length > 0) {
+            tour.expenses = tour.expenses.map(exp => {
+              if (!exp.name) return exp;
+              const expFuse = new Fuse(e, {
+                keys: ['name'],
+                threshold: 0.4,
+                includeScore: true,
+                ignoreLocation: true,
+              });
+              const expMatch = expFuse.search(exp.name);
+              if (expMatch.length > 0 && expMatch[0].score && expMatch[0].score < 0.4) {
+                const matched = expMatch[0].item;
+                return { ...exp, matchedId: matched.id, matchedPrice: matched.price };
+              }
+              return exp;
+            });
+          }
+
+          // Fuzzy match meals (shopping)
+          if (tour.meals && tour.meals.length > 0) {
+            tour.meals = tour.meals.map(meal => {
+              if (!meal.name) return meal;
+              const mealFuse = new Fuse(s, {
+                keys: ['name'],
+                threshold: 0.4,
+                includeScore: true,
+                ignoreLocation: true,
+              });
+              const mealMatch = mealFuse.search(meal.name);
+              if (mealMatch.length > 0 && mealMatch[0].score && mealMatch[0].score < 0.4) {
+                const matched = mealMatch[0].item;
+                return { ...meal, matchedId: matched.id };
+              }
+              return meal;
+            });
+          }
+
+          // Fuzzy match allowances (provinces)
+          if (tour.allowances && tour.allowances.length > 0) {
+            tour.allowances = tour.allowances.map(allow => {
+              if (!allow.province) return allow;
+              const provFuse = new Fuse(p, {
+                keys: ['name'],
+                threshold: 0.4,
+                includeScore: true,
+                ignoreLocation: true,
+              });
+              const provMatch = provFuse.search(allow.province);
+              if (provMatch.length > 0 && provMatch[0].score && provMatch[0].score < 0.4) {
+                const matched = provMatch[0].item;
+                return { ...allow, matchedProvinceId: matched.id, province: matched.name };
+              }
+              return allow;
+            });
           }
 
           return { ...item, tour };
@@ -306,11 +394,41 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                   {item.tour.destinations && item.tour.destinations.length > 0 ? (
                     <div className="rounded-lg border divide-y">
                       {item.tour.destinations.map((dest, destIdx) => (
-                        <div key={destIdx} className="p-3 flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">{dest.name}</div>
-                            <div className="text-xs text-muted-foreground">{dest.date} • {dest.price.toLocaleString()} ₫</div>
+                        <div key={destIdx} className="p-3 space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{dest.name}</div>
+                              <div className="text-xs text-muted-foreground">{dest.date} • {dest.price.toLocaleString()} ₫</div>
+                            </div>
+                            {(dest as any).matchedId && (
+                              <Badge variant="secondary" className="text-xs">Matched</Badge>
+                            )}
                           </div>
+                          <Select
+                            value={(dest as any).matchedId || ''}
+                            onValueChange={(val) => {
+                              const selected = destinations.find(d => d.id === val);
+                              if (selected) {
+                                const updatedDest = { ...dest, matchedId: selected.id, matchedPrice: selected.price };
+                                const updatedDestinations = [...(item.tour.destinations || [])];
+                                updatedDestinations[destIdx] = updatedDest;
+                                setDraft(prev => prev.map((it, i) => 
+                                  i === idx ? { ...it, tour: { ...it.tour, destinations: updatedDestinations } } : it
+                                ));
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Match to master destination" />
+                            </SelectTrigger>
+                            <SelectContent className="z-50 bg-popover">
+                              {destinations.map(d => (
+                                <SelectItem key={d.id} value={d.id} className="text-xs">
+                                  {d.name} - {d.price.toLocaleString()} ₫
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       ))}
                     </div>
@@ -323,11 +441,41 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                   {item.tour.expenses && item.tour.expenses.length > 0 ? (
                     <div className="rounded-lg border divide-y">
                       {item.tour.expenses.map((exp, expIdx) => (
-                        <div key={expIdx} className="p-3 flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">{exp.name}</div>
-                            <div className="text-xs text-muted-foreground">{exp.date} • {exp.price.toLocaleString()} ₫</div>
+                        <div key={expIdx} className="p-3 space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{exp.name}</div>
+                              <div className="text-xs text-muted-foreground">{exp.date} • {exp.price.toLocaleString()} ₫</div>
+                            </div>
+                            {(exp as any).matchedId && (
+                              <Badge variant="secondary" className="text-xs">Matched</Badge>
+                            )}
                           </div>
+                          <Select
+                            value={(exp as any).matchedId || ''}
+                            onValueChange={(val) => {
+                              const selected = expenses.find(e => e.id === val);
+                              if (selected) {
+                                const updatedExp = { ...exp, matchedId: selected.id, matchedPrice: selected.price };
+                                const updatedExpenses = [...(item.tour.expenses || [])];
+                                updatedExpenses[expIdx] = updatedExp;
+                                setDraft(prev => prev.map((it, i) => 
+                                  i === idx ? { ...it, tour: { ...it.tour, expenses: updatedExpenses } } : it
+                                ));
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Match to master expense" />
+                            </SelectTrigger>
+                            <SelectContent className="z-50 bg-popover">
+                              {expenses.map(e => (
+                                <SelectItem key={e.id} value={e.id} className="text-xs">
+                                  {e.name} - {e.price.toLocaleString()} ₫
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       ))}
                     </div>
@@ -340,11 +488,41 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                   {item.tour.meals && item.tour.meals.length > 0 ? (
                     <div className="rounded-lg border divide-y">
                       {item.tour.meals.map((meal, mealIdx) => (
-                        <div key={mealIdx} className="p-3 flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">{meal.name}</div>
-                            <div className="text-xs text-muted-foreground">{meal.date} • {meal.price.toLocaleString()} ₫</div>
+                        <div key={mealIdx} className="p-3 space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{meal.name}</div>
+                              <div className="text-xs text-muted-foreground">{meal.date} • {meal.price.toLocaleString()} ₫</div>
+                            </div>
+                            {(meal as any).matchedId && (
+                              <Badge variant="secondary" className="text-xs">Matched</Badge>
+                            )}
                           </div>
+                          <Select
+                            value={(meal as any).matchedId || ''}
+                            onValueChange={(val) => {
+                              const selected = shoppings.find(s => s.id === val);
+                              if (selected) {
+                                const updatedMeal = { ...meal, matchedId: selected.id };
+                                const updatedMeals = [...(item.tour.meals || [])];
+                                updatedMeals[mealIdx] = updatedMeal;
+                                setDraft(prev => prev.map((it, i) => 
+                                  i === idx ? { ...it, tour: { ...it.tour, meals: updatedMeals } } : it
+                                ));
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Match to shopping item" />
+                            </SelectTrigger>
+                            <SelectContent className="z-50 bg-popover">
+                              {shoppings.map(s => (
+                                <SelectItem key={s.id} value={s.id} className="text-xs">
+                                  {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       ))}
                     </div>
@@ -357,11 +535,41 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
                   {item.tour.allowances && item.tour.allowances.length > 0 ? (
                     <div className="rounded-lg border divide-y">
                       {item.tour.allowances.map((allow, allowIdx) => (
-                        <div key={allowIdx} className="p-3 flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">{allow.province}</div>
-                            <div className="text-xs text-muted-foreground">{allow.date} • {allow.amount.toLocaleString()} ₫</div>
+                        <div key={allowIdx} className="p-3 space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{allow.province}</div>
+                              <div className="text-xs text-muted-foreground">{allow.date} • {allow.amount.toLocaleString()} ₫</div>
+                            </div>
+                            {(allow as any).matchedProvinceId && (
+                              <Badge variant="secondary" className="text-xs">Matched</Badge>
+                            )}
                           </div>
+                          <Select
+                            value={(allow as any).matchedProvinceId || ''}
+                            onValueChange={(val) => {
+                              const selected = provinces.find(p => p.id === val);
+                              if (selected) {
+                                const updatedAllow = { ...allow, matchedProvinceId: selected.id, province: selected.name };
+                                const updatedAllowances = [...(item.tour.allowances || [])];
+                                updatedAllowances[allowIdx] = updatedAllow;
+                                setDraft(prev => prev.map((it, i) => 
+                                  i === idx ? { ...it, tour: { ...it.tour, allowances: updatedAllowances } } : it
+                                ));
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Match to province" />
+                            </SelectTrigger>
+                            <SelectContent className="z-50 bg-popover">
+                              {provinces.map(p => (
+                                <SelectItem key={p.id} value={p.id} className="text-xs">
+                                  {p.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       ))}
                     </div>
