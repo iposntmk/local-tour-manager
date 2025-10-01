@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Check, ChevronsUpDown, Save, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Tour, TourInput, Destination, Expense, Meal, Allowance } from '@/types/tour';
 
@@ -133,24 +133,51 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="info">Tour Info</TabsTrigger>
-          <TabsTrigger value="destinations">
-            Destinations <Badge variant="secondary" className="ml-1">{destinations.length}</Badge>
+        <TabsList className="grid w-full grid-cols-5 h-auto">
+          <TabsTrigger value="info" className="flex-col sm:flex-row gap-1 py-2">
+            <Info className="h-4 w-4" />
+            <span className="hidden sm:inline">Tour Info</span>
           </TabsTrigger>
-          <TabsTrigger value="expenses">
-            Expenses <Badge variant="secondary" className="ml-1">{expenses.length}</Badge>
+          <TabsTrigger value="destinations" className="flex-col sm:flex-row gap-1 py-2 relative">
+            <Map className="h-4 w-4" />
+            <span className="hidden sm:inline">Destinations</span>
+            {destinations.length > 0 && (
+              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
+                {destinations.length}
+              </Badge>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="meals">
-            Meals <Badge variant="secondary" className="ml-1">{meals.length}</Badge>
+          <TabsTrigger value="expenses" className="flex-col sm:flex-row gap-1 py-2 relative">
+            <Receipt className="h-4 w-4" />
+            <span className="hidden sm:inline">Expenses</span>
+            {expenses.length > 0 && (
+              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
+                {expenses.length}
+              </Badge>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="allowances">
-            Allowances <Badge variant="secondary" className="ml-1">{allowances.length}</Badge>
+          <TabsTrigger value="meals" className="flex-col sm:flex-row gap-1 py-2 relative">
+            <Utensils className="h-4 w-4" />
+            <span className="hidden sm:inline">Meals</span>
+            {meals.length > 0 && (
+              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
+                {meals.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="allowances" className="flex-col sm:flex-row gap-1 py-2 relative">
+            <DollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">Allowances</span>
+            {allowances.length > 0 && (
+              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
+                {allowances.length}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* Tour Code */}
             <div className="space-y-2">
               <Label htmlFor="tourCode">Tour Code *</Label>
@@ -389,9 +416,9 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         </TabsContent>
 
         <TabsContent value="destinations" className="space-y-4 mt-6">
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Add Destination</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-lg border bg-card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Add Destination</h3>
+            <div className="grid grid-cols-1 gap-3 sm:gap-4">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" role="combobox" className="justify-between">
@@ -431,9 +458,9 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         </TabsContent>
 
         <TabsContent value="expenses" className="space-y-4 mt-6">
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Add Expense</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-lg border bg-card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Add Expense</h3>
+            <div className="grid grid-cols-1 gap-3 sm:gap-4">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" role="combobox" className="justify-between">
@@ -473,9 +500,9 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         </TabsContent>
 
         <TabsContent value="meals" className="space-y-4 mt-6">
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Add Meal</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-lg border bg-card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Add Meal</h3>
+            <div className="grid grid-cols-1 gap-3 sm:gap-4">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" role="combobox" className="justify-between">
@@ -515,9 +542,9 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         </TabsContent>
 
         <TabsContent value="allowances" className="space-y-4 mt-6">
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Add Allowance</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-lg border bg-card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Add Allowance</h3>
+            <div className="grid grid-cols-1 gap-3 sm:gap-4">
               <Input type="date" value={allowForm.date} onChange={(e) => setAllowForm({ ...allowForm, date: e.target.value })} />
               <Popover>
                 <PopoverTrigger asChild>

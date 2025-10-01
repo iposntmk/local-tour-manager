@@ -1,7 +1,7 @@
-import * as XLSX from 'xlsx';
 import type { Tour } from '@/types/tour';
 
-export const exportTourToExcel = (tour: Tour) => {
+export const exportTourToExcel = async (tour: Tour) => {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
 
   // Tour Info Sheet
@@ -67,7 +67,8 @@ export const exportTourToExcel = (tour: Tour) => {
   XLSX.writeFile(wb, `Tour_${tour.tourCode}_${Date.now()}.xlsx`);
 };
 
-export const exportAllToursToExcel = (tours: Tour[]) => {
+export const exportAllToursToExcel = async (tours: Tour[]) => {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
 
   // Tours Summary Sheet
@@ -142,6 +143,7 @@ export const exportAllToursToExcel = (tours: Tour[]) => {
 };
 
 export const importTourFromExcel = async (file: File): Promise<Partial<Tour>> => {
+  const XLSX = await import('xlsx');
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     

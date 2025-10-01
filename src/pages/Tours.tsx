@@ -158,10 +158,10 @@ const Tours = () => {
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Tours</h1>
-            <p className="text-muted-foreground">Manage your tours and itineraries</p>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Tours</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Manage your tours and itineraries</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <ImportTourDialog onImport={handleImport} />
             <Button onClick={handleExportAll} variant="outline" className="hover-scale">
               <FileDown className="h-4 w-4 mr-2" />
@@ -196,12 +196,12 @@ const Tours = () => {
               <div
                 key={tour.id}
                 onClick={() => navigate(`/tours/${tour.id}`)}
-                className="rounded-lg border bg-card p-6 cursor-pointer hover:bg-accent/50 transition-all hover-scale animate-fade-in"
+                className="rounded-lg border bg-card p-4 sm:p-6 cursor-pointer hover:bg-accent/50 transition-all hover-scale animate-fade-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
-                    <h3 className="font-bold text-lg">{tour.tourCode}</h3>
+                    <h3 className="font-bold text-base sm:text-lg">{tour.tourCode}</h3>
                     <span className="text-xs text-muted-foreground">{tour.totalDays}d</span>
                   </div>
 
