@@ -8,6 +8,7 @@ import { SearchInput } from '@/components/master/SearchInput';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { exportTourToExcel, exportAllToursToExcel } from '@/lib/excel-utils';
+import { ImportTourDialog } from '@/components/tours/ImportTourDialog';
 import type { Tour } from '@/types/tour';
 
 const Tours = () => {
@@ -63,6 +64,26 @@ const Tours = () => {
     }
   };
 
+  const importMutation = useMutation({
+    mutationFn: async (tours: Partial<Tour>[]) => {
+      const results = await Promise.all(
+        tours.map(tour => store.createTour(tour as any))
+      );
+      return results;
+    },
+    onSuccess: (_, tours) => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      toast.success(`${tours.length} tour(s) imported successfully`);
+    },
+    onError: () => {
+      toast.error('Failed to import tours');
+    },
+  });
+
+  const handleImport = (tours: Partial<Tour>[]) => {
+    importMutation.mutate(tours);
+  };
+
   return (
     <Layout>
       <div className="space-y-6 animate-fade-in">
@@ -72,6 +93,7 @@ const Tours = () => {
             <p className="text-muted-foreground">Manage your tours and itineraries</p>
           </div>
           <div className="flex gap-2">
+            <ImportTourDialog onImport={handleImport} />
             <Button onClick={handleExportAll} variant="outline" className="hover-scale">
               <FileDown className="h-4 w-4 mr-2" />
               Export All
