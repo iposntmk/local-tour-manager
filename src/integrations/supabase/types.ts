@@ -16,25 +16,37 @@ export type Database = {
     Tables: {
       companies: {
         Row: {
+          contact_name: string | null
           created_at: string | null
+          email: string | null
           id: string
           name: string
+          note: string | null
+          phone: string | null
           search_keywords: string[] | null
           status: string
           updated_at: string | null
         }
         Insert: {
+          contact_name?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           name: string
+          note?: string | null
+          phone?: string | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
         }
         Update: {
+          contact_name?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           name?: string
+          note?: string | null
+          phone?: string | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -44,27 +56,33 @@ export type Database = {
       detailed_expenses: {
         Row: {
           category_id: string | null
+          category_name_at_booking: string | null
           created_at: string | null
           id: string
           name: string
+          price: number | null
           search_keywords: string[] | null
           status: string
           updated_at: string | null
         }
         Insert: {
           category_id?: string | null
+          category_name_at_booking?: string | null
           created_at?: string | null
           id?: string
           name: string
+          price?: number | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
         }
         Update: {
           category_id?: string | null
+          category_name_at_booking?: string | null
           created_at?: string | null
           id?: string
           name?: string
+          price?: number | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -111,6 +129,8 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          note: string | null
+          phone: string | null
           search_keywords: string[] | null
           status: string
           updated_at: string | null
@@ -119,6 +139,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          note?: string | null
+          phone?: string | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -127,6 +149,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          note?: string | null
+          phone?: string | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -136,7 +160,9 @@ export type Database = {
       nationalities: {
         Row: {
           created_at: string | null
+          emoji: string | null
           id: string
+          iso2: string | null
           name: string
           search_keywords: string[] | null
           status: string
@@ -144,7 +170,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          emoji?: string | null
           id?: string
+          iso2?: string | null
           name: string
           search_keywords?: string[] | null
           status?: string
@@ -152,7 +180,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          emoji?: string | null
           id?: string
+          iso2?: string | null
           name?: string
           search_keywords?: string[] | null
           status?: string
@@ -220,7 +250,7 @@ export type Database = {
           created_at: string | null
           date: string
           id: string
-          notes: string | null
+          province: string
           tour_id: string
         }
         Insert: {
@@ -228,7 +258,7 @@ export type Database = {
           created_at?: string | null
           date: string
           id?: string
-          notes?: string | null
+          province: string
           tour_id: string
         }
         Update: {
@@ -236,7 +266,7 @@ export type Database = {
           created_at?: string | null
           date?: string
           id?: string
-          notes?: string | null
+          province?: string
           tour_id?: string
         }
         Relationships: [
@@ -252,30 +282,29 @@ export type Database = {
       tour_destinations: {
         Row: {
           created_at: string | null
-          destination_id: string | null
+          date: string
           id: string
+          name: string
+          price: number | null
           tour_id: string
         }
         Insert: {
           created_at?: string | null
-          destination_id?: string | null
+          date: string
           id?: string
+          name: string
+          price?: number | null
           tour_id: string
         }
         Update: {
           created_at?: string | null
-          destination_id?: string | null
+          date?: string
           id?: string
+          name?: string
+          price?: number | null
           tour_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "tour_destinations_destination_id_fkey"
-            columns: ["destination_id"]
-            isOneToOne: false
-            referencedRelation: "tourist_destinations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tour_destinations_tour_id_fkey"
             columns: ["tour_id"]
@@ -287,37 +316,30 @@ export type Database = {
       }
       tour_expenses: {
         Row: {
-          amount: number | null
           created_at: string | null
-          expense_id: string | null
+          date: string
           id: string
-          notes: string | null
+          name: string
+          price: number | null
           tour_id: string
         }
         Insert: {
-          amount?: number | null
           created_at?: string | null
-          expense_id?: string | null
+          date: string
           id?: string
-          notes?: string | null
+          name: string
+          price?: number | null
           tour_id: string
         }
         Update: {
-          amount?: number | null
           created_at?: string | null
-          expense_id?: string | null
+          date?: string
           id?: string
-          notes?: string | null
+          name?: string
+          price?: number | null
           tour_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "tour_expenses_expense_id_fkey"
-            columns: ["expense_id"]
-            isOneToOne: false
-            referencedRelation: "detailed_expenses"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tour_expenses_tour_id_fkey"
             columns: ["tour_id"]
@@ -332,37 +354,27 @@ export type Database = {
           created_at: string | null
           date: string
           id: string
-          meal_type: string
+          name: string
           price: number | null
-          shopping_id: string | null
           tour_id: string
         }
         Insert: {
           created_at?: string | null
           date: string
           id?: string
-          meal_type: string
+          name: string
           price?: number | null
-          shopping_id?: string | null
           tour_id: string
         }
         Update: {
           created_at?: string | null
           date?: string
           id?: string
-          meal_type?: string
+          name?: string
           price?: number | null
-          shopping_id?: string | null
           tour_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "tour_meals_shopping_id_fkey"
-            columns: ["shopping_id"]
-            isOneToOne: false
-            referencedRelation: "shoppings"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tour_meals_tour_id_fkey"
             columns: ["tour_id"]
@@ -377,7 +389,9 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          price: number | null
           province_id: string | null
+          province_name_at_booking: string | null
           search_keywords: string[] | null
           status: string
           updated_at: string | null
@@ -386,7 +400,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          price?: number | null
           province_id?: string | null
+          province_name_at_booking?: string | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -395,7 +411,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          price?: number | null
           province_id?: string | null
+          province_name_at_booking?: string | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -412,41 +430,71 @@ export type Database = {
       }
       tours: {
         Row: {
+          adults: number | null
+          children: number | null
+          client_name: string | null
+          client_phone: string | null
           company_id: string | null
+          company_name_at_booking: string | null
           created_at: string | null
+          driver_name: string | null
           end_date: string
           guide_id: string | null
+          guide_name_at_booking: string | null
           id: string
           nationality_id: string | null
+          nationality_name_at_booking: string | null
           notes: string | null
           number_of_guests: number | null
           start_date: string
+          total_days: number | null
+          total_guests: number | null
           tour_code: string
           updated_at: string | null
         }
         Insert: {
+          adults?: number | null
+          children?: number | null
+          client_name?: string | null
+          client_phone?: string | null
           company_id?: string | null
+          company_name_at_booking?: string | null
           created_at?: string | null
+          driver_name?: string | null
           end_date: string
           guide_id?: string | null
+          guide_name_at_booking?: string | null
           id?: string
           nationality_id?: string | null
+          nationality_name_at_booking?: string | null
           notes?: string | null
           number_of_guests?: number | null
           start_date: string
+          total_days?: number | null
+          total_guests?: number | null
           tour_code: string
           updated_at?: string | null
         }
         Update: {
+          adults?: number | null
+          children?: number | null
+          client_name?: string | null
+          client_phone?: string | null
           company_id?: string | null
+          company_name_at_booking?: string | null
           created_at?: string | null
+          driver_name?: string | null
           end_date?: string
           guide_id?: string | null
+          guide_name_at_booking?: string | null
           id?: string
           nationality_id?: string | null
+          nationality_name_at_booking?: string | null
           notes?: string | null
           number_of_guests?: number | null
           start_date?: string
+          total_days?: number | null
+          total_guests?: number | null
           tour_code?: string
           updated_at?: string | null
         }
