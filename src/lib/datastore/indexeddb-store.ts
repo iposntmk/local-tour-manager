@@ -89,6 +89,27 @@ export class IndexedDbStore implements DataStore {
     }
   }
 
+  async duplicateGuide(id: string): Promise<Guide> {
+    const original = await db.guides.get(id);
+    if (!original) throw new Error('Guide not found');
+    
+    const duplicate: Guide = {
+      ...original,
+      id: generateId(),
+      name: `${original.name} (Copy)`,
+      searchKeywords: generateSearchKeywords(`${original.name} (Copy)`),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.guides.add(duplicate);
+    return duplicate;
+  }
+
+  async deleteGuide(id: string): Promise<void> {
+    await db.guides.delete(id);
+  }
+
   // ===== COMPANIES =====
   async listCompanies(query?: SearchQuery): Promise<Company[]> {
     let collection = db.companies.toCollection();
@@ -166,6 +187,27 @@ export class IndexedDbStore implements DataStore {
     }
   }
 
+  async duplicateCompany(id: string): Promise<Company> {
+    const original = await db.companies.get(id);
+    if (!original) throw new Error('Company not found');
+    
+    const duplicate: Company = {
+      ...original,
+      id: generateId(),
+      name: `${original.name} (Copy)`,
+      searchKeywords: generateSearchKeywords(`${original.name} (Copy)`),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.companies.add(duplicate);
+    return duplicate;
+  }
+
+  async deleteCompany(id: string): Promise<void> {
+    await db.companies.delete(id);
+  }
+
   // ===== NATIONALITIES =====
   async listNationalities(query?: SearchQuery): Promise<Nationality[]> {
     let collection = db.nationalities.toCollection();
@@ -241,6 +283,27 @@ export class IndexedDbStore implements DataStore {
     }
   }
 
+  async duplicateNationality(id: string): Promise<Nationality> {
+    const original = await db.nationalities.get(id);
+    if (!original) throw new Error('Nationality not found');
+    
+    const duplicate: Nationality = {
+      ...original,
+      id: generateId(),
+      name: `${original.name} (Copy)`,
+      searchKeywords: generateSearchKeywords(`${original.name} (Copy)`),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.nationalities.add(duplicate);
+    return duplicate;
+  }
+
+  async deleteNationality(id: string): Promise<void> {
+    await db.nationalities.delete(id);
+  }
+
   // ===== PROVINCES =====
   async listProvinces(query?: SearchQuery): Promise<Province[]> {
     let collection = db.provinces.toCollection();
@@ -312,6 +375,27 @@ export class IndexedDbStore implements DataStore {
         updatedAt: nowISO(),
       });
     }
+  }
+
+  async duplicateProvince(id: string): Promise<Province> {
+    const original = await db.provinces.get(id);
+    if (!original) throw new Error('Province not found');
+    
+    const duplicate: Province = {
+      ...original,
+      id: generateId(),
+      name: `${original.name} (Copy)`,
+      searchKeywords: generateSearchKeywords(`${original.name} (Copy)`),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.provinces.add(duplicate);
+    return duplicate;
+  }
+
+  async deleteProvince(id: string): Promise<void> {
+    await db.provinces.delete(id);
   }
 
   // ===== TOURIST DESTINATIONS =====
@@ -389,6 +473,27 @@ export class IndexedDbStore implements DataStore {
     }
   }
 
+  async duplicateTouristDestination(id: string): Promise<TouristDestination> {
+    const original = await db.touristDestinations.get(id);
+    if (!original) throw new Error('Tourist destination not found');
+    
+    const duplicate: TouristDestination = {
+      ...original,
+      id: generateId(),
+      name: `${original.name} (Copy)`,
+      searchKeywords: generateSearchKeywords(`${original.name} (Copy)`),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.touristDestinations.add(duplicate);
+    return duplicate;
+  }
+
+  async deleteTouristDestination(id: string): Promise<void> {
+    await db.touristDestinations.delete(id);
+  }
+
   // ===== SHOPPING =====
   async listShoppings(query?: SearchQuery): Promise<Shopping[]> {
     let collection = db.shoppings.toCollection();
@@ -460,6 +565,27 @@ export class IndexedDbStore implements DataStore {
         updatedAt: nowISO(),
       });
     }
+  }
+
+  async duplicateShopping(id: string): Promise<Shopping> {
+    const original = await db.shoppings.get(id);
+    if (!original) throw new Error('Shopping not found');
+    
+    const duplicate: Shopping = {
+      ...original,
+      id: generateId(),
+      name: `${original.name} (Copy)`,
+      searchKeywords: generateSearchKeywords(`${original.name} (Copy)`),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.shoppings.add(duplicate);
+    return duplicate;
+  }
+
+  async deleteShopping(id: string): Promise<void> {
+    await db.shoppings.delete(id);
   }
 
   // ===== EXPENSE CATEGORIES =====
@@ -535,6 +661,27 @@ export class IndexedDbStore implements DataStore {
     }
   }
 
+  async duplicateExpenseCategory(id: string): Promise<ExpenseCategory> {
+    const original = await db.expenseCategories.get(id);
+    if (!original) throw new Error('Expense category not found');
+    
+    const duplicate: ExpenseCategory = {
+      ...original,
+      id: generateId(),
+      name: `${original.name} (Copy)`,
+      searchKeywords: generateSearchKeywords(`${original.name} (Copy)`),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.expenseCategories.add(duplicate);
+    return duplicate;
+  }
+
+  async deleteExpenseCategory(id: string): Promise<void> {
+    await db.expenseCategories.delete(id);
+  }
+
   // ===== DETAILED EXPENSES =====
   async listDetailedExpenses(query?: SearchQuery): Promise<DetailedExpense[]> {
     let collection = db.detailedExpenses.toCollection();
@@ -608,6 +755,27 @@ export class IndexedDbStore implements DataStore {
         updatedAt: nowISO(),
       });
     }
+  }
+
+  async duplicateDetailedExpense(id: string): Promise<DetailedExpense> {
+    const original = await db.detailedExpenses.get(id);
+    if (!original) throw new Error('Detailed expense not found');
+    
+    const duplicate: DetailedExpense = {
+      ...original,
+      id: generateId(),
+      name: `${original.name} (Copy)`,
+      searchKeywords: generateSearchKeywords(`${original.name} (Copy)`),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.detailedExpenses.add(duplicate);
+    return duplicate;
+  }
+
+  async deleteDetailedExpense(id: string): Promise<void> {
+    await db.detailedExpenses.delete(id);
   }
 
   // ===== TOURS =====
@@ -694,6 +862,22 @@ export class IndexedDbStore implements DataStore {
 
   async deleteTour(id: string): Promise<void> {
     await db.tours.delete(id);
+  }
+
+  async duplicateTour(id: string): Promise<Tour> {
+    const original = await db.tours.get(id);
+    if (!original) throw new Error('Tour not found');
+    
+    const duplicate: Tour = {
+      ...original,
+      id: generateId(),
+      tourCode: `${original.tourCode}-COPY`,
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+    
+    await db.tours.add(duplicate);
+    return duplicate;
   }
 
   // ===== TOUR SUBCOLLECTIONS =====

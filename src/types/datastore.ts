@@ -15,6 +15,8 @@ export interface DataStore {
   createGuide(input: GuideInput): Promise<Guide>;
   updateGuide(id: string, patch: Partial<Guide>): Promise<void>;
   toggleGuideStatus(id: string): Promise<void>;
+  duplicateGuide(id: string): Promise<Guide>;
+  deleteGuide(id: string): Promise<void>;
   
   // Companies
   listCompanies(query?: SearchQuery): Promise<Company[]>;
@@ -22,6 +24,8 @@ export interface DataStore {
   createCompany(input: CompanyInput): Promise<Company>;
   updateCompany(id: string, patch: Partial<Company>): Promise<void>;
   toggleCompanyStatus(id: string): Promise<void>;
+  duplicateCompany(id: string): Promise<Company>;
+  deleteCompany(id: string): Promise<void>;
   
   // Nationalities
   listNationalities(query?: SearchQuery): Promise<Nationality[]>;
@@ -29,6 +33,8 @@ export interface DataStore {
   createNationality(input: NationalityInput): Promise<Nationality>;
   updateNationality(id: string, patch: Partial<Nationality>): Promise<void>;
   toggleNationalityStatus(id: string): Promise<void>;
+  duplicateNationality(id: string): Promise<Nationality>;
+  deleteNationality(id: string): Promise<void>;
   
   // Provinces
   listProvinces(query?: SearchQuery): Promise<Province[]>;
@@ -36,6 +42,8 @@ export interface DataStore {
   createProvince(input: ProvinceInput): Promise<Province>;
   updateProvince(id: string, patch: Partial<Province>): Promise<void>;
   toggleProvinceStatus(id: string): Promise<void>;
+  duplicateProvince(id: string): Promise<Province>;
+  deleteProvince(id: string): Promise<void>;
   
   // Tourist Destinations
   listTouristDestinations(query?: SearchQuery): Promise<TouristDestination[]>;
@@ -43,6 +51,8 @@ export interface DataStore {
   createTouristDestination(input: TouristDestinationInput): Promise<TouristDestination>;
   updateTouristDestination(id: string, patch: Partial<TouristDestination>): Promise<void>;
   toggleTouristDestinationStatus(id: string): Promise<void>;
+  duplicateTouristDestination(id: string): Promise<TouristDestination>;
+  deleteTouristDestination(id: string): Promise<void>;
   
   // Shopping
   listShoppings(query?: SearchQuery): Promise<Shopping[]>;
@@ -50,6 +60,8 @@ export interface DataStore {
   createShopping(input: ShoppingInput): Promise<Shopping>;
   updateShopping(id: string, patch: Partial<Shopping>): Promise<void>;
   toggleShoppingStatus(id: string): Promise<void>;
+  duplicateShopping(id: string): Promise<Shopping>;
+  deleteShopping(id: string): Promise<void>;
   
   // Expense Categories
   listExpenseCategories(query?: SearchQuery): Promise<ExpenseCategory[]>;
@@ -57,6 +69,8 @@ export interface DataStore {
   createExpenseCategory(input: ExpenseCategoryInput): Promise<ExpenseCategory>;
   updateExpenseCategory(id: string, patch: Partial<ExpenseCategory>): Promise<void>;
   toggleExpenseCategoryStatus(id: string): Promise<void>;
+  duplicateExpenseCategory(id: string): Promise<ExpenseCategory>;
+  deleteExpenseCategory(id: string): Promise<void>;
   
   // Detailed Expenses
   listDetailedExpenses(query?: SearchQuery): Promise<DetailedExpense[]>;
@@ -64,6 +78,8 @@ export interface DataStore {
   createDetailedExpense(input: DetailedExpenseInput): Promise<DetailedExpense>;
   updateDetailedExpense(id: string, patch: Partial<DetailedExpense>): Promise<void>;
   toggleDetailedExpenseStatus(id: string): Promise<void>;
+  duplicateDetailedExpense(id: string): Promise<DetailedExpense>;
+  deleteDetailedExpense(id: string): Promise<void>;
   
   // Tours
   listTours(query?: TourQuery): Promise<Tour[]>;
@@ -71,6 +87,7 @@ export interface DataStore {
   createTour(input: TourInput): Promise<Tour>;
   updateTour(id: string, patch: Partial<Tour>): Promise<void>;
   deleteTour(id: string): Promise<void>;
+  duplicateTour(id: string): Promise<Tour>;
   
   // Tour subcollections
   addDestination(tourId: string, destination: Destination): Promise<void>;

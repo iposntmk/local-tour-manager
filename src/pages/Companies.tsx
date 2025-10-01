@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, MoreVertical, Edit, Power } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
@@ -60,6 +60,22 @@ const Companies = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       toast.success('Status updated');
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: (id: string) => store.duplicateCompany(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast.success('Company duplicated successfully');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => store.deleteCompany(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast.success('Company deleted successfully');
     },
   });
 
@@ -166,9 +182,20 @@ const Companies = () => {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => duplicateMutation.mutate(company.id)}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Duplicate
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(company.id)}>
                                 <Power className="h-4 w-4 mr-2" />
                                 {company.status === 'active' ? 'Deactivate' : 'Activate'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => deleteMutation.mutate(company.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -201,9 +228,20 @@ const Companies = () => {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => duplicateMutation.mutate(company.id)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicate
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(company.id)}>
                             <Power className="h-4 w-4 mr-2" />
                             {company.status === 'active' ? 'Deactivate' : 'Activate'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => deleteMutation.mutate(company.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

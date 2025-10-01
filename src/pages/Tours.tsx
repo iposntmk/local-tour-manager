@@ -1,20 +1,67 @@
 import { Layout } from '@/components/Layout';
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar, Users } from 'lucide-react';
+import { Plus, Calendar, Users, FileDown, Copy, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { exportTourToExcel, exportAllToursToExcel } from '@/lib/excel-utils';
+import type { Tour } from '@/types/tour';
 
 const Tours = () => {
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ['tours', search],
     queryFn: () => store.listTours({ tourCode: search }),
   });
+
+  const duplicateMutation = useMutation({
+    mutationFn: (id: string) => store.duplicateTour(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      toast.success('Tour duplicated successfully');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => store.deleteTour(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      toast.success('Tour deleted successfully');
+    },
+  });
+
+  const handleExportAll = () => {
+    if (tours.length === 0) {
+      toast.error('No tours to export');
+      return;
+    }
+    exportAllToursToExcel(tours);
+    toast.success('All tours exported to Excel');
+  };
+
+  const handleExportSingle = (tour: Tour, e: React.MouseEvent) => {
+    e.stopPropagation();
+    exportTourToExcel(tour);
+    toast.success(`Tour ${tour.tourCode} exported to Excel`);
+  };
+
+  const handleDuplicate = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    duplicateMutation.mutate(id);
+  };
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this tour?')) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   return (
     <Layout>
@@ -24,10 +71,16 @@ const Tours = () => {
             <h1 className="text-3xl font-bold">Tours</h1>
             <p className="text-muted-foreground">Manage your tours and itineraries</p>
           </div>
-          <Button onClick={() => navigate('/tours/new')} className="hover-scale">
-            <Plus className="h-4 w-4 mr-2" />
-            New Tour
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleExportAll} variant="outline" className="hover-scale">
+              <FileDown className="h-4 w-4 mr-2" />
+              Export All
+            </Button>
+            <Button onClick={() => navigate('/tours/new')} className="hover-scale">
+              <Plus className="h-4 w-4 mr-2" />
+              New Tour
+            </Button>
+          </div>
         </div>
 
         <SearchInput
@@ -77,6 +130,34 @@ const Tours = () => {
                   <div className="pt-3 border-t flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{tour.companyRef.nameAtBooking}</span>
                     <span className="font-medium">{tour.guideRef.nameAtBooking}</span>
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={(e) => handleExportSingle(tour, e)}
+                    >
+                      <FileDown className="h-3 w-3 mr-1" />
+                      Export
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => handleDuplicate(tour.id, e)}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={(e) => handleDelete(tour.id, e)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                 </div>
               </div>
