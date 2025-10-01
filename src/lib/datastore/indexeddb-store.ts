@@ -1,5 +1,5 @@
 import type { DataStore, SearchQuery } from '@/types/datastore';
-import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput } from '@/types/master';
+import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput } from '@/types/master';
 import type { Tour, TourInput, TourQuery, Destination, Expense, Meal, Allowance } from '@/types/tour';
 import { db } from './db';
 import { generateSearchKeywords, normalizeForUnique } from '../string-utils';
@@ -241,6 +241,375 @@ export class IndexedDbStore implements DataStore {
     }
   }
 
+  // ===== PROVINCES =====
+  async listProvinces(query?: SearchQuery): Promise<Province[]> {
+    let collection = db.provinces.toCollection();
+    
+    if (query?.status && query.status !== 'all') {
+      collection = db.provinces.where('status').equals(query.status);
+    }
+    
+    let provinces = await collection.toArray();
+    
+    if (query?.search) {
+      const searchLower = normalizeForUnique(query.search);
+      provinces = provinces.filter(p => 
+        p.searchKeywords.some(kw => kw.includes(searchLower)) ||
+        normalizeForUnique(p.name).includes(searchLower)
+      );
+    }
+    
+    return provinces.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getProvince(id: string): Promise<Province | undefined> {
+    return await db.provinces.get(id);
+  }
+
+  async createProvince(input: ProvinceInput): Promise<Province> {
+    const normalized = normalizeForUnique(input.name);
+    const existing = await db.provinces.toArray();
+    const duplicate = existing.find(p => normalizeForUnique(p.name) === normalized);
+    
+    if (duplicate) {
+      throw new Error(`Province "${input.name}" already exists`);
+    }
+
+    const province: Province = {
+      id: generateId(),
+      name: input.name.trim(),
+      status: 'active',
+      searchKeywords: generateSearchKeywords(input.name),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+
+    await db.provinces.add(province);
+    return province;
+  }
+
+  async updateProvince(id: string, patch: Partial<Province>): Promise<void> {
+    if (patch.name) {
+      const normalized = normalizeForUnique(patch.name);
+      const existing = await db.provinces.toArray();
+      const duplicate = existing.find(p => p.id !== id && normalizeForUnique(p.name) === normalized);
+      
+      if (duplicate) {
+        throw new Error(`Province "${patch.name}" already exists`);
+      }
+      
+      patch.searchKeywords = generateSearchKeywords(patch.name);
+    }
+    
+    await db.provinces.update(id, { ...patch, updatedAt: nowISO() });
+  }
+
+  async toggleProvinceStatus(id: string): Promise<void> {
+    const province = await db.provinces.get(id);
+    if (province) {
+      await db.provinces.update(id, {
+        status: province.status === 'active' ? 'inactive' : 'active',
+        updatedAt: nowISO(),
+      });
+    }
+  }
+
+  // ===== TOURIST DESTINATIONS =====
+  async listTouristDestinations(query?: SearchQuery): Promise<TouristDestination[]> {
+    let collection = db.touristDestinations.toCollection();
+    
+    if (query?.status && query.status !== 'all') {
+      collection = db.touristDestinations.where('status').equals(query.status);
+    }
+    
+    let destinations = await collection.toArray();
+    
+    if (query?.search) {
+      const searchLower = normalizeForUnique(query.search);
+      destinations = destinations.filter(d => 
+        d.searchKeywords.some(kw => kw.includes(searchLower)) ||
+        normalizeForUnique(d.name).includes(searchLower)
+      );
+    }
+    
+    return destinations.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getTouristDestination(id: string): Promise<TouristDestination | undefined> {
+    return await db.touristDestinations.get(id);
+  }
+
+  async createTouristDestination(input: TouristDestinationInput): Promise<TouristDestination> {
+    const normalized = normalizeForUnique(input.name);
+    const existing = await db.touristDestinations.toArray();
+    const duplicate = existing.find(d => normalizeForUnique(d.name) === normalized);
+    
+    if (duplicate) {
+      throw new Error(`Destination "${input.name}" already exists`);
+    }
+
+    const destination: TouristDestination = {
+      id: generateId(),
+      name: input.name.trim(),
+      price: input.price,
+      provinceRef: input.provinceRef,
+      status: 'active',
+      searchKeywords: generateSearchKeywords(input.name),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+
+    await db.touristDestinations.add(destination);
+    return destination;
+  }
+
+  async updateTouristDestination(id: string, patch: Partial<TouristDestination>): Promise<void> {
+    if (patch.name) {
+      const normalized = normalizeForUnique(patch.name);
+      const existing = await db.touristDestinations.toArray();
+      const duplicate = existing.find(d => d.id !== id && normalizeForUnique(d.name) === normalized);
+      
+      if (duplicate) {
+        throw new Error(`Destination "${patch.name}" already exists`);
+      }
+      
+      patch.searchKeywords = generateSearchKeywords(patch.name);
+    }
+    
+    await db.touristDestinations.update(id, { ...patch, updatedAt: nowISO() });
+  }
+
+  async toggleTouristDestinationStatus(id: string): Promise<void> {
+    const destination = await db.touristDestinations.get(id);
+    if (destination) {
+      await db.touristDestinations.update(id, {
+        status: destination.status === 'active' ? 'inactive' : 'active',
+        updatedAt: nowISO(),
+      });
+    }
+  }
+
+  // ===== SHOPPING =====
+  async listShoppings(query?: SearchQuery): Promise<Shopping[]> {
+    let collection = db.shoppings.toCollection();
+    
+    if (query?.status && query.status !== 'all') {
+      collection = db.shoppings.where('status').equals(query.status);
+    }
+    
+    let shoppings = await collection.toArray();
+    
+    if (query?.search) {
+      const searchLower = normalizeForUnique(query.search);
+      shoppings = shoppings.filter(s => 
+        s.searchKeywords.some(kw => kw.includes(searchLower)) ||
+        normalizeForUnique(s.name).includes(searchLower)
+      );
+    }
+    
+    return shoppings.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getShopping(id: string): Promise<Shopping | undefined> {
+    return await db.shoppings.get(id);
+  }
+
+  async createShopping(input: ShoppingInput): Promise<Shopping> {
+    const normalized = normalizeForUnique(input.name);
+    const existing = await db.shoppings.toArray();
+    const duplicate = existing.find(s => normalizeForUnique(s.name) === normalized);
+    
+    if (duplicate) {
+      throw new Error(`Shopping "${input.name}" already exists`);
+    }
+
+    const shopping: Shopping = {
+      id: generateId(),
+      name: input.name.trim(),
+      status: 'active',
+      searchKeywords: generateSearchKeywords(input.name),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+
+    await db.shoppings.add(shopping);
+    return shopping;
+  }
+
+  async updateShopping(id: string, patch: Partial<Shopping>): Promise<void> {
+    if (patch.name) {
+      const normalized = normalizeForUnique(patch.name);
+      const existing = await db.shoppings.toArray();
+      const duplicate = existing.find(s => s.id !== id && normalizeForUnique(s.name) === normalized);
+      
+      if (duplicate) {
+        throw new Error(`Shopping "${patch.name}" already exists`);
+      }
+      
+      patch.searchKeywords = generateSearchKeywords(patch.name);
+    }
+    
+    await db.shoppings.update(id, { ...patch, updatedAt: nowISO() });
+  }
+
+  async toggleShoppingStatus(id: string): Promise<void> {
+    const shopping = await db.shoppings.get(id);
+    if (shopping) {
+      await db.shoppings.update(id, {
+        status: shopping.status === 'active' ? 'inactive' : 'active',
+        updatedAt: nowISO(),
+      });
+    }
+  }
+
+  // ===== EXPENSE CATEGORIES =====
+  async listExpenseCategories(query?: SearchQuery): Promise<ExpenseCategory[]> {
+    let collection = db.expenseCategories.toCollection();
+    
+    if (query?.status && query.status !== 'all') {
+      collection = db.expenseCategories.where('status').equals(query.status);
+    }
+    
+    let categories = await collection.toArray();
+    
+    if (query?.search) {
+      const searchLower = normalizeForUnique(query.search);
+      categories = categories.filter(c => 
+        c.searchKeywords.some(kw => kw.includes(searchLower)) ||
+        normalizeForUnique(c.name).includes(searchLower)
+      );
+    }
+    
+    return categories.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getExpenseCategory(id: string): Promise<ExpenseCategory | undefined> {
+    return await db.expenseCategories.get(id);
+  }
+
+  async createExpenseCategory(input: ExpenseCategoryInput): Promise<ExpenseCategory> {
+    const normalized = normalizeForUnique(input.name);
+    const existing = await db.expenseCategories.toArray();
+    const duplicate = existing.find(c => normalizeForUnique(c.name) === normalized);
+    
+    if (duplicate) {
+      throw new Error(`Expense Category "${input.name}" already exists`);
+    }
+
+    const category: ExpenseCategory = {
+      id: generateId(),
+      name: input.name.trim(),
+      status: 'active',
+      searchKeywords: generateSearchKeywords(input.name),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+
+    await db.expenseCategories.add(category);
+    return category;
+  }
+
+  async updateExpenseCategory(id: string, patch: Partial<ExpenseCategory>): Promise<void> {
+    if (patch.name) {
+      const normalized = normalizeForUnique(patch.name);
+      const existing = await db.expenseCategories.toArray();
+      const duplicate = existing.find(c => c.id !== id && normalizeForUnique(c.name) === normalized);
+      
+      if (duplicate) {
+        throw new Error(`Expense Category "${patch.name}" already exists`);
+      }
+      
+      patch.searchKeywords = generateSearchKeywords(patch.name);
+    }
+    
+    await db.expenseCategories.update(id, { ...patch, updatedAt: nowISO() });
+  }
+
+  async toggleExpenseCategoryStatus(id: string): Promise<void> {
+    const category = await db.expenseCategories.get(id);
+    if (category) {
+      await db.expenseCategories.update(id, {
+        status: category.status === 'active' ? 'inactive' : 'active',
+        updatedAt: nowISO(),
+      });
+    }
+  }
+
+  // ===== DETAILED EXPENSES =====
+  async listDetailedExpenses(query?: SearchQuery): Promise<DetailedExpense[]> {
+    let collection = db.detailedExpenses.toCollection();
+    
+    if (query?.status && query.status !== 'all') {
+      collection = db.detailedExpenses.where('status').equals(query.status);
+    }
+    
+    let expenses = await collection.toArray();
+    
+    if (query?.search) {
+      const searchLower = normalizeForUnique(query.search);
+      expenses = expenses.filter(e => 
+        e.searchKeywords.some(kw => kw.includes(searchLower)) ||
+        normalizeForUnique(e.name).includes(searchLower)
+      );
+    }
+    
+    return expenses.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getDetailedExpense(id: string): Promise<DetailedExpense | undefined> {
+    return await db.detailedExpenses.get(id);
+  }
+
+  async createDetailedExpense(input: DetailedExpenseInput): Promise<DetailedExpense> {
+    const normalized = normalizeForUnique(input.name);
+    const existing = await db.detailedExpenses.toArray();
+    const duplicate = existing.find(e => normalizeForUnique(e.name) === normalized);
+    
+    if (duplicate) {
+      throw new Error(`Detailed Expense "${input.name}" already exists`);
+    }
+
+    const expense: DetailedExpense = {
+      id: generateId(),
+      name: input.name.trim(),
+      price: input.price,
+      categoryRef: input.categoryRef,
+      status: 'active',
+      searchKeywords: generateSearchKeywords(input.name),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+
+    await db.detailedExpenses.add(expense);
+    return expense;
+  }
+
+  async updateDetailedExpense(id: string, patch: Partial<DetailedExpense>): Promise<void> {
+    if (patch.name) {
+      const normalized = normalizeForUnique(patch.name);
+      const existing = await db.detailedExpenses.toArray();
+      const duplicate = existing.find(e => e.id !== id && normalizeForUnique(e.name) === normalized);
+      
+      if (duplicate) {
+        throw new Error(`Detailed Expense "${patch.name}" already exists`);
+      }
+      
+      patch.searchKeywords = generateSearchKeywords(patch.name);
+    }
+    
+    await db.detailedExpenses.update(id, { ...patch, updatedAt: nowISO() });
+  }
+
+  async toggleDetailedExpenseStatus(id: string): Promise<void> {
+    const expense = await db.detailedExpenses.get(id);
+    if (expense) {
+      await db.detailedExpenses.update(id, {
+        status: expense.status === 'active' ? 'inactive' : 'active',
+        updatedAt: nowISO(),
+      });
+    }
+  }
+
   // ===== TOURS =====
   async listTours(query?: TourQuery): Promise<Tour[]> {
     let tours = await db.tours.toArray();
@@ -426,14 +795,19 @@ export class IndexedDbStore implements DataStore {
 
   // ===== DATA MANAGEMENT =====
   async exportData(): Promise<any> {
-    const [guides, companies, nationalities, tours] = await Promise.all([
+    const [guides, companies, nationalities, provinces, touristDestinations, shoppings, expenseCategories, detailedExpenses, tours] = await Promise.all([
       db.guides.toArray(),
       db.companies.toArray(),
       db.nationalities.toArray(),
+      db.provinces.toArray(),
+      db.touristDestinations.toArray(),
+      db.shoppings.toArray(),
+      db.expenseCategories.toArray(),
+      db.detailedExpenses.toArray(),
       db.tours.toArray(),
     ]);
 
-    return { guides, companies, nationalities, tours };
+    return { guides, companies, nationalities, provinces, touristDestinations, shoppings, expenseCategories, detailedExpenses, tours };
   }
 
   async importData(data: any): Promise<void> {
@@ -446,6 +820,21 @@ export class IndexedDbStore implements DataStore {
     if (data.nationalities) {
       await db.nationalities.bulkPut(data.nationalities);
     }
+    if (data.provinces) {
+      await db.provinces.bulkPut(data.provinces);
+    }
+    if (data.touristDestinations) {
+      await db.touristDestinations.bulkPut(data.touristDestinations);
+    }
+    if (data.shoppings) {
+      await db.shoppings.bulkPut(data.shoppings);
+    }
+    if (data.expenseCategories) {
+      await db.expenseCategories.bulkPut(data.expenseCategories);
+    }
+    if (data.detailedExpenses) {
+      await db.detailedExpenses.bulkPut(data.detailedExpenses);
+    }
     if (data.tours) {
       await db.tours.bulkPut(data.tours);
     }
@@ -456,6 +845,11 @@ export class IndexedDbStore implements DataStore {
       db.guides.clear(),
       db.companies.clear(),
       db.nationalities.clear(),
+      db.provinces.clear(),
+      db.touristDestinations.clear(),
+      db.shoppings.clear(),
+      db.expenseCategories.clear(),
+      db.detailedExpenses.clear(),
       db.tours.clear(),
     ]);
   }

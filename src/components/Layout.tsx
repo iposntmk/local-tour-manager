@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Users, Building2, Globe, MapPin, Settings } from 'lucide-react';
+import { Users, Building2, Globe, MapPin, Map, ShoppingBag, Tag, Receipt, Plane, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -7,10 +7,15 @@ interface LayoutProps {
 }
 
 const navItems = [
-  { to: '/tours', icon: MapPin, label: 'Tours' },
+  { to: '/tours', icon: Plane, label: 'Tours' },
   { to: '/guides', icon: Users, label: 'Guides' },
   { to: '/companies', icon: Building2, label: 'Companies' },
   { to: '/nationalities', icon: Globe, label: 'Nationalities' },
+  { to: '/provinces', icon: MapPin, label: 'Provinces' },
+  { to: '/destinations', icon: Map, label: 'Destinations' },
+  { to: '/shopping', icon: ShoppingBag, label: 'Shopping' },
+  { to: '/expense-categories', icon: Tag, label: 'Categories' },
+  { to: '/detailed-expenses', icon: Receipt, label: 'Expenses' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

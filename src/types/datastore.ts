@@ -1,4 +1,4 @@
-import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput } from './master';
+import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput } from './master';
 import type { Tour, TourInput, TourQuery, Destination, Expense, Meal, Allowance } from './tour';
 
 export interface SearchQuery {
@@ -29,6 +29,41 @@ export interface DataStore {
   createNationality(input: NationalityInput): Promise<Nationality>;
   updateNationality(id: string, patch: Partial<Nationality>): Promise<void>;
   toggleNationalityStatus(id: string): Promise<void>;
+  
+  // Provinces
+  listProvinces(query?: SearchQuery): Promise<Province[]>;
+  getProvince(id: string): Promise<Province | undefined>;
+  createProvince(input: ProvinceInput): Promise<Province>;
+  updateProvince(id: string, patch: Partial<Province>): Promise<void>;
+  toggleProvinceStatus(id: string): Promise<void>;
+  
+  // Tourist Destinations
+  listTouristDestinations(query?: SearchQuery): Promise<TouristDestination[]>;
+  getTouristDestination(id: string): Promise<TouristDestination | undefined>;
+  createTouristDestination(input: TouristDestinationInput): Promise<TouristDestination>;
+  updateTouristDestination(id: string, patch: Partial<TouristDestination>): Promise<void>;
+  toggleTouristDestinationStatus(id: string): Promise<void>;
+  
+  // Shopping
+  listShoppings(query?: SearchQuery): Promise<Shopping[]>;
+  getShopping(id: string): Promise<Shopping | undefined>;
+  createShopping(input: ShoppingInput): Promise<Shopping>;
+  updateShopping(id: string, patch: Partial<Shopping>): Promise<void>;
+  toggleShoppingStatus(id: string): Promise<void>;
+  
+  // Expense Categories
+  listExpenseCategories(query?: SearchQuery): Promise<ExpenseCategory[]>;
+  getExpenseCategory(id: string): Promise<ExpenseCategory | undefined>;
+  createExpenseCategory(input: ExpenseCategoryInput): Promise<ExpenseCategory>;
+  updateExpenseCategory(id: string, patch: Partial<ExpenseCategory>): Promise<void>;
+  toggleExpenseCategoryStatus(id: string): Promise<void>;
+  
+  // Detailed Expenses
+  listDetailedExpenses(query?: SearchQuery): Promise<DetailedExpense[]>;
+  getDetailedExpense(id: string): Promise<DetailedExpense | undefined>;
+  createDetailedExpense(input: DetailedExpenseInput): Promise<DetailedExpense>;
+  updateDetailedExpense(id: string, patch: Partial<DetailedExpense>): Promise<void>;
+  toggleDetailedExpenseStatus(id: string): Promise<void>;
   
   // Tours
   listTours(query?: TourQuery): Promise<Tour[]>;
