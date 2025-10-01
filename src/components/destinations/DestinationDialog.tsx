@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
   Command,
   CommandEmpty,
@@ -47,7 +48,7 @@ export function DestinationDialog({
     initialData?.provinceRef.id || ''
   );
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<TouristDestinationInput>();
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<TouristDestinationInput>();
 
   const { data: provinces = [] } = useQuery({
     queryKey: ['provinces'],
@@ -147,13 +148,9 @@ export function DestinationDialog({
 
           <div className="space-y-2">
             <Label htmlFor="price">Price (VND) *</Label>
-            <Input
-              id="price"
-              type="number"
-              {...register('price', { 
-                required: 'Price is required',
-                valueAsNumber: true,
-              })}
+            <CurrencyInput
+              value={watch('price')}
+              onChange={(value) => setValue('price', value)}
               placeholder="0"
             />
             {errors.price && (

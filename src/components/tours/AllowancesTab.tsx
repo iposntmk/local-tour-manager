@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { DateInput } from '@/components/ui/date-input';
 import type { Allowance } from '@/types/tour';
 
 interface AllowancesTabProps {
@@ -80,11 +82,9 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              type="date"
+            <DateInput
               value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
+              onChange={(date) => setFormData({ ...formData, date })}
             />
             <Popover open={openProvince} onOpenChange={setOpenProvince}>
               <PopoverTrigger asChild>
@@ -127,12 +127,10 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
                 </Command>
               </PopoverContent>
             </Popover>
-            <Input
-              type="number"
+            <CurrencyInput
               placeholder="Amount (VND)"
               value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
-              required
+              onChange={(amount) => setFormData({ ...formData, amount })}
             />
           </div>
           <div className="flex gap-2">

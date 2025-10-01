@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { DateInput } from '@/components/ui/date-input';
 import type { Expense } from '@/types/tour';
 
 interface ExpensesTabProps {
@@ -121,18 +123,14 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
                 </Command>
               </PopoverContent>
             </Popover>
-            <Input
-              type="number"
+            <CurrencyInput
               placeholder="Price (VND)"
               value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-              required
+              onChange={(price) => setFormData({ ...formData, price })}
             />
-            <Input
-              type="date"
+            <DateInput
               value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
+              onChange={(date) => setFormData({ ...formData, date })}
             />
           </div>
           <div className="flex gap-2">

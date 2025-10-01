@@ -3,18 +3,14 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, Edit, Copy, Trash2 } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { ProvinceDialog } from '@/components/provinces/ProvinceDialog';
 import type { Province, ProvinceInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 
 const Provinces = () => {
   const [search, setSearch] = useState('');
@@ -93,18 +89,25 @@ const Provinces = () => {
     setEditingProvince(undefined);
   };
 
+  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('provinces.headerMode');
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Provinces</h1>
-            <p className="text-muted-foreground">Manage provinces and cities</p>
+        <div className={headerClasses}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Provinces</h1>
+              <p className="text-muted-foreground">Manage provinces and cities</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Province
+              </Button>
+              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
+            </div>
           </div>
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Province
-          </Button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -137,36 +140,46 @@ const Provinces = () => {
                 </thead>
                 <tbody>
                   {provinces.map((province) => (
-                    <tr key={province.id} className="border-t hover:bg-muted/50">
+                    <tr
+                      key={province.id}
+                      className="border-t hover:bg-muted/50 cursor-pointer"
+                      onClick={() => handleOpenDialog(province)}
+                    >
                       <td className="p-4 font-medium">{province.name}</td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(province.updatedAt.split("T")[0])}
                       </td>
                       <td className="p-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenDialog(province)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => duplicateMutation.mutate(province.id)}>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => deleteMutation.mutate(province.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenDialog(province)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => duplicateMutation.mutate(province.id)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this province?')) {
+                                deleteMutation.mutate(province.id);
+                              }
+                            }}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -177,7 +190,11 @@ const Provinces = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {provinces.map((province) => (
-                <div key={province.id} className="rounded-lg border p-4 space-y-3">
+                <div
+                  key={province.id}
+                  className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleOpenDialog(province)}
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-medium">{province.name}</h3>
@@ -185,30 +202,36 @@ const Provinces = () => {
                         Updated {formatDate(province.updatedAt.split("T")[0])}
                       </p>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenDialog(province)}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => duplicateMutation.mutate(province.id)}>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => deleteMutation.mutate(province.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenDialog(province)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => duplicateMutation.mutate(province.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this province?')) {
+                            deleteMutation.mutate(province.id);
+                          }
+                        }}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
