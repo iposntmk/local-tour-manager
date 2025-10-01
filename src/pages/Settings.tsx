@@ -1,8 +1,9 @@
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, Upload, Trash2 } from 'lucide-react';
+import { Download, Upload, Trash2, Database } from 'lucide-react';
 import { store } from '@/lib/datastore';
+import { seedDatabase } from '@/lib/seed-database';
 import { toast } from 'sonner';
 import { db } from '@/lib/datastore/db';
 
@@ -66,6 +67,21 @@ const Settings = () => {
     }
   };
 
+  const handleSeedDatabase = async () => {
+    if (!confirm('This will add sample data to your database. Continue?')) {
+      return;
+    }
+    
+    try {
+      await seedDatabase();
+      toast.success('Sample data added successfully. Reloading...');
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error('Seed error:', error);
+      toast.error('Failed to seed database');
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6 max-w-2xl">
@@ -83,6 +99,15 @@ const Settings = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-3">
+              <Button
+                onClick={handleSeedDatabase}
+                variant="default"
+                className="w-full justify-start gap-2"
+              >
+                <Database className="h-4 w-4" />
+                Load Sample Data
+              </Button>
+              
               <Button
                 onClick={handleExportData}
                 variant="outline"

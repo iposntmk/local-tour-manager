@@ -34,6 +34,51 @@ export async function seedDatabase(): Promise<void> {
       nationalityMap.set(nationalityData.name, nationality.id);
     }
 
+    // Seed provinces
+    const provinceMap = new Map<string, string>();
+    for (const provinceData of SEED_DATA.provinces) {
+      const province = await store.createProvince(provinceData);
+      provinceMap.set(provinceData.name, province.id);
+    }
+
+    // Seed tourist destinations
+    for (const destData of SEED_DATA.touristDestinations) {
+      const provinceId = provinceMap.get(destData.provinceName) || '';
+      await store.createTouristDestination({
+        name: destData.name,
+        price: destData.price,
+        provinceRef: {
+          id: provinceId,
+          nameAtBooking: destData.provinceName
+        }
+      });
+    }
+
+    // Seed shopping items (meals)
+    for (const shoppingData of SEED_DATA.shoppings) {
+      await store.createShopping(shoppingData);
+    }
+
+    // Seed expense categories
+    const categoryMap = new Map<string, string>();
+    for (const categoryData of SEED_DATA.expenseCategories) {
+      const category = await store.createExpenseCategory(categoryData);
+      categoryMap.set(categoryData.name, category.id);
+    }
+
+    // Seed detailed expenses
+    for (const expenseData of SEED_DATA.detailedExpenses) {
+      const categoryId = categoryMap.get(expenseData.categoryName) || '';
+      await store.createDetailedExpense({
+        name: expenseData.name,
+        price: expenseData.price,
+        categoryRef: {
+          id: categoryId,
+          nameAtBooking: expenseData.categoryName
+        }
+      });
+    }
+
     // Seed tours
     for (const tourData of SEED_DATA.tours) {
       const { tour, subcollections } = tourData;
