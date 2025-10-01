@@ -703,7 +703,41 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
 
       <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-3 border-t mt-2 flex justify-between px-1">
         <Button variant="outline" onClick={onCancel}>Back</Button>
-        <Button onClick={() => onConfirm(draft.map(d => d.tour))} disabled={!allValid}>Import {draft.length} tour(s)</Button>
+        <Button 
+          onClick={() => {
+            // Apply matched master data prices before importing
+            const finalTours = draft.map(d => {
+              const tour = { ...d.tour };
+              
+              // Apply matched destination prices
+              if (tour.destinations) {
+                tour.destinations = tour.destinations.map(dest => {
+                  if ((dest as any).matchedPrice !== undefined) {
+                    return { ...dest, price: (dest as any).matchedPrice };
+                  }
+                  return dest;
+                });
+              }
+              
+              // Apply matched expense prices
+              if (tour.expenses) {
+                tour.expenses = tour.expenses.map(exp => {
+                  if ((exp as any).matchedPrice !== undefined) {
+                    return { ...exp, price: (exp as any).matchedPrice };
+                  }
+                  return exp;
+                });
+              }
+              
+              return tour;
+            });
+            
+            onConfirm(finalTours);
+          }} 
+          disabled={!allValid}
+        >
+          Import {draft.length} tour(s)
+        </Button>
       </div>
 
       {/* Create dialogs */}
