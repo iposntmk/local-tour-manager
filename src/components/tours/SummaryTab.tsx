@@ -1,18 +1,66 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { formatDate } from '@/lib/utils';
-import type { Tour } from '@/types/tour';
+import type { Tour, TourSummary } from '@/types/tour';
+import { useState, useEffect } from 'react';
 
 interface SummaryTabProps {
   tour: Tour;
+  onSummaryUpdate?: (summary: TourSummary) => void;
 }
 
-export function SummaryTab({ tour }: SummaryTabProps) {
+export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
   const totalDestinations = tour.destinations.reduce((sum, d) => sum + d.price, 0);
   const totalExpenses = tour.expenses.reduce((sum, e) => sum + e.price, 0);
   const totalMeals = tour.meals.reduce((sum, m) => sum + m.price, 0);
   const totalAllowances = tour.allowances.reduce((sum, a) => sum + a.amount, 0);
   const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;
+
+  const [summary, setSummary] = useState<TourSummary>(tour.summary || {
+    totalTabs: 0,
+    advancePayment: 0,
+    totalAfterAdvance: 0,
+    companyTip: 0,
+    totalAfterTip: 0,
+    collectionsForCompany: 0,
+    totalAfterCollections: 0,
+    finalTotal: 0,
+  });
+
+  // Auto-calculate derived values
+  useEffect(() => {
+    const totalAfterAdvance = summary.totalTabs - (summary.advancePayment || 0);
+    const totalAfterTip = totalAfterAdvance - (summary.companyTip || 0);
+    const totalAfterCollections = totalAfterTip - (summary.collectionsForCompany || 0);
+    const finalTotal = totalAfterCollections;
+
+    const updated = {
+      ...summary,
+      totalAfterAdvance,
+      totalAfterTip,
+      totalAfterCollections,
+      finalTotal,
+    };
+
+    // Only update if calculated values have changed
+    if (
+      updated.totalAfterAdvance !== summary.totalAfterAdvance ||
+      updated.totalAfterTip !== summary.totalAfterTip ||
+      updated.totalAfterCollections !== summary.totalAfterCollections ||
+      updated.finalTotal !== summary.finalTotal
+    ) {
+      setSummary(updated);
+      if (onSummaryUpdate) {
+        onSummaryUpdate(updated);
+      }
+    }
+  }, [summary.totalTabs, summary.advancePayment, summary.companyTip, summary.collectionsForCompany, onSummaryUpdate]);
+
+  const handleInputChange = (field: keyof TourSummary, value: number) => {
+    setSummary(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
     <div className="space-y-6">
@@ -125,49 +173,65 @@ export function SummaryTab({ tour }: SummaryTabProps) {
         <CardHeader>
           <CardTitle>Financial Summary</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex justify-between items-center py-2">
-            <span className="text-muted-foreground">Total Tabs</span>
-            <span className="font-semibold">{(tour.summary?.totalTabs || 0).toLocaleString()} ₫</span>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="totalTabs">Total Tabs</Label>
+            <CurrencyInput
+              id="totalTabs"
+              value={summary.totalTabs}
+              onChange={(value) => handleInputChange('totalTabs', value)}
+            />
           </div>
           <Separator />
           
-          <div className="flex justify-between items-center py-2">
-            <span className="text-muted-foreground">Advance Payment</span>
-            <span className="font-semibold">{(tour.summary?.advancePayment || 0).toLocaleString()} ₫</span>
+          <div className="space-y-2">
+            <Label htmlFor="advancePayment">Advance Payment (Input)</Label>
+            <CurrencyInput
+              id="advancePayment"
+              value={summary.advancePayment || 0}
+              onChange={(value) => handleInputChange('advancePayment', value)}
+            />
           </div>
           
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
             <span className="font-medium">Total After Advance</span>
-            <span className="font-bold">{(tour.summary?.totalAfterAdvance || 0).toLocaleString()} ₫</span>
+            <span className="font-bold">{summary.totalAfterAdvance?.toLocaleString() || 0} ₫</span>
           </div>
           <Separator />
           
-          <div className="flex justify-between items-center py-2">
-            <span className="text-muted-foreground">Company Tip</span>
-            <span className="font-semibold">{(tour.summary?.companyTip || 0).toLocaleString()} ₫</span>
+          <div className="space-y-2">
+            <Label htmlFor="companyTip">Company Tip (Input)</Label>
+            <CurrencyInput
+              id="companyTip"
+              value={summary.companyTip || 0}
+              onChange={(value) => handleInputChange('companyTip', value)}
+            />
           </div>
           
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
             <span className="font-medium">Total After Tip</span>
-            <span className="font-bold">{(tour.summary?.totalAfterTip || 0).toLocaleString()} ₫</span>
+            <span className="font-bold">{summary.totalAfterTip?.toLocaleString() || 0} ₫</span>
           </div>
           <Separator />
           
-          <div className="flex justify-between items-center py-2">
-            <span className="text-muted-foreground">Collections for Company</span>
-            <span className="font-semibold">{(tour.summary?.collectionsForCompany || 0).toLocaleString()} ₫</span>
+          <div className="space-y-2">
+            <Label htmlFor="collectionsForCompany">Collections for Company (Input)</Label>
+            <CurrencyInput
+              id="collectionsForCompany"
+              value={summary.collectionsForCompany || 0}
+              onChange={(value) => handleInputChange('collectionsForCompany', value)}
+            />
           </div>
           
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
             <span className="font-medium">Total After Collections</span>
-            <span className="font-bold">{(tour.summary?.totalAfterCollections || 0).toLocaleString()} ₫</span>
+            <span className="font-bold">{summary.totalAfterCollections?.toLocaleString() || 0} ₫</span>
           </div>
           <Separator />
           
           <div className="flex justify-between items-center py-3 bg-primary/10 px-4 rounded-lg mt-4">
             <span className="text-lg font-bold">Final Total</span>
-            <span className="text-lg font-bold text-primary">{(tour.summary?.finalTotal || 0).toLocaleString()} ₫</span>
+            <span className="text-lg font-bold text-primary">{summary.finalTotal?.toLocaleString() || 0} ₫</span>
           </div>
         </CardContent>
       </Card>
