@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Tour, TourInput, Destination, Expense, Meal, Allowance } from '@/types/tour';
+import type { Tour, TourInput, Destination, Expense, Meal, Allowance, TourSummary } from '@/types/tour';
 
 const TourDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -44,7 +44,7 @@ const TourDetail = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (input: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[] }) => {
+    mutationFn: async (input: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => {
       const createdTour = await store.createTour(input);
       // Add subcollections
       await Promise.all([
@@ -53,6 +53,10 @@ const TourDetail = () => {
         ...input.meals.map(meal => store.addMeal(createdTour.id, meal)),
         ...input.allowances.map(allow => store.addAllowance(createdTour.id, allow)),
       ]);
+      // Update tour with summary
+      if (input.summary) {
+        await store.updateTour(createdTour.id, { summary: input.summary });
+      }
       return createdTour;
     },
     onSuccess: (newTour) => {
@@ -87,13 +91,13 @@ const TourDetail = () => {
     },
   });
 
-  const handleSave = (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[] }) => {
+  const handleSave = (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => {
     if (isNewTour) {
       createMutation.mutate(data);
     } else if (id) {
       // For updates, only update the basic tour info (not subcollections here)
       const { destinations, expenses, meals, allowances, ...tourInput } = data;
-      updateMutation.mutate({ id, patch: tourInput });
+      updateMutation.mutate({ id, patch: { ...tourInput, summary: data.summary } });
     }
   };
 

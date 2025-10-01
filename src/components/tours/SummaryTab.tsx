@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { formatDate } from '@/lib/utils';
 import type { Tour } from '@/types/tour';
 
@@ -11,7 +12,7 @@ export function SummaryTab({ tour }: SummaryTabProps) {
   const totalExpenses = tour.expenses.reduce((sum, e) => sum + e.price, 0);
   const totalMeals = tour.meals.reduce((sum, m) => sum + m.price, 0);
   const totalAllowances = tour.allowances.reduce((sum, a) => sum + a.amount, 0);
-  const grandTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;
+  const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;
 
   return (
     <div className="space-y-6">
@@ -109,11 +110,64 @@ export function SummaryTab({ tour }: SummaryTabProps) {
             </div>
           </div>
 
-          <div className="pt-4 border-t">
-            <div className="flex justify-between items-center text-lg font-bold">
-              <span>Grand Total</span>
-              <span className="text-primary">{grandTotal.toLocaleString()} ₫</span>
+          <Separator className="my-4" />
+
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Calculated Total</span>
+              <span className="font-semibold">{calculatedTotal.toLocaleString()} ₫</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+        <CardHeader>
+          <CardTitle>Financial Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between items-center py-2">
+            <span className="text-muted-foreground">Total Tabs</span>
+            <span className="font-semibold">{(tour.summary?.totalTabs || 0).toLocaleString()} ₫</span>
+          </div>
+          <Separator />
+          
+          <div className="flex justify-between items-center py-2">
+            <span className="text-muted-foreground">Advance Payment</span>
+            <span className="font-semibold">{(tour.summary?.advancePayment || 0).toLocaleString()} ₫</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
+            <span className="font-medium">Total After Advance</span>
+            <span className="font-bold">{(tour.summary?.totalAfterAdvance || 0).toLocaleString()} ₫</span>
+          </div>
+          <Separator />
+          
+          <div className="flex justify-between items-center py-2">
+            <span className="text-muted-foreground">Company Tip</span>
+            <span className="font-semibold">{(tour.summary?.companyTip || 0).toLocaleString()} ₫</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
+            <span className="font-medium">Total After Tip</span>
+            <span className="font-bold">{(tour.summary?.totalAfterTip || 0).toLocaleString()} ₫</span>
+          </div>
+          <Separator />
+          
+          <div className="flex justify-between items-center py-2">
+            <span className="text-muted-foreground">Collections for Company</span>
+            <span className="font-semibold">{(tour.summary?.collectionsForCompany || 0).toLocaleString()} ₫</span>
+          </div>
+          
+          <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
+            <span className="font-medium">Total After Collections</span>
+            <span className="font-bold">{(tour.summary?.totalAfterCollections || 0).toLocaleString()} ₫</span>
+          </div>
+          <Separator />
+          
+          <div className="flex justify-between items-center py-3 bg-primary/10 px-4 rounded-lg mt-4">
+            <span className="text-lg font-bold">Final Total</span>
+            <span className="text-lg font-bold text-primary">{(tour.summary?.finalTotal || 0).toLocaleString()} ₫</span>
           </div>
         </CardContent>
       </Card>
