@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import type { Destination } from '@/types/tour';
 
 interface DestinationsTabProps {
@@ -15,7 +18,13 @@ interface DestinationsTabProps {
 export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Destination>({ name: '', price: 0, date: '' });
+  const [openDestination, setOpenDestination] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: touristDestinations = [] } = useQuery({
+    queryKey: ['touristDestinations'],
+    queryFn: () => store.listTouristDestinations({ status: 'active' }),
+  });
 
   const addMutation = useMutation({
     mutationFn: (destination: Destination) => store.addDestination(tourId, destination),
@@ -71,12 +80,47 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="Destination name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+            <Popover open={openDestination} onOpenChange={setOpenDestination}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openDestination}
+                  className="justify-between"
+                >
+                  {formData.name || "Select destination..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search destination..." />
+                  <CommandList>
+                    <CommandEmpty>No destination found.</CommandEmpty>
+                    <CommandGroup>
+                      {touristDestinations.map((dest) => (
+                        <CommandItem
+                          key={dest.id}
+                          value={dest.name}
+                          onSelect={() => {
+                            setFormData({ ...formData, name: dest.name, price: dest.price });
+                            setOpenDestination(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.name === dest.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {dest.name} ({dest.price.toLocaleString()} ₫)
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Input
               type="number"
               placeholder="Price (VND)"

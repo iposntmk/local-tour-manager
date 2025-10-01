@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import type { Meal } from '@/types/tour';
 
 interface MealsTabProps {
@@ -15,7 +18,13 @@ interface MealsTabProps {
 export function MealsTab({ tourId, meals }: MealsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Meal>({ name: '', price: 0, date: '' });
+  const [openMeal, setOpenMeal] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: shoppingItems = [] } = useQuery({
+    queryKey: ['shoppings'],
+    queryFn: () => store.listShoppings({ status: 'active' }),
+  });
 
   const addMutation = useMutation({
     mutationFn: (meal: Meal) => store.addMeal(tourId, meal),
@@ -71,12 +80,47 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="Meal name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+            <Popover open={openMeal} onOpenChange={setOpenMeal}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openMeal}
+                  className="justify-between"
+                >
+                  {formData.name || "Select meal..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search meal..." />
+                  <CommandList>
+                    <CommandEmpty>No meal found.</CommandEmpty>
+                    <CommandGroup>
+                      {shoppingItems.map((item) => (
+                        <CommandItem
+                          key={item.id}
+                          value={item.name}
+                          onSelect={() => {
+                            setFormData({ ...formData, name: item.name });
+                            setOpenMeal(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.name === item.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {item.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Input
               type="number"
               placeholder="Price (VND)"

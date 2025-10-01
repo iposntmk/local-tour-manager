@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import type { Expense } from '@/types/tour';
 
 interface ExpensesTabProps {
@@ -15,7 +18,13 @@ interface ExpensesTabProps {
 export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Expense>({ name: '', price: 0, date: '' });
+  const [openExpense, setOpenExpense] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: detailedExpenses = [] } = useQuery({
+    queryKey: ['detailedExpenses'],
+    queryFn: () => store.listDetailedExpenses({ status: 'active' }),
+  });
 
   const addMutation = useMutation({
     mutationFn: (expense: Expense) => store.addExpense(tourId, expense),
@@ -71,12 +80,47 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="Expense name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+            <Popover open={openExpense} onOpenChange={setOpenExpense}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openExpense}
+                  className="justify-between"
+                >
+                  {formData.name || "Select expense..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search expense..." />
+                  <CommandList>
+                    <CommandEmpty>No expense found.</CommandEmpty>
+                    <CommandGroup>
+                      {detailedExpenses.map((exp) => (
+                        <CommandItem
+                          key={exp.id}
+                          value={exp.name}
+                          onSelect={() => {
+                            setFormData({ ...formData, name: exp.name, price: exp.price });
+                            setOpenExpense(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.name === exp.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {exp.name} ({exp.price.toLocaleString()} ₫)
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Input
               type="number"
               placeholder="Price (VND)"

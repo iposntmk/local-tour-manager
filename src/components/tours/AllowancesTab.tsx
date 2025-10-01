@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import type { Allowance } from '@/types/tour';
 
 interface AllowancesTabProps {
@@ -15,7 +18,13 @@ interface AllowancesTabProps {
 export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Allowance>({ date: '', province: '', amount: 0 });
+  const [openProvince, setOpenProvince] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: provinces = [] } = useQuery({
+    queryKey: ['provinces'],
+    queryFn: () => store.listProvinces({ status: 'active' }),
+  });
 
   const addMutation = useMutation({
     mutationFn: (allowance: Allowance) => store.addAllowance(tourId, allowance),
@@ -77,12 +86,47 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               required
             />
-            <Input
-              placeholder="Province"
-              value={formData.province}
-              onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-              required
-            />
+            <Popover open={openProvince} onOpenChange={setOpenProvince}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openProvince}
+                  className="justify-between"
+                >
+                  {formData.province || "Select province..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search province..." />
+                  <CommandList>
+                    <CommandEmpty>No province found.</CommandEmpty>
+                    <CommandGroup>
+                      {provinces.map((prov) => (
+                        <CommandItem
+                          key={prov.id}
+                          value={prov.name}
+                          onSelect={() => {
+                            setFormData({ ...formData, province: prov.name });
+                            setOpenProvince(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.province === prov.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {prov.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Input
               type="number"
               placeholder="Amount (VND)"
