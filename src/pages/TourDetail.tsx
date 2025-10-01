@@ -125,10 +125,10 @@ const TourDetail = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
                 {isNewTour ? 'New Tour' : tour?.tourCode || 'Tour Details'}
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 {isNewTour ? 'Create a new tour' : 'Manage tour information'}
               </p>
             </div>
@@ -147,7 +147,7 @@ const TourDetail = () => {
         </div>
 
         {isNewTour ? (
-          <div className="rounded-lg border bg-card p-6 animate-scale-in">
+          <div className="rounded-lg border bg-card p-4 sm:p-6 animate-scale-in">
             <TourForm onSubmit={handleSave} />
           </div>
         ) : tour ? (

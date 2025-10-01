@@ -364,22 +364,22 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
 
               <Tabs defaultValue="info" className="w-full">
                 <TabsList className="grid w-full grid-cols-5 h-auto gap-1 bg-muted/50 rounded-md p-1">
-                  <TabsTrigger value="info" className="text-xs sm:text-sm whitespace-nowrap px-1 py-2">Info</TabsTrigger>
-                  <TabsTrigger value="destinations" className="text-xs sm:text-sm flex-col gap-0 px-1 py-1">
-                    <span>Dest.</span>
-                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.tour.destinations?.length || 0}</Badge>
+                  <TabsTrigger value="info" className="text-xs sm:text-sm whitespace-nowrap px-1 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Info</TabsTrigger>
+                  <TabsTrigger value="destinations" className="text-xs sm:text-sm flex flex-col items-center gap-0.5 px-1 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <span className="leading-none">Dest.</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 min-w-[16px] px-1 leading-none flex items-center justify-center">{item.tour.destinations?.length || 0}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="expenses" className="text-xs sm:text-sm flex-col gap-0 px-1 py-1">
-                    <span>Exp.</span>
-                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.tour.expenses?.length || 0}</Badge>
+                  <TabsTrigger value="expenses" className="text-xs sm:text-sm flex flex-col items-center gap-0.5 px-1 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <span className="leading-none">Exp.</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 min-w-[16px] px-1 leading-none flex items-center justify-center">{item.tour.expenses?.length || 0}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="meals" className="text-xs sm:text-sm flex-col gap-0 px-1 py-1">
-                    <span>Meals</span>
-                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.tour.meals?.length || 0}</Badge>
+                  <TabsTrigger value="meals" className="text-xs sm:text-sm flex flex-col items-center gap-0.5 px-1 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <span className="leading-none">Meals</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 min-w-[16px] px-1 leading-none flex items-center justify-center">{item.tour.meals?.length || 0}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="allowances" className="text-xs sm:text-sm flex-col gap-0 px-1 py-1">
-                    <span>Allow.</span>
-                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.tour.allowances?.length || 0}</Badge>
+                  <TabsTrigger value="allowances" className="text-xs sm:text-sm flex flex-col items-center gap-0.5 px-1 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <span className="leading-none">Allow.</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 min-w-[16px] px-1 leading-none flex items-center justify-center">{item.tour.allowances?.length || 0}</Badge>
                   </TabsTrigger>
                 </TabsList>
 

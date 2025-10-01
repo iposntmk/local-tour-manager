@@ -706,8 +706,23 @@ export class SupabaseStore implements DataStore {
 
   // Tours
   async listTours(query?: TourQuery): Promise<Tour[]> {
-    let queryBuilder = supabase.from('tours').select('*').order('start_date', { ascending: false });
-    
+    // Fetch tours with nested relations in a single round-trip to avoid N+1 queries
+    let queryBuilder = supabase
+      .from('tours')
+      .select(`
+        *,
+        tour_destinations(*),
+        tour_expenses(*),
+        tour_meals(*),
+        tour_allowances(*)
+      `)
+      .order('start_date', { ascending: false })
+      // Ensure nested arrays are consistently ordered by date
+      .order('date', { foreignTable: 'tour_destinations' })
+      .order('date', { foreignTable: 'tour_expenses' })
+      .order('date', { foreignTable: 'tour_meals' })
+      .order('date', { foreignTable: 'tour_allowances' });
+
     if (query?.tourCode) queryBuilder = queryBuilder.ilike('tour_code', `%${query.tourCode}%`);
     if (query?.clientName) queryBuilder = queryBuilder.ilike('client_name', `%${query.clientName}%`);
     if (query?.companyId) queryBuilder = queryBuilder.eq('company_id', query.companyId);
@@ -717,32 +732,77 @@ export class SupabaseStore implements DataStore {
 
     const { data, error } = await queryBuilder;
     if (error) throw error;
-    
-    const tours = await Promise.all(
-      (data || []).map(async (row) => {
-        const tour = this.mapTour(row);
-        tour.destinations = await this.getDestinations(tour.id);
-        tour.expenses = await this.getExpenses(tour.id);
-        tour.meals = await this.getMeals(tour.id);
-        tour.allowances = await this.getAllowances(tour.id);
-        return tour;
-      })
-    );
-    
-    return tours;
+
+    return (data || []).map((row: any) => {
+      const tour = this.mapTour(row);
+      tour.destinations = (row.tour_destinations || []).map((d: any) => ({
+        name: d.name,
+        price: Number(d.price) || 0,
+        date: d.date,
+      }));
+      tour.expenses = (row.tour_expenses || []).map((e: any) => ({
+        name: e.name,
+        price: Number(e.price) || 0,
+        date: e.date,
+      }));
+      tour.meals = (row.tour_meals || []).map((m: any) => ({
+        name: m.name,
+        price: Number(m.price) || 0,
+        date: m.date,
+      }));
+      tour.allowances = (row.tour_allowances || []).map((a: any) => ({
+        date: a.date,
+        province: a.province,
+        amount: Number(a.amount) || 0,
+      }));
+      return tour;
+    });
   }
 
   async getTour(id: string): Promise<Tour | null> {
-    const { data, error } = await supabase.from('tours').select('*').eq('id', id).single();
+    // Single query with nested relations for the tour detail
+    const { data, error } = await supabase
+      .from('tours')
+      .select(`
+        *,
+        tour_destinations(*),
+        tour_expenses(*),
+        tour_meals(*),
+        tour_allowances(*)
+      `)
+      .eq('id', id)
+      .order('date', { foreignTable: 'tour_destinations' })
+      .order('date', { foreignTable: 'tour_expenses' })
+      .order('date', { foreignTable: 'tour_meals' })
+      .order('date', { foreignTable: 'tour_allowances' })
+      .single();
+
     if (error) return null;
     if (!data) return null;
-    
-    const tour = this.mapTour(data);
-    tour.destinations = await this.getDestinations(id);
-    tour.expenses = await this.getExpenses(id);
-    tour.meals = await this.getMeals(id);
-    tour.allowances = await this.getAllowances(id);
-    
+
+    const tour = this.mapTour(data as any);
+    const row: any = data;
+    tour.destinations = (row.tour_destinations || []).map((d: any) => ({
+      name: d.name,
+      price: Number(d.price) || 0,
+      date: d.date,
+    }));
+    tour.expenses = (row.tour_expenses || []).map((e: any) => ({
+      name: e.name,
+      price: Number(e.price) || 0,
+      date: e.date,
+    }));
+    tour.meals = (row.tour_meals || []).map((m: any) => ({
+      name: m.name,
+      price: Number(m.price) || 0,
+      date: m.date,
+    }));
+    tour.allowances = (row.tour_allowances || []).map((a: any) => ({
+      date: a.date,
+      province: a.province,
+      amount: Number(a.amount) || 0,
+    }));
+
     return tour;
   }
 
@@ -853,7 +913,6 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateDestination(tourId: string, index: number, destination: Destination): Promise<void> {
-    const destinations = await this.getDestinations(tourId);
     const { data: rows } = await supabase.from('tour_destinations').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
       const { error } = await supabase.from('tour_destinations').update({
