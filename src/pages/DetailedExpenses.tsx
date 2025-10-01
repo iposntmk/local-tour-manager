@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { StatusBadge } from '@/components/master/StatusBadge';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
@@ -67,6 +67,22 @@ const DetailedExpenses = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('Detailed expense status updated');
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: (id: string) => store.duplicateDetailedExpense(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success('Detailed expense duplicated successfully');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => store.deleteDetailedExpense(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success('Detailed expense deleted successfully');
     },
   });
 
@@ -171,12 +187,25 @@ const DetailedExpenses = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleOpenDialog(expense)}>
+                              <Edit className="h-4 w-4 mr-2" />
                               Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => duplicateMutation.mutate(expense.id)}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => toggleStatusMutation.mutate(expense.id)}
                             >
+                              <Power className="h-4 w-4 mr-2" />
                               {expense.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => deleteMutation.mutate(expense.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -209,12 +238,25 @@ const DetailedExpenses = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleOpenDialog(expense)}>
+                          <Edit className="h-4 w-4 mr-2" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => duplicateMutation.mutate(expense.id)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => toggleStatusMutation.mutate(expense.id)}
                         >
+                          <Power className="h-4 w-4 mr-2" />
                           {expense.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => deleteMutation.mutate(expense.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

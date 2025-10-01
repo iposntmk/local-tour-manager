@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Power, Copy, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { StatusBadge } from '@/components/master/StatusBadge';
 import { ProvinceDialog } from '@/components/provinces/ProvinceDialog';
@@ -67,6 +67,22 @@ const Provinces = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provinces'] });
       toast.success('Province status updated');
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: (id: string) => store.duplicateProvince(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['provinces'] });
+      toast.success('Province duplicated successfully');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => store.deleteProvince(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['provinces'] });
+      toast.success('Province deleted successfully');
     },
   });
 
@@ -165,12 +181,25 @@ const Provinces = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleOpenDialog(province)}>
+                              <Edit className="h-4 w-4 mr-2" />
                               Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => duplicateMutation.mutate(province.id)}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => toggleStatusMutation.mutate(province.id)}
                             >
+                              <Power className="h-4 w-4 mr-2" />
                               {province.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => deleteMutation.mutate(province.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -200,12 +229,25 @@ const Provinces = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleOpenDialog(province)}>
+                          <Edit className="h-4 w-4 mr-2" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => duplicateMutation.mutate(province.id)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => toggleStatusMutation.mutate(province.id)}
                         >
+                          <Power className="h-4 w-4 mr-2" />
                           {province.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => deleteMutation.mutate(province.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
