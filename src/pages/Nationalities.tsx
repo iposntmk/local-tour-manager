@@ -10,7 +10,6 @@ import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 import type { Nationality, NationalityInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
 
@@ -90,7 +89,7 @@ const Nationalities = () => {
     setEditingNationality(undefined);
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('nationalities.headerMode');
+  const { classes: headerClasses } = useHeaderMode('nationalities.headerMode');
 
   return (
     <Layout>
@@ -106,7 +105,6 @@ const Nationalities = () => {
                 <Plus className="h-4 w-4" />
                 Add Nationality
               </Button>
-              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
             </div>
           </div>
         </div>

@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 
 import { GuideDialog } from '@/components/guides/GuideDialog';
 import type { Guide, GuideInput } from '@/types/master';
@@ -91,7 +90,7 @@ const Guides = () => {
     setEditingGuide(undefined);
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('guides.headerMode');
+  const { classes: headerClasses } = useHeaderMode('guides.headerMode');
 
   return (
     <Layout>
@@ -107,7 +106,6 @@ const Guides = () => {
                 <Plus className="h-4 w-4" />
                 Add Guide
               </Button>
-              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
             </div>
           </div>
         </div>

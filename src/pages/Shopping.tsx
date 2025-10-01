@@ -10,7 +10,6 @@ import type { Shopping, ShoppingInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 
 const ShoppingPage = () => {
   const [search, setSearch] = useState('');
@@ -89,7 +88,7 @@ const ShoppingPage = () => {
     setEditingShopping(undefined);
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('shopping.headerMode');
+  const { classes: headerClasses } = useHeaderMode('shopping.headerMode');
 
   return (
     <Layout>
@@ -105,7 +104,6 @@ const ShoppingPage = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Shopping
               </Button>
-              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
             </div>
           </div>
         </div>

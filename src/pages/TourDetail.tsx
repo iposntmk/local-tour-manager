@@ -15,7 +15,6 @@ import { AllowancesTab } from '@/components/tours/AllowancesTab';
 import { SummaryTab } from '@/components/tours/SummaryTab';
 import { toast } from 'sonner';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -129,7 +128,7 @@ const TourDetail = () => {
     return activeTab === 'info';
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('tourdetail.headerMode');
+  const { classes: headerClasses } = useHeaderMode('tourdetail.headerMode');
 
   if (isLoading && !isNewTour) {
     return (
@@ -164,7 +163,6 @@ const TourDetail = () => {
                     <p className="text-sm sm:text-base text-muted-foreground">Create a new tour</p>
                   </div>
                 </div>
-                <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
               </div>
             </div>
 
@@ -214,7 +212,6 @@ const TourDetail = () => {
                     <Trash2 className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Delete</span>
                   </Button>
-                  <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
                 </div>
               </div>
 

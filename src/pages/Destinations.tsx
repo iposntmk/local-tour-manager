@@ -10,7 +10,6 @@ import type { TouristDestination, TouristDestinationInput } from '@/types/master
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import { HeaderModeControls } from '@/components/common/HeaderModeControls';
 
 const Destinations = () => {
   const [search, setSearch] = useState('');
@@ -89,7 +88,7 @@ const Destinations = () => {
     setEditingDestination(undefined);
   };
 
-  const { mode: headerMode, setMode: setHeaderMode, classes: headerClasses } = useHeaderMode('destinations.headerMode');
+  const { classes: headerClasses } = useHeaderMode('destinations.headerMode');
 
   return (
     <Layout>
@@ -105,7 +104,6 @@ const Destinations = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Destination
               </Button>
-              <HeaderModeControls mode={headerMode} onChange={setHeaderMode} />
             </div>
           </div>
         </div>

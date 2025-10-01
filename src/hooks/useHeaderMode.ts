@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 
 export type HeaderMode = 'pin' | 'dock' | 'freeze';
 
-export function useHeaderMode(storageKey: string, defaultMode: HeaderMode = 'pin') {
+export function useHeaderMode(storageKey: string, defaultMode: HeaderMode = 'pin', alwaysPin: boolean = true) {
   const [mode, setMode] = useState<HeaderMode>(() => {
+    // If alwaysPin is true, always use 'pin' mode
+    if (alwaysPin) return 'pin';
+    
     try {
       const saved = localStorage.getItem(storageKey) as HeaderMode | null;
       if (saved === 'pin' || saved === 'dock' || saved === 'freeze') return saved;
@@ -12,24 +15,29 @@ export function useHeaderMode(storageKey: string, defaultMode: HeaderMode = 'pin
   });
 
   useEffect(() => {
+    // Don't save to localStorage if alwaysPin is true
+    if (alwaysPin) return;
+    
     try {
       localStorage.setItem(storageKey, mode);
     } catch {}
-  }, [mode, storageKey]);
+  }, [mode, storageKey, alwaysPin]);
 
   const classes = useMemo(() => {
     const base = 'z-10';
-    if (mode === 'pin') {
+    const currentMode = alwaysPin ? 'pin' : mode;
+    
+    if (currentMode === 'pin') {
       return `sticky top-0 ${base} bg-background pb-4 space-y-4`;
     }
-    if (mode === 'dock') {
+    if (currentMode === 'dock') {
       // Keep above bottom nav; bottom-16 (~64px) to clear fixed bottom nav
       return `sticky bottom-16 ${base} bg-background pt-2 pb-2 space-y-3`;
     }
     // freeze
     return `sticky top-0 ${base} bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-4 space-y-4`;
-  }, [mode]);
+  }, [mode, alwaysPin]);
 
-  return { mode, setMode, classes } as const;
+  return { mode: alwaysPin ? 'pin' : mode, setMode, classes } as const;
 }
 
