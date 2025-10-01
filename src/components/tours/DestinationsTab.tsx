@@ -7,7 +7,7 @@ import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import type { Destination } from '@/types/tour';
 
 interface DestinationsTabProps {
@@ -167,7 +167,7 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
                 <div className="flex-1">
                   <div className="font-medium">{destination.name}</div>
                   <div className="text-sm text-muted-foreground">
-                    {destination.price.toLocaleString()} ₫ • {destination.date}
+                    {destination.price.toLocaleString()} ₫ • {formatDate(destination.date)}
                   </div>
                 </div>
                 <div className="flex gap-2">
