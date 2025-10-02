@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import Fuse from 'fuse.js';
 import type { Tour, EntityRef } from '@/types/tour';
 import type { Company, Guide, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
@@ -691,10 +691,24 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   const [initialEntityName, setInitialEntityName] = useState<string>('');
   const [targetItemIndex, setTargetItemIndex] = useState<number | null>(null);
 
-  // Load all entities
+  // Virtualization state
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 });
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const ITEM_HEIGHT = 400; // Approximate height of each tour card
+  const BUFFER_SIZE = 5; // Number of items to render above/below visible area
+
+  // Cache Fuse instances to avoid recreation on every search
+  const fuseInstancesRef = useRef<{
+    destinations?: Fuse<TouristDestination>;
+    expenses?: Fuse<DetailedExpense>;
+    shoppings?: Fuse<Shopping>;
+  }>({});
+
+  // Load all entities - optimized with caching
   useEffect(() => {
     const load = async () => {
       try {
+        // Use preloaded entities if available to avoid redundant API calls
         const [c, g, n, d, e, s, p] = await Promise.all([
           preloadedEntities?.companies ? Promise.resolve(preloadedEntities.companies) : store.listCompanies({}),
           preloadedEntities?.guides ? Promise.resolve(preloadedEntities.guides) : store.listGuides({}),
@@ -712,40 +726,44 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         setShoppings(s);
         setProvinces(p);
 
-        // Helper functions for matching using local variables
-        const matchDestinationLocal = (destinationName: string) => {
-          if (!destinationName.trim()) return null;
-          const fuse = new Fuse(d, {
+        // Create Fuse instances once and cache them
+        fuseInstancesRef.current = {
+          destinations: new Fuse(d, {
             keys: ['name'],
             threshold: 0.4,
             includeScore: true,
             ignoreLocation: true,
-          });
-          const matches = fuse.search(destinationName);
+          }),
+          expenses: new Fuse(e, {
+            keys: ['name'],
+            threshold: 0.4,
+            includeScore: true,
+            ignoreLocation: true,
+          }),
+          shoppings: new Fuse(s, {
+            keys: ['name'],
+            threshold: 0.4,
+            includeScore: true,
+            ignoreLocation: true,
+          }),
+        };
+
+        // Helper functions for matching using cached Fuse instances
+        const matchDestinationLocal = (destinationName: string) => {
+          if (!destinationName.trim() || !fuseInstancesRef.current.destinations) return null;
+          const matches = fuseInstancesRef.current.destinations.search(destinationName);
           return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
         };
 
         const matchExpenseLocal = (expenseName: string) => {
-          if (!expenseName.trim()) return null;
-          const fuse = new Fuse(e, {
-            keys: ['name'],
-            threshold: 0.4,
-            includeScore: true,
-            ignoreLocation: true,
-          });
-          const matches = fuse.search(expenseName);
+          if (!expenseName.trim() || !fuseInstancesRef.current.expenses) return null;
+          const matches = fuseInstancesRef.current.expenses.search(expenseName);
           return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
         };
 
         const matchShoppingLocal = (shoppingName: string) => {
-          if (!shoppingName.trim()) return null;
-          const fuse = new Fuse(s, {
-            keys: ['name'],
-            threshold: 0.4,
-            includeScore: true,
-            ignoreLocation: true,
-          });
-          const matches = fuse.search(shoppingName);
+          if (!shoppingName.trim() || !fuseInstancesRef.current.shoppings) return null;
+          const matches = fuseInstancesRef.current.shoppings.search(shoppingName);
           return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
         };
 
@@ -964,6 +982,31 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     });
   }, [draft, searchQuery, validationWarnings]);
 
+  // Handle scroll for virtualization
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!scrollContainerRef.current) return;
+
+      const scrollTop = scrollContainerRef.current.scrollTop;
+      const viewportHeight = scrollContainerRef.current.clientHeight;
+
+      const start = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_SIZE);
+      const end = Math.min(
+        filteredTours.length,
+        Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + BUFFER_SIZE
+      );
+
+      setVisibleRange({ start, end });
+    };
+
+    const scrollElement = scrollContainerRef.current;
+    if (scrollElement) {
+      scrollElement.addEventListener('scroll', handleScroll);
+      handleScroll(); // Initial calculation
+      return () => scrollElement.removeEventListener('scroll', handleScroll);
+    }
+  }, [filteredTours.length, BUFFER_SIZE, ITEM_HEIGHT]);
+
   // Final validation for import
   const validateForImport = (): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
@@ -1006,46 +1049,22 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     return fuse.search(query).map(result => result.item);
   };
 
-  // Fuse.js matching for subcollections
+  // Fuse.js matching for subcollections - use cached instances
   const matchDestination = (destinationName: string) => {
-    if (!destinationName.trim()) return null;
-    
-    const fuse = new Fuse(destinations, {
-      keys: ['name'],
-      threshold: 0.4,
-      includeScore: true,
-      ignoreLocation: true,
-    });
-    
-    const matches = fuse.search(destinationName);
+    if (!destinationName.trim() || !fuseInstancesRef.current.destinations) return null;
+    const matches = fuseInstancesRef.current.destinations.search(destinationName);
     return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
   };
 
   const matchExpense = (expenseName: string) => {
-    if (!expenseName.trim()) return null;
-    
-    const fuse = new Fuse(expenses, {
-      keys: ['name'],
-      threshold: 0.4,
-      includeScore: true,
-      ignoreLocation: true,
-    });
-    
-    const matches = fuse.search(expenseName);
+    if (!expenseName.trim() || !fuseInstancesRef.current.expenses) return null;
+    const matches = fuseInstancesRef.current.expenses.search(expenseName);
     return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
   };
 
   const matchShopping = (shoppingName: string) => {
-    if (!shoppingName.trim()) return null;
-    
-    const fuse = new Fuse(shoppings, {
-      keys: ['name'],
-      threshold: 0.4,
-      includeScore: true,
-      ignoreLocation: true,
-    });
-    
-    const matches = fuse.search(shoppingName);
+    if (!shoppingName.trim() || !fuseInstancesRef.current.shoppings) return null;
+    const matches = fuseInstancesRef.current.shoppings.search(shoppingName);
     return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
   };
 
@@ -1262,16 +1281,33 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
       {/* Content */}
       <div className="space-y-3">
-          <ScrollArea className="h-[600px]">
-            <div className="space-y-3">
-              {filteredTours.map((item, index) => {
+          <ScrollArea className="h-[600px]" ref={scrollContainerRef as any}>
+            <div
+              className="space-y-3"
+              style={{
+                height: `${filteredTours.length * ITEM_HEIGHT}px`,
+                position: 'relative'
+              }}
+            >
+              {filteredTours.slice(visibleRange.start, visibleRange.end).map((item, index) => {
+                const actualIndex = visibleRange.start + index;
                 const originalIndex = draft.findIndex(d => d === item);
                 const tour = item.tour;
                 const raw = item.raw;
                 const warnings = validationWarnings[originalIndex] || [];
 
                 return (
-                  <Card key={originalIndex} className={warnings.length > 0 ? "border-yellow-500" : ""}>
+                  <Card
+                    key={originalIndex}
+                    className={warnings.length > 0 ? "border-yellow-500" : ""}
+                    style={{
+                      position: 'absolute',
+                      top: `${actualIndex * ITEM_HEIGHT}px`,
+                      left: 0,
+                      right: 0,
+                      width: '100%'
+                    }}
+                  >
                     <CardHeader className="pb-2 pt-3">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base">{tour.tourCode || `Tour ${originalIndex + 1}`}</CardTitle>

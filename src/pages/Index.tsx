@@ -49,7 +49,7 @@ const Index = () => {
             Tour Manager
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Local-first tour management system for organizing tours, guides, and companies
+            Cloud-based tour management system for organizing tours, guides, and companies
           </p>
           <div className="flex flex-wrap gap-3 justify-center mt-8">
             <Button size="lg" onClick={() => navigate('/tours')} className="gap-2">
@@ -85,12 +85,12 @@ const Index = () => {
           <CardHeader>
             <CardTitle>About This App</CardTitle>
             <CardDescription>
-              This is a local-first tour management application built with React, TypeScript, and IndexedDB.
-              All your data is stored locally on your device for fast, offline access.
+              This is a cloud-based tour management application built with React, TypeScript, and Supabase.
+              All your data is stored securely in the cloud for access anywhere, anytime.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>✓ No backend required - everything runs in your browser</p>
+            <p>✓ Cloud-based storage with Supabase backend</p>
             <p>✓ Export/Import data as JSON for backup and sharing</p>
             <p>✓ Responsive design works on desktop and mobile</p>
             <p>✓ Fast typeahead search for all master data</p>

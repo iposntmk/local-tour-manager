@@ -32,8 +32,8 @@ export const isSupabaseEnabled = (): boolean => {
   const enabled = hasCredentials();
 
   if (!enabled && import.meta.env.DEV && !warnedAboutMissingCredentials) {
-    console.warn(
-      "Supabase credentials are not configured. Falling back to the IndexedDB datastore.",
+    console.error(
+      "Supabase credentials are not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in your .env file.",
     );
     warnedAboutMissingCredentials = true;
   }
