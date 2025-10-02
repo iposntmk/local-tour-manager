@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour } from '@/types/tour';
+import Fuse from 'fuse.js';
 
 const Tours = () => {
   const [search, setSearch] = useState('');
@@ -173,6 +174,21 @@ const Tours = () => {
       const results = [];
       const errors = [];
 
+      // Load master data once for auto-matching fallback
+      const [masterDestinations, masterExpenses, masterShoppings] = await Promise.all([
+        store.listTouristDestinations({}),
+        store.listDetailedExpenses({}),
+        store.listShoppings({}),
+      ]);
+      const destFuse = new Fuse(masterDestinations, { keys: ['name'], threshold: 0.4, includeScore: true, ignoreLocation: true });
+      const expFuse = new Fuse(masterExpenses, { keys: ['name'], threshold: 0.4, includeScore: true, ignoreLocation: true });
+      const mealFuse = new Fuse(masterShoppings, { keys: ['name'], threshold: 0.4, includeScore: true, ignoreLocation: true });
+      const autoMatch = (name: string, fuse: any) => {
+        if (!name?.trim()) return null;
+        const res = fuse.search(name);
+        return res.length > 0 && (res[0].score ?? 1) < 0.4 ? res[0].item : null;
+      };
+
       for (let i = 0; i < tours.length; i++) {
         const tour = tours[i];
         try {
@@ -182,19 +198,40 @@ const Tours = () => {
             throw new Error(validation.errors.join(', '));
           }
 
-          // Clean matched properties and normalize dates
-          const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => ({
-            ...dest,
-            date: normalizeDate(dest.date),
-          }));
-          const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => ({
-            ...exp,
-            date: normalizeDate(exp.date),
-          }));
-          const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => ({
-            ...meal,
-            date: normalizeDate(meal.date),
-          }));
+          // Clean matched properties and normalize dates + apply auto-match fallback
+          const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => {
+            const normalized = { ...dest, date: normalizeDate(dest.date) } as any;
+            if ((!normalized.price || normalized.price === 0) && normalized.name) {
+              const m = autoMatch(normalized.name, destFuse);
+              if (m) {
+                normalized.name = m.name;
+                normalized.price = Number(m.price) || 0;
+              }
+            }
+            return normalized;
+          });
+          const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => {
+            const normalized = { ...exp, date: normalizeDate(exp.date) } as any;
+            if ((!normalized.price || normalized.price === 0) && normalized.name) {
+              const m = autoMatch(normalized.name, expFuse);
+              if (m) {
+                normalized.name = m.name;
+                normalized.price = Number(m.price) || 0;
+              }
+            }
+            return normalized;
+          });
+          const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => {
+            const normalized = { ...meal, date: normalizeDate(meal.date) } as any;
+            if ((!normalized.price || normalized.price === 0) && normalized.name) {
+              const m = autoMatch(normalized.name, mealFuse);
+              if (m) {
+                normalized.name = m.name;
+                normalized.price = Number(m.price) || 0;
+              }
+            }
+            return normalized;
+          });
           const cleanAllowances = tour.allowances?.map((allow) => ({
             ...allow,
             date: normalizeDate(allow.date),
