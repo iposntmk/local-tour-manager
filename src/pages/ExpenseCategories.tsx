@@ -136,12 +136,12 @@ const ExpenseCategories = () => {
     <Layout>
       <div className="space-y-6">
         <div className={headerClasses}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Expense Categories</h1>
               <p className="text-muted-foreground">Manage expense categories</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-2 sm:justify-end">
               <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Import
