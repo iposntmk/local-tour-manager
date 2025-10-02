@@ -173,7 +173,16 @@ export class SupabaseStore implements DataStore {
       expenses: [],
       meals: [],
       allowances: [],
-      summary: row.summary || { totalTabs: 0 },
+      summary: {
+        totalTabs: Number(row.total_tabs) || 0,
+        advancePayment: Number(row.advance_payment) || 0,
+        totalAfterAdvance: Number(row.total_after_advance) || 0,
+        companyTip: Number(row.company_tip) || 0,
+        totalAfterTip: Number(row.total_after_tip) || 0,
+        collectionsForCompany: Number(row.collections_for_company) || 0,
+        totalAfterCollections: Number(row.total_after_collections) || 0,
+        finalTotal: Number(row.final_total) || 0,
+      },
     };
   }
 
@@ -1403,7 +1412,14 @@ export class SupabaseStore implements DataStore {
         start_date: tour.startDate,
         end_date: tour.endDate,
         total_days: totalDays,
-        // summary: { totalTabs: 0 }, // Temporarily commented out until migration is applied
+        total_tabs: tour.summary?.totalTabs ?? 0,
+        advance_payment: tour.summary?.advancePayment ?? 0,
+        total_after_advance: tour.summary?.totalAfterAdvance ?? 0,
+        company_tip: tour.summary?.companyTip ?? 0,
+        total_after_tip: tour.summary?.totalAfterTip ?? 0,
+        collections_for_company: tour.summary?.collectionsForCompany ?? 0,
+        total_after_collections: tour.summary?.totalAfterCollections ?? 0,
+        final_total: tour.summary?.finalTotal ?? 0,
       })
       .select()
       .single();
@@ -1507,7 +1523,16 @@ export class SupabaseStore implements DataStore {
     if (tour.startDate !== undefined) updates.start_date = tour.startDate;
     if (tour.endDate !== undefined) updates.end_date = tour.endDate;
     if (tour.totalDays !== undefined) updates.total_days = tour.totalDays;
-    if (tour.summary !== undefined) updates.summary = tour.summary;
+    if (tour.summary !== undefined) {
+      updates.total_tabs = tour.summary.totalTabs ?? 0;
+      updates.advance_payment = tour.summary.advancePayment ?? 0;
+      updates.total_after_advance = tour.summary.totalAfterAdvance ?? 0;
+      updates.company_tip = tour.summary.companyTip ?? 0;
+      updates.total_after_tip = tour.summary.totalAfterTip ?? 0;
+      updates.collections_for_company = tour.summary.collectionsForCompany ?? 0;
+      updates.total_after_collections = tour.summary.totalAfterCollections ?? 0;
+      updates.final_total = tour.summary.finalTotal ?? 0;
+    }
 
     const { error } = await this.supabase.from('tours').update(updates).eq('id', id);
     if (error) throw error;
