@@ -1,11 +1,14 @@
 import { Layout } from '@/components/Layout';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
+import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { TouristDestination, TouristDestinationInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
@@ -14,13 +17,22 @@ import { useHeaderMode } from '@/hooks/useHeaderMode';
 const Destinations = () => {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingDestination, setEditingDestination] = useState<TouristDestination | undefined>();
-  
+  const [nameFilter, setNameFilter] = useState('');
+  const [provinceFilter, setProvinceFilter] = useState('');
+  const [priceFilter, setPriceFilter] = useState('');
+
   const queryClient = useQueryClient();
 
   const { data: destinations = [], isLoading } = useQuery({
     queryKey: ['touristDestinations', search],
     queryFn: () => store.listTouristDestinations({ search }),
+  });
+
+  const { data: provinces = [] } = useQuery({
+    queryKey: ['provinces'],
+    queryFn: () => store.listProvinces(),
   });
 
   const createMutation = useMutation({
@@ -65,6 +77,32 @@ const Destinations = () => {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: () => store.deleteAllTouristDestinations(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
+      toast.success('All destinations deleted successfully');
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: async (items: { name: string; price: number }[]) => {
+      const provinces = await store.listProvinces();
+      const defaultProvince = provinces[0] || { id: '', name: 'Unknown' };
+
+      const inputs: TouristDestinationInput[] = items.map(item => ({
+        name: item.name,
+        price: item.price,
+        provinceRef: { id: defaultProvince.id, nameAtBooking: defaultProvince.name },
+      }));
+
+      return store.bulkCreateTouristDestinations(inputs);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
+    },
+  });
+
   const handleCreate = (input: TouristDestinationInput) => {
     createMutation.mutate(input);
   };
@@ -88,6 +126,26 @@ const Destinations = () => {
     setEditingDestination(undefined);
   };
 
+  const handleDeleteAll = () => {
+    if (confirm('Are you sure you want to delete ALL destinations? This action cannot be undone.')) {
+      deleteAllMutation.mutate();
+    }
+  };
+
+  const handleBulkImport = async (items: { name: string; price: number }[]) => {
+    await bulkImportMutation.mutateAsync(items);
+  };
+
+  // Filter destinations based on column filters
+  const filteredDestinations = useMemo(() => {
+    return destinations.filter(dest => {
+      const matchesName = !nameFilter || dest.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesProvince = !provinceFilter || dest.provinceRef.nameAtBooking === provinceFilter;
+      const matchesPrice = !priceFilter || dest.price.toString().includes(priceFilter);
+      return matchesName && matchesProvince && matchesPrice;
+    });
+  }, [destinations, nameFilter, provinceFilter, priceFilter]);
+
   const { classes: headerClasses } = useHeaderMode('destinations.headerMode');
 
   return (
@@ -100,6 +158,14 @@ const Destinations = () => {
               <p className="text-muted-foreground">Manage tourist destinations</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteAll}>
+                <Trash className="h-4 w-4 mr-2" />
+                Delete All
+              </Button>
               <Button onClick={() => handleOpenDialog()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Destination
@@ -137,9 +203,44 @@ const Destinations = () => {
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
+                  <tr>
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter name..."
+                        value={nameFilter}
+                        onChange={(e) => setNameFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
+                    <th className="p-2">
+                      <Select value={provinceFilter} onValueChange={setProvinceFilter}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="All Provinces" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All</SelectItem>
+                          {provinces.map((province) => (
+                            <SelectItem key={province.id} value={province.name}>
+                              {province.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </th>
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter price..."
+                        value={priceFilter}
+                        onChange={(e) => setPriceFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
+                    <th className="p-2"></th>
+                    <th className="p-2"></th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {destinations.map((destination) => (
+                  {filteredDestinations.map((destination) => (
                     <tr
                       key={destination.id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
@@ -193,7 +294,7 @@ const Destinations = () => {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {destinations.map((destination) => (
+              {filteredDestinations.map((destination) => (
                 <div
                   key={destination.id}
                   className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
@@ -253,6 +354,15 @@ const Destinations = () => {
         onSubmit={editingDestination ? handleEdit : handleCreate}
         initialData={editingDestination}
         isEditing={!!editingDestination}
+      />
+
+      <BulkImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleBulkImport}
+        title="Import Destinations"
+        description="Import destinations from a text file or paste data. Each line should have: name,price"
+        placeholder="Enter destinations (one per line, format: name,price)&#10;Example:&#10;Ha Long Bay,1500000&#10;Sapa Trek,2000000&#10;Hoi An Ancient Town,800000"
       />
     </Layout>
   );

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import type { Nationality, NationalityInput } from '@/types/master';
 
 interface NationalityDialogProps {
@@ -19,14 +20,35 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
     emoji: nationality?.emoji || '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ name?: boolean; iso2?: boolean; emoji?: boolean }>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Validate required fields
+    const newErrors: { name?: boolean; iso2?: boolean; emoji?: boolean } = {};
+    const missingFields: string[] = [];
+
     if (!formData.name.trim()) {
+      newErrors.name = true;
+      missingFields.push('Country Name');
+    }
+    if (!formData.iso2.trim()) {
+      newErrors.iso2 = true;
+      missingFields.push('ISO Code');
+    }
+    if (!formData.emoji.trim()) {
+      newErrors.emoji = true;
+      missingFields.push('Flag Emoji');
+    }
+
+    if (missingFields.length > 0) {
+      setErrors(newErrors);
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
 
+    setErrors({});
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
@@ -56,31 +78,45 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (errors.name) setErrors({ ...errors, name: false });
+                }}
                 placeholder="Country name"
+                className={errors.name ? 'border-destructive' : ''}
                 required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="iso2">ISO Code</Label>
+                <Label htmlFor="iso2">ISO Code *</Label>
                 <Input
                   id="iso2"
                   value={formData.iso2}
-                  onChange={(e) => setFormData({ ...formData, iso2: e.target.value.toUpperCase() })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, iso2: e.target.value.toUpperCase() });
+                    if (errors.iso2) setErrors({ ...errors, iso2: false });
+                  }}
                   placeholder="VN"
+                  className={errors.iso2 ? 'border-destructive' : ''}
                   maxLength={2}
+                  required
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="emoji">Flag Emoji</Label>
+                <Label htmlFor="emoji">Flag Emoji *</Label>
                 <Input
                   id="emoji"
                   value={formData.emoji}
-                  onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, emoji: e.target.value });
+                    if (errors.emoji) setErrors({ ...errors, emoji: false });
+                  }}
                   placeholder="🇻🇳"
+                  className={errors.emoji ? 'border-destructive' : ''}
+                  required
                 />
               </div>
             </div>

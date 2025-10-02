@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import type { Province, ProvinceInput } from '@/types/master';
 
 interface ProvinceDialogProps {
@@ -41,6 +42,18 @@ export function ProvinceDialog({
   }, [open, initialData, reset]);
 
   const handleFormSubmit = (data: ProvinceInput) => {
+    // Validate required fields
+    const missingFields: string[] = [];
+
+    if (!data.name.trim()) {
+      missingFields.push('Province Name');
+    }
+
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
     onSubmit(data);
   };
 
@@ -57,6 +70,7 @@ export function ProvinceDialog({
               id="name"
               {...register('name', { required: 'Province name is required' })}
               placeholder="e.g., Hà Nội, Huế..."
+              className={errors.name ? 'border-destructive' : ''}
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>

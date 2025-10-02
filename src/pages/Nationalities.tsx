@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
+import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Nationality, NationalityInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
@@ -17,7 +19,10 @@ const Nationalities = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingNationality, setEditingNationality] = useState<Nationality | undefined>();
+  const [nameFilter, setNameFilter] = useState('');
+  const [iso2Filter, setIso2Filter] = useState('');
 
   const query: SearchQuery = {
     search,
@@ -67,6 +72,29 @@ const Nationalities = () => {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: () => store.deleteAllNationalities(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nationalities'] });
+      toast.success('All nationalities deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete all nationalities');
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: (items: { name: string; iso2: string; emoji: string }[]) =>
+      store.bulkCreateNationalities(items),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nationalities'] });
+      toast.success('Nationalities imported successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to import nationalities');
+    },
+  });
+
   const handleCreate = async (data: NationalityInput) => {
     await createMutation.mutateAsync(data);
   };
@@ -89,6 +117,26 @@ const Nationalities = () => {
     setEditingNationality(undefined);
   };
 
+  const handleDeleteAll = async () => {
+    if (confirm('Are you sure you want to delete ALL nationalities? This action cannot be undone.')) {
+      await deleteAllMutation.mutateAsync();
+    }
+  };
+
+  const handleBulkImport = async (items: { name: string; iso2: string; emoji: string }[]) => {
+    await bulkImportMutation.mutateAsync(items);
+  };
+
+  const filteredNationalities = useMemo(() => {
+    return nationalities.filter((nationality) => {
+      const matchesName = nameFilter === '' ||
+        nationality.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesIso2 = iso2Filter === '' ||
+        (nationality.iso2?.toLowerCase() || '').includes(iso2Filter.toLowerCase());
+      return matchesName && matchesIso2;
+    });
+  }, [nationalities, nameFilter, iso2Filter]);
+
   const { classes: headerClasses } = useHeaderMode('nationalities.headerMode');
 
   return (
@@ -101,6 +149,22 @@ const Nationalities = () => {
               <p className="text-muted-foreground">Manage client nationalities</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setImportDialogOpen(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Import
+              </Button>
+              <Button
+                onClick={handleDeleteAll}
+                variant="outline"
+                className="gap-2 text-destructive hover:text-destructive"
+              >
+                <Trash className="h-4 w-4" />
+                Delete All
+              </Button>
               <Button onClick={() => handleOpenDialog()} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Add Nationality
@@ -138,9 +202,29 @@ const Nationalities = () => {
                       <TableHead>Flag</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
+                    <TableRow>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by name..."
+                          value={nameFilter}
+                          onChange={(e) => setNameFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by ISO2..."
+                          value={iso2Filter}
+                          onChange={(e) => setIso2Filter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
+                      <TableHead></TableHead>
+                      <TableHead className="w-[70px]"></TableHead>
+                    </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {nationalities.map((nationality) => (
+                    {filteredNationalities.map((nationality) => (
                       <TableRow
                         key={nationality.id}
                         className="cursor-pointer hover:bg-accent/50"
@@ -191,7 +275,7 @@ const Nationalities = () => {
 
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
-                {nationalities.map((nationality) => (
+                {filteredNationalities.map((nationality) => (
                   <Card
                     key={nationality.id}
                     className="p-4 cursor-pointer hover:bg-accent/50"
@@ -250,6 +334,29 @@ const Nationalities = () => {
           onOpenChange={handleCloseDialog}
           nationality={editingNationality}
           onSubmit={editingNationality ? handleEdit : handleCreate}
+        />
+
+        <BulkImportDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
+          onImport={handleBulkImport}
+          title="Import Nationalities"
+          description="Upload or paste nationality data in CSV format"
+          placeholder="Enter nationalities (one per line, format: Country Name,ISO2,Emoji)
+Example:
+United States,US,🇺🇸
+United Kingdom,GB,🇬🇧
+France,FR,🇫🇷"
+          parseItem={(parts: string[]) => {
+            if (parts.length >= 3) {
+              return {
+                name: parts[0],
+                iso2: parts[1],
+                emoji: parts[2]
+              };
+            }
+            return null;
+          }}
         />
       </div>
     </Layout>

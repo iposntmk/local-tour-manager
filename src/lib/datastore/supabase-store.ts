@@ -187,6 +187,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async createGuide(guide: GuideInput): Promise<Guide> {
+    // Check for duplicate name
+    const { data: existing } = await supabase
+      .from('guides')
+      .select('id')
+      .ilike('name', guide.name)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A guide with this name already exists');
+    }
+
     const searchKeywords = generateSearchKeywords(guide.name);
     const { data, error } = await supabase
       .from('guides')
@@ -199,7 +210,7 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return this.mapGuide(data);
   }
@@ -207,12 +218,24 @@ export class SupabaseStore implements DataStore {
   async updateGuide(id: string, guide: Partial<Guide>): Promise<void> {
     const updates: any = {};
     if (guide.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await supabase
+        .from('guides')
+        .select('id')
+        .ilike('name', guide.name)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('A guide with this name already exists');
+      }
+
       updates.name = guide.name;
       updates.search_keywords = generateSearchKeywords(guide.name);
     }
     if (guide.phone !== undefined) updates.phone = guide.phone;
     if (guide.note !== undefined) updates.note = guide.note;
-    
+
     const { error } = await supabase.from('guides').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -230,6 +253,51 @@ export class SupabaseStore implements DataStore {
       phone: original.phone,
       note: original.note,
     });
+  }
+
+  async deleteAllGuides(): Promise<void> {
+    const { error } = await supabase.from('guides').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+  }
+
+  async bulkCreateGuides(inputs: GuideInput[]): Promise<Guide[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const { data: existing } = await supabase
+      .from('guides')
+      .select('name');
+
+    if (existing) {
+      const existingNames = existing.map(g => g.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following guides already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+
+    const records = inputs.map(input => ({
+      name: input.name,
+      phone: input.phone || '',
+      note: input.note || '',
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+
+    const { data, error } = await supabase
+      .from('guides')
+      .insert(records)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(this.mapGuide);
   }
 
   async toggleGuideStatus(id: string): Promise<void> {
@@ -282,6 +350,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async createCompany(company: CompanyInput): Promise<Company> {
+    // Check for duplicate name
+    const { data: existing } = await supabase
+      .from('companies')
+      .select('id')
+      .ilike('name', company.name)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A company with this name already exists');
+    }
+
     const searchKeywords = generateSearchKeywords(company.name);
     const { data, error } = await supabase
       .from('companies')
@@ -296,7 +375,7 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return this.mapCompany(data);
   }
@@ -304,6 +383,18 @@ export class SupabaseStore implements DataStore {
   async updateCompany(id: string, company: Partial<Company>): Promise<void> {
     const updates: any = {};
     if (company.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await supabase
+        .from('companies')
+        .select('id')
+        .ilike('name', company.name)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('A company with this name already exists');
+      }
+
       updates.name = company.name;
       updates.search_keywords = generateSearchKeywords(company.name);
     }
@@ -311,7 +402,7 @@ export class SupabaseStore implements DataStore {
     if (company.phone !== undefined) updates.phone = company.phone;
     if (company.email !== undefined) updates.email = company.email;
     if (company.note !== undefined) updates.note = company.note;
-    
+
     const { error } = await supabase.from('companies').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -333,6 +424,53 @@ export class SupabaseStore implements DataStore {
     });
   }
 
+  async deleteAllCompanies(): Promise<void> {
+    const { error } = await supabase.from('companies').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+  }
+
+  async bulkCreateCompanies(inputs: CompanyInput[]): Promise<Company[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const { data: existing } = await supabase
+      .from('companies')
+      .select('name');
+
+    if (existing) {
+      const existingNames = existing.map(c => c.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following companies already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+
+    const records = inputs.map(input => ({
+      name: input.name,
+      contact_name: input.contactName || '',
+      phone: input.phone || '',
+      email: input.email || '',
+      note: input.note || '',
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+
+    const { data, error } = await supabase
+      .from('companies')
+      .insert(records)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(this.mapCompany);
+  }
+
   // Nationalities
   async listNationalities(query?: SearchQuery): Promise<Nationality[]> {
     let queryBuilder = supabase.from('nationalities').select('*').order('name');
@@ -351,6 +489,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async createNationality(nationality: NationalityInput): Promise<Nationality> {
+    // Check for duplicate name
+    const { data: existing } = await supabase
+      .from('nationalities')
+      .select('id')
+      .ilike('name', nationality.name)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A nationality with this name already exists');
+    }
+
     const searchKeywords = generateSearchKeywords(nationality.name);
     const { data, error } = await supabase
       .from('nationalities')
@@ -363,7 +512,7 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return this.mapNationality(data);
   }
@@ -371,12 +520,24 @@ export class SupabaseStore implements DataStore {
   async updateNationality(id: string, nationality: Partial<Nationality>): Promise<void> {
     const updates: any = {};
     if (nationality.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await supabase
+        .from('nationalities')
+        .select('id')
+        .ilike('name', nationality.name)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('A nationality with this name already exists');
+      }
+
       updates.name = nationality.name;
       updates.search_keywords = generateSearchKeywords(nationality.name);
     }
     if (nationality.iso2 !== undefined) updates.iso2 = nationality.iso2;
     if (nationality.emoji !== undefined) updates.emoji = nationality.emoji;
-    
+
     const { error } = await supabase.from('nationalities').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -394,6 +555,51 @@ export class SupabaseStore implements DataStore {
       iso2: original.iso2,
       emoji: original.emoji,
     });
+  }
+
+  async deleteAllNationalities(): Promise<void> {
+    const { error } = await supabase.from('nationalities').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+  }
+
+  async bulkCreateNationalities(inputs: NationalityInput[]): Promise<Nationality[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const { data: existing } = await supabase
+      .from('nationalities')
+      .select('name');
+
+    if (existing) {
+      const existingNames = existing.map(n => n.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following nationalities already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+
+    const records = inputs.map(input => ({
+      name: input.name,
+      iso2: input.iso2,
+      emoji: input.emoji,
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+
+    const { data, error } = await supabase
+      .from('nationalities')
+      .insert(records)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(this.mapNationality);
   }
 
   // Provinces
@@ -414,6 +620,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async createProvince(province: ProvinceInput): Promise<Province> {
+    // Check for duplicate name
+    const { data: existing } = await supabase
+      .from('provinces')
+      .select('id')
+      .ilike('name', province.name)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A province with this name already exists');
+    }
+
     const searchKeywords = generateSearchKeywords(province.name);
     const { data, error } = await supabase
       .from('provinces')
@@ -424,7 +641,7 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return this.mapProvince(data);
   }
@@ -432,10 +649,22 @@ export class SupabaseStore implements DataStore {
   async updateProvince(id: string, province: Partial<Province>): Promise<void> {
     const updates: any = {};
     if (province.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await supabase
+        .from('provinces')
+        .select('id')
+        .ilike('name', province.name)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('A province with this name already exists');
+      }
+
       updates.name = province.name;
       updates.search_keywords = generateSearchKeywords(province.name);
     }
-    
+
     const { error } = await supabase.from('provinces').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -451,6 +680,49 @@ export class SupabaseStore implements DataStore {
     return this.createProvince({
       name: `${original.name} (Copy)`,
     });
+  }
+
+  async deleteAllProvinces(): Promise<void> {
+    const { error } = await supabase.from('provinces').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+  }
+
+  async bulkCreateProvinces(inputs: ProvinceInput[]): Promise<Province[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const { data: existing } = await supabase
+      .from('provinces')
+      .select('name');
+
+    if (existing) {
+      const existingNames = existing.map(p => p.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following provinces already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+
+    const records = inputs.map(input => ({
+      name: input.name,
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+
+    const { data, error } = await supabase
+      .from('provinces')
+      .insert(records)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(this.mapProvince);
   }
 
   // Tourist Destinations
@@ -471,6 +743,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async createTouristDestination(destination: TouristDestinationInput): Promise<TouristDestination> {
+    // Check for duplicate name
+    const { data: existing } = await supabase
+      .from('tourist_destinations')
+      .select('id')
+      .ilike('name', destination.name)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A tourist destination with this name already exists');
+    }
+
     const searchKeywords = generateSearchKeywords(destination.name);
     const { data, error } = await supabase
       .from('tourist_destinations')
@@ -484,7 +767,7 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return this.mapTouristDestination(data);
   }
@@ -492,6 +775,18 @@ export class SupabaseStore implements DataStore {
   async updateTouristDestination(id: string, destination: Partial<TouristDestination>): Promise<void> {
     const updates: any = {};
     if (destination.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await supabase
+        .from('tourist_destinations')
+        .select('id')
+        .ilike('name', destination.name)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('A tourist destination with this name already exists');
+      }
+
       updates.name = destination.name;
       updates.search_keywords = generateSearchKeywords(destination.name);
     }
@@ -501,7 +796,7 @@ export class SupabaseStore implements DataStore {
       updates.province_name_at_booking = destination.provinceRef.nameAtBooking;
     }
     if (destination.status !== undefined) updates.status = destination.status;
-    
+
     const { error } = await supabase.from('tourist_destinations').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -519,6 +814,52 @@ export class SupabaseStore implements DataStore {
       price: original.price,
       provinceRef: original.provinceRef,
     });
+  }
+
+  async deleteAllTouristDestinations(): Promise<void> {
+    const { error } = await supabase.from('tourist_destinations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+  }
+
+  async bulkCreateTouristDestinations(inputs: TouristDestinationInput[]): Promise<TouristDestination[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const { data: existing } = await supabase
+      .from('tourist_destinations')
+      .select('name');
+
+    if (existing) {
+      const existingNames = existing.map(d => d.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following tourist destinations already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+
+    const records = inputs.map(input => ({
+      name: input.name,
+      price: input.price,
+      province_id: input.provinceRef.id,
+      province_name_at_booking: input.provinceRef.nameAtBooking,
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+
+    const { data, error } = await supabase
+      .from('tourist_destinations')
+      .insert(records)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(this.mapTouristDestination);
   }
 
   // Shopping
@@ -539,6 +880,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async createShopping(shopping: ShoppingInput): Promise<Shopping> {
+    // Check for duplicate name
+    const { data: existing } = await supabase
+      .from('shoppings')
+      .select('id')
+      .ilike('name', shopping.name)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A shopping with this name already exists');
+    }
+
     const searchKeywords = generateSearchKeywords(shopping.name);
     const { data, error } = await supabase
       .from('shoppings')
@@ -549,7 +901,7 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return this.mapShopping(data);
   }
@@ -557,10 +909,22 @@ export class SupabaseStore implements DataStore {
   async updateShopping(id: string, shopping: Partial<Shopping>): Promise<void> {
     const updates: any = {};
     if (shopping.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await supabase
+        .from('shoppings')
+        .select('id')
+        .ilike('name', shopping.name)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('A shopping with this name already exists');
+      }
+
       updates.name = shopping.name;
       updates.search_keywords = generateSearchKeywords(shopping.name);
     }
-    
+
     const { error } = await supabase.from('shoppings').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -576,6 +940,49 @@ export class SupabaseStore implements DataStore {
     return this.createShopping({
       name: `${original.name} (Copy)`,
     });
+  }
+
+  async deleteAllShoppings(): Promise<void> {
+    const { error } = await supabase.from('shoppings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+  }
+
+  async bulkCreateShoppings(inputs: ShoppingInput[]): Promise<Shopping[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const { data: existing } = await supabase
+      .from('shoppings')
+      .select('name');
+
+    if (existing) {
+      const existingNames = existing.map(s => s.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following shoppings already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+
+    const records = inputs.map(input => ({
+      name: input.name,
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+
+    const { data, error } = await supabase
+      .from('shoppings')
+      .insert(records)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(this.mapShopping);
   }
 
   // Expense Categories
@@ -596,6 +1003,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async createExpenseCategory(category: ExpenseCategoryInput): Promise<ExpenseCategory> {
+    // Check for duplicate name
+    const { data: existing } = await supabase
+      .from('expense_categories')
+      .select('id')
+      .ilike('name', category.name)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('An expense category with this name already exists');
+    }
+
     const searchKeywords = generateSearchKeywords(category.name);
     const { data, error } = await supabase
       .from('expense_categories')
@@ -606,7 +1024,7 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return this.mapExpenseCategory(data);
   }
@@ -614,10 +1032,22 @@ export class SupabaseStore implements DataStore {
   async updateExpenseCategory(id: string, category: Partial<ExpenseCategory>): Promise<void> {
     const updates: any = {};
     if (category.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await supabase
+        .from('expense_categories')
+        .select('id')
+        .ilike('name', category.name)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('An expense category with this name already exists');
+      }
+
       updates.name = category.name;
       updates.search_keywords = generateSearchKeywords(category.name);
     }
-    
+
     const { error } = await supabase.from('expense_categories').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -633,6 +1063,49 @@ export class SupabaseStore implements DataStore {
     return this.createExpenseCategory({
       name: `${original.name} (Copy)`,
     });
+  }
+
+  async deleteAllExpenseCategories(): Promise<void> {
+    const { error } = await supabase.from('expense_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+  }
+
+  async bulkCreateExpenseCategories(inputs: ExpenseCategoryInput[]): Promise<ExpenseCategory[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const { data: existing } = await supabase
+      .from('expense_categories')
+      .select('name');
+
+    if (existing) {
+      const existingNames = existing.map(c => c.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following expense categories already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+
+    const records = inputs.map(input => ({
+      name: input.name,
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .insert(records)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(this.mapExpenseCategory);
   }
 
   // Detailed Expenses
@@ -654,6 +1127,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async createDetailedExpense(expense: DetailedExpenseInput): Promise<DetailedExpense> {
+    // Check for duplicate name
+    const { data: existing } = await supabase
+      .from('detailed_expenses')
+      .select('id')
+      .ilike('name', expense.name)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A detailed expense with this name already exists');
+    }
+
     const searchKeywords = generateSearchKeywords(expense.name);
     const { data, error } = await supabase
       .from('detailed_expenses')
@@ -667,7 +1151,7 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     return this.mapDetailedExpense(data);
   }
@@ -675,6 +1159,18 @@ export class SupabaseStore implements DataStore {
   async updateDetailedExpense(id: string, expense: Partial<DetailedExpense>): Promise<void> {
     const updates: any = {};
     if (expense.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await supabase
+        .from('detailed_expenses')
+        .select('id')
+        .ilike('name', expense.name)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('A detailed expense with this name already exists');
+      }
+
       updates.name = expense.name;
       updates.search_keywords = generateSearchKeywords(expense.name);
     }
@@ -684,7 +1180,7 @@ export class SupabaseStore implements DataStore {
       updates.category_name_at_booking = expense.categoryRef.nameAtBooking;
     }
     if (expense.status !== undefined) updates.status = expense.status;
-    
+
     const { error } = await supabase.from('detailed_expenses').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -702,6 +1198,52 @@ export class SupabaseStore implements DataStore {
       price: original.price,
       categoryRef: original.categoryRef,
     });
+  }
+
+  async deleteAllDetailedExpenses(): Promise<void> {
+    const { error } = await supabase.from('detailed_expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) throw error;
+  }
+
+  async bulkCreateDetailedExpenses(inputs: DetailedExpenseInput[]): Promise<DetailedExpense[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const { data: existing } = await supabase
+      .from('detailed_expenses')
+      .select('name');
+
+    if (existing) {
+      const existingNames = existing.map(e => e.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following detailed expenses already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+
+    const records = inputs.map(input => ({
+      name: input.name,
+      price: input.price,
+      category_id: input.categoryRef.id,
+      category_name_at_booking: input.categoryRef.nameAtBooking,
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+
+    const { data, error } = await supabase
+      .from('detailed_expenses')
+      .insert(records)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(this.mapDetailedExpense);
   }
 
   // Tours
@@ -807,9 +1349,20 @@ export class SupabaseStore implements DataStore {
   }
 
   async createTour(tour: TourInput): Promise<Tour> {
+    // Check for duplicate tour code
+    const { data: existing } = await supabase
+      .from('tours')
+      .select('id')
+      .ilike('tour_code', tour.tourCode)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A tour with this tour code already exists');
+    }
+
     const totalGuests = (tour.adults || 0) + (tour.children || 0);
     const totalDays = differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1;
-    
+
     const { data, error } = await supabase
       .from('tours')
       .insert({
@@ -832,15 +1385,29 @@ export class SupabaseStore implements DataStore {
       })
       .select()
       .single();
-    
-    
+
+
     if (error) throw error;
     return this.getTour(data.id) as Promise<Tour>;
   }
 
   async updateTour(id: string, tour: Partial<Tour>): Promise<void> {
     const updates: any = {};
-    if (tour.tourCode !== undefined) updates.tour_code = tour.tourCode;
+    if (tour.tourCode !== undefined) {
+      // Check for duplicate tour code (excluding current record)
+      const { data: existing } = await supabase
+        .from('tours')
+        .select('id')
+        .ilike('tour_code', tour.tourCode)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('A tour with this tour code already exists');
+      }
+
+      updates.tour_code = tour.tourCode;
+    }
     if (tour.companyRef !== undefined) {
       updates.company_id = tour.companyRef.id;
       updates.company_name_at_booking = tour.companyRef.nameAtBooking;
@@ -862,7 +1429,7 @@ export class SupabaseStore implements DataStore {
     if (tour.startDate !== undefined) updates.start_date = tour.startDate;
     if (tour.endDate !== undefined) updates.end_date = tour.endDate;
     if (tour.totalDays !== undefined) updates.total_days = tour.totalDays;
-    
+
     const { error } = await supabase.from('tours').update(updates).eq('id', id);
     if (error) throw error;
   }
@@ -875,9 +1442,26 @@ export class SupabaseStore implements DataStore {
   async duplicateTour(id: string): Promise<Tour> {
     const original = await this.getTour(id);
     if (!original) throw new Error('Tour not found');
-    
+
+    // Generate unique tour code
+    let newTourCode = `${original.tourCode} (Copy)`;
+    let counter = 1;
+
+    while (true) {
+      const { data: existing } = await supabase
+        .from('tours')
+        .select('id')
+        .ilike('tour_code', newTourCode)
+        .maybeSingle();
+
+      if (!existing) break;
+
+      counter++;
+      newTourCode = `${original.tourCode} (Copy ${counter})`;
+    }
+
     return this.createTour({
-      tourCode: `${original.tourCode}-COPY`,
+      tourCode: newTourCode,
       companyRef: original.companyRef,
       guideRef: original.guideRef,
       clientNationalityRef: original.clientNationalityRef,

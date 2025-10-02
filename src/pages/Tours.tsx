@@ -1,5 +1,5 @@
 import { Layout } from '@/components/Layout';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,17 @@ const Tours = () => {
   const [nationalityFilter, setNationalityFilter] = useState<string>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [filtersExpanded, setFiltersExpanded] = useState(() => {
+    const saved = localStorage.getItem('tours.filtersExpanded');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Save filters expanded state to localStorage
+  useEffect(() => {
+    localStorage.setItem('tours.filtersExpanded', JSON.stringify(filtersExpanded));
+  }, [filtersExpanded]);
 
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ['tours', search],
@@ -247,75 +256,94 @@ const Tours = () => {
           />
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Filter className="h-3 w-3" />
-                Nationality
-              </label>
-              <Select value={nationalityFilter} onValueChange={setNationalityFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Nationalities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Nationalities</SelectItem>
-                  {nationalities.map(nationality => (
-                    <SelectItem key={nationality.id} value={nationality.id}>
-                      {nationality.emoji} {nationality.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                Month
-              </label>
-              <Select value={monthFilter} onValueChange={setMonthFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Months" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Months</SelectItem>
-                  {availableMonths.map(month => (
-                    <SelectItem key={month} value={month}>
-                      {new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {hasActiveFilters && (
-              <Button variant="outline" onClick={clearFilters} className="sm:self-end">
-                <X className="h-4 w-4 mr-2" />
-                Clear Filters
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filters
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+                className="h-8 w-8 p-0"
+              >
+                {filtersExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
-            )}
-          </div>
+            </div>
 
-          {/* Filter Results Info */}
-          {hasActiveFilters && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">
-                Showing {filteredTours.length} of {tours.length} tours
-              </span>
-              {nationalityFilter !== 'all' && (
-                <Badge variant="secondary">
-                  {nationalities.find(n => n.id === nationalityFilter)?.name}
-                </Badge>
-              )}
-              {monthFilter !== 'all' && (
-                <Badge variant="secondary">
-                  {new Date(monthFilter + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
-                </Badge>
+            <div className={`transition-all duration-200 overflow-hidden ${filtersExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Filter className="h-3 w-3" />
+                      Nationality
+                    </label>
+                    <Select value={nationalityFilter} onValueChange={setNationalityFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Nationalities" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Nationalities</SelectItem>
+                        {nationalities.map(nationality => (
+                          <SelectItem key={nationality.id} value={nationality.id}>
+                            {nationality.emoji} {nationality.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Month
+                    </label>
+                    <Select value={monthFilter} onValueChange={setMonthFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Months" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Months</SelectItem>
+                        {availableMonths.map(month => (
+                          <SelectItem key={month} value={month}>
+                            {new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {hasActiveFilters && (
+                  <Button variant="outline" onClick={clearFilters} className="sm:self-end">
+                    <X className="h-4 w-4 mr-2" />
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+
+              {/* Filter Results Info */}
+              {hasActiveFilters && (
+                <div className="flex items-center gap-2 text-sm mt-3">
+                  <span className="text-muted-foreground">
+                    Showing {filteredTours.length} of {tours.length} tours
+                  </span>
+                  {nationalityFilter !== 'all' && (
+                    <Badge variant="secondary">
+                      {nationalities.find(n => n.id === nationalityFilter)?.name}
+                    </Badge>
+                  )}
+                  {monthFilter !== 'all' && (
+                    <Badge variant="secondary">
+                      {new Date(monthFilter + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </div>
         </div>
 
         {isLoading ? (

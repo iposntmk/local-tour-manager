@@ -1,11 +1,13 @@
 import { Layout } from '@/components/Layout';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { ProvinceDialog } from '@/components/provinces/ProvinceDialog';
+import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { Province, ProvinceInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
@@ -15,7 +17,9 @@ const Provinces = () => {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProvince, setEditingProvince] = useState<Province | undefined>();
-  
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [nameFilter, setNameFilter] = useState('');
+
   const queryClient = useQueryClient();
 
   const { data: provinces = [], isLoading } = useQuery({
@@ -65,6 +69,28 @@ const Provinces = () => {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: () => store.deleteAllProvinces(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['provinces'] });
+      toast.success('All provinces deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: (items: ProvinceInput[]) => store.bulkCreateProvinces(items),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['provinces'] });
+      toast.success('Provinces imported successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
   const handleCreate = (input: ProvinceInput) => {
     createMutation.mutate(input);
   };
@@ -88,6 +114,23 @@ const Provinces = () => {
     setEditingProvince(undefined);
   };
 
+  const handleDeleteAll = () => {
+    if (confirm('Are you sure you want to delete ALL provinces? This action cannot be undone.')) {
+      deleteAllMutation.mutate();
+    }
+  };
+
+  const handleBulkImport = async (items: ProvinceInput[]) => {
+    await bulkImportMutation.mutateAsync(items);
+  };
+
+  const filteredProvinces = useMemo(() => {
+    if (!nameFilter) return provinces;
+    return provinces.filter((province) =>
+      province.name.toLowerCase().includes(nameFilter.toLowerCase())
+    );
+  }, [provinces, nameFilter]);
+
   const { classes: headerClasses } = useHeaderMode('provinces.headerMode');
 
   return (
@@ -100,6 +143,20 @@ const Provinces = () => {
               <p className="text-muted-foreground">Manage provinces and cities</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDeleteAll}
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Delete All
+              </Button>
               <Button onClick={() => handleOpenDialog()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Province
@@ -135,9 +192,21 @@ const Provinces = () => {
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
+                  <tr className="border-t">
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter by name..."
+                        value={nameFilter}
+                        onChange={(e) => setNameFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
+                    <th className="p-2"></th>
+                    <th className="p-2"></th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {provinces.map((province) => (
+                  {filteredProvinces.map((province) => (
                     <tr
                       key={province.id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
@@ -187,7 +256,7 @@ const Provinces = () => {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {provinces.map((province) => (
+              {filteredProvinces.map((province) => (
                 <div
                   key={province.id}
                   className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
@@ -244,6 +313,23 @@ const Provinces = () => {
         onSubmit={editingProvince ? handleEdit : handleCreate}
         initialData={editingProvince}
         isEditing={!!editingProvince}
+      />
+
+      <BulkImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleBulkImport}
+        title="Import Provinces"
+        description="Import multiple provinces at once. Enter one province name per line or use comma format."
+        placeholder="Enter province names (one per line)&#10;Example:&#10;Ha Noi&#10;Ho Chi Minh&#10;Da Nang&#10;&#10;Or comma format:&#10;Ha Noi,Ho Chi Minh,Da Nang"
+        parseItem={(parts) => {
+          // Support both single name format and comma-separated format
+          const name = parts[0];
+          if (name) {
+            return { name };
+          }
+          return null;
+        }}
       />
     </Layout>
   );

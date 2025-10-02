@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import type { DetailedExpense, DetailedExpenseInput } from '@/types/master';
 
 interface DetailedExpenseDialogProps {
@@ -47,6 +48,7 @@ export function DetailedExpenseDialog({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
     initialData?.categoryRef.id || ''
   );
+  const [fieldErrors, setFieldErrors] = useState<{ category?: boolean }>({});
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DetailedExpenseInput>();
 
@@ -67,9 +69,28 @@ export function DetailedExpenseDialog({
   }, [open, initialData, reset]);
 
   const handleFormSubmit = (data: DetailedExpenseInput) => {
+    // Validate required fields
+    const missingFields: string[] = [];
+    const newErrors: { category?: boolean } = {};
+
+    if (!data.name.trim()) {
+      missingFields.push('Expense Name');
+    }
+    if (data.price === undefined || data.price === null || data.price <= 0) {
+      missingFields.push('Price');
+    }
     if (!selectedCategoryId) {
+      missingFields.push('Category');
+      newErrors.category = true;
+    }
+
+    if (missingFields.length > 0) {
+      setFieldErrors(newErrors);
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
+
+    setFieldErrors({});
     const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
     if (selectedCategory) {
       onSubmit({
@@ -97,6 +118,7 @@ export function DetailedExpenseDialog({
               id="name"
               {...register('name', { required: 'Expense name is required' })}
               placeholder="e.g., Mineral Water, Cold Towels..."
+              className={errors.name ? 'border-destructive' : ''}
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -111,7 +133,10 @@ export function DetailedExpenseDialog({
                   variant="outline"
                   role="combobox"
                   aria-expanded={categoryOpen}
-                  className="w-full justify-between"
+                  className={cn(
+                    "w-full justify-between",
+                    fieldErrors.category && 'border-destructive'
+                  )}
                 >
                   {selectedCategory ? selectedCategory.name : 'Select category...'}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -129,6 +154,7 @@ export function DetailedExpenseDialog({
                         onSelect={() => {
                           setSelectedCategoryId(category.id);
                           setCategoryOpen(false);
+                          if (fieldErrors.category) setFieldErrors({ ...fieldErrors, category: false });
                         }}
                       >
                         <Check

@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import type { ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
 
 interface ExpenseCategoryDialogProps {
@@ -41,6 +42,18 @@ export function ExpenseCategoryDialog({
   }, [open, initialData, reset]);
 
   const handleFormSubmit = (data: ExpenseCategoryInput) => {
+    // Validate required fields
+    const missingFields: string[] = [];
+
+    if (!data.name.trim()) {
+      missingFields.push('Category Name');
+    }
+
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
     onSubmit(data);
   };
 
@@ -57,6 +70,7 @@ export function ExpenseCategoryDialog({
               id="name"
               {...register('name', { required: 'Category name is required' })}
               placeholder="e.g., Transportation, Accommodation..."
+              className={errors.name ? 'border-destructive' : ''}
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
