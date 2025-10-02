@@ -1054,46 +1054,17 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
               const finalTours = draft.map(d => {
                 const tour = { ...d.tour };
                 
-                // Update destinations with matched data
+                // Remove matched metadata fields before saving
                 if (tour.destinations) {
-                  tour.destinations = tour.destinations.map(dest => {
-                    if (dest.matchedId && dest.matchedPrice !== undefined) {
-                      return {
-                        ...dest,
-                        id: dest.matchedId,
-                        price: dest.matchedPrice
-                      };
-                    }
-                    return dest;
-                  });
+                  tour.destinations = tour.destinations.map(({ matchedId, matchedPrice, ...dest }) => dest);
                 }
                 
-                // Update expenses with matched data
                 if (tour.expenses) {
-                  tour.expenses = tour.expenses.map(exp => {
-                    if (exp.matchedId && exp.matchedPrice !== undefined) {
-                      return {
-                        ...exp,
-                        id: exp.matchedId,
-                        price: exp.matchedPrice
-                      };
-                    }
-                    return exp;
-                  });
+                  tour.expenses = tour.expenses.map(({ matchedId, matchedPrice, ...exp }) => exp);
                 }
                 
-                // Update meals with matched data
                 if (tour.meals) {
-                  tour.meals = tour.meals.map(meal => {
-                    if (meal.matchedId && meal.matchedPrice !== undefined) {
-                      return {
-                        ...meal,
-                        id: meal.matchedId,
-                        price: meal.matchedPrice
-                      };
-                    }
-                    return meal;
-                  });
+                  tour.meals = tour.meals.map(({ matchedId, matchedPrice, ...meal }) => meal);
                 }
                 
                 return tour;
