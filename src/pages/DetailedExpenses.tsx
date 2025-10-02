@@ -1,11 +1,14 @@
 import { Layout } from '@/components/Layout';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
+import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { DetailedExpense, DetailedExpenseInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
@@ -14,13 +17,22 @@ import { useHeaderMode } from '@/hooks/useHeaderMode';
 const DetailedExpenses = () => {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<DetailedExpense | undefined>();
-  
+  const [nameFilter, setNameFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [priceFilter, setPriceFilter] = useState('');
+
   const queryClient = useQueryClient();
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ['detailedExpenses', search],
     queryFn: () => store.listDetailedExpenses({ search }),
+  });
+
+  const { data: expenseCategories = [] } = useQuery({
+    queryKey: ['expenseCategories'],
+    queryFn: () => store.listExpenseCategories(),
   });
 
   const createMutation = useMutation({
@@ -65,6 +77,32 @@ const DetailedExpenses = () => {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: () => store.deleteAllDetailedExpenses(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success('All detailed expenses deleted successfully');
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: async (items: { name: string; price: number }[]) => {
+      const categories = await store.listExpenseCategories();
+      const defaultCategory = categories[0] || { id: '', name: 'Other' };
+
+      const inputs: DetailedExpenseInput[] = items.map(item => ({
+        name: item.name,
+        price: item.price,
+        categoryRef: { id: defaultCategory.id, nameAtBooking: defaultCategory.name },
+      }));
+
+      return store.bulkCreateDetailedExpenses(inputs);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+    },
+  });
+
   const handleCreate = (input: DetailedExpenseInput) => {
     createMutation.mutate(input);
   };
@@ -88,6 +126,26 @@ const DetailedExpenses = () => {
     setEditingExpense(undefined);
   };
 
+  const handleDeleteAll = () => {
+    if (confirm('Are you sure you want to delete ALL detailed expenses? This action cannot be undone.')) {
+      deleteAllMutation.mutate();
+    }
+  };
+
+  const handleBulkImport = async (items: { name: string; price: number }[]) => {
+    await bulkImportMutation.mutateAsync(items);
+  };
+
+  // Filter expenses based on column filters
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(expense => {
+      const matchesName = !nameFilter || expense.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesCategory = !categoryFilter || expense.categoryRef.nameAtBooking === categoryFilter;
+      const matchesPrice = !priceFilter || expense.price.toString().includes(priceFilter);
+      return matchesName && matchesCategory && matchesPrice;
+    });
+  }, [expenses, nameFilter, categoryFilter, priceFilter]);
+
   const { classes: headerClasses } = useHeaderMode('detailedexpenses.headerMode');
 
   return (
@@ -100,6 +158,14 @@ const DetailedExpenses = () => {
               <p className="text-muted-foreground">Manage detailed expenses</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteAll}>
+                <Trash className="h-4 w-4 mr-2" />
+                Delete All
+              </Button>
               <Button onClick={() => handleOpenDialog()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Expense
@@ -137,9 +203,47 @@ const DetailedExpenses = () => {
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
+                  <tr>
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter name..."
+                        value={nameFilter}
+                        onChange={(e) => setNameFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
+                    <th className="p-2">
+                      <Select
+                        value={categoryFilter}
+                        onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {expenseCategories.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </th>
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter price..."
+                        value={priceFilter}
+                        onChange={(e) => setPriceFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
+                    <th className="p-2"></th>
+                    <th className="p-2"></th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {expenses.map((expense) => (
+                  {filteredExpenses.map((expense) => (
                     <tr
                       key={expense.id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
@@ -193,7 +297,7 @@ const DetailedExpenses = () => {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {expenses.map((expense) => (
+              {filteredExpenses.map((expense) => (
                 <div
                   key={expense.id}
                   className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
@@ -253,6 +357,15 @@ const DetailedExpenses = () => {
         onSubmit={editingExpense ? handleEdit : handleCreate}
         initialData={editingExpense}
         isEditing={!!editingExpense}
+      />
+
+      <BulkImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleBulkImport}
+        title="Import Detailed Expenses"
+        description="Import detailed expenses from a text file or paste data. Each line should have: name,price"
+        placeholder="Enter expenses (one per line, format: name,price)&#10;Example:&#10;Airport Transfer,500000&#10;Hotel Booking,3000000&#10;Tour Guide Fee,800000"
       />
     </Layout>
   );

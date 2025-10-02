@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithSave } from '@/components/ui/textarea-with-save';
+import { toast } from 'sonner';
 import type { Company, CompanyInput } from '@/types/master';
 
 interface CompanyDialogProps {
@@ -22,14 +23,27 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
     note: company?.note || '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ name?: boolean }>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Validate required fields
+    const newErrors: { name?: boolean } = {};
+    const missingFields: string[] = [];
+
     if (!formData.name.trim()) {
+      newErrors.name = true;
+      missingFields.push('Company Name');
+    }
+
+    if (missingFields.length > 0) {
+      setErrors(newErrors);
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
 
+    setErrors({});
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
@@ -59,8 +73,12 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (errors.name) setErrors({ ...errors, name: false });
+                }}
                 placeholder="Company name"
+                className={errors.name ? 'border-destructive' : ''}
                 required
               />
             </div>
@@ -101,10 +119,11 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
 
             <div className="grid gap-2">
               <Label htmlFor="note">Note</Label>
-              <Textarea
+              <TextareaWithSave
                 id="note"
+                storageKey="company-note"
                 value={formData.note}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                onValueChange={(value) => setFormData({ ...formData, note: value })}
                 placeholder="Additional information"
                 rows={3}
               />

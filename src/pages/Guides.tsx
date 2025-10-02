@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 
 import { GuideDialog } from '@/components/guides/GuideDialog';
 import type { Guide, GuideInput } from '@/types/master';
@@ -19,6 +21,9 @@ const Guides = () => {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGuide, setEditingGuide] = useState<Guide | undefined>();
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [nameFilter, setNameFilter] = useState('');
+  const [phoneFilter, setPhoneFilter] = useState('');
 
   const query: SearchQuery = {
     search,
@@ -68,6 +73,28 @@ const Guides = () => {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: () => store.deleteAllGuides(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guides'] });
+      toast.success('All guides deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete all guides');
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: (inputs: GuideInput[]) => store.bulkCreateGuides(inputs),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guides'] });
+      toast.success('Guides imported successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to import guides');
+    },
+  });
+
   const handleCreate = async (data: GuideInput) => {
     await createMutation.mutateAsync(data);
   };
@@ -90,6 +117,24 @@ const Guides = () => {
     setEditingGuide(undefined);
   };
 
+  const handleDeleteAll = async () => {
+    if (confirm('Are you sure you want to delete all guides? This action cannot be undone.')) {
+      await deleteAllMutation.mutateAsync();
+    }
+  };
+
+  const handleBulkImport = async (items: GuideInput[]) => {
+    await bulkImportMutation.mutateAsync(items);
+  };
+
+  const filteredGuides = useMemo(() => {
+    return guides.filter(guide => {
+      const matchesName = !nameFilter || guide.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesPhone = !phoneFilter || (guide.phone && guide.phone.toLowerCase().includes(phoneFilter.toLowerCase()));
+      return matchesName && matchesPhone;
+    });
+  }, [guides, nameFilter, phoneFilter]);
+
   const { classes: headerClasses } = useHeaderMode('guides.headerMode');
 
   return (
@@ -102,6 +147,22 @@ const Guides = () => {
               <p className="text-muted-foreground">Manage your tour guides</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setImportDialogOpen(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Import
+              </Button>
+              <Button
+                onClick={handleDeleteAll}
+                variant="outline"
+                className="gap-2 text-destructive hover:text-destructive"
+              >
+                <Trash className="h-4 w-4" />
+                Delete All
+              </Button>
               <Button onClick={() => handleOpenDialog()} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Add Guide
@@ -139,9 +200,29 @@ const Guides = () => {
                       <TableHead>Note</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
+                    <TableRow>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by name..."
+                          value={nameFilter}
+                          onChange={(e) => setNameFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by phone..."
+                          value={phoneFilter}
+                          onChange={(e) => setPhoneFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
+                      <TableHead></TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {guides.map((guide) => (
+                    {filteredGuides.map((guide) => (
                       <TableRow
                         key={guide.id}
                         className="cursor-pointer hover:bg-accent/50"
@@ -190,7 +271,7 @@ const Guides = () => {
 
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
-                {guides.map((guide) => (
+                {filteredGuides.map((guide) => (
                   <Card
                     key={guide.id}
                     className="p-4 cursor-pointer hover:bg-accent/50"
@@ -249,6 +330,25 @@ const Guides = () => {
           onOpenChange={handleCloseDialog}
           guide={editingGuide}
           onSubmit={editingGuide ? handleEdit : handleCreate}
+        />
+
+        <BulkImportDialog<GuideInput>
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
+          onImport={handleBulkImport}
+          title="Import Guides"
+          description="Import multiple guides at once. Format: Guide Name,Phone,Note (note is optional)"
+          placeholder="Enter guides (one per line, format: Guide Name,Phone,Note)\nExample:\nJohn Smith,0123456789,Experienced guide\nJane Doe,0987654321,Speaks English and French\nBob Wilson,0111222333"
+          parseItem={(parts: string[]) => {
+            if (parts.length >= 2) {
+              return {
+                name: parts[0] || '',
+                phone: parts[1] || '',
+                note: parts[2] || '', // note is optional
+              };
+            }
+            return null;
+          }}
         />
       </div>
     </Layout>

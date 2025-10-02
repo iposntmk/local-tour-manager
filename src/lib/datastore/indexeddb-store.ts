@@ -110,6 +110,48 @@ export class IndexedDbStore implements DataStore {
     await db.guides.delete(id);
   }
 
+  async deleteAllGuides(): Promise<void> {
+    await db.guides.clear();
+  }
+
+  async bulkCreateGuides(inputs: GuideInput[]): Promise<Guide[]> {
+    // Check for duplicates within the batch
+    const normalizedNames = inputs.map(input => normalizeForUnique(input.name));
+    const duplicatesInBatch = normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const existing = await db.guides.toArray();
+    const existingNormalized = existing.map(g => normalizeForUnique(g.name));
+    const duplicates = inputs.filter(input =>
+      existingNormalized.includes(normalizeForUnique(input.name))
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`The following guides already exist: ${duplicates.map(d => d.name).join(', ')}`);
+    }
+
+    const guides: Guide[] = [];
+
+    for (const input of inputs) {
+      const guide: Guide = {
+        id: crypto.randomUUID(),
+        name: input.name,
+        phone: input.phone || '',
+        note: input.note || '',
+        status: 'active',
+        searchKeywords: generateSearchKeywords(input.name),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+      };
+      guides.push(guide);
+    }
+
+    await db.guides.bulkAdd(guides);
+    return guides;
+  }
+
   // ===== COMPANIES =====
   async listCompanies(query?: SearchQuery): Promise<Company[]> {
     let collection = db.companies.toCollection();
@@ -208,6 +250,50 @@ export class IndexedDbStore implements DataStore {
     await db.companies.delete(id);
   }
 
+  async deleteAllCompanies(): Promise<void> {
+    await db.companies.clear();
+  }
+
+  async bulkCreateCompanies(inputs: CompanyInput[]): Promise<Company[]> {
+    // Check for duplicates within the batch
+    const normalizedNames = inputs.map(input => normalizeForUnique(input.name));
+    const duplicatesInBatch = normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const existing = await db.companies.toArray();
+    const existingNormalized = existing.map(c => normalizeForUnique(c.name));
+    const duplicates = inputs.filter(input =>
+      existingNormalized.includes(normalizeForUnique(input.name))
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`The following companies already exist: ${duplicates.map(d => d.name).join(', ')}`);
+    }
+
+    const companies: Company[] = [];
+
+    for (const input of inputs) {
+      const company: Company = {
+        id: crypto.randomUUID(),
+        name: input.name,
+        contactName: input.contactName || '',
+        phone: input.phone || '',
+        email: input.email || '',
+        note: input.note || '',
+        status: 'active',
+        searchKeywords: generateSearchKeywords(input.name),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+      };
+      companies.push(company);
+    }
+
+    await db.companies.bulkAdd(companies);
+    return companies;
+  }
+
   // ===== NATIONALITIES =====
   async listNationalities(query?: SearchQuery): Promise<Nationality[]> {
     let collection = db.nationalities.toCollection();
@@ -304,6 +390,48 @@ export class IndexedDbStore implements DataStore {
     await db.nationalities.delete(id);
   }
 
+  async deleteAllNationalities(): Promise<void> {
+    await db.nationalities.clear();
+  }
+
+  async bulkCreateNationalities(inputs: NationalityInput[]): Promise<Nationality[]> {
+    // Check for duplicates within the batch
+    const normalizedNames = inputs.map(input => normalizeForUnique(input.name));
+    const duplicatesInBatch = normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const existing = await db.nationalities.toArray();
+    const existingNormalized = existing.map(n => normalizeForUnique(n.name));
+    const duplicates = inputs.filter(input =>
+      existingNormalized.includes(normalizeForUnique(input.name))
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`The following nationalities already exist: ${duplicates.map(d => d.name).join(', ')}`);
+    }
+
+    const nationalities: Nationality[] = [];
+
+    for (const input of inputs) {
+      const nationality: Nationality = {
+        id: crypto.randomUUID(),
+        name: input.name,
+        iso2: input.iso2,
+        emoji: input.emoji,
+        status: 'active',
+        searchKeywords: generateSearchKeywords(input.name),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+      };
+      nationalities.push(nationality);
+    }
+
+    await db.nationalities.bulkAdd(nationalities);
+    return nationalities;
+  }
+
   // ===== PROVINCES =====
   async listProvinces(query?: SearchQuery): Promise<Province[]> {
     let collection = db.provinces.toCollection();
@@ -396,6 +524,46 @@ export class IndexedDbStore implements DataStore {
 
   async deleteProvince(id: string): Promise<void> {
     await db.provinces.delete(id);
+  }
+
+  async deleteAllProvinces(): Promise<void> {
+    await db.provinces.clear();
+  }
+
+  async bulkCreateProvinces(inputs: ProvinceInput[]): Promise<Province[]> {
+    // Check for duplicates within the batch
+    const normalizedNames = inputs.map(input => normalizeForUnique(input.name));
+    const duplicatesInBatch = normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const existing = await db.provinces.toArray();
+    const existingNormalized = existing.map(p => normalizeForUnique(p.name));
+    const duplicates = inputs.filter(input =>
+      existingNormalized.includes(normalizeForUnique(input.name))
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`The following provinces already exist: ${duplicates.map(d => d.name).join(', ')}`);
+    }
+
+    const provinces: Province[] = [];
+
+    for (const input of inputs) {
+      const province: Province = {
+        id: crypto.randomUUID(),
+        name: input.name,
+        status: 'active',
+        searchKeywords: generateSearchKeywords(input.name),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+      };
+      provinces.push(province);
+    }
+
+    await db.provinces.bulkAdd(provinces);
+    return provinces;
   }
 
   // ===== TOURIST DESTINATIONS =====
@@ -494,6 +662,48 @@ export class IndexedDbStore implements DataStore {
     await db.touristDestinations.delete(id);
   }
 
+  async deleteAllTouristDestinations(): Promise<void> {
+    await db.touristDestinations.clear();
+  }
+
+  async bulkCreateTouristDestinations(inputs: TouristDestinationInput[]): Promise<TouristDestination[]> {
+    // Check for duplicates within the batch
+    const normalizedNames = inputs.map(input => normalizeForUnique(input.name));
+    const duplicatesInBatch = normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const existing = await db.touristDestinations.toArray();
+    const existingNormalized = existing.map(d => normalizeForUnique(d.name));
+    const duplicates = inputs.filter(input =>
+      existingNormalized.includes(normalizeForUnique(input.name))
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`The following tourist destinations already exist: ${duplicates.map(d => d.name).join(', ')}`);
+    }
+
+    const destinations: TouristDestination[] = [];
+
+    for (const input of inputs) {
+      const destination: TouristDestination = {
+        id: crypto.randomUUID(),
+        name: input.name,
+        price: input.price,
+        provinceRef: input.provinceRef,
+        status: 'active',
+        searchKeywords: generateSearchKeywords(input.name),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+      };
+      destinations.push(destination);
+    }
+
+    await db.touristDestinations.bulkAdd(destinations);
+    return destinations;
+  }
+
   // ===== SHOPPING =====
   async listShoppings(query?: SearchQuery): Promise<Shopping[]> {
     let collection = db.shoppings.toCollection();
@@ -588,6 +798,46 @@ export class IndexedDbStore implements DataStore {
     await db.shoppings.delete(id);
   }
 
+  async deleteAllShoppings(): Promise<void> {
+    await db.shoppings.clear();
+  }
+
+  async bulkCreateShoppings(inputs: ShoppingInput[]): Promise<Shopping[]> {
+    // Check for duplicates within the batch
+    const normalizedNames = inputs.map(input => normalizeForUnique(input.name));
+    const duplicatesInBatch = normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const existing = await db.shoppings.toArray();
+    const existingNormalized = existing.map(s => normalizeForUnique(s.name));
+    const duplicates = inputs.filter(input =>
+      existingNormalized.includes(normalizeForUnique(input.name))
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`The following shoppings already exist: ${duplicates.map(d => d.name).join(', ')}`);
+    }
+
+    const shoppings: Shopping[] = [];
+
+    for (const input of inputs) {
+      const shopping: Shopping = {
+        id: crypto.randomUUID(),
+        name: input.name,
+        status: 'active',
+        searchKeywords: generateSearchKeywords(input.name),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+      };
+      shoppings.push(shopping);
+    }
+
+    await db.shoppings.bulkAdd(shoppings);
+    return shoppings;
+  }
+
   // ===== EXPENSE CATEGORIES =====
   async listExpenseCategories(query?: SearchQuery): Promise<ExpenseCategory[]> {
     let collection = db.expenseCategories.toCollection();
@@ -680,6 +930,46 @@ export class IndexedDbStore implements DataStore {
 
   async deleteExpenseCategory(id: string): Promise<void> {
     await db.expenseCategories.delete(id);
+  }
+
+  async deleteAllExpenseCategories(): Promise<void> {
+    await db.expenseCategories.clear();
+  }
+
+  async bulkCreateExpenseCategories(inputs: ExpenseCategoryInput[]): Promise<ExpenseCategory[]> {
+    // Check for duplicates within the batch
+    const normalizedNames = inputs.map(input => normalizeForUnique(input.name));
+    const duplicatesInBatch = normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const existing = await db.expenseCategories.toArray();
+    const existingNormalized = existing.map(c => normalizeForUnique(c.name));
+    const duplicates = inputs.filter(input =>
+      existingNormalized.includes(normalizeForUnique(input.name))
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`The following expense categories already exist: ${duplicates.map(d => d.name).join(', ')}`);
+    }
+
+    const categories: ExpenseCategory[] = [];
+
+    for (const input of inputs) {
+      const category: ExpenseCategory = {
+        id: crypto.randomUUID(),
+        name: input.name,
+        status: 'active',
+        searchKeywords: generateSearchKeywords(input.name),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+      };
+      categories.push(category);
+    }
+
+    await db.expenseCategories.bulkAdd(categories);
+    return categories;
   }
 
   // ===== DETAILED EXPENSES =====
@@ -778,6 +1068,48 @@ export class IndexedDbStore implements DataStore {
     await db.detailedExpenses.delete(id);
   }
 
+  async deleteAllDetailedExpenses(): Promise<void> {
+    await db.detailedExpenses.clear();
+  }
+
+  async bulkCreateDetailedExpenses(inputs: DetailedExpenseInput[]): Promise<DetailedExpense[]> {
+    // Check for duplicates within the batch
+    const normalizedNames = inputs.map(input => normalizeForUnique(input.name));
+    const duplicatesInBatch = normalizedNames.filter((name, index) => normalizedNames.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+
+    // Check for duplicates with existing records
+    const existing = await db.detailedExpenses.toArray();
+    const existingNormalized = existing.map(e => normalizeForUnique(e.name));
+    const duplicates = inputs.filter(input =>
+      existingNormalized.includes(normalizeForUnique(input.name))
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`The following detailed expenses already exist: ${duplicates.map(d => d.name).join(', ')}`);
+    }
+
+    const expenses: DetailedExpense[] = [];
+
+    for (const input of inputs) {
+      const expense: DetailedExpense = {
+        id: crypto.randomUUID(),
+        name: input.name,
+        price: input.price,
+        categoryRef: input.categoryRef,
+        status: 'active',
+        searchKeywords: generateSearchKeywords(input.name),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
+      };
+      expenses.push(expense);
+    }
+
+    await db.detailedExpenses.bulkAdd(expenses);
+    return expenses;
+  }
+
   // ===== TOURS =====
   async listTours(query?: TourQuery): Promise<Tour[]> {
     let tours = await db.tours.toArray();
@@ -808,8 +1140,17 @@ export class IndexedDbStore implements DataStore {
   }
 
   async createTour(input: TourInput): Promise<Tour> {
+    // Check for duplicate tour code
+    const normalized = normalizeForUnique(input.tourCode);
+    const existing = await db.tours.toArray();
+    const duplicate = existing.find(t => normalizeForUnique(t.tourCode) === normalized);
+
+    if (duplicate) {
+      throw new Error('A tour with this tour code already exists');
+    }
+
     const totalDays = daysBetween(input.startDate, input.endDate);
-    
+
     const tour: Tour = {
       id: generateId(),
       tourCode: input.tourCode.trim(),
@@ -839,6 +1180,17 @@ export class IndexedDbStore implements DataStore {
   }
 
   async updateTour(id: string, patch: Partial<Tour>): Promise<void> {
+    if (patch.tourCode !== undefined) {
+      // Check for duplicate tour code (excluding current record)
+      const normalized = normalizeForUnique(patch.tourCode);
+      const existing = await db.tours.toArray();
+      const duplicate = existing.find(t => t.id !== id && normalizeForUnique(t.tourCode) === normalized);
+
+      if (duplicate) {
+        throw new Error('A tour with this tour code already exists');
+      }
+    }
+
     if (patch.adults !== undefined || patch.children !== undefined) {
       const tour = await db.tours.get(id);
       if (tour) {
@@ -847,7 +1199,7 @@ export class IndexedDbStore implements DataStore {
         patch.totalGuests = adults + children;
       }
     }
-    
+
     if (patch.startDate || patch.endDate) {
       const tour = await db.tours.get(id);
       if (tour) {
@@ -856,7 +1208,7 @@ export class IndexedDbStore implements DataStore {
         patch.totalDays = daysBetween(startDate, endDate);
       }
     }
-    
+
     await db.tours.update(id, { ...patch, updatedAt: nowISO() });
   }
 
@@ -867,15 +1219,25 @@ export class IndexedDbStore implements DataStore {
   async duplicateTour(id: string): Promise<Tour> {
     const original = await db.tours.get(id);
     if (!original) throw new Error('Tour not found');
-    
+
+    // Generate unique tour code
+    let newTourCode = `${original.tourCode} (Copy)`;
+    let counter = 1;
+    const existing = await db.tours.toArray();
+
+    while (existing.some(t => normalizeForUnique(t.tourCode) === normalizeForUnique(newTourCode))) {
+      counter++;
+      newTourCode = `${original.tourCode} (Copy ${counter})`;
+    }
+
     const duplicate: Tour = {
       ...original,
       id: generateId(),
-      tourCode: `${original.tourCode}-COPY`,
+      tourCode: newTourCode,
       createdAt: nowISO(),
       updatedAt: nowISO(),
     };
-    
+
     await db.tours.add(duplicate);
     return duplicate;
   }

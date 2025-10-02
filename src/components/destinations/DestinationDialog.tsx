@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import type { TouristDestination, TouristDestinationInput } from '@/types/master';
 
 interface DestinationDialogProps {
@@ -47,6 +48,7 @@ export function DestinationDialog({
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>(
     initialData?.provinceRef.id || ''
   );
+  const [fieldErrors, setFieldErrors] = useState<{ province?: boolean }>({});
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<TouristDestinationInput>();
 
@@ -67,9 +69,28 @@ export function DestinationDialog({
   }, [open, initialData, reset]);
 
   const handleFormSubmit = (data: TouristDestinationInput) => {
+    // Validate required fields
+    const missingFields: string[] = [];
+    const newErrors: { province?: boolean } = {};
+
+    if (!data.name.trim()) {
+      missingFields.push('Destination Name');
+    }
+    if (data.price === undefined || data.price === null || data.price <= 0) {
+      missingFields.push('Price');
+    }
     if (!selectedProvinceId) {
+      missingFields.push('Province');
+      newErrors.province = true;
+    }
+
+    if (missingFields.length > 0) {
+      setFieldErrors(newErrors);
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
+
+    setFieldErrors({});
     const selectedProvince = provinces.find((p) => p.id === selectedProvinceId);
     if (selectedProvince) {
       onSubmit({
@@ -97,6 +118,7 @@ export function DestinationDialog({
               id="name"
               {...register('name', { required: 'Destination name is required' })}
               placeholder="e.g., Đại Nội, Hội An Ancient Town..."
+              className={errors.name ? 'border-destructive' : ''}
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -111,7 +133,10 @@ export function DestinationDialog({
                   variant="outline"
                   role="combobox"
                   aria-expanded={provinceOpen}
-                  className="w-full justify-between"
+                  className={cn(
+                    "w-full justify-between",
+                    fieldErrors.province && 'border-destructive'
+                  )}
                 >
                   {selectedProvince ? selectedProvince.name : 'Select province...'}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -129,6 +154,7 @@ export function DestinationDialog({
                         onSelect={() => {
                           setSelectedProvinceId(province.id);
                           setProvinceOpen(false);
+                          if (fieldErrors.province) setFieldErrors({ ...fieldErrors, province: false });
                         }}
                       >
                         <Check

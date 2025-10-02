@@ -1,11 +1,13 @@
 import { Layout } from '@/components/Layout';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
+import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { Shopping, ShoppingInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
@@ -14,8 +16,10 @@ import { useHeaderMode } from '@/hooks/useHeaderMode';
 const ShoppingPage = () => {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingShopping, setEditingShopping] = useState<Shopping | undefined>();
-  
+  const [nameFilter, setNameFilter] = useState('');
+
   const queryClient = useQueryClient();
 
   const { data: shoppings = [], isLoading } = useQuery({
@@ -65,6 +69,28 @@ const ShoppingPage = () => {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: () => store.deleteAllShoppings(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shoppings'] });
+      toast.success('All shopping places deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete all shopping places');
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: (items: { name: string }[]) => store.bulkCreateShoppings(items),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shoppings'] });
+      toast.success('Shopping places imported successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to import shopping places');
+    },
+  });
+
   const handleCreate = (input: ShoppingInput) => {
     createMutation.mutate(input);
   };
@@ -88,6 +114,24 @@ const ShoppingPage = () => {
     setEditingShopping(undefined);
   };
 
+  const handleDeleteAll = async () => {
+    if (confirm('Are you sure you want to delete ALL shopping places? This action cannot be undone.')) {
+      await deleteAllMutation.mutateAsync();
+    }
+  };
+
+  const handleBulkImport = async (items: { name: string }[]) => {
+    await bulkImportMutation.mutateAsync(items);
+  };
+
+  const filteredShoppings = useMemo(() => {
+    return shoppings.filter((shopping) => {
+      const matchesName = nameFilter === '' ||
+        shopping.name.toLowerCase().includes(nameFilter.toLowerCase());
+      return matchesName;
+    });
+  }, [shoppings, nameFilter]);
+
   const { classes: headerClasses } = useHeaderMode('shopping.headerMode');
 
   return (
@@ -100,6 +144,22 @@ const ShoppingPage = () => {
               <p className="text-muted-foreground">Manage shopping locations</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setImportDialogOpen(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Import
+              </Button>
+              <Button
+                onClick={handleDeleteAll}
+                variant="outline"
+                className="gap-2 text-destructive hover:text-destructive"
+              >
+                <Trash className="h-4 w-4" />
+                Delete All
+              </Button>
               <Button onClick={() => handleOpenDialog()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Shopping
@@ -135,9 +195,21 @@ const ShoppingPage = () => {
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
+                  <tr>
+                    <th className="text-left p-4">
+                      <Input
+                        placeholder="Filter by name..."
+                        value={nameFilter}
+                        onChange={(e) => setNameFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
+                    <th className="text-left p-4"></th>
+                    <th className="text-right p-4"></th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {shoppings.map((shopping) => (
+                  {filteredShoppings.map((shopping) => (
                     <tr
                       key={shopping.id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
@@ -187,7 +259,7 @@ const ShoppingPage = () => {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {shoppings.map((shopping) => (
+              {filteredShoppings.map((shopping) => (
                 <div
                   key={shopping.id}
                   className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
@@ -244,6 +316,27 @@ const ShoppingPage = () => {
         onSubmit={editingShopping ? handleEdit : handleCreate}
         initialData={editingShopping}
         isEditing={!!editingShopping}
+      />
+
+      <BulkImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleBulkImport}
+        title="Import Shopping Places"
+        description="Upload or paste shopping place names"
+        placeholder="Enter shopping place names (one per line or comma-separated)
+Example:
+Central Market
+Grand Shopping Mall
+Souk Marketplace"
+        parseItem={(parts: string[]) => {
+          if (parts.length >= 1 && parts[0].trim()) {
+            return {
+              name: parts[0].trim()
+            };
+          }
+          return null;
+        }}
       />
     </Layout>
   );

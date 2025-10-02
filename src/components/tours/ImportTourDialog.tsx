@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithSave } from '@/components/ui/textarea-with-save';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, FileJson } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
@@ -19,20 +18,8 @@ interface ImportTourDialogProps {
 export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) => {
   const [open, setOpen] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
-  const [saveToStorage, setSaveToStorage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [reviewItems, setReviewItems] = useState<{ tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string } }[]>([]);
-
-  // Load from localStorage when dialog opens
-  useEffect(() => {
-    if (open) {
-      const saved = localStorage.getItem('tour-import-json');
-      if (saved) {
-        setJsonInput(saved);
-        setSaveToStorage(true);
-      }
-    }
-  }, [open]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -211,36 +198,14 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
 
               <div>
                 <Label htmlFor="json-textarea">JSON Data</Label>
-                <Textarea
+                <TextareaWithSave
                   id="json-textarea"
+                  storageKey="tour-import-json"
                   value={jsonInput}
-                  onChange={(e) => {
-                    setJsonInput(e.target.value);
-                    if (saveToStorage) {
-                      localStorage.setItem('tour-import-json', e.target.value);
-                    }
-                  }}
+                  onValueChange={setJsonInput}
                   placeholder='{"tour": {"tourCode": "T001", "company": "ABC", "tourGuide": "John", "clientName": "Amy", "clientNationality": "USA", "adults": 2, "children": 0, "startDate": "2024-01-01", "endDate": "2024-01-10"}, "subcollections": {"destinations": [], "expenses": [], "meals": [], "allowances": []}}'
                   className="min-h-[300px] font-mono text-sm"
                 />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="save-to-storage"
-                  checked={saveToStorage}
-                  onCheckedChange={(checked) => {
-                    setSaveToStorage(!!checked);
-                    if (checked) {
-                      localStorage.setItem('tour-import-json', jsonInput);
-                    } else {
-                      localStorage.removeItem('tour-import-json');
-                    }
-                  }}
-                />
-                <Label htmlFor="save-to-storage" className="cursor-pointer text-sm">
-                  Save to browser (remember JSON data)
-                </Label>
               </div>
 
               <div className="flex justify-end gap-2">
@@ -261,9 +226,6 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
                   await onImport(tours);
                   setReviewItems([]);
                   setJsonInput('');
-                  if (saveToStorage) {
-                    localStorage.removeItem('tour-import-json');
-                  }
                   setOpen(false);
                 } catch (e) {
                   // onImport handles toasts

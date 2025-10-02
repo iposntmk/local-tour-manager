@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Copy, Trash2 } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
+import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Company, CompanyInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
@@ -18,6 +20,10 @@ const Companies = () => {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | undefined>();
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [nameFilter, setNameFilter] = useState('');
+  const [contactFilter, setContactFilter] = useState('');
+  const [phoneFilter, setPhoneFilter] = useState('');
 
   const query: SearchQuery = {
     search,
@@ -67,6 +73,28 @@ const Companies = () => {
     },
   });
 
+  const deleteAllMutation = useMutation({
+    mutationFn: () => store.deleteAllCompanies(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast.success('All companies deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete all companies');
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: (inputs: CompanyInput[]) => store.bulkCreateCompanies(inputs),
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast.success(`Successfully imported ${count} companies`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to import companies');
+    },
+  });
+
   const handleCreate = async (data: CompanyInput) => {
     await createMutation.mutateAsync(data);
   };
@@ -89,6 +117,39 @@ const Companies = () => {
     setEditingCompany(undefined);
   };
 
+  const handleDeleteAll = async () => {
+    if (confirm('Are you sure you want to delete ALL companies? This action cannot be undone.')) {
+      await deleteAllMutation.mutateAsync();
+    }
+  };
+
+  const handleBulkImport = async (items: CompanyInput[]) => {
+    await bulkImportMutation.mutateAsync(items);
+  };
+
+  const parseCompanyItem = (parts: string[]): CompanyInput | null => {
+    if (parts.length >= 1) {
+      const name = parts[0];
+      const contactName = parts[1] || '';
+      const phone = parts[2] || '';
+      const email = parts[3] || '';
+
+      if (name) {
+        return { name, contactName, phone, email };
+      }
+    }
+    return null;
+  };
+
+  const filteredCompanies = useMemo(() => {
+    return companies.filter(company => {
+      const matchesName = !nameFilter || company.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesContact = !contactFilter || (company.contactName?.toLowerCase().includes(contactFilter.toLowerCase()) ?? false);
+      const matchesPhone = !phoneFilter || (company.phone?.toLowerCase().includes(phoneFilter.toLowerCase()) ?? false);
+      return matchesName && matchesContact && matchesPhone;
+    });
+  }, [companies, nameFilter, contactFilter, phoneFilter]);
+
   const { classes: headerClasses } = useHeaderMode('companies.headerMode');
 
   return (
@@ -101,6 +162,14 @@ const Companies = () => {
               <p className="text-muted-foreground">Manage partner travel companies</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Import
+              </Button>
+              <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
+                <Trash className="h-4 w-4" />
+                Delete All
+              </Button>
               <Button onClick={() => handleOpenDialog()} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Add Company
@@ -139,9 +208,37 @@ const Companies = () => {
                       <TableHead>Email</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
+                    <TableRow>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by name..."
+                          value={nameFilter}
+                          onChange={(e) => setNameFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by contact..."
+                          value={contactFilter}
+                          onChange={(e) => setContactFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by phone..."
+                          value={phoneFilter}
+                          onChange={(e) => setPhoneFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
+                      <TableHead></TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {companies.map((company) => (
+                    {filteredCompanies.map((company) => (
                       <TableRow
                         key={company.id}
                         className="cursor-pointer hover:bg-accent/50"
@@ -191,7 +288,7 @@ const Companies = () => {
 
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
-                {companies.map((company) => (
+                {filteredCompanies.map((company) => (
                   <Card
                     key={company.id}
                     className="p-4 cursor-pointer hover:bg-accent/50"
@@ -255,6 +352,20 @@ const Companies = () => {
           onOpenChange={handleCloseDialog}
           company={editingCompany}
           onSubmit={editingCompany ? handleEdit : handleCreate}
+        />
+
+        <BulkImportDialog<CompanyInput>
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
+          onImport={handleBulkImport}
+          parseItem={parseCompanyItem}
+          title="Import Companies"
+          description="Import multiple companies at once. Enter one company per line in CSV format."
+          placeholder="Enter companies (one per line, format: name,contactName,phone,email)
+Example:
+Company A,Contact Name,Phone,Email
+ABC Travel,John Doe,123-456-7890,john@abc.com
+XYZ Tours,Jane Smith,098-765-4321,jane@xyz.com"
         />
       </div>
     </Layout>

@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithSave } from '@/components/ui/textarea-with-save';
+import { toast } from 'sonner';
 import type { Guide, GuideInput } from '@/types/master';
 
 interface GuideDialogProps {
@@ -20,14 +21,27 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
     note: guide?.note || '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ name?: boolean }>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Validate required fields
+    const newErrors: { name?: boolean } = {};
+    const missingFields: string[] = [];
+
     if (!formData.name.trim()) {
+      newErrors.name = true;
+      missingFields.push('Name');
+    }
+
+    if (missingFields.length > 0) {
+      setErrors(newErrors);
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
 
+    setErrors({});
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
@@ -57,8 +71,12 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (errors.name) setErrors({ ...errors, name: false });
+                }}
                 placeholder="Full name"
+                className={errors.name ? 'border-destructive' : ''}
                 required
               />
             </div>
@@ -76,10 +94,11 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
 
             <div className="grid gap-2">
               <Label htmlFor="note">Note</Label>
-              <Textarea
+              <TextareaWithSave
                 id="note"
+                storageKey="guide-note"
                 value={formData.note}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                onValueChange={(value) => setFormData({ ...formData, note: value })}
                 placeholder="Languages, specialties, etc."
                 rows={3}
               />
