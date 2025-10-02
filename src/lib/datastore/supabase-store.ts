@@ -1,5 +1,7 @@
-import { supabase } from '@/integrations/supabase/client';
 import type { DataStore, SearchQuery } from '@/types/datastore';
+import { getSupabaseClient } from './supabase-client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 import type {
   Guide,
   Company,
@@ -23,6 +25,12 @@ import { generateSearchKeywords } from '@/lib/string-utils';
 import { differenceInDays } from 'date-fns';
 
 export class SupabaseStore implements DataStore {
+  private readonly supabase: SupabaseClient<Database>;
+
+  constructor() {
+    this.supabase = getSupabaseClient();
+  }
+
   // Helper to map database rows to app types
   private mapGuide(row: any): Guide {
     return {
@@ -170,7 +178,7 @@ export class SupabaseStore implements DataStore {
 
   // Guides
   async listGuides(query?: SearchQuery): Promise<Guide[]> {
-    let queryBuilder = supabase.from('guides').select('*').order('name');
+    let queryBuilder = this.supabase.from('guides').select('*').order('name');
     
     if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
@@ -181,14 +189,14 @@ export class SupabaseStore implements DataStore {
   }
 
   async getGuide(id: string): Promise<Guide | null> {
-    const { data, error } = await supabase.from('guides').select('*').eq('id', id).single();
+    const { data, error } = await this.supabase.from('guides').select('*').eq('id', id).single();
     if (error) return null;
     return data ? this.mapGuide(data) : null;
   }
 
   async createGuide(guide: GuideInput): Promise<Guide> {
     // Check for duplicate name
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('guides')
       .select('id')
       .ilike('name', guide.name)
@@ -199,7 +207,7 @@ export class SupabaseStore implements DataStore {
     }
 
     const searchKeywords = generateSearchKeywords(guide.name);
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('guides')
       .insert({
         name: guide.name,
@@ -219,7 +227,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (guide.name !== undefined) {
       // Check for duplicate name (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('guides')
         .select('id')
         .ilike('name', guide.name)
@@ -236,12 +244,12 @@ export class SupabaseStore implements DataStore {
     if (guide.phone !== undefined) updates.phone = guide.phone;
     if (guide.note !== undefined) updates.note = guide.note;
 
-    const { error } = await supabase.from('guides').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('guides').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteGuide(id: string): Promise<void> {
-    const { error } = await supabase.from('guides').delete().eq('id', id);
+    const { error } = await this.supabase.from('guides').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -256,7 +264,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllGuides(): Promise<void> {
-    const { error } = await supabase.from('guides').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('guides').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 
@@ -269,7 +277,7 @@ export class SupabaseStore implements DataStore {
     }
 
     // Check for duplicates with existing records
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('guides')
       .select('name');
 
@@ -291,7 +299,7 @@ export class SupabaseStore implements DataStore {
       search_keywords: generateSearchKeywords(input.name),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('guides')
       .insert(records)
       .select();
@@ -334,7 +342,7 @@ export class SupabaseStore implements DataStore {
 
   // Companies
   async listCompanies(query?: SearchQuery): Promise<Company[]> {
-    let queryBuilder = supabase.from('companies').select('*').order('name');
+    let queryBuilder = this.supabase.from('companies').select('*').order('name');
     
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
@@ -344,14 +352,14 @@ export class SupabaseStore implements DataStore {
   }
 
   async getCompany(id: string): Promise<Company | null> {
-    const { data, error } = await supabase.from('companies').select('*').eq('id', id).single();
+    const { data, error } = await this.supabase.from('companies').select('*').eq('id', id).single();
     if (error) return null;
     return data ? this.mapCompany(data) : null;
   }
 
   async createCompany(company: CompanyInput): Promise<Company> {
     // Check for duplicate name
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('companies')
       .select('id')
       .ilike('name', company.name)
@@ -362,7 +370,7 @@ export class SupabaseStore implements DataStore {
     }
 
     const searchKeywords = generateSearchKeywords(company.name);
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('companies')
       .insert({
         name: company.name,
@@ -384,7 +392,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (company.name !== undefined) {
       // Check for duplicate name (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('companies')
         .select('id')
         .ilike('name', company.name)
@@ -403,12 +411,12 @@ export class SupabaseStore implements DataStore {
     if (company.email !== undefined) updates.email = company.email;
     if (company.note !== undefined) updates.note = company.note;
 
-    const { error } = await supabase.from('companies').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('companies').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteCompany(id: string): Promise<void> {
-    const { error } = await supabase.from('companies').delete().eq('id', id);
+    const { error } = await this.supabase.from('companies').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -425,7 +433,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllCompanies(): Promise<void> {
-    const { error } = await supabase.from('companies').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('companies').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 
@@ -438,7 +446,7 @@ export class SupabaseStore implements DataStore {
     }
 
     // Check for duplicates with existing records
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('companies')
       .select('name');
 
@@ -462,7 +470,7 @@ export class SupabaseStore implements DataStore {
       search_keywords: generateSearchKeywords(input.name),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('companies')
       .insert(records)
       .select();
@@ -473,7 +481,7 @@ export class SupabaseStore implements DataStore {
 
   // Nationalities
   async listNationalities(query?: SearchQuery): Promise<Nationality[]> {
-    let queryBuilder = supabase.from('nationalities').select('*').order('name');
+    let queryBuilder = this.supabase.from('nationalities').select('*').order('name');
     
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
@@ -483,14 +491,14 @@ export class SupabaseStore implements DataStore {
   }
 
   async getNationality(id: string): Promise<Nationality | null> {
-    const { data, error } = await supabase.from('nationalities').select('*').eq('id', id).single();
+    const { data, error } = await this.supabase.from('nationalities').select('*').eq('id', id).single();
     if (error) return null;
     return data ? this.mapNationality(data) : null;
   }
 
   async createNationality(nationality: NationalityInput): Promise<Nationality> {
     // Check for duplicate name
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('nationalities')
       .select('id')
       .ilike('name', nationality.name)
@@ -501,7 +509,7 @@ export class SupabaseStore implements DataStore {
     }
 
     const searchKeywords = generateSearchKeywords(nationality.name);
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('nationalities')
       .insert({
         name: nationality.name,
@@ -521,7 +529,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (nationality.name !== undefined) {
       // Check for duplicate name (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('nationalities')
         .select('id')
         .ilike('name', nationality.name)
@@ -538,12 +546,12 @@ export class SupabaseStore implements DataStore {
     if (nationality.iso2 !== undefined) updates.iso2 = nationality.iso2;
     if (nationality.emoji !== undefined) updates.emoji = nationality.emoji;
 
-    const { error } = await supabase.from('nationalities').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('nationalities').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteNationality(id: string): Promise<void> {
-    const { error } = await supabase.from('nationalities').delete().eq('id', id);
+    const { error } = await this.supabase.from('nationalities').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -558,7 +566,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllNationalities(): Promise<void> {
-    const { error } = await supabase.from('nationalities').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('nationalities').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 
@@ -571,7 +579,7 @@ export class SupabaseStore implements DataStore {
     }
 
     // Check for duplicates with existing records
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('nationalities')
       .select('name');
 
@@ -593,7 +601,7 @@ export class SupabaseStore implements DataStore {
       search_keywords: generateSearchKeywords(input.name),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('nationalities')
       .insert(records)
       .select();
@@ -604,7 +612,7 @@ export class SupabaseStore implements DataStore {
 
   // Provinces
   async listProvinces(query?: SearchQuery): Promise<Province[]> {
-    let queryBuilder = supabase.from('provinces').select('*').order('name');
+    let queryBuilder = this.supabase.from('provinces').select('*').order('name');
     
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
@@ -614,14 +622,14 @@ export class SupabaseStore implements DataStore {
   }
 
   async getProvince(id: string): Promise<Province | null> {
-    const { data, error } = await supabase.from('provinces').select('*').eq('id', id).single();
+    const { data, error } = await this.supabase.from('provinces').select('*').eq('id', id).single();
     if (error) return null;
     return data ? this.mapProvince(data) : null;
   }
 
   async createProvince(province: ProvinceInput): Promise<Province> {
     // Check for duplicate name
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('provinces')
       .select('id')
       .ilike('name', province.name)
@@ -632,7 +640,7 @@ export class SupabaseStore implements DataStore {
     }
 
     const searchKeywords = generateSearchKeywords(province.name);
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('provinces')
       .insert({
         name: province.name,
@@ -650,7 +658,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (province.name !== undefined) {
       // Check for duplicate name (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('provinces')
         .select('id')
         .ilike('name', province.name)
@@ -665,12 +673,12 @@ export class SupabaseStore implements DataStore {
       updates.search_keywords = generateSearchKeywords(province.name);
     }
 
-    const { error } = await supabase.from('provinces').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('provinces').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteProvince(id: string): Promise<void> {
-    const { error } = await supabase.from('provinces').delete().eq('id', id);
+    const { error } = await this.supabase.from('provinces').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -683,7 +691,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllProvinces(): Promise<void> {
-    const { error } = await supabase.from('provinces').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('provinces').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 
@@ -696,7 +704,7 @@ export class SupabaseStore implements DataStore {
     }
 
     // Check for duplicates with existing records
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('provinces')
       .select('name');
 
@@ -716,7 +724,7 @@ export class SupabaseStore implements DataStore {
       search_keywords: generateSearchKeywords(input.name),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('provinces')
       .insert(records)
       .select();
@@ -727,7 +735,7 @@ export class SupabaseStore implements DataStore {
 
   // Tourist Destinations
   async listTouristDestinations(query?: SearchQuery): Promise<TouristDestination[]> {
-    let queryBuilder = supabase.from('tourist_destinations').select('*').order('name');
+    let queryBuilder = this.supabase.from('tourist_destinations').select('*').order('name');
     
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
@@ -737,14 +745,14 @@ export class SupabaseStore implements DataStore {
   }
 
   async getTouristDestination(id: string): Promise<TouristDestination | null> {
-    const { data, error } = await supabase.from('tourist_destinations').select('*').eq('id', id).single();
+    const { data, error } = await this.supabase.from('tourist_destinations').select('*').eq('id', id).single();
     if (error) return null;
     return data ? this.mapTouristDestination(data) : null;
   }
 
   async createTouristDestination(destination: TouristDestinationInput): Promise<TouristDestination> {
     // Check for duplicate name
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('tourist_destinations')
       .select('id')
       .ilike('name', destination.name)
@@ -755,7 +763,7 @@ export class SupabaseStore implements DataStore {
     }
 
     const searchKeywords = generateSearchKeywords(destination.name);
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('tourist_destinations')
       .insert({
         name: destination.name,
@@ -776,7 +784,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (destination.name !== undefined) {
       // Check for duplicate name (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('tourist_destinations')
         .select('id')
         .ilike('name', destination.name)
@@ -797,12 +805,12 @@ export class SupabaseStore implements DataStore {
     }
     if (destination.status !== undefined) updates.status = destination.status;
 
-    const { error } = await supabase.from('tourist_destinations').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('tourist_destinations').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteTouristDestination(id: string): Promise<void> {
-    const { error } = await supabase.from('tourist_destinations').delete().eq('id', id);
+    const { error } = await this.supabase.from('tourist_destinations').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -817,7 +825,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllTouristDestinations(): Promise<void> {
-    const { error } = await supabase.from('tourist_destinations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('tourist_destinations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 
@@ -830,7 +838,7 @@ export class SupabaseStore implements DataStore {
     }
 
     // Check for duplicates with existing records
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('tourist_destinations')
       .select('name');
 
@@ -853,7 +861,7 @@ export class SupabaseStore implements DataStore {
       search_keywords: generateSearchKeywords(input.name),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('tourist_destinations')
       .insert(records)
       .select();
@@ -864,7 +872,7 @@ export class SupabaseStore implements DataStore {
 
   // Shopping
   async listShoppings(query?: SearchQuery): Promise<Shopping[]> {
-    let queryBuilder = supabase.from('shoppings').select('*').order('name');
+    let queryBuilder = this.supabase.from('shoppings').select('*').order('name');
     
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
@@ -874,14 +882,14 @@ export class SupabaseStore implements DataStore {
   }
 
   async getShopping(id: string): Promise<Shopping | null> {
-    const { data, error } = await supabase.from('shoppings').select('*').eq('id', id).single();
+    const { data, error } = await this.supabase.from('shoppings').select('*').eq('id', id).single();
     if (error) return null;
     return data ? this.mapShopping(data) : null;
   }
 
   async createShopping(shopping: ShoppingInput): Promise<Shopping> {
     // Check for duplicate name
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('shoppings')
       .select('id')
       .ilike('name', shopping.name)
@@ -892,7 +900,7 @@ export class SupabaseStore implements DataStore {
     }
 
     const searchKeywords = generateSearchKeywords(shopping.name);
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('shoppings')
       .insert({
         name: shopping.name,
@@ -910,7 +918,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (shopping.name !== undefined) {
       // Check for duplicate name (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('shoppings')
         .select('id')
         .ilike('name', shopping.name)
@@ -925,12 +933,12 @@ export class SupabaseStore implements DataStore {
       updates.search_keywords = generateSearchKeywords(shopping.name);
     }
 
-    const { error } = await supabase.from('shoppings').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('shoppings').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteShopping(id: string): Promise<void> {
-    const { error } = await supabase.from('shoppings').delete().eq('id', id);
+    const { error } = await this.supabase.from('shoppings').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -943,7 +951,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllShoppings(): Promise<void> {
-    const { error } = await supabase.from('shoppings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('shoppings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 
@@ -956,7 +964,7 @@ export class SupabaseStore implements DataStore {
     }
 
     // Check for duplicates with existing records
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('shoppings')
       .select('name');
 
@@ -976,7 +984,7 @@ export class SupabaseStore implements DataStore {
       search_keywords: generateSearchKeywords(input.name),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('shoppings')
       .insert(records)
       .select();
@@ -987,7 +995,7 @@ export class SupabaseStore implements DataStore {
 
   // Expense Categories
   async listExpenseCategories(query?: SearchQuery): Promise<ExpenseCategory[]> {
-    let queryBuilder = supabase.from('expense_categories').select('*').order('name');
+    let queryBuilder = this.supabase.from('expense_categories').select('*').order('name');
     
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
 
@@ -997,14 +1005,14 @@ export class SupabaseStore implements DataStore {
   }
 
   async getExpenseCategory(id: string): Promise<ExpenseCategory | null> {
-    const { data, error } = await supabase.from('expense_categories').select('*').eq('id', id).single();
+    const { data, error } = await this.supabase.from('expense_categories').select('*').eq('id', id).single();
     if (error) return null;
     return data ? this.mapExpenseCategory(data) : null;
   }
 
   async createExpenseCategory(category: ExpenseCategoryInput): Promise<ExpenseCategory> {
     // Check for duplicate name
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('expense_categories')
       .select('id')
       .ilike('name', category.name)
@@ -1015,7 +1023,7 @@ export class SupabaseStore implements DataStore {
     }
 
     const searchKeywords = generateSearchKeywords(category.name);
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('expense_categories')
       .insert({
         name: category.name,
@@ -1033,7 +1041,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (category.name !== undefined) {
       // Check for duplicate name (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('expense_categories')
         .select('id')
         .ilike('name', category.name)
@@ -1048,12 +1056,12 @@ export class SupabaseStore implements DataStore {
       updates.search_keywords = generateSearchKeywords(category.name);
     }
 
-    const { error } = await supabase.from('expense_categories').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('expense_categories').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteExpenseCategory(id: string): Promise<void> {
-    const { error } = await supabase.from('expense_categories').delete().eq('id', id);
+    const { error } = await this.supabase.from('expense_categories').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -1066,7 +1074,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllExpenseCategories(): Promise<void> {
-    const { error } = await supabase.from('expense_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('expense_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 
@@ -1079,7 +1087,7 @@ export class SupabaseStore implements DataStore {
     }
 
     // Check for duplicates with existing records
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('expense_categories')
       .select('name');
 
@@ -1099,7 +1107,7 @@ export class SupabaseStore implements DataStore {
       search_keywords: generateSearchKeywords(input.name),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('expense_categories')
       .insert(records)
       .select();
@@ -1110,7 +1118,7 @@ export class SupabaseStore implements DataStore {
 
   // Detailed Expenses
   async listDetailedExpenses(query?: SearchQuery): Promise<DetailedExpense[]> {
-    let queryBuilder = supabase.from('detailed_expenses').select('*').order('name');
+    let queryBuilder = this.supabase.from('detailed_expenses').select('*').order('name');
     
     if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
     if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
@@ -1121,14 +1129,14 @@ export class SupabaseStore implements DataStore {
   }
 
   async getDetailedExpense(id: string): Promise<DetailedExpense | null> {
-    const { data, error } = await supabase.from('detailed_expenses').select('*').eq('id', id).single();
+    const { data, error } = await this.supabase.from('detailed_expenses').select('*').eq('id', id).single();
     if (error) return null;
     return data ? this.mapDetailedExpense(data) : null;
   }
 
   async createDetailedExpense(expense: DetailedExpenseInput): Promise<DetailedExpense> {
     // Check for duplicate name
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('detailed_expenses')
       .select('id')
       .ilike('name', expense.name)
@@ -1139,7 +1147,7 @@ export class SupabaseStore implements DataStore {
     }
 
     const searchKeywords = generateSearchKeywords(expense.name);
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('detailed_expenses')
       .insert({
         name: expense.name,
@@ -1160,7 +1168,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (expense.name !== undefined) {
       // Check for duplicate name (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('detailed_expenses')
         .select('id')
         .ilike('name', expense.name)
@@ -1181,12 +1189,12 @@ export class SupabaseStore implements DataStore {
     }
     if (expense.status !== undefined) updates.status = expense.status;
 
-    const { error } = await supabase.from('detailed_expenses').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('detailed_expenses').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteDetailedExpense(id: string): Promise<void> {
-    const { error } = await supabase.from('detailed_expenses').delete().eq('id', id);
+    const { error } = await this.supabase.from('detailed_expenses').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -1201,7 +1209,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllDetailedExpenses(): Promise<void> {
-    const { error } = await supabase.from('detailed_expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('detailed_expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 
@@ -1214,7 +1222,7 @@ export class SupabaseStore implements DataStore {
     }
 
     // Check for duplicates with existing records
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('detailed_expenses')
       .select('name');
 
@@ -1237,7 +1245,7 @@ export class SupabaseStore implements DataStore {
       search_keywords: generateSearchKeywords(input.name),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('detailed_expenses')
       .insert(records)
       .select();
@@ -1251,7 +1259,7 @@ export class SupabaseStore implements DataStore {
     const includeDetails = options?.includeDetails ?? false;
 
     // Fetch tours with optional nested relations to avoid unnecessary payload
-    let queryBuilder = supabase
+    let queryBuilder = this.supabase
       .from('tours')
       .select(
         includeDetails
@@ -1315,7 +1323,7 @@ export class SupabaseStore implements DataStore {
 
   async getTour(id: string): Promise<Tour | null> {
     // Single query with nested relations for the tour detail
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('tours')
       .select(`
         *,
@@ -1362,7 +1370,7 @@ export class SupabaseStore implements DataStore {
 
   async createTour(tour: TourInput): Promise<Tour> {
     // Check for duplicate tour code
-    const { data: existing } = await supabase
+    const { data: existing } = await this.supabase
       .from('tours')
       .select('id')
       .ilike('tour_code', tour.tourCode)
@@ -1375,7 +1383,7 @@ export class SupabaseStore implements DataStore {
     const totalGuests = (tour.adults || 0) + (tour.children || 0);
     const totalDays = differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1;
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('tours')
       .insert({
         tour_code: tour.tourCode,
@@ -1407,7 +1415,7 @@ export class SupabaseStore implements DataStore {
     const updates: any = {};
     if (tour.tourCode !== undefined) {
       // Check for duplicate tour code (excluding current record)
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('tours')
         .select('id')
         .ilike('tour_code', tour.tourCode)
@@ -1442,12 +1450,12 @@ export class SupabaseStore implements DataStore {
     if (tour.endDate !== undefined) updates.end_date = tour.endDate;
     if (tour.totalDays !== undefined) updates.total_days = tour.totalDays;
 
-    const { error } = await supabase.from('tours').update(updates).eq('id', id);
+    const { error } = await this.supabase.from('tours').update(updates).eq('id', id);
     if (error) throw error;
   }
 
   async deleteTour(id: string): Promise<void> {
-    const { error } = await supabase.from('tours').delete().eq('id', id);
+    const { error } = await this.supabase.from('tours').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -1460,7 +1468,7 @@ export class SupabaseStore implements DataStore {
     let counter = 1;
 
     while (true) {
-      const { data: existing } = await supabase
+      const { data: existing } = await this.supabase
         .from('tours')
         .select('id')
         .ilike('tour_code', newTourCode)
@@ -1489,7 +1497,7 @@ export class SupabaseStore implements DataStore {
 
   // Tour Destinations
   async getDestinations(tourId: string): Promise<Destination[]> {
-    const { data, error } = await supabase.from('tour_destinations').select('*').eq('tour_id', tourId).order('date');
+    const { data, error } = await this.supabase.from('tour_destinations').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
     return (data || []).map((row) => ({
       name: row.name,
@@ -1499,7 +1507,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async addDestination(tourId: string, destination: Destination): Promise<void> {
-    const { error } = await supabase.from('tour_destinations').insert({
+    const { error } = await this.supabase.from('tour_destinations').insert({
       tour_id: tourId,
       name: destination.name,
       price: destination.price,
@@ -1509,9 +1517,9 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateDestination(tourId: string, index: number, destination: Destination): Promise<void> {
-    const { data: rows } = await supabase.from('tour_destinations').select('id').eq('tour_id', tourId).order('date');
+    const { data: rows } = await this.supabase.from('tour_destinations').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await supabase.from('tour_destinations').update({
+      const { error } = await this.supabase.from('tour_destinations').update({
         name: destination.name,
         price: destination.price,
         date: destination.date,
@@ -1521,16 +1529,16 @@ export class SupabaseStore implements DataStore {
   }
 
   async removeDestination(tourId: string, index: number): Promise<void> {
-    const { data: rows } = await supabase.from('tour_destinations').select('id').eq('tour_id', tourId).order('date');
+    const { data: rows } = await this.supabase.from('tour_destinations').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await supabase.from('tour_destinations').delete().eq('id', rows[index].id);
+      const { error } = await this.supabase.from('tour_destinations').delete().eq('id', rows[index].id);
       if (error) throw error;
     }
   }
 
   // Tour Expenses
   async getExpenses(tourId: string): Promise<Expense[]> {
-    const { data, error } = await supabase.from('tour_expenses').select('*').eq('tour_id', tourId).order('date');
+    const { data, error } = await this.supabase.from('tour_expenses').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
     return (data || []).map((row) => ({
       name: row.name,
@@ -1540,7 +1548,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async addExpense(tourId: string, expense: Expense): Promise<void> {
-    const { error } = await supabase.from('tour_expenses').insert({
+    const { error } = await this.supabase.from('tour_expenses').insert({
       tour_id: tourId,
       name: expense.name,
       price: expense.price,
@@ -1550,9 +1558,9 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateExpense(tourId: string, index: number, expense: Expense): Promise<void> {
-    const { data: rows } = await supabase.from('tour_expenses').select('id').eq('tour_id', tourId).order('date');
+    const { data: rows } = await this.supabase.from('tour_expenses').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await supabase.from('tour_expenses').update({
+      const { error } = await this.supabase.from('tour_expenses').update({
         name: expense.name,
         price: expense.price,
         date: expense.date,
@@ -1562,16 +1570,16 @@ export class SupabaseStore implements DataStore {
   }
 
   async removeExpense(tourId: string, index: number): Promise<void> {
-    const { data: rows } = await supabase.from('tour_expenses').select('id').eq('tour_id', tourId).order('date');
+    const { data: rows } = await this.supabase.from('tour_expenses').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await supabase.from('tour_expenses').delete().eq('id', rows[index].id);
+      const { error } = await this.supabase.from('tour_expenses').delete().eq('id', rows[index].id);
       if (error) throw error;
     }
   }
 
   // Tour Meals
   async getMeals(tourId: string): Promise<Meal[]> {
-    const { data, error } = await supabase.from('tour_meals').select('*').eq('tour_id', tourId).order('date');
+    const { data, error } = await this.supabase.from('tour_meals').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
     return (data || []).map((row) => ({
       name: row.name,
@@ -1581,7 +1589,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async addMeal(tourId: string, meal: Meal): Promise<void> {
-    const { error } = await supabase.from('tour_meals').insert({
+    const { error } = await this.supabase.from('tour_meals').insert({
       tour_id: tourId,
       name: meal.name,
       price: meal.price,
@@ -1591,9 +1599,9 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateMeal(tourId: string, index: number, meal: Meal): Promise<void> {
-    const { data: rows } = await supabase.from('tour_meals').select('id').eq('tour_id', tourId).order('date');
+    const { data: rows } = await this.supabase.from('tour_meals').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await supabase.from('tour_meals').update({
+      const { error } = await this.supabase.from('tour_meals').update({
         name: meal.name,
         price: meal.price,
         date: meal.date,
@@ -1603,16 +1611,16 @@ export class SupabaseStore implements DataStore {
   }
 
   async removeMeal(tourId: string, index: number): Promise<void> {
-    const { data: rows } = await supabase.from('tour_meals').select('id').eq('tour_id', tourId).order('date');
+    const { data: rows } = await this.supabase.from('tour_meals').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await supabase.from('tour_meals').delete().eq('id', rows[index].id);
+      const { error } = await this.supabase.from('tour_meals').delete().eq('id', rows[index].id);
       if (error) throw error;
     }
   }
 
   // Tour Allowances
   async getAllowances(tourId: string): Promise<Allowance[]> {
-    const { data, error } = await supabase.from('tour_allowances').select('*').eq('tour_id', tourId).order('date');
+    const { data, error } = await this.supabase.from('tour_allowances').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
     return (data || []).map((row) => ({
       date: row.date,
@@ -1622,7 +1630,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async addAllowance(tourId: string, allowance: Allowance): Promise<void> {
-    const { error } = await supabase.from('tour_allowances').insert({
+    const { error } = await this.supabase.from('tour_allowances').insert({
       tour_id: tourId,
       date: allowance.date,
       province: allowance.province,
@@ -1632,9 +1640,9 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateAllowance(tourId: string, index: number, allowance: Allowance): Promise<void> {
-    const { data: rows } = await supabase.from('tour_allowances').select('id').eq('tour_id', tourId).order('date');
+    const { data: rows } = await this.supabase.from('tour_allowances').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await supabase.from('tour_allowances').update({
+      const { error } = await this.supabase.from('tour_allowances').update({
         date: allowance.date,
         province: allowance.province,
         amount: allowance.amount,
@@ -1644,9 +1652,9 @@ export class SupabaseStore implements DataStore {
   }
 
   async removeAllowance(tourId: string, index: number): Promise<void> {
-    const { data: rows } = await supabase.from('tour_allowances').select('id').eq('tour_id', tourId).order('date');
+    const { data: rows } = await this.supabase.from('tour_allowances').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await supabase.from('tour_allowances').delete().eq('id', rows[index].id);
+      const { error } = await this.supabase.from('tour_allowances').delete().eq('id', rows[index].id);
       if (error) throw error;
     }
   }
@@ -1737,15 +1745,15 @@ export class SupabaseStore implements DataStore {
 
   async clearAllData(): Promise<void> {
     await Promise.all([
-      supabase.from('tours').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('detailed_expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('expense_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('shoppings').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('tourist_destinations').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('provinces').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('nationalities').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('companies').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('guides').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('tours').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('detailed_expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('expense_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('shoppings').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('tourist_destinations').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('provinces').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('nationalities').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('companies').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      this.supabase.from('guides').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
     ]);
   }
 }
