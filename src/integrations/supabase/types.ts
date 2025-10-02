@@ -431,14 +431,18 @@ export type Database = {
       tours: {
         Row: {
           adults: number | null
+          advance_payment: number | null
           children: number | null
           client_name: string | null
           client_phone: string | null
+          collections_for_company: number | null
           company_id: string | null
           company_name_at_booking: string | null
+          company_tip: number | null
           created_at: string | null
           driver_name: string | null
           end_date: string
+          final_total: number | null
           guide_id: string | null
           guide_name_at_booking: string | null
           id: string
@@ -447,22 +451,29 @@ export type Database = {
           notes: string | null
           number_of_guests: number | null
           start_date: string
+          total_after_advance: number | null
+          total_after_collections: number | null
+          total_after_tip: number | null
           total_days: number | null
           total_guests: number | null
+          total_tabs: number | null
           tour_code: string
           updated_at: string | null
-          summary: any | null
         }
         Insert: {
           adults?: number | null
+          advance_payment?: number | null
           children?: number | null
           client_name?: string | null
           client_phone?: string | null
+          collections_for_company?: number | null
           company_id?: string | null
           company_name_at_booking?: string | null
+          company_tip?: number | null
           created_at?: string | null
           driver_name?: string | null
           end_date: string
+          final_total?: number | null
           guide_id?: string | null
           guide_name_at_booking?: string | null
           id?: string
@@ -471,22 +482,29 @@ export type Database = {
           notes?: string | null
           number_of_guests?: number | null
           start_date: string
+          total_after_advance?: number | null
+          total_after_collections?: number | null
+          total_after_tip?: number | null
           total_days?: number | null
           total_guests?: number | null
+          total_tabs?: number | null
           tour_code: string
           updated_at?: string | null
-          summary?: any | null
         }
         Update: {
           adults?: number | null
+          advance_payment?: number | null
           children?: number | null
           client_name?: string | null
           client_phone?: string | null
+          collections_for_company?: number | null
           company_id?: string | null
           company_name_at_booking?: string | null
+          company_tip?: number | null
           created_at?: string | null
           driver_name?: string | null
           end_date?: string
+          final_total?: number | null
           guide_id?: string | null
           guide_name_at_booking?: string | null
           id?: string
@@ -495,11 +513,14 @@ export type Database = {
           notes?: string | null
           number_of_guests?: number | null
           start_date?: string
+          total_after_advance?: number | null
+          total_after_collections?: number | null
+          total_after_tip?: number | null
           total_days?: number | null
           total_guests?: number | null
+          total_tabs?: number | null
           tour_code?: string
           updated_at?: string | null
-          summary?: any | null
         }
         Relationships: [
           {
