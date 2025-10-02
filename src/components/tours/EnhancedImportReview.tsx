@@ -269,6 +269,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   const [openExpenseDialog, setOpenExpenseDialog] = useState(false);
   const [openShoppingDialog, setOpenShoppingDialog] = useState(false);
   const [targetIndex, setTargetIndex] = useState<number | null>(null);
+  const [initialEntityName, setInitialEntityName] = useState<string>('');
   const [targetItemIndex, setTargetItemIndex] = useState<number | null>(null);
 
   // Load all entities
@@ -408,31 +409,6 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     load();
   }, [items, preloadedEntities]);
 
-  // Filter tours based on search query
-  const filteredTours = useMemo(() => {
-    if (!searchQuery.trim()) return draft;
-    
-    const fuse = new Fuse(draft, {
-      keys: [
-        'tour.tourCode',
-        'tour.clientName',
-        'tour.companyRef.nameAtBooking',
-        'tour.guideRef.nameAtBooking',
-        'tour.clientNationalityRef.nameAtBooking',
-        'raw.company',
-        'raw.guide',
-        'raw.nationality',
-        'tour.destinations.name',
-        'tour.expenses.name',
-        'tour.meals.name'
-      ],
-      threshold: 0.4,
-      includeScore: true,
-    });
-    
-    return fuse.search(searchQuery).map(result => result.item);
-  }, [draft, searchQuery]);
-
   // Validation - only show warnings, not block import
   const validationWarnings = useMemo(() => {
     const warnings: { [key: number]: string[] } = {};
@@ -440,15 +416,22 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     draft.forEach((item, index) => {
       const tourWarnings: string[] = [];
       const tour = item.tour;
-      
+      const raw = item.raw;
+
       if (!tour.tourCode) tourWarnings.push('Tour code is missing');
       if (!tour.clientName) tourWarnings.push('Client name is missing');
       if (!tour.startDate) tourWarnings.push('Start date is missing');
       if (!tour.endDate) tourWarnings.push('End date is missing');
-      if (!tour.companyRef?.id) tourWarnings.push('Company is not selected');
-      if (!tour.guideRef?.id) tourWarnings.push('Guide is not selected');
-      if (!tour.clientNationalityRef?.id) tourWarnings.push('Nationality is not selected');
-      
+      if (!tour.companyRef?.id) {
+        tourWarnings.push(`Company is not selected (JSON value: "${raw.company}")`);
+      }
+      if (!tour.guideRef?.id) {
+        tourWarnings.push(`Guide is not selected (JSON value: "${raw.guide}")`);
+      }
+      if (!tour.clientNationalityRef?.id) {
+        tourWarnings.push(`Nationality is not selected (JSON value: "${raw.nationality}")`);
+      }
+
       if (tourWarnings.length > 0) {
         warnings[index] = tourWarnings;
       }
@@ -456,6 +439,46 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     
     return warnings;
   }, [draft]);
+
+  // Filter tours based on search query and sort by warnings
+  const filteredTours = useMemo(() => {
+    let tours = draft;
+
+    if (searchQuery.trim()) {
+      const fuse = new Fuse(draft, {
+        keys: [
+          'tour.tourCode',
+          'tour.clientName',
+          'tour.companyRef.nameAtBooking',
+          'tour.guideRef.nameAtBooking',
+          'tour.clientNationalityRef.nameAtBooking',
+          'raw.company',
+          'raw.guide',
+          'raw.nationality',
+          'tour.destinations.name',
+          'tour.expenses.name',
+          'tour.meals.name'
+        ],
+        threshold: 0.4,
+        includeScore: true,
+      });
+
+      tours = fuse.search(searchQuery).map(result => result.item);
+    }
+
+    // Sort: tours with unmatched fields first
+    return tours.sort((a, b) => {
+      const aIndex = draft.findIndex(d => d === a);
+      const bIndex = draft.findIndex(d => d === b);
+
+      const aHasWarnings = validationWarnings[aIndex]?.length > 0;
+      const bHasWarnings = validationWarnings[bIndex]?.length > 0;
+
+      if (aHasWarnings && !bHasWarnings) return -1;
+      if (!aHasWarnings && bHasWarnings) return 1;
+      return aIndex - bIndex; // Maintain original order for same warning status
+    });
+  }, [draft, searchQuery, validationWarnings]);
 
   // Final validation for import
   const validateForImport = (): { valid: boolean; errors: string[] } => {
@@ -778,8 +801,9 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
               {filteredTours.map((item, index) => {
                 const originalIndex = draft.findIndex(d => d === item);
                 const tour = item.tour;
+                const raw = item.raw;
                 const warnings = validationWarnings[originalIndex] || [];
-                
+
                 return (
                   <Card key={originalIndex} className={warnings.length > 0 ? "border-yellow-500" : ""}>
                     <CardHeader className="pb-3">
@@ -808,6 +832,21 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           </Button>
                         </div>
                       </div>
+                      {warnings.length > 0 && (
+                        <div className="mt-3 p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-yellow-800">Warnings:</div>
+                              <ul className="list-disc list-inside mt-1 text-sm text-yellow-700 space-y-1">
+                                {warnings.map((warning, i) => (
+                                  <li key={i}>{warning}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="grid grid-cols-2 gap-4">
@@ -817,7 +856,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                             <Input
                               value={tour.clientName || ''}
                               onChange={(e) => updateTourField(originalIndex, 'clientName', e.target.value)}
-                              className="h-8"
+                              className={`h-8 ${!tour.clientName ? 'border-yellow-500' : ''}`}
                             />
                           </div>
                         </div>
@@ -826,50 +865,80 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           <Input
                             value={tour.tourCode || ''}
                             onChange={(e) => updateTourField(originalIndex, 'tourCode', e.target.value)}
-                            className="h-8"
+                            className={`h-8 ${!tour.tourCode ? 'border-yellow-500' : ''}`}
                           />
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <Label className="text-sm font-medium">Company</Label>
-                          <EntitySelector
-                            entities={companies}
-                            selected={tour.companyRef}
-                            onSelect={(entity) => updateEntityRef(originalIndex, 'companyRef', entity)}
-                            onCreateNew={() => {
-                              setTargetIndex(originalIndex);
-                              setOpenCompanyDialog(true);
-                            }}
-                            placeholder="Select company"
-                          />
+                          <Label className="text-sm font-medium">
+                            Company
+                            {raw.company && (
+                              <span className="text-xs text-muted-foreground ml-1">
+                                (JSON: "{raw.company}")
+                              </span>
+                            )}
+                          </Label>
+                          <div className={!tour.companyRef?.id ? 'border-2 border-yellow-500 rounded-md' : ''}>
+                            <EntitySelector
+                              entities={companies}
+                              selected={tour.companyRef}
+                              onSelect={(entity) => updateEntityRef(originalIndex, 'companyRef', entity)}
+                              onCreateNew={() => {
+                                setTargetIndex(originalIndex);
+                                setInitialEntityName(raw.company || '');
+                                setOpenCompanyDialog(true);
+                              }}
+                              placeholder="Select company"
+                            />
+                          </div>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">Guide</Label>
-                          <EntitySelector
-                            entities={guides}
-                            selected={tour.guideRef}
-                            onSelect={(entity) => updateEntityRef(originalIndex, 'guideRef', entity)}
-                            onCreateNew={() => {
-                              setTargetIndex(originalIndex);
-                              setOpenGuideDialog(true);
-                            }}
-                            placeholder="Select guide"
-                          />
+                          <Label className="text-sm font-medium">
+                            Guide
+                            {raw.guide && (
+                              <span className="text-xs text-muted-foreground ml-1">
+                                (JSON: "{raw.guide}")
+                              </span>
+                            )}
+                          </Label>
+                          <div className={!tour.guideRef?.id ? 'border-2 border-yellow-500 rounded-md' : ''}>
+                            <EntitySelector
+                              entities={guides}
+                              selected={tour.guideRef}
+                              onSelect={(entity) => updateEntityRef(originalIndex, 'guideRef', entity)}
+                              onCreateNew={() => {
+                                setTargetIndex(originalIndex);
+                                setInitialEntityName(raw.guide || '');
+                                setOpenGuideDialog(true);
+                              }}
+                              placeholder="Select guide"
+                            />
+                          </div>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">Nationality</Label>
-                          <EntitySelector
-                            entities={nationalities}
-                            selected={tour.clientNationalityRef}
-                            onSelect={(entity) => updateEntityRef(originalIndex, 'clientNationalityRef', entity)}
-                            onCreateNew={() => {
-                              setTargetIndex(originalIndex);
-                              setOpenNationalityDialog(true);
-                            }}
-                            placeholder="Select nationality"
-                          />
+                          <Label className="text-sm font-medium">
+                            Nationality
+                            {raw.nationality && (
+                              <span className="text-xs text-muted-foreground ml-1">
+                                (JSON: "{raw.nationality}")
+                              </span>
+                            )}
+                          </Label>
+                          <div className={!tour.clientNationalityRef?.id ? 'border-2 border-yellow-500 rounded-md' : ''}>
+                            <EntitySelector
+                              entities={nationalities}
+                              selected={tour.clientNationalityRef}
+                              onSelect={(entity) => updateEntityRef(originalIndex, 'clientNationalityRef', entity)}
+                              onCreateNew={() => {
+                                setTargetIndex(originalIndex);
+                                setInitialEntityName(raw.nationality || '');
+                                setOpenNationalityDialog(true);
+                              }}
+                              placeholder="Select nationality"
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -880,7 +949,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                             type="date"
                             value={tour.startDate || ''}
                             onChange={(e) => updateTourField(originalIndex, 'startDate', e.target.value)}
-                            className="h-8"
+                            className={`h-8 ${!tour.startDate ? 'border-yellow-500' : ''}`}
                           />
                         </div>
                         <div>
@@ -889,7 +958,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                             type="date"
                             value={tour.endDate || ''}
                             onChange={(e) => updateTourField(originalIndex, 'endDate', e.target.value)}
-                            className="h-8"
+                            className={`h-8 ${!tour.endDate ? 'border-yellow-500' : ''}`}
                           />
                         </div>
                       </div>
@@ -1094,9 +1163,24 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
       </div>
 
       {/* Entity Creation Dialogs */}
-      <CompanyDialog open={openCompanyDialog} onOpenChange={setOpenCompanyDialog} onSubmit={handleCreateCompany} />
-      <GuideDialog open={openGuideDialog} onOpenChange={setOpenGuideDialog} onSubmit={handleCreateGuide} />
-      <NationalityDialog open={openNationalityDialog} onOpenChange={setOpenNationalityDialog} onSubmit={handleCreateNationality} />
+      <CompanyDialog
+        open={openCompanyDialog}
+        onOpenChange={setOpenCompanyDialog}
+        company={initialEntityName ? { id: '', name: initialEntityName, createdAt: '', updatedAt: '' } as any : undefined}
+        onSubmit={handleCreateCompany}
+      />
+      <GuideDialog
+        open={openGuideDialog}
+        onOpenChange={setOpenGuideDialog}
+        guide={initialEntityName ? { id: '', name: initialEntityName, createdAt: '', updatedAt: '' } as any : undefined}
+        onSubmit={handleCreateGuide}
+      />
+      <NationalityDialog
+        open={openNationalityDialog}
+        onOpenChange={setOpenNationalityDialog}
+        nationality={initialEntityName ? { id: '', name: initialEntityName, createdAt: '', updatedAt: '' } as any : undefined}
+        onSubmit={handleCreateNationality}
+      />
       <DestinationDialog open={openDestinationDialog} onOpenChange={setOpenDestinationDialog} onSubmit={handleCreateDestination} />
       <DetailedExpenseDialog open={openExpenseDialog} onOpenChange={setOpenExpenseDialog} onSubmit={handleCreateExpense} />
       <ShoppingDialog open={openShoppingDialog} onOpenChange={setOpenShoppingDialog} onSubmit={handleCreateShopping} />
@@ -1159,16 +1243,16 @@ function EntitySelector({ entities, selected, onSelect, onCreateNew, placeholder
   }, [entities, searchQuery]);
 
   return (
-    <div className="relative">
+    <div className="flex items-center gap-2">
       <Select
-        value={selected?.id || ''}
+        value={selected?.id || undefined}
         onValueChange={(value) => {
           const entity = entities.find(e => e.id === value);
           if (entity) onSelect(entity);
         }}
         onOpenChange={setIsOpen}
       >
-        <SelectTrigger className="h-8">
+        <SelectTrigger className="h-8 flex-1">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
@@ -1178,6 +1262,7 @@ function EntitySelector({ entities, selected, onSelect, onCreateNew, placeholder
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8"
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
           <Separator />
@@ -1186,15 +1271,22 @@ function EntitySelector({ entities, selected, onSelect, onCreateNew, placeholder
               {entity.name}
             </SelectItem>
           ))}
-          <Separator />
-          <SelectItem value="create-new" onSelect={onCreateNew}>
-            <div className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create new
+          {filteredEntities.length === 0 && (
+            <div className="p-2 text-sm text-muted-foreground text-center">
+              No results found
             </div>
-          </SelectItem>
+          )}
         </SelectContent>
       </Select>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onCreateNew}
+        className="h-8 w-8 p-0"
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

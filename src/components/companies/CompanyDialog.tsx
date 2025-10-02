@@ -121,7 +121,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
               <Label htmlFor="note">Note</Label>
               <TextareaWithSave
                 id="note"
-                storageKey="company-note"
+                storageKey={company ? `company-note-edit-${company.id}` : 'company-note-create'}
                 value={formData.note}
                 onValueChange={(value) => setFormData({ ...formData, note: value })}
                 placeholder="Additional information"

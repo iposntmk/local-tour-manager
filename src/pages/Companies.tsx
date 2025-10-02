@@ -360,12 +360,12 @@ const Companies = () => {
           onImport={handleBulkImport}
           parseItem={parseCompanyItem}
           title="Import Companies"
-          description="Import multiple companies at once. Enter one company per line in CSV format."
-          placeholder="Enter companies (one per line, format: name,contactName,phone,email)
+          description="Import multiple companies at once. Format: Company Name[,Contact,Phone,Email] (contact, phone, email are optional)"
+          placeholder="Enter companies (one per line, format: Company Name[,Contact,Phone,Email])
 Example:
-Company A,Contact Name,Phone,Email
+Company A
 ABC Travel,John Doe,123-456-7890,john@abc.com
-XYZ Tours,Jane Smith,098-765-4321,jane@xyz.com"
+XYZ Tours,Jane Smith,098-765-4321"
         />
       </div>
     </Layout>

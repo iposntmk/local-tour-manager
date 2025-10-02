@@ -418,8 +418,8 @@ export class IndexedDbStore implements DataStore {
       const nationality: Nationality = {
         id: crypto.randomUUID(),
         name: input.name,
-        iso2: input.iso2,
-        emoji: input.emoji,
+        iso2: input.iso2 || '',
+        emoji: input.emoji || '',
         status: 'active',
         searchKeywords: generateSearchKeywords(input.name),
         createdAt: nowISO(),
@@ -1215,7 +1215,18 @@ export class IndexedDbStore implements DataStore {
   }
 
   async deleteTour(id: string): Promise<void> {
-    await db.tours.delete(id);
+    console.log('IndexedDbStore: Deleting tour with ID:', id);
+    try {
+      await db.tours.delete(id);
+      console.log('IndexedDbStore: Tour deleted successfully');
+    } catch (error) {
+      console.error('IndexedDbStore: Delete tour error:', error);
+      throw error;
+    }
+  }
+
+  async deleteAllTours(): Promise<void> {
+    await db.tours.clear();
   }
 
   async duplicateTour(id: string): Promise<Tour> {

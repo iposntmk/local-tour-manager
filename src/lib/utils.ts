@@ -64,3 +64,16 @@ export function parseDate(dateString: string): string | null {
 
   return null;
 }
+
+/**
+ * Get CSS classes for highlighting required fields
+ */
+export function getRequiredFieldClasses(hasError: boolean, isRequired: boolean = true): string {
+  if (hasError) {
+    return 'border-destructive focus:border-destructive focus:ring-destructive';
+  }
+  if (isRequired) {
+    return 'border-orange-300 focus:border-orange-500 focus:ring-orange-500';
+  }
+  return '';
+}

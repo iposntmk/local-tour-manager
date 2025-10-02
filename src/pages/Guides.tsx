@@ -337,14 +337,14 @@ const Guides = () => {
           onOpenChange={setImportDialogOpen}
           onImport={handleBulkImport}
           title="Import Guides"
-          description="Import multiple guides at once. Format: Guide Name,Phone,Note (note is optional)"
-          placeholder="Enter guides (one per line, format: Guide Name,Phone,Note)\nExample:\nJohn Smith,0123456789,Experienced guide\nJane Doe,0987654321,Speaks English and French\nBob Wilson,0111222333"
+          description="Import multiple guides at once. Format: Guide Name[,Phone,Note] (phone and note are optional)"
+          placeholder="Enter guides (one per line, format: Guide Name[,Phone,Note])\nExample:\nJohn Smith\nJane Doe,0987654321,Speaks English and French\nBob Wilson,0111222333"
           parseItem={(parts: string[]) => {
-            if (parts.length >= 2) {
+            if (parts.length >= 1 && parts[0].trim()) {
               return {
-                name: parts[0] || '',
-                phone: parts[1] || '',
-                note: parts[2] || '', // note is optional
+                name: parts[0].trim(),
+                phone: parts[1]?.trim() || undefined,
+                note: parts[2]?.trim() || undefined,
               };
             }
             return null;

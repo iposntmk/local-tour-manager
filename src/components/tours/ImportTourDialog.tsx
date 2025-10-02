@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from '@/components/ui/button';
 import { TextareaWithSave } from '@/components/ui/textarea-with-save';
 import { Label } from '@/components/ui/label';
-import { Upload, FileJson } from 'lucide-react';
+import { Upload, FileJson, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import Fuse from 'fuse.js';
 import { store } from '@/lib/datastore';
 import type { Tour } from '@/types/tour';
 import type { EntityRef } from '@/types/tour';
@@ -32,7 +33,9 @@ type EntityCaches = {
 
 const normalizeEntityName = (value?: string | null) => {
   if (!value) return '';
-  return value.trim().toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+  // Normalize unicode characters (e.g., "Việt" -> "Viet")
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return normalized.trim().toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
 };
 
 const buildEntityCaches = (companies: Company[], guides: Guide[], nationalities: Nationality[]): EntityCaches => {
@@ -132,13 +135,15 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     return loadPromise;
   }, [entityCaches]);
 
+  // Preload entities when dialog opens for better performance
   useEffect(() => {
-    if (open) {
+    if (open && !entityCaches) {
       loadEntityCaches().catch(error => {
         console.error('Failed to preload entities for import dialog', error);
       });
     }
-  }, [open, loadEntityCaches]);
+  }, [open, entityCaches, loadEntityCaches]);
+
 
   const findEntityRef = (
     caches: EntityCaches,
@@ -152,6 +157,8 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     }
 
     let match: Company | Guide | Nationality | undefined;
+
+    // Try exact match first
     if (entityType === 'company') {
       match = caches.lookups.companiesByName.get(normalized);
     } else if (entityType === 'guide') {
@@ -166,17 +173,29 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       return { id: match.id, nameAtBooking: match.name };
     }
 
-    // Debug: Log available entities for troubleshooting
-    if (required) {
-      console.warn(`Entity not found: ${entityType} "${name}" (normalized: "${normalized}")`);
-      if (entityType === 'company') {
-        console.warn('Available companies:', Array.from(caches.lookups.companiesByName.keys()));
-      } else if (entityType === 'guide') {
-        console.warn('Available guides:', Array.from(caches.lookups.guidesByName.keys()));
-      } else {
-        console.warn('Available nationalities:', Array.from(caches.lookups.nationalitiesByName.keys()));
-        console.warn('Available nationality ISO codes:', Array.from(caches.lookups.nationalitiesByIso.keys()));
-      }
+    // Fallback to fuzzy matching with Fuse.js
+    let entities: (Company | Guide | Nationality)[] = [];
+    let searchKeys: string[] = ['name'];
+
+    if (entityType === 'company') {
+      entities = caches.companies;
+    } else if (entityType === 'guide') {
+      entities = caches.guides;
+    } else {
+      entities = caches.nationalities;
+      searchKeys = ['name', 'iso2'];
+    }
+
+    const fuse = new Fuse(entities, {
+      keys: searchKeys,
+      threshold: 0.3,
+      ignoreLocation: true,
+    });
+
+    const fuzzyResults = fuse.search(name);
+    if (fuzzyResults.length > 0) {
+      const fuzzyMatch = fuzzyResults[0].item;
+      return { id: fuzzyMatch.id, nameAtBooking: fuzzyMatch.name };
     }
 
     return required ? null : null;
@@ -186,16 +205,24 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     const tourData = data.tour || data;
     const subcollections = data.subcollections || {};
 
-    const companyRef = findEntityRef(caches, 'company', tourData.company || '', false);
-    const guideRef = findEntityRef(caches, 'guide', tourData.tourGuide || '', false);
-    const nationalityRef = findEntityRef(caches, 'nationality', tourData.clientNationality || '', false);
+    // Apply defaults if fields are empty
+    const companyName = tourData.company || 'Việt Á';
+    const guideName = tourData.tourGuide || 'Cao Hữu Tu';
+    const clientNameValue = tourData.clientName || 'Client Tú';
+
+    // Handle nationality - treat empty as Vietnam
+    const nationalityName = tourData.clientNationality?.trim() || 'Việt Nam';
+
+    const companyRef = findEntityRef(caches, 'company', companyName, false);
+    const guideRef = findEntityRef(caches, 'guide', guideName, false);
+    const nationalityRef = findEntityRef(caches, 'nationality', nationalityName, false);
 
     // Try to find entities but don't require them - let user review and edit
     // No validation here - let the user review and edit the data
 
     const tour: Partial<Tour> = {
       tourCode: tourData.tourCode,
-      clientName: tourData.clientName || '',
+      clientName: clientNameValue,
       adults: tourData.adults || 0,
       children: tourData.children || 0,
       totalGuests: tourData.totalGuests || 0,
@@ -204,9 +231,9 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       startDate: tourData.startDate,
       endDate: tourData.endDate,
       totalDays: tourData.totalDays || 0,
-      companyRef: companyRef || { id: '', nameAtBooking: '' },
-      guideRef: guideRef || { id: '', nameAtBooking: '' },
-      clientNationalityRef: nationalityRef || { id: '', nameAtBooking: '' },
+      companyRef: companyRef || { id: '', nameAtBooking: companyName },
+      guideRef: guideRef || { id: '', nameAtBooking: guideName },
+      clientNationalityRef: nationalityRef || { id: '', nameAtBooking: nationalityName },
       destinations: subcollections.destinations || [],
       expenses: subcollections.expenses || [],
       meals: subcollections.meals || [],
@@ -223,7 +250,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       },
     };
 
-    return { tour, raw: { company: tourData.company || '', guide: tourData.tourGuide || '', nationality: tourData.clientNationality || '' } };
+    return { tour, raw: { company: companyName, guide: guideName, nationality: nationalityName } };
   };
 
   const validateTourData = (data: any): { valid: boolean; errors: string[] } => {
@@ -242,6 +269,84 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     }
     
     return { valid: errors.length === 0, errors };
+  };
+
+  const downloadSampleJson = () => {
+    const sampleData = [{
+      tour: {
+        tourCode: "SAMPLE001",
+        company: "Việt Á",
+        tourGuide: "Cao Hữu Tu",
+        clientName: "Sample Client",
+        clientNationality: "Việt Nam",
+        adults: 2,
+        children: 1,
+        totalGuests: 3,
+        driverName: "Sample Driver",
+        clientPhone: "+84123456789",
+        startDate: "2025-01-15",
+        endDate: "2025-01-20",
+        totalDays: 5
+      },
+      subcollections: {
+        destinations: [
+          {
+            name: "Hà Nội",
+            date: "2025-01-15",
+            orderIndex: 0
+          }
+        ],
+        expenses: [
+          {
+            category: "Accommodation",
+            description: "Hotel booking",
+            amount: 1000000,
+            date: "2025-01-15",
+            orderIndex: 0
+          }
+        ],
+        meals: [
+          {
+            mealType: "Lunch",
+            location: "Restaurant A",
+            pricePerPerson: 150000,
+            numberOfGuests: 3,
+            totalPrice: 450000,
+            date: "2025-01-15",
+            orderIndex: 0
+          }
+        ],
+        allowances: [
+          {
+            description: "Daily allowance",
+            amount: 200000,
+            date: "2025-01-15",
+            orderIndex: 0
+          }
+        ],
+        summary: {
+          totalTabs: 0,
+          advancePayment: 0,
+          totalAfterAdvance: 0,
+          companyTip: 0,
+          totalAfterTip: 0,
+          collectionsForCompany: 0,
+          totalAfterCollections: 0,
+          finalTotal: 0
+        }
+      }
+    }];
+
+    const blob = new Blob([JSON.stringify(sampleData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tour-import-sample.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Sample JSON file downloaded');
   };
 
   const handleImport = async () => {
@@ -310,18 +415,29 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
         <div className="space-y-4">
           {reviewItems.length === 0 ? (
             <>
-              <div>
-                <Label htmlFor="json-file" className="flex items-center gap-2 cursor-pointer">
-                  <FileJson className="h-4 w-4" />
-                  Upload JSON File
-                </Label>
-                <input
-                  id="json-file"
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileUpload}
-                  className="mt-2"
-                />
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Label htmlFor="json-file" className="flex items-center gap-2 cursor-pointer">
+                    <FileJson className="h-4 w-4" />
+                    Upload JSON File
+                  </Label>
+                  <input
+                    id="json-file"
+                    type="file"
+                    accept=".json"
+                    onChange={handleFileUpload}
+                    className="mt-2"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadSampleJson}
+                  className="ml-2"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Sample
+                </Button>
               </div>
 
               <div className="relative">

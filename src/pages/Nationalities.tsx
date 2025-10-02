@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
@@ -84,7 +84,7 @@ const Nationalities = () => {
   });
 
   const bulkImportMutation = useMutation({
-    mutationFn: (items: { name: string; iso2: string; emoji: string }[]) =>
+    mutationFn: (items: { name: string; iso2?: string; emoji?: string }[]) =>
       store.bulkCreateNationalities(items),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nationalities'] });
@@ -123,8 +123,35 @@ const Nationalities = () => {
     }
   };
 
-  const handleBulkImport = async (items: { name: string; iso2: string; emoji: string }[]) => {
+  const handleBulkImport = async (items: { name: string; iso2?: string; emoji?: string }[]) => {
     await bulkImportMutation.mutateAsync(items);
+  };
+
+  const handleExportTxt = () => {
+    if (filteredNationalities.length === 0) {
+      toast.error('No nationalities to export');
+      return;
+    }
+
+    const txtContent = filteredNationalities
+      .map(nat => {
+        const parts = [nat.name];
+        if (nat.iso2) parts.push(nat.iso2);
+        if (nat.emoji) parts.push(nat.emoji);
+        return parts.join(',');
+      })
+      .join('\n');
+
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nationalities-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredNationalities.length} nationalities`);
   };
 
   const filteredNationalities = useMemo(() => {
@@ -149,6 +176,14 @@ const Nationalities = () => {
               <p className="text-muted-foreground">Manage client nationalities</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={handleExportTxt}
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export TXT
+              </Button>
               <Button
                 onClick={() => setImportDialogOpen(true)}
                 variant="outline"
@@ -342,17 +377,18 @@ const Nationalities = () => {
           onImport={handleBulkImport}
           title="Import Nationalities"
           description="Upload or paste nationality data in CSV format"
-          placeholder="Enter nationalities (one per line, format: Country Name,ISO2,Emoji)
+          placeholder="Enter nationalities (one per line, format: Country Name[,ISO2,Emoji])
 Example:
-United States,US,🇺🇸
+United States
 United Kingdom,GB,🇬🇧
-France,FR,🇫🇷"
+France,FR,🇫🇷
+Germany,DE"
           parseItem={(parts: string[]) => {
-            if (parts.length >= 3) {
+            if (parts.length >= 1 && parts[0].trim()) {
               return {
-                name: parts[0],
-                iso2: parts[1],
-                emoji: parts[2]
+                name: parts[0].trim(),
+                iso2: parts[1]?.trim() || undefined,
+                emoji: parts[2]?.trim() || undefined
               };
             }
             return null;

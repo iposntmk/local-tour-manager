@@ -1,8 +1,9 @@
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn, getRequiredFieldClasses } from "@/lib/utils";
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +25,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign, Calculator } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { Tour, TourInput, Destination, Expense, Meal, Allowance, TourSummary } from '@/types/tour';
 
 interface TourFormProps {
@@ -120,11 +120,42 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const totalGuests = (adults || 0) + (children || 0);
 
   const handleFormSubmit = (data: TourInput) => {
+    // Validate required fields
+    const missingFields: string[] = [];
+    
+    if (!data.tourCode?.trim()) {
+      missingFields.push('Tour Code');
+    }
+    if (!data.clientName?.trim()) {
+      missingFields.push('Client Name');
+    }
+    if (!data.startDate) {
+      missingFields.push('Start Date');
+    }
+    if (!data.endDate) {
+      missingFields.push('End Date');
+    }
+    if (!selectedCompanyId) {
+      missingFields.push('Company');
+    }
+    if (!selectedGuideId) {
+      missingFields.push('Guide');
+    }
+    if (!selectedNationalityId) {
+      missingFields.push('Nationality');
+    }
+
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
     const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
     const selectedGuide = guides.find((g) => g.id === selectedGuideId);
     const selectedNationality = nationalities.find((n) => n.id === selectedNationalityId);
 
     if (!selectedCompany || !selectedGuide || !selectedNationality) {
+      toast.error('Please select valid Company, Guide, and Nationality');
       return;
     }
 
@@ -204,6 +235,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 id="tourCode"
                 {...register('tourCode', { required: 'Tour code is required' })}
                 placeholder="e.g., AT-250901"
+                className={cn(getRequiredFieldClasses(!!errors.tourCode))}
               />
               {errors.tourCode && (
                 <p className="text-sm text-destructive">{errors.tourCode.message}</p>
@@ -218,7 +250,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                   <Button
                     variant="outline"
                     role="combobox"
-                    className="w-full justify-between"
+                    className={cn("w-full justify-between", getRequiredFieldClasses(!selectedCompanyId))}
                   >
                     {selectedCompany ? selectedCompany.name : 'Select company...'}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -303,6 +335,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 id="clientName"
                 {...register('clientName', { required: 'Client name is required' })}
                 placeholder="e.g., Mrs. Matilde Lamura"
+                className={cn(getRequiredFieldClasses(!!errors.clientName))}
               />
               {errors.clientName && (
                 <p className="text-sm text-destructive">{errors.clientName.message}</p>
@@ -317,7 +350,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                   <Button
                     variant="outline"
                     role="combobox"
-                    className="w-full justify-between"
+                    className={cn("w-full justify-between", getRequiredFieldClasses(!selectedNationalityId))}
                   >
                     {selectedNationality ? (
                       <span>
@@ -413,6 +446,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 id="startDate"
                 value={watch('startDate')}
                 onChange={(value) => setValue('startDate', value)}
+                className={cn(getRequiredFieldClasses(!!errors.startDate))}
               />
               {errors.startDate && (
                 <p className="text-sm text-destructive">{errors.startDate.message}</p>
@@ -426,6 +460,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 id="endDate"
                 value={watch('endDate')}
                 onChange={(value) => setValue('endDate', value)}
+                className={cn(getRequiredFieldClasses(!!errors.endDate))}
               />
               {errors.endDate && (
                 <p className="text-sm text-destructive">{errors.endDate.message}</p>
@@ -462,7 +497,22 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
               <CurrencyInput placeholder="Price" value={destForm.price} onChange={(price) => setDestForm({ ...destForm, price })} />
               <DateInput value={destForm.date} onChange={(date) => setDestForm({ ...destForm, date })} />
             </div>
-            <Button type="button" className="mt-4" onClick={() => { if (destForm.name && destForm.date) { setDestinations([...destinations, destForm]); setDestForm({ name: '', price: 0, date: '' }); } }}>
+            <Button type="button" className="mt-4" onClick={() => { 
+              if (destForm.name && destForm.date) { 
+                // Check for duplicate destination name
+                const isDuplicate = destinations.some(dest => 
+                  dest.name.toLowerCase() === destForm.name.toLowerCase()
+                );
+                
+                if (isDuplicate) {
+                  toast.error('A destination with this name already exists');
+                  return;
+                }
+                
+                setDestinations([...destinations, destForm]); 
+                setDestForm({ name: '', price: 0, date: '' }); 
+              } 
+            }}>
               <Plus className="h-4 w-4 mr-2" />Add
             </Button>
           </div>

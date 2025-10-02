@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
+import { toast } from 'sonner';
+import { cn, getRequiredFieldClasses } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +22,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Save } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { Tour, TourInput } from '@/types/tour';
 
 interface TourInfoFormProps {
@@ -77,11 +78,42 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
   const totalGuests = (adults || 0) + (children || 0);
 
   const handleFormSubmit = (data: TourInput) => {
+    // Validate required fields
+    const missingFields: string[] = [];
+    
+    if (!data.tourCode?.trim()) {
+      missingFields.push('Tour Code');
+    }
+    if (!data.clientName?.trim()) {
+      missingFields.push('Client Name');
+    }
+    if (!data.startDate) {
+      missingFields.push('Start Date');
+    }
+    if (!data.endDate) {
+      missingFields.push('End Date');
+    }
+    if (!selectedCompanyId) {
+      missingFields.push('Company');
+    }
+    if (!selectedGuideId) {
+      missingFields.push('Guide');
+    }
+    if (!selectedNationalityId) {
+      missingFields.push('Nationality');
+    }
+
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
     const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
     const selectedGuide = guides.find((g) => g.id === selectedGuideId);
     const selectedNationality = nationalities.find((n) => n.id === selectedNationalityId);
 
     if (!selectedCompany || !selectedGuide || !selectedNationality) {
+      toast.error('Please select valid Company, Guide, and Nationality');
       return;
     }
 
@@ -107,6 +139,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
             id="tourCode"
             {...register('tourCode', { required: 'Tour code is required' })}
             placeholder="e.g., AT-250901"
+            className={cn(getRequiredFieldClasses(!!errors.tourCode))}
           />
           {errors.tourCode && (
             <p className="text-sm text-destructive">{errors.tourCode.message}</p>
@@ -121,7 +154,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
               <Button
                 variant="outline"
                 role="combobox"
-                className="w-full justify-between"
+                className={cn("w-full justify-between", getRequiredFieldClasses(!selectedCompanyId))}
               >
                 {selectedCompany ? selectedCompany.name : 'Select company...'}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
