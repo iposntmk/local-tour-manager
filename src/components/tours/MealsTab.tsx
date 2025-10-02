@@ -23,9 +23,9 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
   const [openMeal, setOpenMeal] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: shoppingItems = [] } = useQuery({
-    queryKey: ['shoppings'],
-    queryFn: () => store.listShoppings({ status: 'active' }),
+  const { data: detailedExpenses = [] } = useQuery({
+    queryKey: ['detailedExpenses'],
+    queryFn: () => store.listDetailedExpenses({ status: 'active' }),
   });
 
   const addMutation = useMutation({
@@ -105,7 +105,7 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
                   <CommandList>
                     <CommandEmpty>No meal found.</CommandEmpty>
                     <CommandGroup>
-                      {shoppingItems.map((item) => (
+                      {detailedExpenses.map((item) => (
                         <CommandItem
                           key={item.id}
                           value={item.name}
