@@ -105,7 +105,7 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
                           key={item.id}
                           value={item.name}
                           onSelect={() => {
-                            setFormData({ ...formData, name: item.name });
+                            setFormData({ ...formData, name: item.name, price: item.price });
                             setOpenMeal(false);
                           }}
                         >
@@ -115,7 +115,7 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
                               formData.name === item.name ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {item.name}
+                          {item.name} ({item.price.toLocaleString()} ₫)
                         </CommandItem>
                       ))}
                     </CommandGroup>
