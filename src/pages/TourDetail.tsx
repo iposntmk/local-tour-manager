@@ -71,7 +71,6 @@ const TourDetail = () => {
       queryClient.invalidateQueries({ queryKey: ['tour', id] });
       queryClient.invalidateQueries({ queryKey: ['tours'] });
       toast.success('Tour updated successfully');
-      navigate('/tours');
     },
     onError: (error: Error) => {
       const errorMessage = error.message.toLowerCase();

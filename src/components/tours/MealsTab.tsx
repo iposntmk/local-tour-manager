@@ -4,6 +4,7 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -22,6 +23,11 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
   const [formData, setFormData] = useState<Meal>({ name: '', price: 0, date: '' });
   const [openMeal, setOpenMeal] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: tour } = useQuery({
+    queryKey: ['tour', tourId],
+    queryFn: () => store.getTour(tourId),
+  });
 
   const { data: detailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses'],
@@ -163,38 +169,61 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
             No meals added yet
           </div>
         ) : (
-          <div className="divide-y">
-            {meals.map((meal, index) => (
-              <div
-                key={index}
-                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/50 transition-colors animate-fade-in"
-              >
-                <div className="flex-1">
-                  <div className="font-medium">{meal.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {meal.price.toLocaleString()} ₫ • {formatDate(meal.date)}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(index)}
-                    className="hover-scale"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteMutation.mutate(index)}
-                    className="hover-scale text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+          <div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">#</TableHead>
+                  <TableHead>Meal</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Total Guests</TableHead>
+                  <TableHead>Total Amount</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {meals.map((meal, index) => {
+                  const totalGuests = tour?.totalGuests || 0;
+                  const totalAmount = meal.price * totalGuests;
+                  return (
+                    <TableRow key={index} className="animate-fade-in">
+                      <TableCell className="font-medium">{index + 1}</TableCell>
+                      <TableCell className="font-medium">{meal.name}</TableCell>
+                      <TableCell>{meal.price.toLocaleString()} ₫</TableCell>
+                      <TableCell>{totalGuests}</TableCell>
+                      <TableCell className="font-semibold">{totalAmount.toLocaleString()} ₫</TableCell>
+                      <TableCell>{formatDate(meal.date)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(index)}
+                            className="hover-scale"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMutation.mutate(index)}
+                            className="hover-scale text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
+              <div className="text-lg font-semibold">
+                Total: {meals.reduce((sum, meal) => sum + (meal.price * (tour?.totalGuests || 0)), 0).toLocaleString()} ₫
               </div>
-            ))}
+            </div>
           </div>
         )}
       </div>
