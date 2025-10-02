@@ -12,10 +12,11 @@ const thinBorder = {
   right: { style: 'thin', color: { argb: 'FF000000' } },
 } as const;
 
-const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF4B2' } } as const;
-const totalsFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } } as const;
-const summaryTitleFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE69C' } } as const;
-const summaryInputFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE699' } } as const;
+// Màu theo mẫu ImageTourExport.png
+const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B0F0' } } as const; // Blue header
+const totalsFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as const; // Yellow totals
+const summaryTitleFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as const; // Yellow
+const summaryInputFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as const; // Yellow
 const infoFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDEDED' } } as const;
 const finalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBDD7EE' } } as const;
 
@@ -103,196 +104,277 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
 
   worksheet.properties.defaultRowHeight = 20;
   worksheet.columns = [
-    { key: 'code', width: 18 },
-    { key: 'date', width: 16 },
-    { key: 'service', width: 40 },
-    { key: 'quantity', width: 12 },
-    { key: 'amount', width: 18 },
-    { key: 'ctp', width: 32 },
-    { key: 'ctpAmount', width: 18 },
-    { key: 'total', width: 18 },
+    { key: 'code', width: 15 },           // A - code
+    { key: 'date', width: 25 },           // B - ngày
+    { key: 'service', width: 30 },        // C - vé + ăn + uống + chi phí
+    { key: 'price', width: 15 },          // D - giá vé/đơn giá
+    { key: 'quantity', width: 12 },       // E - số khách
+    { key: 'total', width: 15 },          // F - thành tiền
+    { key: 'location', width: 20 },       // G - Địa điểm/tỉnh
+    { key: 'days', width: 12 },            // H - số ngày
+    { key: 'ctp', width: 15 },            // I - CTP
+    { key: 'ctpTotal', width: 15 },       // J - thành tiền
+    { key: 'tourTotal', width: 15 },      // K - Tổng tour
   ];
 
-  worksheet.mergeCells('A1:H1');
-  const titleCell = worksheet.getCell('A1');
-  titleCell.value = `BẢNG THANH TOÁN TOUR - ${tour.tourCode}`;
-  titleCell.font = { bold: true, size: 16, color: { argb: 'FF1F4E78' } };
-  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-  titleCell.fill = finalFill;
-  applyRowBorder(worksheet.getRow(1));
+  // Row 1: Header row 1 theo mẫu ImageTourExport.png
+  const header1Row = worksheet.getRow(1);
+  header1Row.height = 30;
 
-  styleMergedRange(worksheet, 'A2:C2', `Khách: ${tour.clientName || ''}`, { bold: true });
-  styleMergedRange(worksheet, 'D2:E2', `SĐT: ${tour.clientPhone || ''}`);
-  styleMergedRange(worksheet, 'F2:H2', `Quốc tịch: ${tour.clientNationalityRef?.nameAtBooking || ''}`);
+  // Merge cells cho header row 1 theo mẫu
+  worksheet.mergeCells('A1:B1');  // code + ngày
+  worksheet.mergeCells('C1:F1');  // vé + ăn + uống + chi phí
+  worksheet.mergeCells('G1:J1');  // Công tác phí (CTP) + ngủ
+  // K1 không merge
 
-  styleMergedRange(worksheet, 'A3:C3', `Công ty: ${tour.companyRef?.nameAtBooking || ''}`);
-  styleMergedRange(worksheet, 'D3:E3', `Hướng dẫn: ${tour.guideRef?.nameAtBooking || ''}`);
-  styleMergedRange(worksheet, 'F3:H3', `Tài xế: ${tour.driverName || ''}`);
+  const h1Cells = [
+    { cell: 'A1', value: 'code', fill: headerFill },
+    { cell: 'C1', value: 'vé + ăn + uống + chi phí', fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B050' } } }, // Green
+    { cell: 'G1', value: 'Công tác phí (CTP) + ngủ', fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B050' } } }, // Green
+    { cell: 'K1', value: 'Tổng tour', fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } } }, // Orange
+  ];
 
-  styleMergedRange(
-    worksheet,
-    'A4:C4',
-    `Ngày: ${formatDisplayDate(tour.startDate)} - ${formatDisplayDate(tour.endDate)}`,
-  );
-  styleMergedRange(worksheet, 'D4:E4', `Số ngày: ${tour.totalDays ?? ''}`);
-  styleMergedRange(
-    worksheet,
-    'F4:H4',
-    `Tổng khách: ${tour.totalGuests ?? tour.adults + tour.children} (NL ${tour.adults} / TE ${tour.children})`,
-  );
-
-  const headerRow = worksheet.addRow([
-    'code',
-    'ngày',
-    'vé ăn - ngủ - dịch vụ',
-    'số lượng',
-    'thành tiền',
-    'Công tác phí (CTP)',
-    'thành tiền',
-    'Tổng tour',
-  ]);
-  headerRow.height = 22;
-  headerRow.font = { bold: true };
-  headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-  headerRow.eachCell(cell => {
-    cell.fill = headerFill;
-    cell.border = thinBorder;
+  h1Cells.forEach(({ cell, value, fill }) => {
+    const c = worksheet.getCell(cell);
+    c.value = value;
+    c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    c.fill = fill;
+    c.border = thinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
   });
 
-  worksheet.views = [{ state: 'frozen', ySplit: headerRow.number }];
+  // Apply border to all cells in row 1
+  for (let col = 1; col <= 11; col++) {
+    header1Row.getCell(col).border = thinBorder;
+  }
+
+  // Row 2: Header row 2 theo mẫu ImageTourExport.png
+  const headerRow = worksheet.getRow(2);
+  const headers = [
+    'code',                    // A
+    'ngày',                    // B
+    'vé/ăn/uống/chi phí',      // C
+    'giá vé/đơn giá',          // D
+    'số khách',                // E
+    'thành tiền',              // F
+    'Địa điểm/tỉnh',           // G
+    'số ngày',                 // H
+    'CTP',                     // I
+    'thành tiền',              // J
+    '',                        // K (empty for Tổng tour)
+  ];
+
+  headers.forEach((header, idx) => {
+    const cell = headerRow.getCell(idx + 1);
+    cell.value = header;
+    cell.font = { bold: true };
+    cell.border = thinBorder;
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  });
+
+  headerRow.height = 30;
+
+  worksheet.views = [{ state: 'frozen', ySplit: 2 }]; // Freeze first 2 rows
 
   const totalGuests = tour.totalGuests || tour.adults + tour.children;
-  const dataStartRow = worksheet.rowCount + 1;
-  let firstCodeAssigned = false;
+  const dataStartRow = 3; // Bắt đầu từ row 3
+  let currentRow = dataStartRow;
 
-  const assignCodeCell = (row: ExcelJS.Row) => {
-    if (!firstCodeAssigned) {
-      row.getCell(1).value = tour.tourCode;
-      firstCodeAssigned = true;
+  // Helper function để thêm row với border cho 11 cột (A-K)
+  const applyRowBorder = (row: ExcelJS.Row) => {
+    for (let col = 1; col <= 11; col += 1) {
+      row.getCell(col).border = thinBorder;
     }
   };
 
-  const addServiceRow = (label: string, date: string, price: number) => {
-    const row = worksheet.addRow(['', formatDisplayDate(date), label, totalGuests, null, '', null, null]);
-    assignCodeCell(row);
-    row.getCell(3).alignment = { wrapText: true };
-    row.getCell(4).alignment = { horizontal: 'center' };
-    row.getCell(5).value = { formula: `${price || 0}*D${row.number}` };
-    row.getCell(5).numFmt = currencyFormat;
-    row.getCell(8).value = { formula: `IF(E${row.number}="",0,E${row.number})+IF(G${row.number}="",0,G${row.number})` };
-    row.getCell(8).numFmt = currencyFormat;
+  let firstDataRow = true;
+
+  // Collect all services (destinations + expenses + meals)
+  const allServices = [
+    ...(tour.destinations?.map(d => ({ name: `vé ${d.name || ''}`, price: d.price || 0 })) || []),
+    ...(tour.expenses?.map(e => ({ name: e.name || '', price: e.price || 0 })) || []),
+    ...(tour.meals?.map(m => ({ name: m.name || '', price: m.price || 0 })) || []),
+  ];
+
+  const allowances = tour.allowances || [];
+  const maxRows = Math.max(allServices.length, allowances.length);
+
+  // Thêm rows cho cả services và allowances
+  for (let i = 0; i < maxRows; i++) {
+    const row = worksheet.getRow(currentRow);
+    const service = allServices[i];
+    const allowance = allowances[i];
+
+    // Columns A-F: Services (vé + ăn + uống + chi phí)
+    if (service) {
+      // A: code (chỉ row đầu tiên)
+      if (firstDataRow) {
+        row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
+      }
+
+      // B: ngày (chỉ row đầu tiên)
+      if (firstDataRow) {
+        row.getCell(2).value = `${tour.startDate} - ${tour.endDate}`;
+        firstDataRow = false;
+      }
+
+      // C: vé/ăn/uống/chi phí
+      row.getCell(3).value = service.name;
+      row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
+
+      // D: giá vé/đơn giá
+      row.getCell(4).value = service.price;
+      row.getCell(4).numFmt = currencyFormat;
+
+      // E: số khách
+      row.getCell(5).value = totalGuests;
+      row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+
+      // F: thành tiền (formula: D*E)
+      row.getCell(6).value = { formula: `D${currentRow}*E${currentRow}` };
+      row.getCell(6).numFmt = currencyFormat;
+    }
+
+    // Columns G-J: Allowances (CTP)
+    if (allowance) {
+      // G: Địa điểm/tỉnh
+      row.getCell(7).value = allowance.province || '';
+
+      // H: số ngày
+      row.getCell(8).value = 1;
+      row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
+
+      // I: CTP
+      row.getCell(9).value = allowance.amount || 0;
+      row.getCell(9).numFmt = currencyFormat;
+
+      // J: thành tiền (CTP total = I * H, but H is always 1)
+      row.getCell(10).value = allowance.amount || 0;
+      row.getCell(10).numFmt = currencyFormat;
+    }
+
+    // K: Tổng tour (formula: F + J)
+    if (service || allowance) {
+      const fValue = service ? `F${currentRow}` : '0';
+      const jValue = allowance ? `J${currentRow}` : '0';
+      row.getCell(11).value = { formula: `${fValue}+${jValue}` };
+      row.getCell(11).numFmt = currencyFormat;
+    }
+
     applyRowBorder(row);
-  };
+    currentRow++;
+  }
 
-  const addAllowanceRow = (label: string, date: string, amount: number) => {
-    const row = worksheet.addRow(['', formatDisplayDate(date), '', '', null, label, amount ?? 0, null]);
-    assignCodeCell(row);
-    row.getCell(6).alignment = { wrapText: true };
-    row.getCell(7).numFmt = currencyFormat;
-    row.getCell(8).value = { formula: `IF(E${row.number}="",0,E${row.number})+IF(G${row.number}="",0,G${row.number})` };
-    row.getCell(8).numFmt = currencyFormat;
-    applyRowBorder(row);
-  };
+  const dataEndRow = currentRow - 1;
 
-  tour.destinations?.forEach(destination => {
-    addServiceRow(`[Điểm đến] ${destination.name}`, destination.date, destination.price);
-  });
+  // Row tổng cộng với background vàng theo mẫu
+  const totalsRow = worksheet.getRow(currentRow);
+  currentRow++;
 
-  tour.expenses?.forEach(expense => {
-    addServiceRow(`[Chi phí] ${expense.name}`, expense.date, expense.price);
-  });
+  // Merge A-C cho "dịch vụ"
+  worksheet.mergeCells(`A${totalsRow.number}:C${totalsRow.number}`);
+  totalsRow.getCell(1).value = 'dịch vụ';
+  totalsRow.getCell(1).font = { bold: true };
+  totalsRow.getCell(1).fill = totalsFill;
+  totalsRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
 
-  tour.meals?.forEach(meal => {
-    addServiceRow(`[Bữa ăn] ${meal.name}`, meal.date, meal.price);
-  });
+  // D-E: Empty with yellow fill
+  totalsRow.getCell(4).fill = totalsFill;
+  totalsRow.getCell(5).fill = totalsFill;
 
-  tour.allowances?.forEach(allowance => {
-    addAllowanceRow(`CTP ${allowance.province}`, allowance.date, allowance.amount);
-  });
+  // F: Tổng thành tiền (vé + ăn + uống + chi phí)
+  totalsRow.getCell(6).value = { formula: `SUM(F${dataStartRow}:F${dataEndRow})` };
+  totalsRow.getCell(6).numFmt = currencyFormat;
+  totalsRow.getCell(6).fill = totalsFill;
 
-  const dataEndRow = worksheet.rowCount;
-  const hasDataRows = dataEndRow >= dataStartRow;
+  // Merge G-I cho "CTP"
+  worksheet.mergeCells(`G${totalsRow.number}:I${totalsRow.number}`);
+  totalsRow.getCell(7).value = 'CTP';
+  totalsRow.getCell(7).font = { bold: true };
+  totalsRow.getCell(7).fill = totalsFill;
+  totalsRow.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
 
-  const totalsRow = worksheet.addRow(['', '', 'Tổng cộng', '', null, '', null, null]);
-  totalsRow.font = { bold: true };
-  totalsRow.getCell(3).fill = totalsFill;
-  totalsRow.alignment = { vertical: 'middle' };
+  // J: Tổng CTP
+  totalsRow.getCell(10).value = { formula: `SUM(J${dataStartRow}:J${dataEndRow})` };
+  totalsRow.getCell(10).numFmt = currencyFormat;
+  totalsRow.getCell(10).fill = totalsFill;
+
+  // K: Tổng tour (F + J)
+  totalsRow.getCell(11).value = { formula: `F${totalsRow.number}+J${totalsRow.number}` };
+  totalsRow.getCell(11).numFmt = currencyFormat;
+  totalsRow.getCell(11).fill = totalsFill;
+
   applyRowBorder(totalsRow);
 
-  if (hasDataRows) {
-    totalsRow.getCell(5).value = { formula: `SUM(E${dataStartRow}:E${dataEndRow})` };
-    totalsRow.getCell(7).value = { formula: `SUM(G${dataStartRow}:G${dataEndRow})` };
-    totalsRow.getCell(8).value = { formula: `SUM(H${dataStartRow}:H${dataEndRow})` };
-  } else {
-    totalsRow.getCell(5).value = 0;
-    totalsRow.getCell(7).value = 0;
-    totalsRow.getCell(8).value = 0;
-  }
-  totalsRow.getCell(5).numFmt = currencyFormat;
-  totalsRow.getCell(7).numFmt = currencyFormat;
-  totalsRow.getCell(8).numFmt = currencyFormat;
+  // TỔNG KẾT section theo mẫu
+  currentRow++; // Empty row
 
-  worksheet.addRow([]);
+  // Row: TỔNG KẾT title
+  const summaryTitleRow = worksheet.getRow(currentRow);
+  currentRow++;
 
-  const summaryTitleRow = worksheet.addRow(['', '', '', '', '', '', '', '']);
-  const summaryTitleAddress = `C${summaryTitleRow.number}:F${summaryTitleRow.number}`;
-  worksheet.mergeCells(summaryTitleAddress);
-  const summaryTitleCell = worksheet.getCell(`C${summaryTitleRow.number}`);
-  summaryTitleCell.value = 'TỔNG KẾT';
-  summaryTitleCell.font = { bold: true };
-  summaryTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  summaryTitleCell.fill = summaryTitleFill;
+  worksheet.mergeCells(`A${summaryTitleRow.number}:G${summaryTitleRow.number}`);
+  summaryTitleRow.getCell(1).value = 'TỔNG KẾT';
+  summaryTitleRow.getCell(1).font = { bold: true };
+  summaryTitleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+  summaryTitleRow.getCell(1).fill = summaryTitleFill;
+
   applyRowBorder(summaryTitleRow);
 
-const addSummaryRow = (label: string, value: number | { formula: string }, options?: { fill?: Fill; bold?: boolean }) => {
-    const row = worksheet.addRow(['', '', label, '', '', '', '', null]);
+  // Helper function for summary rows
+  const addSummaryRow = (label: string, formula?: string, value?: number) => {
+    const row = worksheet.getRow(currentRow);
+    currentRow++;
+
+    // A: Label
+    row.getCell(1).value = label;
+    row.getCell(1).font = { bold: true };
+    row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+
+    // K: Value/formula
+    if (formula) {
+      row.getCell(11).value = { formula };
+    } else if (value !== undefined) {
+      row.getCell(11).value = value;
+    }
+    row.getCell(11).numFmt = currencyFormat;
+    row.getCell(11).font = { bold: true };
+
+    // Apply borders
     applyRowBorder(row);
-    const labelCell = row.getCell(3);
-    labelCell.alignment = { vertical: 'middle', horizontal: 'left' };
-    if (options?.bold) {
-      labelCell.font = { bold: true };
-    }
-    const valueCell = row.getCell(8);
-    if (typeof value === 'number') {
-      valueCell.value = value;
-    } else {
-      valueCell.value = { formula: value.formula };
-    }
-    valueCell.numFmt = currencyFormat;
-    valueCell.alignment = { horizontal: 'right', vertical: 'middle' };
-    if (options?.fill) {
-      valueCell.fill = options.fill;
-    }
-    return row.number;
+
+    return row;
   };
 
-  const totalsRowNumber = totalsRow.number;
-  const summary = tour.summary || {};
+  // Row: Tổng tabs
+  const totalTabsRow = addSummaryRow('Tổng tabs', `K${totalsRow.number}`);
 
-  const totalTabsRowNumber = addSummaryRow('Tổng tabs', { formula: `H${totalsRowNumber}` });
-  const advanceRowNumber = addSummaryRow('Tiền ứng', summary.advancePayment ?? 0, { fill: summaryInputFill });
-  const afterAdvanceRowNumber = addSummaryRow('Sau trừ ứng', {
-    formula: `H${totalTabsRowNumber} - H${advanceRowNumber}`,
-  });
-  const collectionsRowNumber = addSummaryRow('Thu hộ công ty', summary.collectionsForCompany ?? 0, {
-    fill: summaryInputFill,
-  });
-  const afterCollectionsRowNumber = addSummaryRow('Sau thu hộ công ty', {
-    formula: `H${afterAdvanceRowNumber} + H${collectionsRowNumber}`,
-  });
-  const tipRowNumber = addSummaryRow('Tip công ty', summary.companyTip ?? 0, { fill: summaryInputFill });
-  const afterTipRowNumber = addSummaryRow('Sau tip', {
-    formula: `H${afterCollectionsRowNumber} + H${tipRowNumber}`,
-  });
-  const finalTotalRowNumber = addSummaryRow('Tổng cuối', { formula: `H${afterTipRowNumber}` }, { bold: true });
+  // Row: Tạm ứng
+  const advanceRow = addSummaryRow('Tạm ứng', undefined, tour.summary?.advancePayment ?? 1000000);
 
-  const finalValueCell = worksheet.getCell(`H${finalTotalRowNumber}`);
-  finalValueCell.font = { bold: true };
-  finalValueCell.fill = finalFill;
+  // Row: Sau tạm ứng
+  const afterAdvanceRow = addSummaryRow('Sau tạm ứng', `K${totalTabsRow.number}-K${advanceRow.number}`);
+
+  // Row: Thu của khách
+  const collectionsRow = addSummaryRow('Thu của khách', undefined, tour.summary?.collectionsForCompany ?? 0);
+
+  // Row: Sau thu khách
+  const afterCollectionsRow = addSummaryRow('Sau thu khách', `K${afterAdvanceRow.number}-K${collectionsRow.number}`);
+
+  // Row: Tip HDV
+  const tipRow = addSummaryRow('Tip HDV', undefined, tour.summary?.companyTip ?? 20000000);
+
+  // Row: Sau tip HDV
+  const afterTipRow = addSummaryRow('Sau tip HDV', `K${afterCollectionsRow.number}+K${tipRow.number}`);
+
+  // Row: TỔNG CỘNG
+  const finalTotalRow = addSummaryRow('TỔNG CỘNG', `K${afterTipRow.number}`);
+  finalTotalRow.getCell(1).font = { bold: true };
+  finalTotalRow.getCell(11).font = { bold: true };
 
   return {
     sheetName,
-    finalTotalCell: `H${finalTotalRowNumber}`,
+    finalTotalCell: `K${finalTotalRow.number}`,
   };
 };
 
@@ -329,7 +411,7 @@ const populateOverviewSheet = (
     'Khách',
     'Tổng cuối',
   ]);
-  headerRow.font = { bold: true };
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
   headerRow.eachCell(cell => {
     cell.fill = headerFill;
