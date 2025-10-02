@@ -1050,29 +1050,31 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                 toast.error(`Cannot import: ${validation.errors.join(', ')}`, { duration: 8000 });
                 return;
               }
-              // Process matched data before confirming import
+              // Apply matched values and clean metadata before saving
               const finalTours = draft.map(d => {
                 const tour = { ...d.tour };
                 
-                // Normalize and apply matched values, then strip match metadata
+                // Apply matched prices to destinations then strip metadata
                 if (tour.destinations) {
                   tour.destinations = tour.destinations.map(({ matchedId, matchedPrice, ...dest }) => ({
                     ...dest,
-                    price: matchedPrice ?? dest.price,
+                    price: matchedPrice !== undefined ? matchedPrice : dest.price,
                   }));
                 }
                 
+                // Apply matched prices to expenses then strip metadata
                 if (tour.expenses) {
                   tour.expenses = tour.expenses.map(({ matchedId, matchedPrice, ...exp }) => ({
                     ...exp,
-                    price: matchedPrice ?? exp.price,
+                    price: matchedPrice !== undefined ? matchedPrice : exp.price,
                   }));
                 }
                 
+                // Apply matched prices to meals then strip metadata
                 if (tour.meals) {
                   tour.meals = tour.meals.map(({ matchedId, matchedPrice, ...meal }) => ({
                     ...meal,
-                    price: matchedPrice ?? meal.price,
+                    price: matchedPrice !== undefined ? matchedPrice : meal.price,
                   }));
                 }
                 
