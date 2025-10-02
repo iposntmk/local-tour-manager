@@ -8,7 +8,8 @@ import { SearchInput } from '@/components/master/SearchInput';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { exportTourToExcel, exportAllToursToExcel } from '@/lib/excel-utils';
-import { ImportTourDialog } from '@/components/tours/ImportTourDialog';
+import { ImportTourDialogEnhanced } from '@/components/tours/ImportTourDialogEnhanced';
+import { handleImportError, validateTourData, createImportError } from '@/lib/error-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
@@ -143,18 +144,13 @@ const Tours = () => {
       for (let i = 0; i < tours.length; i++) {
         const tour = tours[i];
         try {
-          // Validate that required EntityRefs have valid IDs (not empty strings)
-          if (!tour.companyRef?.id) {
-            throw new Error('Company is required');
-          }
-          if (!tour.guideRef?.id) {
-            throw new Error('Guide is required');
-          }
-          if (!tour.clientNationalityRef?.id) {
-            throw new Error('Client nationality is required');
+          // Validate tour data before attempting to create
+          const validation = validateTourData(tour);
+          if (!validation.valid) {
+            throw new Error(validation.errors.join(', '));
           }
 
-          // Create the main tour record
+          // Create the tour with all subcollections in one call
           const createdTour = await store.createTour({
             tourCode: tour.tourCode!,
             companyRef: tour.companyRef,
@@ -167,51 +163,26 @@ const Tours = () => {
             clientPhone: tour.clientPhone,
             startDate: tour.startDate!,
             endDate: tour.endDate!,
+            destinations: tour.destinations,
+            expenses: tour.expenses,
+            meals: tour.meals,
+            allowances: tour.allowances,
+            summary: tour.summary,
           });
-
-          // Add subcollections
-          if (tour.destinations && tour.destinations.length > 0) {
-            await Promise.all(
-              tour.destinations.map(dest => store.addDestination(createdTour.id, dest))
-            );
-          }
-
-          if (tour.expenses && tour.expenses.length > 0) {
-            await Promise.all(
-              tour.expenses.map(exp => store.addExpense(createdTour.id, exp))
-            );
-          }
-
-          if (tour.meals && tour.meals.length > 0) {
-            await Promise.all(
-              tour.meals.map(meal => store.addMeal(createdTour.id, meal))
-            );
-          }
-
-          if (tour.allowances && tour.allowances.length > 0) {
-            await Promise.all(
-              tour.allowances.map(allowance => store.addAllowance(createdTour.id, allowance))
-            );
-          }
-
-          // Add summary data
-          if (tour.summary) {
-            await store.updateTour(createdTour.id, { summary: tour.summary });
-          }
 
           results.push(createdTour);
         } catch (error) {
           const tourCode = tour.tourCode || `Tour ${i + 1}`;
-          let errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          const context = {
+            operation: 'importTour',
+            tourCode,
+            tourIndex: i,
+            data: tour,
+            timestamp: new Date().toISOString(),
+          };
           
-          // Check for duplicate tour code error
-          const errorMessage = errorMsg.toLowerCase();
-          if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('tour_code')) {
-            errorMsg = 'Tour code already exists';
-          }
-          
+          const errorMsg = handleImportError(error, context);
           errors.push(`${tourCode}: ${errorMsg}`);
-          console.error(`Failed to import ${tourCode}:`, error);
         }
       }
 
@@ -249,7 +220,7 @@ const Tours = () => {
               <p className="text-sm sm:text-base text-muted-foreground">Manage your tours and itineraries</p>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
-              <ImportTourDialog onImport={handleImport} />
+              <ImportTourDialogEnhanced onImport={handleImport} />
               <Button onClick={handleExportAll} variant="outline" className="hover-scale">
                 <FileDown className="h-4 w-4 mr-2" />
                 Export All

@@ -10,6 +10,11 @@ export function createStore(): DataStore {
     if (isSupabaseEnabled()) {
       try {
         storeInstance = new SupabaseStore();
+        // Test the connection
+        storeInstance.getCompanies().catch(error => {
+          console.warn('Supabase connection test failed, falling back to IndexedDB:', error);
+          storeInstance = new IndexedDbStore();
+        });
       } catch (error) {
         console.warn('Failed to initialize Supabase store, falling back to IndexedDB:', error);
         storeInstance = new IndexedDbStore();
