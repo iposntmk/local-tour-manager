@@ -741,6 +741,7 @@ export class IndexedDbStore implements DataStore {
     const shopping: Shopping = {
       id: generateId(),
       name: input.name.trim(),
+      price: input.price || 0,
       status: 'active',
       searchKeywords: generateSearchKeywords(input.name),
       createdAt: nowISO(),
@@ -826,6 +827,7 @@ export class IndexedDbStore implements DataStore {
       const shopping: Shopping = {
         id: crypto.randomUUID(),
         name: input.name,
+        price: input.price || 0,
         status: 'active',
         searchKeywords: generateSearchKeywords(input.name),
         createdAt: nowISO(),

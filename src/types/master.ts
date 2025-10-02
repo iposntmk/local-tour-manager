@@ -94,6 +94,7 @@ export interface TouristDestinationInput {
 export interface Shopping {
   id: string;
   name: string;
+  price: number;
   status: EntityStatus;
   searchKeywords: string[];
   createdAt: string;
@@ -102,6 +103,7 @@ export interface Shopping {
 
 export interface ShoppingInput {
   name: string;
+  price?: number;
 }
 
 export interface ExpenseCategory {
