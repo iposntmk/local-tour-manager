@@ -57,6 +57,11 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate required fields
+    if (!formData.name || !formData.date) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
     if (editingIndex !== null) {
       updateMutation.mutate({ index: editingIndex, expense: formData });
     } else {
@@ -105,7 +110,8 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
                           key={exp.id}
                           value={exp.name}
                           onSelect={() => {
-                            setFormData({ ...formData, name: exp.name, price: exp.price });
+                            const today = new Date().toISOString().split('T')[0];
+                            setFormData({ ...formData, name: exp.name, price: exp.price, date: formData.date || today });
                             setOpenExpense(false);
                           }}
                         >
@@ -131,6 +137,7 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
             <DateInput
               value={formData.date}
               onChange={(date) => setFormData({ ...formData, date })}
+              required
             />
           </div>
           <div className="flex gap-2">

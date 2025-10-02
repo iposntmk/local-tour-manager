@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -19,6 +19,11 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const [displayValue, setDisplayValue] = useState(
       value ? formatNumber(value) : ''
     );
+
+    // Sync internal display when value prop changes
+    useEffect(() => {
+      setDisplayValue(value ? formatNumber(value) : '');
+    }, [value]);
 
     const parseNumber = (str: string): number => {
       const cleaned = str.replace(/\./g, '');

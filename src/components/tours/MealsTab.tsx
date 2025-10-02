@@ -57,6 +57,11 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate required fields
+    if (!formData.name || !formData.date) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
     if (editingIndex !== null) {
       updateMutation.mutate({ index: editingIndex, meal: formData });
     } else {
@@ -105,7 +110,8 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
                           key={item.id}
                           value={item.name}
                           onSelect={() => {
-                            setFormData({ ...formData, name: item.name, price: item.price });
+                            const today = new Date().toISOString().split('T')[0];
+                            setFormData({ ...formData, name: item.name, price: item.price, date: formData.date || today });
                             setOpenMeal(false);
                           }}
                         >
@@ -131,6 +137,7 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
             <DateInput
               value={formData.date}
               onChange={(date) => setFormData({ ...formData, date })}
+              required
             />
           </div>
           <div className="flex gap-2">
