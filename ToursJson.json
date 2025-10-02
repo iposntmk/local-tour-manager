@@ -1,0 +1,2496 @@
+[
+  {
+    "tour": {
+      "tourCode": "1608Matilde#-Hi-Ko",
+      "company": "Tonkin",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Mrs. Matilde Lamura",
+      "clientNationality": "Italy",
+      "adults": 8,
+      "children": 0,
+      "totalGuests": 8,
+      "driverName": "Mr Đức",
+      "clientPhone": "+393484704413",
+      "startDate": "2025-08-20",
+      "endDate": "2025-08-25",
+      "totalDays": 6
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-21",
+          "orderIndex": 0
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-21",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Khải Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-21",
+          "orderIndex": 2
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-22",
+          "orderIndex": 3
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-23",
+          "orderIndex": 4
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-20",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-21",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-22",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-23",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-24",
+          "orderIndex": 4
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-25",
+          "orderIndex": 5
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "ATF-110825 LOUISE & Garry CRYSTAL",
+      "company": "Authentik",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "CRYSTAL LOUISE",
+      "clientNationality": "United Kingdom",
+      "adults": 5,
+      "children": 0,
+      "totalGuests": 5,
+      "driverName": "Mr Lễ",
+      "clientPhone": "",
+      "startDate": "2025-08-18",
+      "endDate": "2025-08-25",
+      "totalDays": 8
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Làng Thanh Tiên",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-19",
+          "orderIndex": 0
+        },
+        {
+          "name": "Làng Sinh",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-19",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Khải Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-19",
+          "orderIndex": 2
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-20",
+          "orderIndex": 3
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-18",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-19",
+          "orderIndex": 1
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-20",
+          "orderIndex": 2
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-21",
+          "orderIndex": 3
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-22",
+          "orderIndex": 4
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-23",
+          "orderIndex": 5
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-24",
+          "orderIndex": 6
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-25",
+          "orderIndex": 7
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "VIRGITTI x 3 pax",
+      "company": "Tonkin Voayge (TV)",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "VIRGITTI Ava",
+      "clientNationality": "France",
+      "adults": 3,
+      "children": 0,
+      "totalGuests": 3,
+      "driverName": "",
+      "clientPhone": "",
+      "startDate": "2025-07-17",
+      "endDate": "2025-07-21",
+      "totalDays": 5
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-18",
+          "orderIndex": 0
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-18",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Tự Hiếu",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-18",
+          "orderIndex": 2
+        },
+        {
+          "name": "Làng nón",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-18",
+          "orderIndex": 3
+        },
+        {
+          "name": "Làng hương",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-18",
+          "orderIndex": 4
+        },
+        {
+          "name": "La Chữ",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-19",
+          "orderIndex": 5
+        },
+        {
+          "name": "Đầm Chuồn",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-19",
+          "orderIndex": 6
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-17",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-18",
+          "orderIndex": 1
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-19",
+          "orderIndex": 2
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-20",
+          "orderIndex": 3
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-21",
+          "orderIndex": 4
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "250727HesselVan107348",
+      "company": "Asia Top Tavel (ATT)",
+      "tourGuide": "Cao Hữu Tú + Trần Thị Tường",
+      "clientName": "Droogleever Fortuyn Karen",
+      "clientNationality": "Netherlands",
+      "adults": 5,
+      "children": 0,
+      "totalGuests": 5,
+      "driverName": "Mr Đạt 16s",
+      "clientPhone": "",
+      "startDate": "2025-08-05",
+      "endDate": "2025-08-11",
+      "totalDays": 7
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-06",
+          "orderIndex": 0
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-06",
+          "orderIndex": 1
+        },
+        {
+          "name": "Làng nón",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-06",
+          "orderIndex": 2
+        },
+        {
+          "name": "Làng hương Thủy Xuân",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-06",
+          "orderIndex": 3
+        },
+        {
+          "name": "Bà Nà Hills",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-08-08",
+          "orderIndex": 4
+        },
+        {
+          "name": "Kim Bồng",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-09",
+          "orderIndex": 5
+        },
+        {
+          "name": "Trà Nhiêu",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-09",
+          "orderIndex": 6
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-09",
+          "orderIndex": 7
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-09",
+          "orderIndex": 8
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-05",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-06",
+          "orderIndex": 1
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-07",
+          "orderIndex": 2
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-08",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-09",
+          "orderIndex": 4
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-10",
+          "orderIndex": 5
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-11",
+          "orderIndex": 6
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "GP150625/Army",
+      "company": "GP",
+      "tourGuide": "",
+      "clientName": "Amy Wong",
+      "clientNationality": "USA",
+      "adults": 5,
+      "children": 0,
+      "totalGuests": 5,
+      "driverName": "",
+      "clientPhone": "",
+      "startDate": "2025-06-24",
+      "endDate": "2025-07-01",
+      "totalDays": 8
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Động Thiên Đường",
+          "price": 0,
+          "province": "Quảng Bình",
+          "date": "2025-06-24",
+          "orderIndex": 0
+        },
+        {
+          "name": "Vịnh Mốc",
+          "price": 0,
+          "province": "Quảng Trị",
+          "date": "2025-06-25",
+          "orderIndex": 1
+        },
+        {
+          "name": "Cầu Hiền Lương",
+          "price": 0,
+          "province": "Quảng Trị",
+          "date": "2025-06-25",
+          "orderIndex": 2
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-06-25",
+          "orderIndex": 3
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-06-26",
+          "orderIndex": 4
+        },
+        {
+          "name": "Cung An Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-06-26",
+          "orderIndex": 5
+        },
+        {
+          "name": "Ngũ Hành Sơn",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-06-27",
+          "orderIndex": 6
+        },
+        {
+          "name": "Bà Nà Hills",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-06-27",
+          "orderIndex": 7
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-06-28",
+          "orderIndex": 8
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-06-28",
+          "orderIndex": 9
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Cafe",
+          "price": 70000,
+          "date": "2025-06-28",
+          "orderIndex": 0
+        }
+      ],
+      "meals": [
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 200000,
+          "date": "2025-06-24",
+          "orderIndex": 0
+        },
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 200000,
+          "date": "2025-06-25",
+          "orderIndex": 1
+        },
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 200000,
+          "date": "2025-06-26",
+          "orderIndex": 2
+        }
+      ],
+      "allowances": [
+        {
+          "province": "Quảng Bình",
+          "amount": 800000,
+          "date": "2025-06-24",
+          "orderIndex": 0
+        },
+        {
+          "province": "Quảng Trị",
+          "amount": 800000,
+          "date": "2025-06-25",
+          "orderIndex": 1
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-06-26",
+          "orderIndex": 2
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-06-27",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-06-28",
+          "orderIndex": 4
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-06-29",
+          "orderIndex": 5
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-06-30",
+          "orderIndex": 6
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-07-01",
+          "orderIndex": 7
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "VAL - LIRON 0825",
+      "company": "Flyeast Vietnam",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "LIRON DANIEL YAKOV",
+      "clientNationality": "Israel",
+      "adults": 2,
+      "children": 0,
+      "totalGuests": 2,
+      "driverName": "Mr Linh",
+      "clientPhone": "+972543052905",
+      "startDate": "2025-09-03",
+      "endDate": "2025-09-05",
+      "totalDays": 3
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Làng nón",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-04",
+          "orderIndex": 0
+        },
+        {
+          "name": "Làng hương Thủy Xuân",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-04",
+          "orderIndex": 1
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-04",
+          "orderIndex": 2
+        },
+        {
+          "name": "Làng Thanh Tiên",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-04",
+          "orderIndex": 3
+        },
+        {
+          "name": "Làng Sinh",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-04",
+          "orderIndex": 4
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-03",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-04",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-09-05",
+          "orderIndex": 2
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "250703NalayiniSugirthan111530",
+      "company": "Asia Top Travel",
+      "tourGuide": "",
+      "clientName": "",
+      "clientNationality": "Australia",
+      "adults": 13,
+      "children": 1,
+      "totalGuests": 14,
+      "driverName": "Mr Đức",
+      "clientPhone": "",
+      "startDate": "2025-07-06",
+      "endDate": "2025-07-09",
+      "totalDays": 4
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Ngũ Hành Sơn",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-07-07",
+          "orderIndex": 0
+        },
+        {
+          "name": "Động Âm Phủ",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-07-07",
+          "orderIndex": 1
+        },
+        {
+          "name": "Bà Nà Hills",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-07-07",
+          "orderIndex": 2
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-08",
+          "orderIndex": 3
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-09",
+          "orderIndex": 4
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-09",
+          "orderIndex": 5
+        },
+        {
+          "name": "Làng nón",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-09",
+          "orderIndex": 6
+        },
+        {
+          "name": "Làng hương",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-09",
+          "orderIndex": 7
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Trượt máng Alpines Coaster",
+          "price": 70000,
+          "date": "2025-07-07",
+          "orderIndex": 0
+        }
+      ],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-06",
+          "orderIndex": 0
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-07-07",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-08",
+          "orderIndex": 2
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-09",
+          "orderIndex": 3
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "WALKER X 5",
+      "company": "Tonkin Voayge (TV)",
+      "tourGuide": "Cao Hữu Tú + Trần Thị Tố Trinh",
+      "clientName": "WALKER Clement Angus Eades",
+      "clientNationality": "United Kingdom",
+      "adults": 4,
+      "children": 1,
+      "totalGuests": 5,
+      "driverName": "Mr Đạt 16s",
+      "clientPhone": "",
+      "startDate": "2025-07-24",
+      "endDate": "2025-07-30",
+      "totalDays": 7
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-24",
+          "orderIndex": 0
+        },
+        {
+          "name": "Thủy Biều",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-24",
+          "orderIndex": 1
+        },
+        {
+          "name": "Vườn quốc gia Bạch Mã",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-25",
+          "orderIndex": 2
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-27",
+          "orderIndex": 3
+        },
+        {
+          "name": "Trà Quế",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-27",
+          "orderIndex": 4
+        },
+        {
+          "name": "Cửa Đại",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-27",
+          "orderIndex": 5
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-27",
+          "orderIndex": 6
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Cafe",
+          "price": 70000,
+          "date": "2025-07-25",
+          "orderIndex": 0
+        }
+      ],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-24",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-25",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-26",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-27",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-28",
+          "orderIndex": 4
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-29",
+          "orderIndex": 5
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-07-30",
+          "orderIndex": 6
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "TTC25 - 2405",
+      "company": "3 Best Travel/ Asialink",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Mr. Marcelus Rutte",
+      "clientNationality": "",
+      "adults": 3,
+      "children": 0,
+      "totalGuests": 3,
+      "driverName": "",
+      "clientPhone": "",
+      "startDate": "2025-06-06",
+      "endDate": "2025-06-10",
+      "totalDays": 5
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Vườn quốc gia Bạch Mã",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-06-07",
+          "orderIndex": 0
+        }
+      ],
+      "expenses": [],
+      "meals": [
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 250000,
+          "date": "2025-06-07",
+          "orderIndex": 0
+        }
+      ],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-06-06",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-06-07",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-06-10",
+          "orderIndex": 2
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "WE25 - 1909",
+      "company": "Btravel/ Asialink",
+      "tourGuide": "",
+      "clientName": "",
+      "clientNationality": "",
+      "adults": 2,
+      "children": 0,
+      "totalGuests": 2,
+      "driverName": "",
+      "clientPhone": "",
+      "startDate": "2025-09-29",
+      "endDate": "2025-10-03",
+      "totalDays": 5
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-29",
+          "orderIndex": 0
+        },
+        {
+          "name": "Lăng Minh Mạng",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-29",
+          "orderIndex": 1
+        },
+        {
+          "name": "Cầu ngói Thanh Toàn",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-30",
+          "orderIndex": 2
+        },
+        {
+          "name": "Thác Nhị Hồ",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-30",
+          "orderIndex": 3
+        },
+        {
+          "name": "Ngũ Hành Sơn",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-09-30",
+          "orderIndex": 4
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-10-01",
+          "orderIndex": 5
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-10-01",
+          "orderIndex": 6
+        }
+      ],
+      "expenses": [],
+      "meals": [
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 200000,
+          "date": "2025-09-30",
+          "orderIndex": 0
+        }
+      ],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-29",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-30",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-10-01",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-10-02",
+          "orderIndex": 3
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-10-03",
+          "orderIndex": 4
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "John Nguyen' s Group",
+      "company": "Việt Á",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "John Nguyen",
+      "clientNationality": "Vietnam",
+      "adults": 12,
+      "children": 3,
+      "totalGuests": 15,
+      "driverName": "Mr Đức",
+      "clientPhone": "",
+      "startDate": "2025-08-11",
+      "endDate": "2025-08-18",
+      "totalDays": 8
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Huế",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-12",
+          "orderIndex": 0
+        },
+        {
+          "name": "Thánh địa La Vang",
+          "price": 0,
+          "province": "Quảng Trị",
+          "date": "2025-08-13",
+          "orderIndex": 1
+        },
+        {
+          "name": "Ngũ Hành Sơn",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-08-14",
+          "orderIndex": 2
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-14",
+          "orderIndex": 3
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-11",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-12",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Trị",
+          "amount": 800000,
+          "date": "2025-08-13",
+          "orderIndex": 2
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-14",
+          "orderIndex": 3
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-18",
+          "orderIndex": 4
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "1608Valentina-Hi-Ha",
+      "company": "Tonkin Travel",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Ms. Valentina Nalersi",
+      "clientNationality": "",
+      "adults": 4,
+      "children": 0,
+      "totalGuests": 4,
+      "driverName": "Mr Khoa",
+      "clientPhone": "",
+      "startDate": "2025-08-22",
+      "endDate": "2025-08-28",
+      "totalDays": 7
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-23",
+          "orderIndex": 0
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-23",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Khải Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-23",
+          "orderIndex": 2
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-24",
+          "orderIndex": 3
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-25",
+          "orderIndex": 4
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-22",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-23",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-24",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-25",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-26",
+          "orderIndex": 4
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-27",
+          "orderIndex": 5
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-28",
+          "orderIndex": 6
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "0107Nicoletta*E-Oh",
+      "company": "Tonkin",
+      "tourGuide": "",
+      "clientName": "Nicoletta Furlan MS",
+      "clientNationality": "Italy",
+      "adults": 3,
+      "children": 0,
+      "totalGuests": 3,
+      "driverName": "Mr Tân",
+      "clientPhone": "",
+      "startDate": "2025-07-09",
+      "endDate": "2025-07-13",
+      "totalDays": 5
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-10",
+          "orderIndex": 0
+        },
+        {
+          "name": "Làng hương Thủy Xuân",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-10",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Khải Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-10",
+          "orderIndex": 2
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-10",
+          "orderIndex": 3
+        },
+        {
+          "name": "Ngũ Hành Sơn",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-07-11",
+          "orderIndex": 4
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-11",
+          "orderIndex": 5
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-12",
+          "orderIndex": 6
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Trà Reaching Out",
+          "price": 120000,
+          "date": "2025-07-11",
+          "orderIndex": 0
+        }
+      ],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-09",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-10",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-11",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-12",
+          "orderIndex": 3
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-07-13",
+          "orderIndex": 4
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "VC 0709381",
+      "company": "Vietcone",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "MS DE LORENZO ADRIANA",
+      "clientNationality": "Italian",
+      "adults": 2,
+      "children": 0,
+      "totalGuests": 2,
+      "driverName": "Mr Linh",
+      "clientPhone": "",
+      "startDate": "2025-09-13",
+      "endDate": "2025-09-15",
+      "totalDays": 3
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-13",
+          "orderIndex": 0
+        },
+        {
+          "name": "Làng Sinh",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-13",
+          "orderIndex": 1
+        },
+        {
+          "name": "Làng Thanh Tiên",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-13",
+          "orderIndex": 2
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-13",
+          "orderIndex": 0
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-09-14",
+          "orderIndex": 1
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-09-15",
+          "orderIndex": 2
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "GP210725-Stijin",
+      "company": "GP",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Karel VINCKE",
+      "clientNationality": "Belgium",
+      "adults": 4,
+      "children": 0,
+      "totalGuests": 4,
+      "driverName": "Mr Đạt",
+      "clientPhone": "",
+      "startDate": "2025-07-27",
+      "endDate": "2025-08-02",
+      "totalDays": 7
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Lăng Minh Mạng",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-28",
+          "orderIndex": 0
+        },
+        {
+          "name": "Thủy Biều",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-28",
+          "orderIndex": 1
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-28",
+          "orderIndex": 2
+        },
+        {
+          "name": "Bảo tàng Cổ vật",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-28",
+          "orderIndex": 3
+        },
+        {
+          "name": "Ngũ Hành Sơn",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-07-29",
+          "orderIndex": 4
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-30",
+          "orderIndex": 5
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-30",
+          "orderIndex": 6
+        },
+        {
+          "name": "Thánh địa Mỹ Sơn",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-31",
+          "orderIndex": 7
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Cafe",
+          "price": 70000,
+          "date": "2025-07-30",
+          "orderIndex": 0
+        }
+      ],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-27",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-28",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-29",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-30",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-31",
+          "orderIndex": 4
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-01",
+          "orderIndex": 5
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-02",
+          "orderIndex": 6
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "MARTIN x 5 pax",
+      "company": "Tonkin Voyage (TV)",
+      "tourGuide": "",
+      "clientName": "Martin Lewis Hunt",
+      "clientNationality": "United Kingdom",
+      "adults": 5,
+      "children": 0,
+      "totalGuests": 5,
+      "driverName": "Mr Lễ",
+      "clientPhone": "",
+      "startDate": "2025-07-12",
+      "endDate": "2025-07-16",
+      "totalDays": 5
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Nhà vườn An Hiên",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-13",
+          "orderIndex": 0
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-13",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-13",
+          "orderIndex": 2
+        },
+        {
+          "name": "Làng nón",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-13",
+          "orderIndex": 3
+        },
+        {
+          "name": "Làng hương",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-07-13",
+          "orderIndex": 4
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-14",
+          "orderIndex": 5
+        },
+        {
+          "name": "Trà Quế",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-15",
+          "orderIndex": 6
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-07-15",
+          "orderIndex": 7
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Nón lá",
+          "price": 100000,
+          "date": "2025-07-13",
+          "orderIndex": 0
+        },
+        {
+          "name": "Café",
+          "price": 70000,
+          "date": "2025-07-14",
+          "orderIndex": 1
+        },
+        {
+          "name": "Làm đèn lồng",
+          "price": 120000,
+          "date": "2025-07-14",
+          "orderIndex": 2
+        }
+      ],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-12",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-07-13",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-14",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-07-15",
+          "orderIndex": 3
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-07-16",
+          "orderIndex": 4
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "Betel1109335",
+      "company": "Betel",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Adeline DABIN",
+      "clientNationality": "France",
+      "adults": 2,
+      "children": 0,
+      "totalGuests": 2,
+      "driverName": "Mr Linh",
+      "clientPhone": "",
+      "startDate": "2025-09-19",
+      "endDate": "2025-09-21",
+      "totalDays": 3
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-20",
+          "orderIndex": 0
+        },
+        {
+          "name": "Làng Thanh Tiên",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-20",
+          "orderIndex": 1
+        },
+        {
+          "name": "Làng Sinh",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-20",
+          "orderIndex": 2
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-09-21",
+          "orderIndex": 3
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-19",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-20",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-09-21",
+          "orderIndex": 2
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "0308Carolina-Hi-Ha",
+      "company": "Tonkin Travel",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Ms. Carolina Martini",
+      "clientNationality": "Italy",
+      "adults": 2,
+      "children": 0,
+      "totalGuests": 2,
+      "driverName": "Mr Linh",
+      "clientPhone": "",
+      "startDate": "2025-08-07",
+      "endDate": "2025-08-12",
+      "totalDays": 6
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-08",
+          "orderIndex": 0
+        },
+        {
+          "name": "Lăng Minh Mạng",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-08",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Khải Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-08",
+          "orderIndex": 2
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-09",
+          "orderIndex": 3
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-10",
+          "orderIndex": 4
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-07",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-08",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-09",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-10",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-11",
+          "orderIndex": 4
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-12",
+          "orderIndex": 5
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "LIV - NITAY 0824",
+      "company": "Flyeast Vietnam",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Mr. NITAI MOSHE SHAAG",
+      "clientNationality": "Israel",
+      "adults": 2,
+      "children": 0,
+      "totalGuests": 2,
+      "driverName": "Mr Linh",
+      "clientPhone": "+972524734463",
+      "startDate": "2025-09-06",
+      "endDate": "2025-09-09",
+      "totalDays": 4
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Làng hương Thủy Xuân",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-07",
+          "orderIndex": 0
+        },
+        {
+          "name": "Làng nón",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-07",
+          "orderIndex": 1
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-07",
+          "orderIndex": 2
+        },
+        {
+          "name": "Làng Thanh Tiên",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-07",
+          "orderIndex": 3
+        },
+        {
+          "name": "Làng Sinh",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-07",
+          "orderIndex": 4
+        },
+        {
+          "name": "Vườn quốc gia Bạch Mã",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-08",
+          "orderIndex": 5
+        },
+        {
+          "name": "Thác Đỗ Quyên",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-08",
+          "orderIndex": 6
+        },
+        {
+          "name": "Vọng Hải Đài",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-09-08",
+          "orderIndex": 7
+        }
+      ],
+      "expenses": [],
+      "meals": [
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 220000,
+          "date": "2025-09-08",
+          "orderIndex": 0
+        }
+      ],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-06",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-07",
+          "orderIndex": 1
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-09-08",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-09-09",
+          "orderIndex": 3
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "ATE-110825 Louise & Garry CRYSTAL",
+      "company": "Authentik",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "CRYSTAL LOUISE",
+      "clientNationality": "United Kingdom",
+      "adults": 5,
+      "children": 0,
+      "totalGuests": 5,
+      "driverName": "Mr Lễ",
+      "clientPhone": "",
+      "startDate": "2025-08-18",
+      "endDate": "2025-08-25",
+      "totalDays": 8
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Làng Thanh Tiên",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-19",
+          "orderIndex": 0
+        },
+        {
+          "name": "Làng Sinh",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-19",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Khải Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-19",
+          "orderIndex": 2
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-20",
+          "orderIndex": 3
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-18",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-19",
+          "orderIndex": 1
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-20",
+          "orderIndex": 2
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-21",
+          "orderIndex": 3
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-22",
+          "orderIndex": 4
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-23",
+          "orderIndex": 5
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-24",
+          "orderIndex": 6
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-25",
+          "orderIndex": 7
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "1608Matilde#-Hi-Ko",
+      "company": "Tonkin",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Mrs. Matilde Lamura",
+      "clientNationality": "Italy",
+      "adults": 8,
+      "children": 0,
+      "totalGuests": 8,
+      "driverName": "Mr Đức",
+      "clientPhone": "+393484704413",
+      "startDate": "2025-08-20",
+      "endDate": "2025-08-25",
+      "totalDays": 6
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-21",
+          "orderIndex": 0
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-21",
+          "orderIndex": 1
+        },
+        {
+          "name": "Lăng Khải Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-21",
+          "orderIndex": 2
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-22",
+          "orderIndex": 3
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-23",
+          "orderIndex": 4
+        }
+      ],
+      "expenses": [],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-20",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-21",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-22",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-23",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-24",
+          "orderIndex": 4
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-25",
+          "orderIndex": 5
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  },
+  {
+    "tour": {
+      "tourCode": "250809Elena108295",
+      "company": "Asia Top Travel (ATT)",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "Fontanesi Stefano",
+      "clientNationality": "Italian",
+      "adults": 2,
+      "children": 2,
+      "totalGuests": 4,
+      "driverName": "Mr Chú",
+      "clientPhone": "",
+      "startDate": "2025-08-14",
+      "endDate": "2025-08-18",
+      "totalDays": 5
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-15",
+          "orderIndex": 0
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-08-15",
+          "orderIndex": 1
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-16",
+          "orderIndex": 2
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-17",
+          "orderIndex": 3
+        },
+        {
+          "name": "Trà Quế",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-08-17",
+          "orderIndex": 4
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Thuyền thả hoa đăng",
+          "price": 220000,
+          "date": "2025-08-16",
+          "orderIndex": 0
+        }
+      ],
+      "meals": [],
+      "allowances": [
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-14",
+          "orderIndex": 0
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-08-15",
+          "orderIndex": 1
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-16",
+          "orderIndex": 2
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-08-17",
+          "orderIndex": 3
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-08-18",
+          "orderIndex": 4
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  }
+]

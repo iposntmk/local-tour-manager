@@ -1,0 +1,179 @@
+[
+  {"tour": {
+      "tourCode": "GP150625/Army",
+      "company": "GP",
+      "tourGuide": "",
+      "clientName": "Amy Wong",
+      "clientNationality": "USA",
+      "adults": 5,
+      "children": 0,
+      "totalGuests": 5,
+      "driverName": "",
+      "clientPhone": "",
+      "startDate": "2025-06-24",
+      "endDate": "2025-07-01",
+      "totalDays": 8
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Động Thiên Đường",
+          "price": 0,
+          "province": "Quảng Bình",
+          "date": "2025-06-24",
+          "orderIndex": 0
+        },
+        {
+          "name": "Vịnh Mốc",
+          "price": 0,
+          "province": "Quảng Trị",
+          "date": "2025-06-25",
+          "orderIndex": 1
+        },
+        {
+          "name": "Cầu Hiền Lương",
+          "price": 0,
+          "province": "Quảng Trị",
+          "date": "2025-06-25",
+          "orderIndex": 2
+        },
+        {
+          "name": "Đại Nội",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-06-25",
+          "orderIndex": 3
+        },
+        {
+          "name": "Lăng Tự Đức",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-06-26",
+          "orderIndex": 4
+        },
+        {
+          "name": "Cung An Định",
+          "price": 0,
+          "province": "Thừa Thiên Huế",
+          "date": "2025-06-26",
+          "orderIndex": 5
+        },
+        {
+          "name": "Ngũ Hành Sơn",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-06-27",
+          "orderIndex": 6
+        },
+        {
+          "name": "Bà Nà Hills",
+          "price": 0,
+          "province": "Đà Nẵng",
+          "date": "2025-06-27",
+          "orderIndex": 7
+        },
+        {
+          "name": "Hội An",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-06-28",
+          "orderIndex": 8
+        },
+        {
+          "name": "Cẩm Thanh",
+          "price": 0,
+          "province": "Quảng Nam",
+          "date": "2025-06-28",
+          "orderIndex": 9
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Cafe",
+          "price": 70000,
+          "date": "2025-06-28",
+          "orderIndex": 0
+        }
+      ],
+      "meals": [
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 200000,
+          "date": "2025-06-24",
+          "orderIndex": 0
+        },
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 200000,
+          "date": "2025-06-25",
+          "orderIndex": 1
+        },
+        {
+          "name": "Ăn trưa HDV book",
+          "price": 200000,
+          "date": "2025-06-26",
+          "orderIndex": 2
+        }
+      ],
+      "allowances": [
+        {
+          "province": "Quảng Bình",
+          "amount": 800000,
+          "date": "2025-06-24",
+          "orderIndex": 0
+        },
+        {
+          "province": "Quảng Trị",
+          "amount": 800000,
+          "date": "2025-06-25",
+          "orderIndex": 1
+        },
+        {
+          "province": "Thừa Thiên Huế",
+          "amount": 600000,
+          "date": "2025-06-26",
+          "orderIndex": 2
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-06-27",
+          "orderIndex": 3
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-06-28",
+          "orderIndex": 4
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-06-29",
+          "orderIndex": 5
+        },
+        {
+          "province": "Quảng Nam",
+          "amount": 600000,
+          "date": "2025-06-30",
+          "orderIndex": 6
+        },
+        {
+          "province": "Đà Nẵng",
+          "amount": 600000,
+          "date": "2025-07-01",
+          "orderIndex": 7
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  }]
