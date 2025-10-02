@@ -341,37 +341,55 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
             }
           }
 
-          // Fuzzy match destinations
+          // Fuzzy match destinations - auto-apply matched values
           if (tour.destinations && tour.destinations.length > 0) {
             tour.destinations = tour.destinations.map(dest => {
               if (!dest.name) return dest;
               const matched = matchDestination(dest.name);
               if (matched) {
-                return { ...dest, matchedId: matched.id, matchedPrice: matched.price };
+                return { 
+                  ...dest, 
+                  name: matched.name,
+                  price: matched.price,
+                  matchedId: matched.id, 
+                  matchedPrice: matched.price 
+                };
               }
               return dest;
             });
           }
 
-          // Fuzzy match expenses
+          // Fuzzy match expenses - auto-apply matched values
           if (tour.expenses && tour.expenses.length > 0) {
             tour.expenses = tour.expenses.map(exp => {
               if (!exp.name) return exp;
               const matched = matchExpense(exp.name);
               if (matched) {
-                return { ...exp, matchedId: matched.id, matchedPrice: matched.price };
+                return { 
+                  ...exp, 
+                  name: matched.name,
+                  price: matched.price,
+                  matchedId: matched.id, 
+                  matchedPrice: matched.price 
+                };
               }
               return exp;
             });
           }
 
-          // Fuzzy match meals (using shopping data)
+          // Fuzzy match meals - auto-apply matched values (using shopping data)
           if (tour.meals && tour.meals.length > 0) {
             tour.meals = tour.meals.map(meal => {
               if (!meal.name) return meal;
               const matched = matchShopping(meal.name);
               if (matched) {
-                return { ...meal, matchedId: matched.id, matchedPrice: matched.price };
+                return { 
+                  ...meal, 
+                  name: matched.name,
+                  price: matched.price,
+                  matchedId: matched.id, 
+                  matchedPrice: matched.price 
+                };
               }
               return meal;
             });
