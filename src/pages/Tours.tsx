@@ -150,6 +150,11 @@ const Tours = () => {
             throw new Error(validation.errors.join(', '));
           }
 
+          // Clean matched properties from subcollections before saving
+          const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => dest);
+          const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => exp);
+          const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => meal);
+
           // Create the tour with all subcollections in one call
           const createdTour = await store.createTour({
             tourCode: tour.tourCode!,
@@ -163,9 +168,9 @@ const Tours = () => {
             clientPhone: tour.clientPhone,
             startDate: tour.startDate!,
             endDate: tour.endDate!,
-            destinations: tour.destinations,
-            expenses: tour.expenses,
-            meals: tour.meals,
+            destinations: cleanDestinations,
+            expenses: cleanExpenses,
+            meals: cleanMeals,
             allowances: tour.allowances,
             summary: tour.summary,
           });
