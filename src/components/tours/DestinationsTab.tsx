@@ -112,7 +112,13 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
                           key={dest.id}
                           value={dest.name}
                           onSelect={() => {
-                            setFormData({ ...formData, name: dest.name, price: dest.price });
+                            const today = new Date().toISOString().split('T')[0];
+                            setFormData({ 
+                              ...formData, 
+                              name: dest.name, 
+                              price: dest.price,
+                              date: formData.date || today // Keep existing date or use today
+                            });
                             setOpenDestination(false);
                           }}
                         >
