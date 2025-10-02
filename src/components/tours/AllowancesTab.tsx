@@ -4,6 +4,7 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -163,38 +164,53 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
             No allowances added yet
           </div>
         ) : (
-          <div className="divide-y">
-            {allowances.map((allowance, index) => (
-              <div
-                key={index}
-                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/50 transition-colors animate-fade-in"
-              >
-                <div className="flex-1">
-                  <div className="font-medium">{allowance.province}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {allowance.amount.toLocaleString()} ₫ • {formatDate(allowance.date)}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(index)}
-                    className="hover-scale"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteMutation.mutate(index)}
-                    className="hover-scale text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+          <div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">#</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Province</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allowances.map((allowance, index) => (
+                  <TableRow key={index} className="animate-fade-in">
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell>{formatDate(allowance.date)}</TableCell>
+                    <TableCell className="font-medium">{allowance.province}</TableCell>
+                    <TableCell>{allowance.amount.toLocaleString()} ₫</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(index)}
+                          className="hover-scale"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteMutation.mutate(index)}
+                          className="hover-scale text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
+              <div className="text-lg font-semibold">
+                Total: {allowances.reduce((sum, allowance) => sum + allowance.amount, 0).toLocaleString()} ₫
               </div>
-            ))}
+            </div>
           </div>
         )}
       </div>

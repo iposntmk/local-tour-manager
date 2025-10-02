@@ -218,6 +218,11 @@ const Tours = () => {
     mutationFn: async (tours: Partial<Tour>[]) => {
       const results = [];
       const errors = [];
+      const skipped: string[] = [];
+
+      // Load existing tours to check for duplicates
+      const existingTours = await store.listTours({});
+      const existingTourCodes = new Set(existingTours.map(t => t.tourCode.toLowerCase()));
 
       // Load master data once for auto-matching fallback
       const [masterDestinations, masterExpenses, masterShoppings] = await Promise.all([
@@ -235,15 +240,27 @@ const Tours = () => {
         return map.get(name.toLowerCase()) || null;
       };
 
-      // Process tours in batches for better performance
-      const batchSize = 5;
-      for (let i = 0; i < tours.length; i += batchSize) {
-        const batch = tours.slice(i, i + batchSize);
-        
-        // Process batch in parallel
-        const batchPromises = batch.map(async (tour, batchIndex) => {
-          const globalIndex = i + batchIndex;
+      // Process all tours in parallel with concurrency limit
+      const concurrencyLimit = 10; // Process 10 tours at a time
+      const processWithConcurrency = async (tours: Partial<Tour>[], limit: number) => {
+        const results: any[] = [];
+
+        for (let i = 0; i < tours.length; i += limit) {
+          const batch = tours.slice(i, i + limit);
+          const batchResults = await Promise.all(
+            batch.map(async (tour, batchIndex) => {
+              const globalIndex = i + batchIndex;
           try {
+            // Check for duplicate tour code
+            if (tour.tourCode && existingTourCodes.has(tour.tourCode.toLowerCase())) {
+              return {
+                success: false,
+                skipped: true,
+                tourCode: tour.tourCode,
+                error: `Tour with tour code "${tour.tourCode}" already exists`
+              };
+            }
+
             // Validate tour data before attempting to create
             const validation = validateTourData(tour);
             if (!validation.valid) {
@@ -319,40 +336,66 @@ const Tours = () => {
               data: tour,
               timestamp: new Date().toISOString(),
             };
-            
+
             const errorMsg = handleImportError(error, context);
             return { success: false, error: `${tourCode}: ${errorMsg}` };
           }
-        });
+            })
+          );
 
-        // Wait for batch to complete
-        const batchResults = await Promise.all(batchPromises);
-        
-        // Process results
-        batchResults.forEach(result => {
-          if (result.success) {
-            results.push(result.tour);
-          } else {
-            errors.push(result.error);
+          results.push(...batchResults);
+
+          // Show progress for large imports
+          if (tours.length > 10) {
+            const processed = Math.min(i + limit, tours.length);
+            const progress = Math.round((processed / tours.length) * 100);
+            toast.message(`Importing tours... ${progress}% (${processed}/${tours.length})`, { duration: 1000 });
           }
-        });
-
-        // Show progress for large imports
-        if (tours.length > 10) {
-          const progress = Math.round(((i + batchSize) / tours.length) * 100);
-          toast.message(`Importing tours... ${Math.min(progress, 100)}%`, { duration: 1000 });
         }
-      }
+
+        return results;
+      };
+
+      const allResults = await processWithConcurrency(tours, concurrencyLimit);
+
+      // Separate successes, errors, and skipped tours
+      allResults.forEach(result => {
+        if (result.success) {
+          results.push(result.tour);
+        } else if (result.skipped) {
+          skipped.push(result.tourCode || 'Unknown');
+        } else {
+          errors.push(result.error);
+        }
+      });
 
       if (errors.length > 0) {
         throw new Error(errors.join('\n'));
       }
 
-      return results;
+      return { imported: results, skipped };
     },
-    onSuccess: (results, tours) => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
-      toast.success(`${results.length} tour(s) imported successfully`);
+    onSuccess: async (result, tours) => {
+      const { imported, skipped } = result;
+
+      // Instead of invalidating, directly set the query data to avoid refetching
+      await queryClient.cancelQueries({ queryKey: ['tours'] });
+
+      const previousTours = queryClient.getQueryData<Tour[]>(['tours']) || [];
+      const newTours = [...previousTours, ...imported];
+
+      // Update cache directly
+      queryClient.setQueryData(['tours'], newTours);
+
+      // Show success message with details
+      if (skipped.length > 0) {
+        toast.success(
+          `${imported.length} tour(s) imported successfully. ${skipped.length} tour(s) skipped (already exist): ${skipped.join(', ')}`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.success(`${imported.length} tour(s) imported successfully`);
+      }
     },
     onError: (error) => {
       console.error('Import error:', error);

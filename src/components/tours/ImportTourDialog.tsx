@@ -292,33 +292,31 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
         destinations: [
           {
             name: "Hà Nội",
+            price: 500000,
+            province: "Hà Nội",
             date: "2025-01-15",
             orderIndex: 0
           }
         ],
         expenses: [
           {
-            category: "Accommodation",
-            description: "Hotel booking",
-            amount: 1000000,
+            name: "Hotel booking",
+            price: 1000000,
             date: "2025-01-15",
             orderIndex: 0
           }
         ],
         meals: [
           {
-            mealType: "Lunch",
-            location: "Restaurant A",
-            pricePerPerson: 150000,
-            numberOfGuests: 3,
-            totalPrice: 450000,
+            name: "Restaurant A - Lunch",
+            price: 450000,
             date: "2025-01-15",
             orderIndex: 0
           }
         ],
         allowances: [
           {
-            description: "Daily allowance",
+            province: "Hà Nội",
             amount: 200000,
             date: "2025-01-15",
             orderIndex: 0

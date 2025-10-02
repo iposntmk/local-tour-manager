@@ -16,23 +16,35 @@ import {
 import { formatDate } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, Edit3, Check, X, Plus, Trash2, AlertCircle, ChevronDown, ChevronRight, MapPin, Receipt, Utensils, DollarSign } from 'lucide-react';
+import { Search, Check, X, Plus, Trash2, AlertCircle, MapPin, Receipt, Utensils, DollarSign, ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { GuideDialog } from '@/components/guides/GuideDialog';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
 import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
-import { TourEditForm } from '@/components/tours/TourEditForm';
 
 export interface ReviewItem {
   tour: Partial<Tour>;
-  raw: { company: string; guide: string; nationality: string };
+  raw: {
+    company: string;
+    guide: string;
+    nationality: string;
+    destinations?: any[];
+    expenses?: any[];
+    meals?: any[];
+    allowances?: any[];
+    summary?: any;
+  };
 }
 
 interface EnhancedImportReviewProps {
@@ -59,69 +71,177 @@ interface SubcollectionSectionProps {
   items: any[];
   tourIndex: number;
   sectionKey: string;
-  expandedSections: { [key: string]: boolean };
-  onToggle: () => void;
   onUpdate: (index: number, field: string, value: any) => void;
   onRemove: (index: number) => void;
   matchFunction: ((name: string) => any) | null;
   matchType: string;
+  masterData?: any[];
+  rawData?: any[];
 }
 
-function SubcollectionSection({ 
-  title, 
-  icon, 
-  items, 
-  tourIndex, 
-  sectionKey, 
-  expandedSections, 
-  onToggle, 
-  onUpdate, 
-  onRemove, 
-  matchFunction, 
-  matchType 
+function SubcollectionSection({
+  title,
+  icon,
+  items,
+  tourIndex,
+  sectionKey,
+  onUpdate,
+  onRemove,
+  matchFunction,
+  matchType,
+  masterData = [],
+  rawData = []
 }: SubcollectionSectionProps) {
-  const key = `${tourIndex}-${sectionKey}`;
-  const isExpanded = expandedSections[key] || false;
+  const [openCombobox, setOpenCombobox] = useState<{ [key: number]: boolean }>({});
 
   const renderItem = (item: any, index: number) => {
     if (matchType === 'summary') {
+      const rawItem = rawData && rawData[index];
+
       return (
-        <div key={index} className="p-3 bg-gray-50 rounded-md">
-          <div className="grid grid-cols-2 gap-3">
+        <div key={index} className="border rounded-lg p-4 bg-gray-50">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Read-only field */}
             <div>
-              <Label className="text-xs">Total Tabs</Label>
+              <Label className="text-xs font-medium">
+                Total Tabs
+                {rawItem?.totalTabs !== undefined && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: {rawItem.totalTabs})
+                  </span>
+                )}
+              </Label>
               <Input
                 type="number"
                 value={item.totalTabs || 0}
-                onChange={(e) => onUpdate(index, 'totalTabs', parseInt(e.target.value) || 0)}
-                className="h-7 text-xs"
+                readOnly
+                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
               />
             </div>
+
+            {/* Editable field */}
             <div>
-              <Label className="text-xs">Advance Payment</Label>
+              <Label className="text-xs font-medium">
+                Advance Payment
+                {rawItem?.advancePayment !== undefined && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: {rawItem.advancePayment})
+                  </span>
+                )}
+              </Label>
               <Input
                 type="number"
                 value={item.advancePayment || 0}
                 onChange={(e) => onUpdate(index, 'advancePayment', parseFloat(e.target.value) || 0)}
-                className="h-7 text-xs"
+                className="h-8 text-sm mt-1"
               />
             </div>
+
+            {/* Editable field */}
             <div>
-              <Label className="text-xs">Company Tip</Label>
+              <Label className="text-xs font-medium">
+                Total After Advance
+                {rawItem?.totalAfterAdvance !== undefined && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: {rawItem.totalAfterAdvance})
+                  </span>
+                )}
+              </Label>
+              <Input
+                type="number"
+                value={item.totalAfterAdvance || 0}
+                onChange={(e) => onUpdate(index, 'totalAfterAdvance', parseFloat(e.target.value) || 0)}
+                className="h-8 text-sm mt-1"
+              />
+            </div>
+
+            {/* Editable field */}
+            <div>
+              <Label className="text-xs font-medium">
+                Company Tip
+                {rawItem?.companyTip !== undefined && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: {rawItem.companyTip})
+                  </span>
+                )}
+              </Label>
               <Input
                 type="number"
                 value={item.companyTip || 0}
                 onChange={(e) => onUpdate(index, 'companyTip', parseFloat(e.target.value) || 0)}
-                className="h-7 text-xs"
+                className="h-8 text-sm mt-1"
               />
             </div>
+
+            {/* Read-only field */}
             <div>
-              <Label className="text-xs">Final Total</Label>
+              <Label className="text-xs font-medium">
+                Total After Tip
+                {rawItem?.totalAfterTip !== undefined && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: {rawItem.totalAfterTip})
+                  </span>
+                )}
+              </Label>
+              <Input
+                type="number"
+                value={item.totalAfterTip || 0}
+                readOnly
+                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Read-only field */}
+            <div>
+              <Label className="text-xs font-medium">
+                Collections For Company
+                {rawItem?.collectionsForCompany !== undefined && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: {rawItem.collectionsForCompany})
+                  </span>
+                )}
+              </Label>
+              <Input
+                type="number"
+                value={item.collectionsForCompany || 0}
+                readOnly
+                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Read-only field */}
+            <div>
+              <Label className="text-xs font-medium">
+                Total After Collections
+                {rawItem?.totalAfterCollections !== undefined && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: {rawItem.totalAfterCollections})
+                  </span>
+                )}
+              </Label>
+              <Input
+                type="number"
+                value={item.totalAfterCollections || 0}
+                readOnly
+                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Read-only field */}
+            <div>
+              <Label className="text-xs font-medium">
+                Final Total
+                {rawItem?.finalTotal !== undefined && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: {rawItem.finalTotal})
+                  </span>
+                )}
+              </Label>
               <Input
                 type="number"
                 value={item.finalTotal || 0}
-                onChange={(e) => onUpdate(index, 'finalTotal', parseFloat(e.target.value) || 0)}
-                className="h-7 text-xs"
+                readOnly
+                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
               />
             </div>
           </div>
@@ -131,6 +251,10 @@ function SubcollectionSection({
 
     const matchedItem = matchFunction && item.name ? matchFunction(item.name) : null;
     const hasMatch = matchedItem !== null;
+    const rawItem = rawData && rawData[index];
+
+    // For destinations, use combobox with master data
+    const useCombobox = matchType === 'destination' && masterData.length > 0;
 
     return (
       <div key={index} className="p-3 bg-gray-50 rounded-md">
@@ -155,18 +279,78 @@ function SubcollectionSection({
             <Trash2 className="h-3 w-3" />
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-xs">Name</Label>
-            <Input
-              value={item.name || ''}
-              onChange={(e) => onUpdate(index, 'name', e.target.value)}
-              className="h-7 text-xs"
-            />
+            <Label className="text-xs">
+              Name
+              {rawItem?.name && (
+                <span className="text-xs text-muted-foreground ml-1">
+                  (JSON: "{rawItem.name}")
+                </span>
+              )}
+            </Label>
+            {useCombobox ? (
+              <Popover open={openCombobox[index]} onOpenChange={(open) => setOpenCombobox({ ...openCombobox, [index]: open })}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCombobox[index]}
+                    className="h-7 justify-between text-xs w-full"
+                  >
+                    {item.name || "Select..."}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search..." className="h-7 text-xs" />
+                    <CommandList>
+                      <CommandEmpty>No item found.</CommandEmpty>
+                      <CommandGroup>
+                        {masterData.map((dest: any) => (
+                          <CommandItem
+                            key={dest.id}
+                            value={dest.name}
+                            onSelect={() => {
+                              onUpdate(index, 'name', dest.name);
+                              onUpdate(index, 'price', dest.price);
+                              setOpenCombobox({ ...openCombobox, [index]: false });
+                            }}
+                            className="text-xs"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-3 w-3",
+                                item.name === dest.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {dest.name} ({dest.price?.toLocaleString()} ₫)
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Input
+                value={item.name || ''}
+                onChange={(e) => onUpdate(index, 'name', e.target.value)}
+                className="h-7 text-xs"
+              />
+            )}
           </div>
           <div>
-            <Label className="text-xs">Price</Label>
+            <Label className="text-xs">
+              Price
+              {rawItem?.price !== undefined && (
+                <span className="text-xs text-muted-foreground ml-1">
+                  (JSON: {rawItem.price})
+                </span>
+              )}
+            </Label>
             <Input
               type="number"
               value={item.price || 0}
@@ -176,7 +360,14 @@ function SubcollectionSection({
           </div>
           {matchType !== 'allowance' && (
             <div className="col-span-2">
-              <Label className="text-xs">Date</Label>
+              <Label className="text-xs">
+                Date
+                {rawItem?.date && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (JSON: "{rawItem.date}")
+                  </span>
+                )}
+              </Label>
               <Input
                 type="date"
                 value={item.date || ''}
@@ -186,7 +377,7 @@ function SubcollectionSection({
             </div>
           )}
         </div>
-        
+
         {hasMatch && (
           <div className="mt-2 p-2 bg-green-50 rounded text-xs text-green-700">
             <div className="flex items-center justify-between">
@@ -214,31 +405,264 @@ function SubcollectionSection({
     );
   };
 
-  return (
-    <div className="border rounded-lg">
-      <div 
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
-        onClick={onToggle}
-      >
-        <div className="flex items-center gap-2">
-          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          {icon}
-          <span className="font-medium">{title}</span>
-          <Badge variant="secondary" className="text-xs">
-            {items.length}
-          </Badge>
-        </div>
-      </div>
-      
-      {isExpanded && (
-        <div className="p-3 pt-0 space-y-2">
-          {items.length === 0 ? (
-            <div className="text-sm text-gray-500 text-center py-4">
-              No {title.toLowerCase()} found
+  const renderTableRow = (item: any, index: number) => {
+    const matchedItem = matchFunction && item.name ? matchFunction(item.name) : null;
+    const hasMatch = matchedItem !== null;
+    const rawItem = rawData && rawData[index];
+    const useCombobox = (matchType === 'destination' || matchType === 'expense' || matchType === 'meal') && masterData.length > 0;
+    const useProvinceCombobox = matchType === 'allowance' && masterData.length > 0;
+
+    // Render allowance row with different structure
+    if (matchType === 'allowance') {
+      return (
+        <TableRow key={index}>
+          <TableCell className="text-xs font-medium">{index + 1}</TableCell>
+          <TableCell className="text-xs">
+            <div className="space-y-1">
+              <Input
+                type="date"
+                value={item.date || ''}
+                onChange={(e) => onUpdate(index, 'date', e.target.value)}
+                className="h-7 text-xs"
+              />
+              {rawItem?.date && (
+                <div className="text-xs text-muted-foreground">JSON: "{rawItem.date}"</div>
+              )}
             </div>
-          ) : (
-            items.map((item, index) => renderItem(item, index))
-          )}
+          </TableCell>
+          <TableCell className="text-xs">
+            <div className="space-y-1">
+              {useProvinceCombobox ? (
+                <Popover open={openCombobox[index]} onOpenChange={(open) => setOpenCombobox({ ...openCombobox, [index]: open })}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openCombobox[index]}
+                      className="h-7 justify-between text-xs w-full"
+                    >
+                      {item.province || "Select province..."}
+                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search province..." className="h-7 text-xs" />
+                      <CommandList>
+                        <CommandEmpty>No province found.</CommandEmpty>
+                        <CommandGroup>
+                          {masterData.map((prov: any) => (
+                            <CommandItem
+                              key={prov.id}
+                              value={prov.name}
+                              onSelect={() => {
+                                onUpdate(index, 'province', prov.name);
+                                setOpenCombobox({ ...openCombobox, [index]: false });
+                              }}
+                              className="text-xs"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-3 w-3",
+                                  item.province === prov.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {prov.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Input
+                  value={item.province || ''}
+                  onChange={(e) => onUpdate(index, 'province', e.target.value)}
+                  className="h-7 text-xs"
+                />
+              )}
+              {rawItem?.province && (
+                <div className="text-xs text-muted-foreground">JSON: "{rawItem.province}"</div>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className="text-xs">
+            <div className="space-y-1">
+              <Input
+                type="number"
+                value={item.amount || 0}
+                onChange={(e) => onUpdate(index, 'amount', parseFloat(e.target.value) || 0)}
+                className="h-7 text-xs"
+              />
+              {rawItem?.amount !== undefined && (
+                <div className="text-xs text-muted-foreground">JSON: {rawItem.amount}</div>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className="text-right">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRemove(index)}
+              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    // Render normal row for destinations, expenses, meals
+    return (
+      <TableRow key={index}>
+        <TableCell className="text-xs font-medium">{index + 1}</TableCell>
+        <TableCell className="text-xs">
+          <div className="space-y-1">
+            {useCombobox ? (
+              <Popover open={openCombobox[index]} onOpenChange={(open) => setOpenCombobox({ ...openCombobox, [index]: open })}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCombobox[index]}
+                    className="h-7 justify-between text-xs w-full"
+                  >
+                    {item.name || "Select..."}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search..." className="h-7 text-xs" />
+                    <CommandList>
+                      <CommandEmpty>No item found.</CommandEmpty>
+                      <CommandGroup>
+                        {masterData.map((dest: any) => (
+                          <CommandItem
+                            key={dest.id}
+                            value={dest.name}
+                            onSelect={() => {
+                              onUpdate(index, 'name', dest.name);
+                              onUpdate(index, 'price', dest.price);
+                              setOpenCombobox({ ...openCombobox, [index]: false });
+                            }}
+                            className="text-xs"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-3 w-3",
+                                item.name === dest.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {dest.name} ({dest.price?.toLocaleString()} ₫)
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Input
+                value={item.name || ''}
+                onChange={(e) => onUpdate(index, 'name', e.target.value)}
+                className="h-7 text-xs"
+              />
+            )}
+            {rawItem?.name && (
+              <div className="text-xs text-muted-foreground">JSON: "{rawItem.name}"</div>
+            )}
+            {hasMatch && (
+              <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                <Check className="h-3 w-3 mr-1" />
+                Matched: {matchedItem.name}
+              </Badge>
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="text-xs">
+          <div className="space-y-1">
+            <Input
+              type="number"
+              value={item.price || 0}
+              onChange={(e) => onUpdate(index, 'price', parseFloat(e.target.value) || 0)}
+              className="h-7 text-xs"
+            />
+            {rawItem?.price !== undefined && (
+              <div className="text-xs text-muted-foreground">JSON: {rawItem.price}</div>
+            )}
+            {hasMatch && matchedItem.price && (
+              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                Master: {matchedItem.price.toLocaleString()} ₫
+              </Badge>
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="text-xs">
+          <div className="space-y-1">
+            <Input
+              type="date"
+              value={item.date || ''}
+              onChange={(e) => onUpdate(index, 'date', e.target.value)}
+              className="h-7 text-xs"
+            />
+            {rawItem?.date && (
+              <div className="text-xs text-muted-foreground">JSON: "{rawItem.date}"</div>
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="text-right">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onRemove(index)}
+            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </TableCell>
+      </TableRow>
+    );
+  };
+
+  return (
+    <div>
+      {items.length === 0 ? (
+        <div className="text-sm text-gray-500 text-center py-8 border rounded-lg">
+          No {title.toLowerCase()} found
+        </div>
+      ) : matchType === 'summary' ? (
+        <div className="space-y-2">
+          {items.map((item, index) => renderItem(item, index))}
+        </div>
+      ) : (
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px] text-xs">#</TableHead>
+                {matchType === 'allowance' ? (
+                  <>
+                    <TableHead className="text-xs">Date / JSON</TableHead>
+                    <TableHead className="text-xs">Province / JSON</TableHead>
+                    <TableHead className="text-xs">Amount / JSON</TableHead>
+                  </>
+                ) : (
+                  <>
+                    <TableHead className="text-xs">Name / JSON</TableHead>
+                    <TableHead className="text-xs">Price / JSON</TableHead>
+                    <TableHead className="text-xs">Date / JSON</TableHead>
+                  </>
+                )}
+                <TableHead className="text-xs w-[80px] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, index) => renderTableRow(item, index))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>
@@ -254,12 +678,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   const [shoppings, setShoppings] = useState<Shopping[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [draft, setDraft] = useState<ReviewItem[]>(items);
-  const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [showDetailedEdit, setShowDetailedEdit] = useState<number | null>(null);
-  const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({});
 
   // Dialog states
   const [openCompanyDialog, setOpenCompanyDialog] = useState(false);
@@ -293,14 +712,77 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         setShoppings(s);
         setProvinces(p);
 
+        // Helper functions for matching using local variables
+        const matchDestinationLocal = (destinationName: string) => {
+          if (!destinationName.trim()) return null;
+          const fuse = new Fuse(d, {
+            keys: ['name'],
+            threshold: 0.4,
+            includeScore: true,
+            ignoreLocation: true,
+          });
+          const matches = fuse.search(destinationName);
+          return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+        };
+
+        const matchExpenseLocal = (expenseName: string) => {
+          if (!expenseName.trim()) return null;
+          const fuse = new Fuse(e, {
+            keys: ['name'],
+            threshold: 0.4,
+            includeScore: true,
+            ignoreLocation: true,
+          });
+          const matches = fuse.search(expenseName);
+          return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+        };
+
+        const matchShoppingLocal = (shoppingName: string) => {
+          if (!shoppingName.trim()) return null;
+          const fuse = new Fuse(s, {
+            keys: ['name'],
+            threshold: 0.4,
+            includeScore: true,
+            ignoreLocation: true,
+          });
+          const matches = fuse.search(shoppingName);
+          return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+        };
+
         // Auto-match using fuzzy search
         const updatedDraft = items.map(item => {
           const tour = { ...item.tour };
-          
+          const raw = { ...item.raw };
+
+          // Store raw destinations data before matching
+          if (tour.destinations && !raw.destinations) {
+            raw.destinations = tour.destinations.map(d => ({ ...d }));
+          }
+
+          // Store raw expenses data before matching
+          if (tour.expenses && !raw.expenses) {
+            raw.expenses = tour.expenses.map(e => ({ ...e }));
+          }
+
+          // Store raw meals data before matching
+          if (tour.meals && !raw.meals) {
+            raw.meals = tour.meals.map(m => ({ ...m }));
+          }
+
+          // Store raw allowances data before matching
+          if (tour.allowances && !raw.allowances) {
+            raw.allowances = tour.allowances.map(a => ({ ...a }));
+          }
+
+          // Store raw summary data before matching
+          if (tour.summary && !raw.summary) {
+            raw.summary = { ...tour.summary };
+          }
+
           // Fuzzy match company
           if (item.raw.company && !tour.companyRef?.id) {
-            const companyFuse = new Fuse(c, { 
-              keys: ['name'], 
+            const companyFuse = new Fuse(c, {
+              keys: ['name'],
               threshold: 0.4,
               includeScore: true,
               ignoreLocation: true,
@@ -314,8 +796,8 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
           // Fuzzy match guide
           if (item.raw.guide && !tour.guideRef?.id) {
-            const guideFuse = new Fuse(g, { 
-              keys: ['name'], 
+            const guideFuse = new Fuse(g, {
+              keys: ['name'],
               threshold: 0.4,
               includeScore: true,
               ignoreLocation: true,
@@ -329,8 +811,8 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
           // Fuzzy match nationality
           if (item.raw.nationality && !tour.clientNationalityRef?.id) {
-            const nationalityFuse = new Fuse(n, { 
-              keys: ['name', 'iso2'], 
+            const nationalityFuse = new Fuse(n, {
+              keys: ['name', 'iso2'],
               threshold: 0.3,
               includeScore: true,
               ignoreLocation: true,
@@ -342,18 +824,20 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
             }
           }
 
-          // Fuzzy match destinations - auto-apply matched values
+          // Fuzzy match destinations - auto-apply matched values including price
           if (tour.destinations && tour.destinations.length > 0) {
             tour.destinations = tour.destinations.map(dest => {
               if (!dest.name) return dest;
-              const matched = matchDestination(dest.name);
+              const matched = matchDestinationLocal(dest.name);
               if (matched) {
-                return { 
-                  ...dest, 
+                console.log('Matched destination:', dest.name, '-> Master:', matched.name, 'Price:', matched.price);
+                // Auto-apply matched name and price from master data
+                return {
+                  ...dest,
                   name: matched.name,
-                  price: matched.price,
-                  matchedId: matched.id, 
-                  matchedPrice: matched.price 
+                  price: matched.price || dest.price || 0, // Always use master data price when matched
+                  matchedId: matched.id,
+                  matchedPrice: matched.price
                 };
               }
               return dest;
@@ -364,14 +848,14 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
           if (tour.expenses && tour.expenses.length > 0) {
             tour.expenses = tour.expenses.map(exp => {
               if (!exp.name) return exp;
-              const matched = matchExpense(exp.name);
+              const matched = matchExpenseLocal(exp.name);
               if (matched) {
-                return { 
-                  ...exp, 
+                return {
+                  ...exp,
                   name: matched.name,
                   price: matched.price,
-                  matchedId: matched.id, 
-                  matchedPrice: matched.price 
+                  matchedId: matched.id,
+                  matchedPrice: matched.price
                 };
               }
               return exp;
@@ -382,21 +866,21 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
           if (tour.meals && tour.meals.length > 0) {
             tour.meals = tour.meals.map(meal => {
               if (!meal.name) return meal;
-              const matched = matchShopping(meal.name);
+              const matched = matchShoppingLocal(meal.name);
               if (matched) {
-                return { 
-                  ...meal, 
+                return {
+                  ...meal,
                   name: matched.name,
                   price: matched.price,
-                  matchedId: matched.id, 
-                  matchedPrice: matched.price 
+                  matchedId: matched.id,
+                  matchedPrice: matched.price
                 };
               }
               return meal;
             });
           }
 
-          return { ...item, tour };
+          return { ...item, tour, raw };
         });
 
         setDraft(updatedDraft);
@@ -563,15 +1047,6 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     
     const matches = fuse.search(shoppingName);
     return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
-  };
-
-  // Toggle expanded sections
-  const toggleSection = (tourIndex: number, section: string) => {
-    const key = `${tourIndex}-${section}`;
-    setExpandedSections(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
   };
 
   // Update subcollection items
@@ -787,15 +1262,8 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         />
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="validation">Validation</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
+      {/* Content */}
+      <div className="space-y-4">
           <ScrollArea className="h-[500px]">
             <div className="space-y-4">
               {filteredTours.map((item, index) => {
@@ -818,37 +1286,60 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setShowDetailedEdit(originalIndex)}
-                          >
-                            <Edit3 className="h-4 w-4 mr-1" />
-                            Edit Details
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
                             onClick={() => removeTour(originalIndex)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                      {warnings.length > 0 && (
-                        <div className="mt-3 p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                            <div className="flex-1">
-                              <div className="text-sm font-medium text-yellow-800">Warnings:</div>
-                              <ul className="list-disc list-inside mt-1 text-sm text-yellow-700 space-y-1">
-                                {warnings.map((warning, i) => (
-                                  <li key={i}>{warning}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent>
+                      <Tabs defaultValue="info" className="w-full">
+                        <TabsList className="grid w-full grid-cols-6">
+                          <TabsTrigger value="info" className="text-xs">Info</TabsTrigger>
+                          <TabsTrigger value="destinations" className="text-xs">
+                            Destinations
+                            <Badge variant="secondary" className="ml-1 text-xs">
+                              {tour.destinations?.length || 0}
+                            </Badge>
+                          </TabsTrigger>
+                          <TabsTrigger value="expenses" className="text-xs">
+                            Expenses
+                            <Badge variant="secondary" className="ml-1 text-xs">
+                              {tour.expenses?.length || 0}
+                            </Badge>
+                          </TabsTrigger>
+                          <TabsTrigger value="meals" className="text-xs">
+                            Meals
+                            <Badge variant="secondary" className="ml-1 text-xs">
+                              {tour.meals?.length || 0}
+                            </Badge>
+                          </TabsTrigger>
+                          <TabsTrigger value="allowances" className="text-xs">
+                            Allowances
+                            <Badge variant="secondary" className="ml-1 text-xs">
+                              {tour.allowances?.length || 0}
+                            </Badge>
+                          </TabsTrigger>
+                          <TabsTrigger value="summary" className="text-xs">Summary</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="info" className="space-y-3 mt-4">
+                          {warnings.length > 0 && (
+                            <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-yellow-800">Warnings:</div>
+                                  <ul className="list-disc list-inside mt-1 text-sm text-yellow-700 space-y-1">
+                                    {warnings.map((warning, i) => (
+                                      <li key={i}>{warning}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label className="text-sm font-medium">Client Name</Label>
@@ -962,149 +1453,94 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           />
                         </div>
                       </div>
+                        </TabsContent>
 
-                      {/* Subcollections */}
-                      <div className="space-y-3">
-                        {/* Destinations */}
-                        <SubcollectionSection
-                          title="Destinations"
-                          icon={<MapPin className="h-4 w-4" />}
-                          items={tour.destinations || []}
-                          tourIndex={originalIndex}
-                          sectionKey="destinations"
-                          expandedSections={expandedSections}
-                          onToggle={() => toggleSection(originalIndex, 'destinations')}
-                          onUpdate={(index, field, value) => updateDestination(originalIndex, index, field, value)}
-                          onRemove={(index) => removeDestination(originalIndex, index)}
-                          matchFunction={matchDestination}
-                          matchType="destination"
-                        />
+                        <TabsContent value="destinations" className="mt-4">
+                          <SubcollectionSection
+                            title="Destinations"
+                            icon={<MapPin className="h-4 w-4" />}
+                            items={tour.destinations || []}
+                            tourIndex={originalIndex}
+                            sectionKey="destinations"
+                            onUpdate={(index, field, value) => updateDestination(originalIndex, index, field, value)}
+                            onRemove={(index) => removeDestination(originalIndex, index)}
+                            matchFunction={matchDestination}
+                            matchType="destination"
+                            masterData={destinations}
+                            rawData={raw.destinations || []}
+                          />
+                        </TabsContent>
 
-                        {/* Expenses */}
-                        <SubcollectionSection
-                          title="Expenses"
-                          icon={<Receipt className="h-4 w-4" />}
-                          items={tour.expenses || []}
-                          tourIndex={originalIndex}
-                          sectionKey="expenses"
-                          expandedSections={expandedSections}
-                          onToggle={() => toggleSection(originalIndex, 'expenses')}
-                          onUpdate={(index, field, value) => updateExpense(originalIndex, index, field, value)}
-                          onRemove={(index) => removeExpense(originalIndex, index)}
-                          matchFunction={matchExpense}
-                          matchType="expense"
-                        />
+                        <TabsContent value="expenses" className="mt-4">
+                          <SubcollectionSection
+                            title="Expenses"
+                            icon={<Receipt className="h-4 w-4" />}
+                            items={tour.expenses || []}
+                            tourIndex={originalIndex}
+                            sectionKey="expenses"
+                            onUpdate={(index, field, value) => updateExpense(originalIndex, index, field, value)}
+                            onRemove={(index) => removeExpense(originalIndex, index)}
+                            matchFunction={matchExpense}
+                            matchType="expense"
+                            masterData={expenses}
+                            rawData={raw.expenses || []}
+                          />
+                        </TabsContent>
 
-                        {/* Meals */}
-                        <SubcollectionSection
-                          title="Meals"
-                          icon={<Utensils className="h-4 w-4" />}
-                          items={tour.meals || []}
-                          tourIndex={originalIndex}
-                          sectionKey="meals"
-                          expandedSections={expandedSections}
-                          onToggle={() => toggleSection(originalIndex, 'meals')}
-                          onUpdate={(index, field, value) => updateMeal(originalIndex, index, field, value)}
-                          onRemove={(index) => removeMeal(originalIndex, index)}
-                          matchFunction={matchShopping}
-                          matchType="meal"
-                        />
+                        <TabsContent value="meals" className="mt-4">
+                          <SubcollectionSection
+                            title="Meals"
+                            icon={<Utensils className="h-4 w-4" />}
+                            items={tour.meals || []}
+                            tourIndex={originalIndex}
+                            sectionKey="meals"
+                            onUpdate={(index, field, value) => updateMeal(originalIndex, index, field, value)}
+                            onRemove={(index) => removeMeal(originalIndex, index)}
+                            matchFunction={matchShopping}
+                            matchType="meal"
+                            masterData={shoppings}
+                            rawData={raw.meals || []}
+                          />
+                        </TabsContent>
 
-                        {/* Allowances */}
-                        <SubcollectionSection
-                          title="Allowances"
-                          icon={<DollarSign className="h-4 w-4" />}
-                          items={tour.allowances || []}
-                          tourIndex={originalIndex}
-                          sectionKey="allowances"
-                          expandedSections={expandedSections}
-                          onToggle={() => toggleSection(originalIndex, 'allowances')}
-                          onUpdate={(index, field, value) => updateAllowance(originalIndex, index, field, value)}
-                          onRemove={(index) => removeAllowance(originalIndex, index)}
-                          matchFunction={null}
-                          matchType="allowance"
-                        />
+                        <TabsContent value="allowances" className="mt-4">
+                          <SubcollectionSection
+                            title="Allowances"
+                            icon={<DollarSign className="h-4 w-4" />}
+                            items={tour.allowances || []}
+                            tourIndex={originalIndex}
+                            sectionKey="allowances"
+                            onUpdate={(index, field, value) => updateAllowance(originalIndex, index, field, value)}
+                            onRemove={(index) => removeAllowance(originalIndex, index)}
+                            matchFunction={null}
+                            matchType="allowance"
+                            masterData={provinces}
+                            rawData={raw.allowances || []}
+                          />
+                        </TabsContent>
 
-                        {/* Summary */}
-                        <SubcollectionSection
-                          title="Summary"
-                          icon={<DollarSign className="h-4 w-4" />}
-                          items={tour.summary ? [tour.summary] : []}
-                          tourIndex={originalIndex}
-                          sectionKey="summary"
-                          expandedSections={expandedSections}
-                          onToggle={() => toggleSection(originalIndex, 'summary')}
-                          onUpdate={(index, field, value) => updateTourField(originalIndex, 'summary', { ...tour.summary, [field]: value })}
-                          onRemove={() => {}}
-                          matchFunction={null}
-                          matchType="summary"
-                        />
-                      </div>
-
-                      {warnings.length > 0 && (
-                        <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                          <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                          <div className="text-sm text-yellow-800">
-                            <div className="font-medium">Missing Information:</div>
-                            <ul className="list-disc list-inside mt-1">
-                              {warnings.map((warning, i) => (
-                                <li key={i}>{warning}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
+                        <TabsContent value="summary" className="mt-4">
+                          <SubcollectionSection
+                            title="Summary"
+                            icon={<DollarSign className="h-4 w-4" />}
+                            items={tour.summary ? [tour.summary] : []}
+                            tourIndex={originalIndex}
+                            sectionKey="summary"
+                            onUpdate={(index, field, value) => updateTourField(originalIndex, 'summary', { ...tour.summary, [field]: value })}
+                            onRemove={() => {}}
+                            matchFunction={null}
+                            matchType="summary"
+                            rawData={raw.summary ? [raw.summary] : []}
+                          />
+                        </TabsContent>
+                      </Tabs>
                     </CardContent>
                   </Card>
                 );
               })}
             </div>
           </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="validation" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Review Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {Object.keys(validationWarnings).length === 0 ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <Check className="h-4 w-4" />
-                  <span>All tours are complete and ready to import</span>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="text-yellow-800 font-medium">
-                    {Object.keys(validationWarnings).length} tour(s) have missing information:
-                  </div>
-                  {Object.entries(validationWarnings).map(([index, warnings]) => {
-                    const tour = draft[parseInt(index)];
-                    return (
-                      <div key={index} className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                        <div className="font-medium text-yellow-800">
-                          {tour.tour.tourCode || `Tour ${parseInt(index) + 1}`}
-                        </div>
-                        <ul className="list-disc list-inside mt-1 text-sm text-yellow-700">
-                          {warnings.map((warning, i) => (
-                            <li key={i}>{warning}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
-                  <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
-                    <div className="text-blue-800 text-sm">
-                      <strong>Note:</strong> You can still import tours with missing information. 
-                      Missing fields can be filled in after import or left empty if not needed.
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
 
       {/* Actions */}
       <div className="flex justify-between">
@@ -1184,34 +1620,6 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
       <DestinationDialog open={openDestinationDialog} onOpenChange={setOpenDestinationDialog} onSubmit={handleCreateDestination} />
       <DetailedExpenseDialog open={openExpenseDialog} onOpenChange={setOpenExpenseDialog} onSubmit={handleCreateExpense} />
       <ShoppingDialog open={openShoppingDialog} onOpenChange={setOpenShoppingDialog} onSubmit={handleCreateShopping} />
-
-      {/* Detailed Edit Dialog */}
-      <Dialog open={showDetailedEdit !== null} onOpenChange={() => setShowDetailedEdit(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-6xl max-h-[95vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>
-              Edit Tour: {showDetailedEdit !== null ? draft[showDetailedEdit]?.tour.tourCode || `Tour ${showDetailedEdit + 1}` : ''}
-            </DialogTitle>
-          </DialogHeader>
-          {showDetailedEdit !== null && (
-            <div className="flex-1 overflow-hidden">
-              <TourEditForm
-                tour={draft[showDetailedEdit].tour}
-                companies={companies}
-                guides={guides}
-                nationalities={nationalities}
-                onUpdate={(updatedTour) => {
-                  setDraft(prev => prev.map((item, i) => 
-                    i === showDetailedEdit 
-                      ? { ...item, tour: updatedTour }
-                      : item
-                  ));
-                }}
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
