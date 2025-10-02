@@ -57,6 +57,11 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate required fields
+    if (!formData.province || !formData.date) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
     if (editingIndex !== null) {
       updateMutation.mutate({ index: editingIndex, allowance: formData });
     } else {
@@ -85,6 +90,7 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
             <DateInput
               value={formData.date}
               onChange={(date) => setFormData({ ...formData, date })}
+              required
             />
             <Popover open={openProvince} onOpenChange={setOpenProvince}>
               <PopoverTrigger asChild>
@@ -109,7 +115,8 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
                           key={prov.id}
                           value={prov.name}
                           onSelect={() => {
-                            setFormData({ ...formData, province: prov.name });
+                            const today = new Date().toISOString().split('T')[0];
+                            setFormData({ ...formData, province: prov.name, date: formData.date || today });
                             setOpenProvince(false);
                           }}
                         >
