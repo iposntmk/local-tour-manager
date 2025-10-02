@@ -136,6 +136,38 @@ const Tours = () => {
     }
   };
 
+  // Normalize dates to YYYY-MM-DD for DB
+  const normalizeDate = (input?: string) => {
+    if (!input) return input as any;
+    const s = input.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    if (s.includes('/')) {
+      const [a, b, c] = s.split('/');
+      if (a && b && c) {
+        if (a.length === 4) {
+          // YYYY/MM/DD
+          return `${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;
+        }
+        if (c.length === 4) {
+          // DD/MM/YYYY or MM/DD/YYYY -> infer by month > 12
+          const nb = parseInt(b, 10);
+          const na = parseInt(a, 10);
+          const mm = nb > 12 ? a : b;
+          const dd = nb > 12 ? b : a;
+          return `${c}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+        }
+      }
+    }
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+    return s; // fallback
+  };
+
   const importMutation = useMutation({
     mutationFn: async (tours: Partial<Tour>[]) => {
       const results = [];
@@ -150,10 +182,23 @@ const Tours = () => {
             throw new Error(validation.errors.join(', '));
           }
 
-          // Clean matched properties from subcollections before saving
-          const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => dest);
-          const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => exp);
-          const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => meal);
+          // Clean matched properties and normalize dates
+          const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => ({
+            ...dest,
+            date: normalizeDate(dest.date),
+          }));
+          const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => ({
+            ...exp,
+            date: normalizeDate(exp.date),
+          }));
+          const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => ({
+            ...meal,
+            date: normalizeDate(meal.date),
+          }));
+          const cleanAllowances = tour.allowances?.map((allow) => ({
+            ...allow,
+            date: normalizeDate(allow.date),
+          }));
 
           // Create the tour with all subcollections in one call
           const createdTour = await store.createTour({
@@ -166,12 +211,12 @@ const Tours = () => {
             children: tour.children!,
             driverName: tour.driverName,
             clientPhone: tour.clientPhone,
-            startDate: tour.startDate!,
-            endDate: tour.endDate!,
+            startDate: normalizeDate(tour.startDate!)!,
+            endDate: normalizeDate(tour.endDate!)!,
             destinations: cleanDestinations,
             expenses: cleanExpenses,
             meals: cleanMeals,
-            allowances: tour.allowances,
+            allowances: cleanAllowances,
             summary: tour.summary,
           });
 
