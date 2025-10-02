@@ -57,6 +57,13 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.name || !formData.date) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
     if (editingIndex !== null) {
       updateMutation.mutate({ index: editingIndex, destination: formData });
     } else {
@@ -131,6 +138,7 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
             <DateInput
               value={formData.date}
               onChange={(date) => setFormData({ ...formData, date })}
+              required
             />
           </div>
           <div className="flex gap-2">
