@@ -1054,17 +1054,26 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
               const finalTours = draft.map(d => {
                 const tour = { ...d.tour };
                 
-                // Remove matched metadata fields before saving
+                // Normalize and apply matched values, then strip match metadata
                 if (tour.destinations) {
-                  tour.destinations = tour.destinations.map(({ matchedId, matchedPrice, ...dest }) => dest);
+                  tour.destinations = tour.destinations.map(({ matchedId, matchedPrice, ...dest }) => ({
+                    ...dest,
+                    price: matchedPrice ?? dest.price,
+                  }));
                 }
                 
                 if (tour.expenses) {
-                  tour.expenses = tour.expenses.map(({ matchedId, matchedPrice, ...exp }) => exp);
+                  tour.expenses = tour.expenses.map(({ matchedId, matchedPrice, ...exp }) => ({
+                    ...exp,
+                    price: matchedPrice ?? exp.price,
+                  }));
                 }
                 
                 if (tour.meals) {
-                  tour.meals = tour.meals.map(({ matchedId, matchedPrice, ...meal }) => meal);
+                  tour.meals = tour.meals.map(({ matchedId, matchedPrice, ...meal }) => ({
+                    ...meal,
+                    price: matchedPrice ?? meal.price,
+                  }));
                 }
                 
                 return tour;
