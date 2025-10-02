@@ -222,6 +222,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          price: number | null
           search_keywords: string[] | null
           status: string
           updated_at: string | null
@@ -230,6 +231,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          price?: number | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -238,6 +240,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          price?: number | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null

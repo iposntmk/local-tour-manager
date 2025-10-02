@@ -57,7 +57,7 @@ export async function testDatabaseConnection(): Promise<DatabaseHealthCheck> {
 
     // Test 4: Test sample query through store
     try {
-      await store.getCompanies();
+      await store.listCompanies();
       details.sampleQuery = true;
     } catch (error) {
       errors.push(`Sample query failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

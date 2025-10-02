@@ -7,18 +7,24 @@ export interface Destination {
   name: string;
   price: number;
   date: string;
+  matchedId?: string;
+  matchedPrice?: number;
 }
 
 export interface Expense {
   name: string;
   price: number;
   date: string;
+  matchedId?: string;
+  matchedPrice?: number;
 }
 
 export interface Meal {
   name: string;
   price: number;
   date: string;
+  matchedId?: string;
+  matchedPrice?: number;
 }
 
 export interface Allowance {

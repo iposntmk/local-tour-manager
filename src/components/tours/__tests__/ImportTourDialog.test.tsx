@@ -96,7 +96,7 @@ describe('ImportTourDialog', () => {
     await userEvent.click(parseButton);
 
     const review = await screen.findByTestId('review-count');
-    expect(review).toHaveTextContent('2');
+    expect(review.textContent).toBe('2');
 
     expect(listCompanies).toHaveBeenCalledTimes(1);
     expect(listGuides).toHaveBeenCalledTimes(1);

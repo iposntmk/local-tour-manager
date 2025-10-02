@@ -104,6 +104,7 @@ export class SupabaseStore implements DataStore {
     return {
       id: row.id,
       name: row.name,
+      price: Number(row.price) || 0,
       status: row.status,
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
