@@ -45,18 +45,8 @@ const TourDetail = () => {
 
   const createMutation = useMutation({
     mutationFn: async (input: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => {
+      // Pass subcollections directly to createTour - it will handle them internally
       const createdTour = await store.createTour(input);
-      // Add subcollections
-      await Promise.all([
-        ...input.destinations.map(dest => store.addDestination(createdTour.id, dest)),
-        ...input.expenses.map(exp => store.addExpense(createdTour.id, exp)),
-        ...input.meals.map(meal => store.addMeal(createdTour.id, meal)),
-        ...input.allowances.map(allow => store.addAllowance(createdTour.id, allow)),
-      ]);
-      // Update tour with summary
-      if (input.summary) {
-        await store.updateTour(createdTour.id, { summary: input.summary });
-      }
       return createdTour;
     },
     onSuccess: (newTour) => {

@@ -1,13 +1,16 @@
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, Upload, Trash2, Database } from 'lucide-react';
+import { Download, Upload, Trash2, Database, Activity } from 'lucide-react';
 import { store } from '@/lib/datastore';
 import { seedDatabase } from '@/lib/seed-database';
 import { toast } from 'sonner';
 import { db } from '@/lib/datastore/db';
+import { DatabaseHealthCheck } from '@/components/DatabaseHealthCheck';
+import { useState } from 'react';
 
 const Settings = () => {
+  const [showHealthCheck, setShowHealthCheck] = useState(false);
   const handleExportData = async () => {
     try {
       const data = await store.exportData();
@@ -145,6 +148,29 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Database Health</CardTitle>
+            <CardDescription>
+              Check database connection and diagnose issues
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => setShowHealthCheck(true)}
+              variant="outline"
+              className="w-full justify-start gap-2"
+            >
+              <Activity className="h-4 w-4" />
+              Run Database Health Check
+            </Button>
+          </CardContent>
+        </Card>
+
+        {showHealthCheck && (
+          <DatabaseHealthCheck onClose={() => setShowHealthCheck(false)} />
+        )}
       </div>
     </Layout>
   );

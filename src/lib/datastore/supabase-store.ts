@@ -20,7 +20,7 @@ import type {
   ExpenseCategoryInput,
   DetailedExpenseInput,
 } from '@/types/master';
-import type { Tour, Destination, Expense, Meal, Allowance, TourQuery, EntityRef, TourInput } from '@/types/tour';
+import type { Tour, Destination, Expense, Meal, Allowance, TourQuery, EntityRef, TourInput, TourSummary } from '@/types/tour';
 import { generateSearchKeywords } from '@/lib/string-utils';
 import { differenceInDays } from 'date-fns';
 
@@ -172,7 +172,7 @@ export class SupabaseStore implements DataStore {
       expenses: [],
       meals: [],
       allowances: [],
-      summary: { totalTabs: 0 },
+      summary: row.summary || { totalTabs: 0 },
     };
   }
 
@@ -1368,7 +1368,7 @@ export class SupabaseStore implements DataStore {
     return tour;
   }
 
-  async createTour(tour: TourInput): Promise<Tour> {
+  async createTour(tour: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; summary?: TourSummary }): Promise<Tour> {
     // Check for duplicate tour code
     const { data: existing } = await this.supabase
       .from('tours')
@@ -1402,13 +1402,70 @@ export class SupabaseStore implements DataStore {
         start_date: tour.startDate,
         end_date: tour.endDate,
         total_days: totalDays,
+        // summary: { totalTabs: 0 }, // Temporarily commented out until migration is applied
       })
       .select()
       .single();
 
 
-    if (error) throw error;
-    return this.getTour(data.id) as Promise<Tour>;
+    if (error) {
+      console.error('Supabase createTour error:', error);
+      if (error.code === '23505') {
+        throw new Error('A tour with this tour code already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference to company, guide, or nationality');
+      } else if (error.code === '23502') {
+        throw new Error('Required field is missing');
+      } else if (error.code === '22001') {
+        throw new Error('Data value too long');
+      } else if (error.code === '22003') {
+        throw new Error('Numeric value out of range');
+      } else if (error.code === '22007') {
+        throw new Error('Invalid date format');
+      } else if (error.code === '42P01') {
+        throw new Error('Database table not found');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied');
+      } else {
+        // Log detailed error information
+        console.error('Supabase error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          operation: 'createTour',
+          tourData: tour
+        });
+        throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+      }
+    }
+    
+    const createdTour = await this.getTour(data.id) as Tour;
+    
+    // Add subcollections if provided
+    try {
+      if (tour.destinations && tour.destinations.length > 0) {
+        await Promise.all(tour.destinations.map(dest => this.addDestination(createdTour.id, dest)));
+      }
+      if (tour.expenses && tour.expenses.length > 0) {
+        await Promise.all(tour.expenses.map(exp => this.addExpense(createdTour.id, exp)));
+      }
+      if (tour.meals && tour.meals.length > 0) {
+        await Promise.all(tour.meals.map(meal => this.addMeal(createdTour.id, meal)));
+      }
+      if (tour.allowances && tour.allowances.length > 0) {
+        await Promise.all(tour.allowances.map(allow => this.addAllowance(createdTour.id, allow)));
+      }
+      if (tour.summary) {
+        await this.updateTour(createdTour.id, { summary: tour.summary });
+      }
+    } catch (subcollectionError) {
+      console.error('Error adding subcollections:', subcollectionError);
+      // Don't fail the entire import if subcollections fail
+      // The main tour was created successfully
+    }
+    
+    return createdTour;
   }
 
   async updateTour(id: string, tour: Partial<Tour>): Promise<void> {
@@ -1449,6 +1506,7 @@ export class SupabaseStore implements DataStore {
     if (tour.startDate !== undefined) updates.start_date = tour.startDate;
     if (tour.endDate !== undefined) updates.end_date = tour.endDate;
     if (tour.totalDays !== undefined) updates.total_days = tour.totalDays;
+    if (tour.summary !== undefined) updates.summary = tour.summary;
 
     const { error } = await this.supabase.from('tours').update(updates).eq('id', id);
     if (error) throw error;
@@ -1513,7 +1571,22 @@ export class SupabaseStore implements DataStore {
       price: destination.price,
       date: destination.date,
     });
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase addDestination error:', error);
+      if (error.code === '23503') {
+        throw new Error('Invalid tour reference');
+      } else if (error.code === '23502') {
+        throw new Error('Required destination field is missing');
+      } else if (error.code === '22001') {
+        throw new Error('Destination data too long');
+      } else if (error.code === '22003') {
+        throw new Error('Invalid destination price');
+      } else if (error.code === '22007') {
+        throw new Error('Invalid destination date format');
+      } else {
+        throw new Error(`Failed to add destination: ${error.message}`);
+      }
+    }
   }
 
   async updateDestination(tourId: string, index: number, destination: Destination): Promise<void> {
@@ -1737,8 +1810,25 @@ export class SupabaseStore implements DataStore {
     }
     if (data.tours) {
       for (const tour of data.tours) {
-        const { id, createdAt, updatedAt, ...rest } = tour;
-        await this.createTour(rest);
+        const { id, createdAt, updatedAt, destinations, expenses, meals, allowances, summary, ...tourInput } = tour;
+        const createdTour = await this.createTour(tourInput);
+        
+        // Add subcollections
+        if (destinations && destinations.length > 0) {
+          await Promise.all(destinations.map(dest => this.addDestination(createdTour.id, dest)));
+        }
+        if (expenses && expenses.length > 0) {
+          await Promise.all(expenses.map(exp => this.addExpense(createdTour.id, exp)));
+        }
+        if (meals && meals.length > 0) {
+          await Promise.all(meals.map(meal => this.addMeal(createdTour.id, meal)));
+        }
+        if (allowances && allowances.length > 0) {
+          await Promise.all(allowances.map(allow => this.addAllowance(createdTour.id, allow)));
+        }
+        if (summary) {
+          await this.updateTour(createdTour.id, { summary });
+        }
       }
     }
   }

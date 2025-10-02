@@ -1,6 +1,6 @@
 import type { DataStore, SearchQuery } from '@/types/datastore';
 import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput } from '@/types/master';
-import type { Tour, TourInput, TourQuery, Destination, Expense, Meal, Allowance } from '@/types/tour';
+import type { Tour, TourInput, TourQuery, Destination, Expense, Meal, Allowance, TourSummary } from '@/types/tour';
 import { db } from './db';
 import { generateSearchKeywords, normalizeForUnique } from '../string-utils';
 import { daysBetween } from '../date-utils';
@@ -1139,7 +1139,7 @@ export class IndexedDbStore implements DataStore {
     return await db.tours.get(id);
   }
 
-  async createTour(input: TourInput): Promise<Tour> {
+  async createTour(input: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; summary?: TourSummary }): Promise<Tour> {
     // Check for duplicate tour code
     const normalized = normalizeForUnique(input.tourCode);
     const existing = await db.tours.toArray();
@@ -1166,11 +1166,11 @@ export class IndexedDbStore implements DataStore {
       startDate: input.startDate,
       endDate: input.endDate,
       totalDays,
-      destinations: [],
-      expenses: [],
-      meals: [],
-      allowances: [],
-      summary: { totalTabs: 0 },
+      destinations: input.destinations || [],
+      expenses: input.expenses || [],
+      meals: input.meals || [],
+      allowances: input.allowances || [],
+      summary: input.summary || { totalTabs: 0 },
       createdAt: nowISO(),
       updatedAt: nowISO(),
     };
@@ -1382,6 +1382,7 @@ export class IndexedDbStore implements DataStore {
       await db.detailedExpenses.bulkPut(data.detailedExpenses);
     }
     if (data.tours) {
+      // For IndexedDB, we can directly bulkPut since tours include subcollections
       await db.tours.bulkPut(data.tours);
     }
   }

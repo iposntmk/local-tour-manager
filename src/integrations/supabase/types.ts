@@ -451,6 +451,7 @@ export type Database = {
           total_guests: number | null
           tour_code: string
           updated_at: string | null
+          summary: any | null
         }
         Insert: {
           adults?: number | null
@@ -474,6 +475,7 @@ export type Database = {
           total_guests?: number | null
           tour_code: string
           updated_at?: string | null
+          summary?: any | null
         }
         Update: {
           adults?: number | null
@@ -497,6 +499,7 @@ export type Database = {
           total_guests?: number | null
           tour_code?: string
           updated_at?: string | null
+          summary?: any | null
         }
         Relationships: [
           {

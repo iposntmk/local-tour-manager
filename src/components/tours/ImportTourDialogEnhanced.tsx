@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { TextareaWithSave } from '@/components/ui/textarea-with-save';
@@ -11,7 +11,7 @@ import type { EntityRef } from '@/types/tour';
 import { EnhancedImportReview } from '@/components/tours/EnhancedImportReview';
 import type { Company, Guide, Nationality } from '@/types/master';
 
-interface ImportTourDialogProps {
+interface ImportTourDialogEnhancedProps {
   onImport: (tours: Partial<Tour>[]) => void;
   trigger?: React.ReactNode;
 }
@@ -79,7 +79,7 @@ const buildEntityCaches = (companies: Company[], guides: Guide[], nationalities:
   };
 };
 
-export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) => {
+export const ImportTourDialogEnhanced = ({ onImport, trigger }: ImportTourDialogEnhancedProps) => {
   const [open, setOpen] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -166,19 +166,6 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
       return { id: match.id, nameAtBooking: match.name };
     }
 
-    // Debug: Log available entities for troubleshooting
-    if (required) {
-      console.warn(`Entity not found: ${entityType} "${name}" (normalized: "${normalized}")`);
-      if (entityType === 'company') {
-        console.warn('Available companies:', Array.from(caches.lookups.companiesByName.keys()));
-      } else if (entityType === 'guide') {
-        console.warn('Available guides:', Array.from(caches.lookups.guidesByName.keys()));
-      } else {
-        console.warn('Available nationalities:', Array.from(caches.lookups.nationalitiesByName.keys()));
-        console.warn('Available nationality ISO codes:', Array.from(caches.lookups.nationalitiesByIso.keys()));
-      }
-    }
-
     return required ? null : null;
   };
 
@@ -186,23 +173,21 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
     const tourData = data.tour || data;
     const subcollections = data.subcollections || {};
 
+    // Try to find entities but don't require them - let user review and edit
     const companyRef = findEntityRef(caches, 'company', tourData.company || '', false);
     const guideRef = findEntityRef(caches, 'guide', tourData.tourGuide || '', false);
     const nationalityRef = findEntityRef(caches, 'nationality', tourData.clientNationality || '', false);
 
-    // Try to find entities but don't require them - let user review and edit
-    // No validation here - let the user review and edit the data
-
     const tour: Partial<Tour> = {
-      tourCode: tourData.tourCode,
+      tourCode: tourData.tourCode || '',
       clientName: tourData.clientName || '',
       adults: tourData.adults || 0,
       children: tourData.children || 0,
       totalGuests: tourData.totalGuests || 0,
       driverName: tourData.driverName || '',
       clientPhone: tourData.clientPhone || '',
-      startDate: tourData.startDate,
-      endDate: tourData.endDate,
+      startDate: tourData.startDate || '',
+      endDate: tourData.endDate || '',
       totalDays: tourData.totalDays || 0,
       companyRef: companyRef || { id: '', nameAtBooking: '' },
       guideRef: guideRef || { id: '', nameAtBooking: '' },
@@ -275,7 +260,7 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
         });
 
         setReviewItems(transformed);
-        toast.message('Review required', { description: 'Resolve missing fields, then confirm import.' });
+        toast.message('Review required', { description: 'Review and edit tour data before importing.' });
       } catch (error) {
         if (error instanceof Error && error.message.includes('Failed to preload entities')) {
           toast.error('Failed to load master data. Please try again.');
@@ -302,14 +287,14 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-6xl max-h-[95vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Import Tours from JSON</DialogTitle>
-          <DialogDescription>Upload or paste JSON, then review and fix missing fields before importing.</DialogDescription>
+          <DialogDescription>Upload or paste JSON, then review and edit tour data before importing.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="flex-1 overflow-hidden">
           {reviewItems.length === 0 ? (
-            <>
+            <div className="space-y-4">
               <div>
                 <Label htmlFor="json-file" className="flex items-center gap-2 cursor-pointer">
                   <FileJson className="h-4 w-4" />
@@ -353,23 +338,25 @@ export const ImportTourDialog = ({ onImport, trigger }: ImportTourDialogProps) =
                   {isProcessing ? 'Processing...' : 'Parse & Review'}
                 </Button>
               </div>
-            </>
+            </div>
           ) : (
-            <EnhancedImportReview
-              items={reviewItems}
-              onCancel={() => setReviewItems([])}
-              onConfirm={async (tours) => {
-                try {
-                  await onImport(tours);
-                  setReviewItems([]);
-                  setJsonInput('');
-                  setOpen(false);
-                } catch (e) {
-                  // onImport handles toasts
-                }
-              }}
-              preloadedEntities={entityCaches ?? undefined}
-            />
+            <div className="h-full overflow-hidden">
+              <EnhancedImportReview
+                items={reviewItems}
+                onCancel={() => setReviewItems([])}
+                onConfirm={async (tours) => {
+                  try {
+                    await onImport(tours);
+                    setReviewItems([]);
+                    setJsonInput('');
+                    setOpen(false);
+                  } catch (e) {
+                    // onImport handles toasts
+                  }
+                }}
+                preloadedEntities={entityCaches ?? undefined}
+              />
+            </div>
           )}
         </div>
       </DialogContent>
