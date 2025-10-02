@@ -3,11 +3,25 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar, Users, FileDown, Copy, Trash2, ChevronDown, ChevronUp, Filter, X, Trash } from 'lucide-react';
+import {
+  Plus,
+  Calendar,
+  Users,
+  FileDown,
+  FileText,
+  Copy,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  X,
+  Trash,
+} from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { exportTourToExcel, exportAllToursToExcel } from '@/lib/excel-utils';
+import { exportTourToTxt } from '@/lib/text-export';
 import { ImportTourDialogEnhanced } from '@/components/tours/ImportTourDialogEnhanced';
 import { handleImportError, validateTourData, createImportError } from '@/lib/error-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -164,6 +178,12 @@ const Tours = () => {
     e.stopPropagation();
     exportTourToExcel(tour);
     toast.success(`Tour ${tour.tourCode} exported to Excel`);
+  };
+
+  const handleExportTxt = (tour: Tour, e: React.MouseEvent) => {
+    e.stopPropagation();
+    exportTourToTxt(tour);
+    toast.success(`Tour ${tour.tourCode} exported to TXT`);
   };
 
   const handleDuplicate = (id: string, e: React.MouseEvent) => {
@@ -624,7 +644,7 @@ const Tours = () => {
                       </div>
                     )}
 
-                    <div className="flex gap-2 pt-2 border-t">
+                    <div className="flex flex-wrap gap-2 pt-2 border-t">
                       <Button
                         size="sm"
                         variant="outline"
@@ -632,7 +652,16 @@ const Tours = () => {
                         onClick={(e) => handleExportSingle(tour, e)}
                       >
                         <FileDown className="h-3 w-3 mr-1" />
-                        Export
+                        Export Excel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={(e) => handleExportTxt(tour, e)}
+                      >
+                        <FileText className="h-3 w-3 mr-1" />
+                        Export TXT
                       </Button>
                       <Button
                         size="sm"
