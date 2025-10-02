@@ -2,8 +2,6 @@
  * Comprehensive error logging and handling utilities
  */
 
-import { diagnoseDatabaseError } from './database-test';
-
 export interface ErrorContext {
   operation: string;
   tourCode?: string;
@@ -141,14 +139,7 @@ export function handleImportError(error: any, context: ErrorContext): string {
         name: error.name,
         context
       });
-      
-      // Use diagnostic function for better error messages
-      diagnoseDatabaseError(error).then(diagnosis => {
-        console.log('Database diagnosis:', diagnosis);
-      }).catch(diagError => {
-        console.error('Diagnosis failed:', diagError);
-      });
-      
+
       return `Database error: ${error.message}`;
     }
     if (errorMessage.includes('sql')) {

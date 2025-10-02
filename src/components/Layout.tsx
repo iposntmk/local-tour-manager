@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Users, Building2, Globe, MapPin, Map, ShoppingBag, Tag, Receipt, Plane, Settings, Home } from 'lucide-react';
+import { Users, Building2, Globe, MapPin, Map, ShoppingBag, Tag, Receipt, Plane, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -16,7 +16,6 @@ const navItems = [
   { to: '/shopping', icon: ShoppingBag, label: 'Shopping' },
   { to: '/expense-categories', icon: Tag, label: 'Categories' },
   { to: '/detailed-expenses', icon: Receipt, label: 'Expenses' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 const NavLinks = () => (
