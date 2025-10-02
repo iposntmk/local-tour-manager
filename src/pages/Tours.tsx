@@ -165,25 +165,68 @@ const Tours = () => {
     }
   };
 
-  const handleExportAll = () => {
+  const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
+    const detailedTour = await store.getTour(tour.id);
+    if (!detailedTour) {
+      throw new Error(`Unable to load details for tour ${tour.tourCode} from the database.`);
+    }
+    return detailedTour;
+  };
+
+  const handleExportAll = async () => {
     if (tours.length === 0) {
       toast.error('No tours to export');
       return;
     }
-    exportAllToursToExcel(tours);
-    toast.success('All tours exported to Excel');
+
+    try {
+      const toursWithDetails = await store.listTours({ tourCode: search }, { includeDetails: true });
+
+      if (toursWithDetails.length === 0) {
+        toast.error('No tours to export');
+        return;
+      }
+
+      await exportAllToursToExcel(toursWithDetails);
+      toast.success('All tours exported to Excel');
+    } catch (error) {
+      console.error('Failed to export tours to Excel', error);
+      toast.error('Failed to export tours to Excel. Please try again.');
+    }
   };
 
-  const handleExportSingle = (tour: Tour, e: React.MouseEvent) => {
+  const handleExportSingle = async (tour: Tour, e: React.MouseEvent) => {
     e.stopPropagation();
-    exportTourToExcel(tour);
-    toast.success(`Tour ${tour.tourCode} exported to Excel`);
+
+    try {
+      const detailedTour = await fetchDetailedTour(tour);
+      await exportTourToExcel(detailedTour);
+      toast.success(`Tour ${tour.tourCode} exported to Excel`);
+    } catch (error) {
+      console.error(`Failed to export tour ${tour.tourCode} to Excel`, error);
+      const message =
+        error instanceof Error && error.message.includes('Unable to load details')
+          ? error.message
+          : 'Failed to export tour to Excel. Please try again.';
+      toast.error(message);
+    }
   };
 
-  const handleExportTxt = (tour: Tour, e: React.MouseEvent) => {
+  const handleExportTxt = async (tour: Tour, e: React.MouseEvent) => {
     e.stopPropagation();
-    exportTourToTxt(tour);
-    toast.success(`Tour ${tour.tourCode} exported to TXT`);
+
+    try {
+      const detailedTour = await fetchDetailedTour(tour);
+      exportTourToTxt(detailedTour);
+      toast.success(`Tour ${tour.tourCode} exported to TXT`);
+    } catch (error) {
+      console.error(`Failed to export tour ${tour.tourCode} to TXT`, error);
+      const message =
+        error instanceof Error && error.message.includes('Unable to load details')
+          ? error.message
+          : 'Failed to export tour to TXT. Please try again.';
+      toast.error(message);
+    }
   };
 
   const handleDuplicate = (id: string, e: React.MouseEvent) => {
