@@ -1,0 +1,64 @@
+[
+  {
+    "tour": {
+      "tourCode": "SAMPLE001",
+      "company": "Việt Á",
+      "tourGuide": "Cao Hữu Tu",
+      "clientName": "Sample Client",
+      "clientNationality": "Việt Nam",
+      "adults": 2,
+      "children": 1,
+      "totalGuests": 3,
+      "driverName": "Sample Driver",
+      "clientPhone": "+84123456789",
+      "startDate": "2025-01-15",
+      "endDate": "2025-01-20",
+      "totalDays": 5
+    },
+    "subcollections": {
+      "destinations": [
+        {
+          "name": "Hà Nội",
+          "price": 500000,
+          "province": "Hà Nội",
+          "date": "2025-01-15",
+          "orderIndex": 0
+        }
+      ],
+      "expenses": [
+        {
+          "name": "Hotel booking",
+          "price": 1000000,
+          "date": "2025-01-15",
+          "orderIndex": 0
+        }
+      ],
+      "meals": [
+        {
+          "name": "Restaurant A - Lunch",
+          "price": 450000,
+          "date": "2025-01-15",
+          "orderIndex": 0
+        }
+      ],
+      "allowances": [
+        {
+          "province": "Hà Nội",
+          "amount": 200000,
+          "date": "2025-01-15",
+          "orderIndex": 0
+        }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  }
+]
