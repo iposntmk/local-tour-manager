@@ -34,12 +34,17 @@ interface ImportTourReviewProps {
   items: ReviewItem[];
   onCancel: () => void;
   onConfirm: (tours: Partial<Tour>[]) => void;
+  preloadedEntities?: {
+    companies: Company[];
+    guides: Guide[];
+    nationalities: Nationality[];
+  };
 }
 
-export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourReviewProps) {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [guides, setGuides] = useState<Guide[]>([]);
-  const [nationalities, setNationalities] = useState<Nationality[]>([]);
+export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities }: ImportTourReviewProps) {
+  const [companies, setCompanies] = useState<Company[]>(preloadedEntities?.companies ?? []);
+  const [guides, setGuides] = useState<Guide[]>(preloadedEntities?.guides ?? []);
+  const [nationalities, setNationalities] = useState<Nationality[]>(preloadedEntities?.nationalities ?? []);
   const [destinations, setDestinations] = useState<TouristDestination[]>([]);
   const [expenses, setExpenses] = useState<DetailedExpense[]>([]);
   const [shoppings, setShoppings] = useState<Shopping[]>([]);
@@ -59,9 +64,9 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
     const load = async () => {
       try {
         const [c, g, n, d, e, s, p] = await Promise.all([
-          store.listCompanies({}),
-          store.listGuides({}),
-          store.listNationalities({}),
+          preloadedEntities?.companies ? Promise.resolve(preloadedEntities.companies) : store.listCompanies({}),
+          preloadedEntities?.guides ? Promise.resolve(preloadedEntities.guides) : store.listGuides({}),
+          preloadedEntities?.nationalities ? Promise.resolve(preloadedEntities.nationalities) : store.listNationalities({}),
           store.listTouristDestinations({}),
           store.listDetailedExpenses({}),
           store.listShoppings({}),
@@ -208,7 +213,7 @@ export function ImportTourReview({ items, onCancel, onConfirm }: ImportTourRevie
       }
     };
     load();
-  }, [items]);
+  }, [items, preloadedEntities]);
 
   const allValid = useMemo(() =>
     draft.every(d => d.tour.companyRef?.id && d.tour.guideRef?.id && d.tour.clientNationalityRef?.id),

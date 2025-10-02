@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Tour, TourInput, Destination, Expense, Meal, Allowance } from '@/types/tour';
+import type { Tour, TourInput, Destination, Expense, Meal, Allowance, TourSummary } from '@/types/tour';
 
 const TourDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -44,7 +44,7 @@ const TourDetail = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (input: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[] }) => {
+    mutationFn: async (input: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => {
       const createdTour = await store.createTour(input);
       // Add subcollections
       await Promise.all([
@@ -53,6 +53,10 @@ const TourDetail = () => {
         ...input.meals.map(meal => store.addMeal(createdTour.id, meal)),
         ...input.allowances.map(allow => store.addAllowance(createdTour.id, allow)),
       ]);
+      // Update tour with summary
+      if (input.summary) {
+        await store.updateTour(createdTour.id, { summary: input.summary });
+      }
       return createdTour;
     },
     onSuccess: (newTour) => {
@@ -61,7 +65,12 @@ const TourDetail = () => {
       navigate(`/tours/${newTour.id}`);
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      const errorMessage = error.message.toLowerCase();
+      if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('tour_code')) {
+        toast.error('This tour code already exists. Please use a different tour code.');
+      } else {
+        toast.error(error.message || 'Failed to create tour');
+      }
     },
   });
 
@@ -74,7 +83,12 @@ const TourDetail = () => {
       toast.success('Tour updated successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      const errorMessage = error.message.toLowerCase();
+      if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('tour_code')) {
+        toast.error('This tour code already exists. Please use a different tour code.');
+      } else {
+        toast.error(error.message || 'Failed to update tour');
+      }
     },
   });
 
@@ -87,19 +101,25 @@ const TourDetail = () => {
     },
   });
 
-  const handleSave = (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[] }) => {
+  const handleSave = (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => {
     if (isNewTour) {
       createMutation.mutate(data);
     } else if (id) {
       // For updates, only update the basic tour info (not subcollections here)
       const { destinations, expenses, meals, allowances, ...tourInput } = data;
-      updateMutation.mutate({ id, patch: tourInput });
+      updateMutation.mutate({ id, patch: { ...tourInput, summary: data.summary } });
     }
   };
 
   const handleInfoSave = (data: TourInput) => {
     if (id && !isNewTour) {
       updateMutation.mutate({ id, patch: data });
+    }
+  };
+
+  const handleSummaryUpdate = (summary: TourSummary) => {
+    if (id && !isNewTour) {
+      updateMutation.mutate({ id, patch: { summary } });
     }
   };
 
@@ -251,7 +271,7 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="summary" className="animate-fade-in">
-              <SummaryTab tour={tour} />
+              <SummaryTab tour={tour} onSummaryUpdate={handleSummaryUpdate} />
             </TabsContent>
           </Tabs>
         ) : null}
