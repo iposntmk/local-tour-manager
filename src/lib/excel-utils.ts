@@ -189,6 +189,13 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
 
   let firstDataRow = true;
 
+  const setCodeAndDateCells = (row: ExcelJS.Row) => {
+    if (!firstDataRow) return;
+    row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
+    row.getCell(2).value = `${formatDisplayDate(tour.startDate)} - ${formatDisplayDate(tour.endDate)}`;
+    firstDataRow = false;
+  };
+
   // Collect all services (destinations + expenses + meals)
   const allServices = [
     ...(tour.destinations?.map(d => ({ name: `vé ${d.name || ''}`, price: d.price || 0 })) || []),
@@ -197,69 +204,54 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
   ];
 
   const allowances = tour.allowances || [];
-  const maxRows = Math.max(allServices.length, allowances.length);
+  const serviceRowCount = allServices.length;
 
-  // Thêm rows cho cả services và allowances
-  for (let i = 0; i < maxRows; i++) {
+  // Rows for services
+  for (let i = 0; i < serviceRowCount; i++) {
     const row = worksheet.getRow(currentRow);
     const service = allServices[i];
+
+    setCodeAndDateCells(row);
+
+    row.getCell(3).value = service.name;
+    row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
+
+    row.getCell(4).value = service.price;
+    row.getCell(4).numFmt = currencyFormat;
+
+    row.getCell(5).value = totalGuests;
+    row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    row.getCell(6).value = { formula: `D${currentRow}*E${currentRow}` };
+    row.getCell(6).numFmt = currencyFormat;
+
+    row.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
+    row.getCell(11).numFmt = currencyFormat;
+
+    applyRowBorder(row);
+    currentRow++;
+  }
+
+  // Rows for allowances
+  for (let i = 0; i < allowances.length; i++) {
+    const row = worksheet.getRow(currentRow);
     const allowance = allowances[i];
 
-    // Columns A-F: Services (vé + ăn + uống + chi phí)
-    if (service) {
-      // A: code (chỉ row đầu tiên)
-      if (firstDataRow) {
-        row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
-      }
+    setCodeAndDateCells(row);
 
-      // B: ngày (chỉ row đầu tiên)
-      if (firstDataRow) {
-        row.getCell(2).value = `${tour.startDate} - ${tour.endDate}`;
-        firstDataRow = false;
-      }
+    row.getCell(7).value = allowance.province || '';
 
-      // C: vé/ăn/uống/chi phí
-      row.getCell(3).value = service.name;
-      row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
+    row.getCell(8).value = 1;
+    row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
 
-      // D: giá vé/đơn giá
-      row.getCell(4).value = service.price;
-      row.getCell(4).numFmt = currencyFormat;
+    row.getCell(9).value = allowance.amount || 0;
+    row.getCell(9).numFmt = currencyFormat;
 
-      // E: số khách
-      row.getCell(5).value = totalGuests;
-      row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+    row.getCell(10).value = allowance.amount || 0;
+    row.getCell(10).numFmt = currencyFormat;
 
-      // F: thành tiền (formula: D*E)
-      row.getCell(6).value = { formula: `D${currentRow}*E${currentRow}` };
-      row.getCell(6).numFmt = currencyFormat;
-    }
-
-    // Columns G-J: Allowances (CTP)
-    if (allowance) {
-      // G: Địa điểm/tỉnh
-      row.getCell(7).value = allowance.province || '';
-
-      // H: số ngày
-      row.getCell(8).value = 1;
-      row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
-
-      // I: CTP
-      row.getCell(9).value = allowance.amount || 0;
-      row.getCell(9).numFmt = currencyFormat;
-
-      // J: thành tiền (CTP total = I * H, but H is always 1)
-      row.getCell(10).value = allowance.amount || 0;
-      row.getCell(10).numFmt = currencyFormat;
-    }
-
-    // K: Tổng tour (formula: F + J)
-    if (service || allowance) {
-      const fValue = service ? `F${currentRow}` : '0';
-      const jValue = allowance ? `J${currentRow}` : '0';
-      row.getCell(11).value = { formula: `${fValue}+${jValue}` };
-      row.getCell(11).numFmt = currencyFormat;
-    }
+    row.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
+    row.getCell(11).numFmt = currencyFormat;
 
     applyRowBorder(row);
     currentRow++;
