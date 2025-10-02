@@ -196,27 +196,18 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
     firstDataRow = false;
   };
 
-  // Collect all services (destinations + expenses + meals)
-  const allServices = [
-    ...(tour.destinations?.map(d => ({ name: `vé ${d.name || ''}`, price: d.price || 0 })) || []),
-    ...(tour.expenses?.map(e => ({ name: e.name || '', price: e.price || 0 })) || []),
-    ...(tour.meals?.map(m => ({ name: m.name || '', price: m.price || 0 })) || []),
-  ];
-
   const allowances = tour.allowances || [];
-  const serviceRowCount = allServices.length;
 
-  // Rows for services
-  for (let i = 0; i < serviceRowCount; i++) {
+  // Helper to add a service row
+  const addServiceRow = (name: string, price: number) => {
     const row = worksheet.getRow(currentRow);
-    const service = allServices[i];
 
     setCodeAndDateCells(row);
 
-    row.getCell(3).value = service.name;
+    row.getCell(3).value = name;
     row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
 
-    row.getCell(4).value = service.price;
+    row.getCell(4).value = price;
     row.getCell(4).numFmt = currencyFormat;
 
     row.getCell(5).value = totalGuests;
@@ -230,31 +221,53 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
 
     applyRowBorder(row);
     currentRow++;
+  };
+
+  // Add all destinations
+  if (tour.destinations && tour.destinations.length > 0) {
+    tour.destinations.forEach(d => {
+      addServiceRow(`vé ${d.name || ''}`, d.price || 0);
+    });
   }
 
-  // Rows for allowances
-  for (let i = 0; i < allowances.length; i++) {
-    const row = worksheet.getRow(currentRow);
-    const allowance = allowances[i];
+  // Add all expenses
+  if (tour.expenses && tour.expenses.length > 0) {
+    tour.expenses.forEach(e => {
+      addServiceRow(e.name || '', e.price || 0);
+    });
+  }
 
-    setCodeAndDateCells(row);
+  // Add all meals
+  if (tour.meals && tour.meals.length > 0) {
+    tour.meals.forEach(m => {
+      addServiceRow(m.name || '', m.price || 0);
+    });
+  }
 
-    row.getCell(7).value = allowance.province || '';
+  // Add all allowances
+  if (allowances && allowances.length > 0) {
+    allowances.forEach(allowance => {
+      const row = worksheet.getRow(currentRow);
 
-    row.getCell(8).value = 1;
-    row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
+      setCodeAndDateCells(row);
 
-    row.getCell(9).value = allowance.amount || 0;
-    row.getCell(9).numFmt = currencyFormat;
+      row.getCell(7).value = allowance.province || '';
 
-    row.getCell(10).value = allowance.amount || 0;
-    row.getCell(10).numFmt = currencyFormat;
+      row.getCell(8).value = 1;
+      row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
 
-    row.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
-    row.getCell(11).numFmt = currencyFormat;
+      row.getCell(9).value = allowance.amount || 0;
+      row.getCell(9).numFmt = currencyFormat;
 
-    applyRowBorder(row);
-    currentRow++;
+      row.getCell(10).value = allowance.amount || 0;
+      row.getCell(10).numFmt = currencyFormat;
+
+      row.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
+      row.getCell(11).numFmt = currencyFormat;
+
+      applyRowBorder(row);
+      currentRow++;
+    });
   }
 
   const dataEndRow = currentRow - 1;
@@ -275,7 +288,11 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
   totalsRow.getCell(5).fill = totalsFill;
 
   // F: Tổng thành tiền (vé + ăn + uống + chi phí)
-  totalsRow.getCell(6).value = { formula: `SUM(F${dataStartRow}:F${dataEndRow})` };
+  if (dataEndRow >= dataStartRow) {
+    totalsRow.getCell(6).value = { formula: `SUM(F${dataStartRow}:F${dataEndRow})` };
+  } else {
+    totalsRow.getCell(6).value = 0;
+  }
   totalsRow.getCell(6).numFmt = currencyFormat;
   totalsRow.getCell(6).fill = totalsFill;
 
@@ -287,7 +304,11 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
   totalsRow.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
 
   // J: Tổng CTP
-  totalsRow.getCell(10).value = { formula: `SUM(J${dataStartRow}:J${dataEndRow})` };
+  if (dataEndRow >= dataStartRow) {
+    totalsRow.getCell(10).value = { formula: `SUM(J${dataStartRow}:J${dataEndRow})` };
+  } else {
+    totalsRow.getCell(10).value = 0;
+  }
   totalsRow.getCell(10).numFmt = currencyFormat;
   totalsRow.getCell(10).fill = totalsFill;
 
