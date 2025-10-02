@@ -445,7 +445,7 @@ const Tours = () => {
 
           {/* Filters */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold flex items-center gap-2">
                 <Filter className="h-4 w-4" />
                 Filters
@@ -454,7 +454,7 @@ const Tours = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setFiltersExpanded(!filtersExpanded)}
-                className="h-8 w-8 p-0"
+                className="ml-auto h-8 w-8 p-0"
               >
                 {filtersExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
