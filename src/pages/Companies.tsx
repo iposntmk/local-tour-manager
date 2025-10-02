@@ -354,7 +354,7 @@ const Companies = () => {
           onSubmit={editingCompany ? handleEdit : handleCreate}
         />
 
-        <BulkImportDialog<CompanyInput>
+        <BulkImportDialog
           open={importDialogOpen}
           onOpenChange={setImportDialogOpen}
           onImport={handleBulkImport}

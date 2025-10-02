@@ -308,7 +308,7 @@ const ExpenseCategories = () => {
         isEditing={!!editingCategory}
       />
 
-      <BulkImportDialog<ExpenseCategoryInput>
+      <BulkImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleBulkImport}

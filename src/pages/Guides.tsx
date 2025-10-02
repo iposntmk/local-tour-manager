@@ -332,7 +332,7 @@ const Guides = () => {
           onSubmit={editingGuide ? handleEdit : handleCreate}
         />
 
-        <BulkImportDialog<GuideInput>
+        <BulkImportDialog
           open={importDialogOpen}
           onOpenChange={setImportDialogOpen}
           onImport={handleBulkImport}
