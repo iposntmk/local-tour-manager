@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar, Users, FileDown, Copy, Trash2, ChevronDown, ChevronUp, Filter, X } from 'lucide-react';
+import { Plus, Calendar, Users, FileDown, Copy, Trash2, ChevronDown, ChevronUp, Filter, X, Trash } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -26,6 +26,8 @@ const Tours = () => {
     const saved = localStorage.getItem('tours.filtersExpanded');
     return saved !== null ? JSON.parse(saved) : true;
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20); // Show 20 tours per page
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -37,6 +39,8 @@ const Tours = () => {
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ['tours', search],
     queryFn: () => store.listTours({ tourCode: search }, { includeDetails: false }),
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    cacheTime: 300000, // Keep in cache for 5 minutes
   });
 
   const { data: nationalities = [] } = useQuery({
@@ -63,6 +67,20 @@ const Tours = () => {
       return true;
     });
   }, [tours, nationalityFilter, monthFilter]);
+
+  // Paginate filtered tours
+  const paginatedTours = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredTours.slice(startIndex, endIndex);
+  }, [filteredTours, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredTours.length / pageSize);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [nationalityFilter, monthFilter, search]);
 
   // Get unique months from tours
   const availableMonths = useMemo(() => {
@@ -100,6 +118,9 @@ const Tours = () => {
       queryClient.invalidateQueries({ queryKey: ['tours'] });
       toast.success('Tour duplicated successfully');
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to duplicate tour');
+    },
   });
 
   const deleteMutation = useMutation({
@@ -108,7 +129,27 @@ const Tours = () => {
       queryClient.invalidateQueries({ queryKey: ['tours'] });
       toast.success('Tour deleted successfully');
     },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete tour');
+    },
   });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: () => store.deleteAllTours(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      toast.success('All tours deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete all tours');
+    },
+  });
+
+  const handleDeleteAll = () => {
+    if (confirm('Are you sure you want to delete ALL tours? This action cannot be undone.')) {
+      deleteAllMutation.mutate();
+    }
+  };
 
   const handleExportAll = () => {
     if (tours.length === 0) {
@@ -132,8 +173,12 @@ const Tours = () => {
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('Delete button clicked for tour ID:', id);
     if (confirm('Are you sure you want to delete this tour?')) {
+      console.log('User confirmed deletion for tour ID:', id);
       deleteMutation.mutate(id);
+    } else {
+      console.log('User cancelled deletion');
     }
   };
 
@@ -180,96 +225,122 @@ const Tours = () => {
         store.listDetailedExpenses({}),
         store.listShoppings({}),
       ]);
-      const destFuse = new Fuse(masterDestinations, { keys: ['name'], threshold: 0.4, includeScore: true, ignoreLocation: true });
-      const expFuse = new Fuse(masterExpenses, { keys: ['name'], threshold: 0.4, includeScore: true, ignoreLocation: true });
-      const mealFuse = new Fuse(masterShoppings, { keys: ['name'], threshold: 0.4, includeScore: true, ignoreLocation: true });
-      const autoMatch = (name: string, fuse: any) => {
+      // Create lookup maps for faster matching (much faster than Fuse.js for exact matches)
+      const destMap = new Map(masterDestinations.map(d => [d.name.toLowerCase(), d]));
+      const expMap = new Map(masterExpenses.map(e => [e.name.toLowerCase(), e]));
+      const mealMap = new Map(masterShoppings.map(m => [m.name.toLowerCase(), m]));
+      
+      const autoMatch = (name: string, map: Map<string, any>) => {
         if (!name?.trim()) return null;
-        const res = fuse.search(name);
-        return res.length > 0 && (res[0].score ?? 1) < 0.4 ? res[0].item : null;
+        return map.get(name.toLowerCase()) || null;
       };
 
-      for (let i = 0; i < tours.length; i++) {
-        const tour = tours[i];
-        try {
-          // Validate tour data before attempting to create
-          const validation = validateTourData(tour);
-          if (!validation.valid) {
-            throw new Error(validation.errors.join(', '));
+      // Process tours in batches for better performance
+      const batchSize = 5;
+      for (let i = 0; i < tours.length; i += batchSize) {
+        const batch = tours.slice(i, i + batchSize);
+        
+        // Process batch in parallel
+        const batchPromises = batch.map(async (tour, batchIndex) => {
+          const globalIndex = i + batchIndex;
+          try {
+            // Validate tour data before attempting to create
+            const validation = validateTourData(tour);
+            if (!validation.valid) {
+              throw new Error(validation.errors.join(', '));
+            }
+
+            // Clean matched properties and normalize dates + apply auto-match fallback
+            const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => {
+              const normalized = { ...dest, date: normalizeDate(dest.date) } as any;
+              if ((!normalized.price || normalized.price === 0) && normalized.name) {
+                const m = autoMatch(normalized.name, destMap);
+                if (m) {
+                  normalized.name = m.name;
+                  normalized.price = Number(m.price) || 0;
+                }
+              }
+              return normalized;
+            });
+            const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => {
+              const normalized = { ...exp, date: normalizeDate(exp.date) } as any;
+              if ((!normalized.price || normalized.price === 0) && normalized.name) {
+                const m = autoMatch(normalized.name, expMap);
+                if (m) {
+                  normalized.name = m.name;
+                  normalized.price = Number(m.price) || 0;
+                }
+              }
+              return normalized;
+            });
+            const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => {
+              const normalized = { ...meal, date: normalizeDate(meal.date) } as any;
+              if ((!normalized.price || normalized.price === 0) && normalized.name) {
+                const m = autoMatch(normalized.name, mealMap);
+                if (m) {
+                  normalized.name = m.name;
+                  normalized.price = Number(m.price) || 0;
+                }
+              }
+              return normalized;
+            });
+            const cleanAllowances = tour.allowances?.map((allow) => ({
+              ...allow,
+              date: normalizeDate(allow.date),
+            }));
+
+            // Create the tour with all subcollections in one call
+            const createdTour = await store.createTour({
+              tourCode: tour.tourCode!,
+              companyRef: tour.companyRef,
+              guideRef: tour.guideRef,
+              clientNationalityRef: tour.clientNationalityRef,
+              clientName: tour.clientName!,
+              adults: tour.adults!,
+              children: tour.children!,
+              driverName: tour.driverName,
+              clientPhone: tour.clientPhone,
+              startDate: normalizeDate(tour.startDate!)!,
+              endDate: normalizeDate(tour.endDate!)!,
+              destinations: cleanDestinations,
+              expenses: cleanExpenses,
+              meals: cleanMeals,
+              allowances: cleanAllowances,
+              summary: tour.summary,
+            });
+
+            return { success: true, tour: createdTour };
+          } catch (error) {
+            const tourCode = tour.tourCode || `Tour ${globalIndex + 1}`;
+            const context = {
+              operation: 'importTour',
+              tourCode,
+              tourIndex: globalIndex,
+              data: tour,
+              timestamp: new Date().toISOString(),
+            };
+            
+            const errorMsg = handleImportError(error, context);
+            return { success: false, error: `${tourCode}: ${errorMsg}` };
           }
+        });
 
-          // Clean matched properties and normalize dates + apply auto-match fallback
-          const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => {
-            const normalized = { ...dest, date: normalizeDate(dest.date) } as any;
-            if ((!normalized.price || normalized.price === 0) && normalized.name) {
-              const m = autoMatch(normalized.name, destFuse);
-              if (m) {
-                normalized.name = m.name;
-                normalized.price = Number(m.price) || 0;
-              }
-            }
-            return normalized;
-          });
-          const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => {
-            const normalized = { ...exp, date: normalizeDate(exp.date) } as any;
-            if ((!normalized.price || normalized.price === 0) && normalized.name) {
-              const m = autoMatch(normalized.name, expFuse);
-              if (m) {
-                normalized.name = m.name;
-                normalized.price = Number(m.price) || 0;
-              }
-            }
-            return normalized;
-          });
-          const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => {
-            const normalized = { ...meal, date: normalizeDate(meal.date) } as any;
-            if ((!normalized.price || normalized.price === 0) && normalized.name) {
-              const m = autoMatch(normalized.name, mealFuse);
-              if (m) {
-                normalized.name = m.name;
-                normalized.price = Number(m.price) || 0;
-              }
-            }
-            return normalized;
-          });
-          const cleanAllowances = tour.allowances?.map((allow) => ({
-            ...allow,
-            date: normalizeDate(allow.date),
-          }));
+        // Wait for batch to complete
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Process results
+        batchResults.forEach(result => {
+          if (result.success) {
+            results.push(result.tour);
+          } else {
+            errors.push(result.error);
+          }
+        });
 
-          // Create the tour with all subcollections in one call
-          const createdTour = await store.createTour({
-            tourCode: tour.tourCode!,
-            companyRef: tour.companyRef,
-            guideRef: tour.guideRef,
-            clientNationalityRef: tour.clientNationalityRef,
-            clientName: tour.clientName!,
-            adults: tour.adults!,
-            children: tour.children!,
-            driverName: tour.driverName,
-            clientPhone: tour.clientPhone,
-            startDate: normalizeDate(tour.startDate!)!,
-            endDate: normalizeDate(tour.endDate!)!,
-            destinations: cleanDestinations,
-            expenses: cleanExpenses,
-            meals: cleanMeals,
-            allowances: cleanAllowances,
-            summary: tour.summary,
-          });
-
-          results.push(createdTour);
-        } catch (error) {
-          const tourCode = tour.tourCode || `Tour ${i + 1}`;
-          const context = {
-            operation: 'importTour',
-            tourCode,
-            tourIndex: i,
-            data: tour,
-            timestamp: new Date().toISOString(),
-          };
-          
-          const errorMsg = handleImportError(error, context);
-          errors.push(`${tourCode}: ${errorMsg}`);
+        // Show progress for large imports
+        if (tours.length > 10) {
+          const progress = Math.round(((i + batchSize) / tours.length) * 100);
+          toast.message(`Importing tours... ${Math.min(progress, 100)}%`, { duration: 1000 });
         }
       }
 
@@ -311,6 +382,10 @@ const Tours = () => {
               <Button onClick={handleExportAll} variant="outline" className="hover-scale">
                 <FileDown className="h-4 w-4 mr-2" />
                 Export All
+              </Button>
+              <Button onClick={handleDeleteAll} variant="outline" className="hover-scale text-destructive hover:text-destructive">
+                <Trash className="h-4 w-4 mr-2" />
+                Delete All
               </Button>
               <Button onClick={() => navigate('/tours/new')} className="hover-scale">
                 <Plus className="h-4 w-4 mr-2" />
@@ -428,7 +503,7 @@ const Tours = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredTours.map((tour, index) => {
+            {paginatedTours.map((tour, index) => {
               const isExpanded = expandedCards.has(tour.id);
               return (
                 <div
@@ -529,6 +604,7 @@ const Tours = () => {
                         variant="outline"
                         className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                         onClick={(e) => handleDelete(tour.id, e)}
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -537,6 +613,55 @@ const Tours = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                if (pageNum > totalPages) return null;
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+
+        {/* Pagination Info */}
+        {filteredTours.length > 0 && (
+          <div className="text-center text-sm text-muted-foreground mt-4">
+            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredTours.length)} of {filteredTours.length} tours
           </div>
         )}
       </div>

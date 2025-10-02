@@ -274,7 +274,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllGuides(): Promise<void> {
-    const { error } = await this.supabase.from('guides').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('guides').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
 
@@ -443,7 +443,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllCompanies(): Promise<void> {
-    const { error } = await this.supabase.from('companies').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('companies').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
 
@@ -576,7 +576,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllNationalities(): Promise<void> {
-    const { error } = await this.supabase.from('nationalities').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('nationalities').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
 
@@ -605,8 +605,8 @@ export class SupabaseStore implements DataStore {
 
     const records = inputs.map(input => ({
       name: input.name,
-      iso2: input.iso2,
-      emoji: input.emoji,
+      iso2: input.iso2 || null,
+      emoji: input.emoji || null,
       status: 'active',
       search_keywords: generateSearchKeywords(input.name),
     }));
@@ -701,7 +701,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllProvinces(): Promise<void> {
-    const { error } = await this.supabase.from('provinces').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('provinces').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
 
@@ -835,7 +835,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllTouristDestinations(): Promise<void> {
-    const { error } = await this.supabase.from('tourist_destinations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('tourist_destinations').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
 
@@ -961,7 +961,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllShoppings(): Promise<void> {
-    const { error } = await this.supabase.from('shoppings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('shoppings').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
 
@@ -1084,7 +1084,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllExpenseCategories(): Promise<void> {
-    const { error } = await this.supabase.from('expense_categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('expense_categories').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
 
@@ -1219,7 +1219,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteAllDetailedExpenses(): Promise<void> {
-    const { error } = await this.supabase.from('detailed_expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await this.supabase.from('detailed_expenses').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
 
@@ -1539,7 +1539,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async deleteTour(id: string): Promise<void> {
+    console.log('SupabaseStore: Deleting tour with ID:', id);
     const { error } = await this.supabase.from('tours').delete().eq('id', id);
+    if (error) {
+      console.error('SupabaseStore: Delete tour error:', error);
+      throw error;
+    }
+    console.log('SupabaseStore: Tour deleted successfully');
+  }
+
+  async deleteAllTours(): Promise<void> {
+    const { error } = await this.supabase.from('tours').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     if (error) throw error;
   }
 

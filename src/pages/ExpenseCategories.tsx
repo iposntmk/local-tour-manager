@@ -146,8 +146,8 @@ const ExpenseCategories = () => {
                 <Upload className="h-4 w-4 mr-2" />
                 Import
               </Button>
-              <Button variant="outline" onClick={handleDeleteAll}>
-                <Trash className="h-4 w-4 mr-2" />
+              <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
+                <Trash className="h-4 w-4" />
                 Delete All
               </Button>
               <Button onClick={() => handleOpenDialog()}>

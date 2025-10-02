@@ -5,7 +5,7 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
@@ -20,7 +20,7 @@ const Destinations = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingDestination, setEditingDestination] = useState<TouristDestination | undefined>();
   const [nameFilter, setNameFilter] = useState('');
-  const [provinceFilter, setProvinceFilter] = useState('');
+  const [provinceFilter, setProvinceFilter] = useState('all');
   const [priceFilter, setPriceFilter] = useState('');
 
   const queryClient = useQueryClient();
@@ -136,11 +136,33 @@ const Destinations = () => {
     await bulkImportMutation.mutateAsync(items);
   };
 
+  const handleExportTxt = () => {
+    if (filteredDestinations.length === 0) {
+      toast.error('No destinations to export');
+      return;
+    }
+
+    const txtContent = filteredDestinations
+      .map(dest => `${dest.name},${dest.price}`)
+      .join('\n');
+
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `destinations-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredDestinations.length} destinations`);
+  };
+
   // Filter destinations based on column filters
   const filteredDestinations = useMemo(() => {
     return destinations.filter(dest => {
       const matchesName = !nameFilter || dest.name.toLowerCase().includes(nameFilter.toLowerCase());
-      const matchesProvince = !provinceFilter || dest.provinceRef.nameAtBooking === provinceFilter;
+      const matchesProvince = !provinceFilter || provinceFilter === 'all' || dest.provinceRef.nameAtBooking === provinceFilter;
       const matchesPrice = !priceFilter || dest.price.toString().includes(priceFilter);
       return matchesName && matchesProvince && matchesPrice;
     });
@@ -158,12 +180,16 @@ const Destinations = () => {
               <p className="text-muted-foreground">Manage tourist destinations</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={handleExportTxt}>
+                <Download className="h-4 w-4 mr-2" />
+                Export TXT
+              </Button>
               <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Import
               </Button>
-              <Button variant="destructive" onClick={handleDeleteAll}>
-                <Trash className="h-4 w-4 mr-2" />
+              <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
+                <Trash className="h-4 w-4" />
                 Delete All
               </Button>
               <Button onClick={() => handleOpenDialog()}>
@@ -218,7 +244,7 @@ const Destinations = () => {
                           <SelectValue placeholder="All Provinces" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
                           {provinces.map((province) => (
                             <SelectItem key={province.id} value={province.name}>
                               {province.name}
@@ -363,6 +389,16 @@ const Destinations = () => {
         title="Import Destinations"
         description="Import destinations from a text file or paste data. Each line should have: name,price"
         placeholder="Enter destinations (one per line, format: name,price)&#10;Example:&#10;Ha Long Bay,1500000&#10;Sapa Trek,2000000&#10;Hoi An Ancient Town,800000"
+        parseItem={(parts: string[]) => {
+          if (parts.length >= 2 && parts[0].trim()) {
+            const name = parts[0].trim();
+            const price = parseFloat(parts[1].replace(/[^\d.-]/g, ''));
+            if (!isNaN(price) && price > 0) {
+              return { name, price };
+            }
+          }
+          return null;
+        }}
       />
     </Layout>
   );

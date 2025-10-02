@@ -65,8 +65,28 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
     }
     
     if (editingIndex !== null) {
+      // Check for duplicate destination name when editing (case-insensitive, excluding current index)
+      const isDuplicate = destinations.some((dest, i) => 
+        i !== editingIndex && dest.name.toLowerCase() === formData.name.toLowerCase()
+      );
+      
+      if (isDuplicate) {
+        toast.error('A destination with this name already exists');
+        return;
+      }
+      
       updateMutation.mutate({ index: editingIndex, destination: formData });
     } else {
+      // Check for duplicate destination name
+      const isDuplicate = destinations.some(dest => 
+        dest.name.toLowerCase() === formData.name.toLowerCase()
+      );
+      
+      if (isDuplicate) {
+        toast.error('A destination with this name already exists');
+        return;
+      }
+      
       addMutation.mutate(formData);
     }
   };

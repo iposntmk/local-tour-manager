@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Trash2, Edit3 } from 'lucide-react';
 import Fuse from 'fuse.js';
+import { toast } from 'sonner';
 
 interface TourEditFormProps {
   tour: Partial<Tour>;
@@ -41,10 +42,31 @@ export function TourEditForm({ tour, companies, guides, nationalities, onUpdate 
       price: 0,
       date: tour.startDate || ''
     };
+    
+    // Check for duplicate destination name (case-insensitive)
+    const isDuplicate = (tour.destinations || []).some(dest => 
+      dest.name.toLowerCase() === newDestination.name.toLowerCase()
+    );
+    
+    if (isDuplicate) {
+      toast.error('A destination with this name already exists');
+      return;
+    }
+    
     updateField('destinations', [...(tour.destinations || []), newDestination]);
   };
 
   const updateDestination = (index: number, destination: Destination) => {
+    // Check for duplicate destination name (case-insensitive, excluding current index)
+    const isDuplicate = (tour.destinations || []).some((dest, i) => 
+      i !== index && dest.name.toLowerCase() === destination.name.toLowerCase()
+    );
+    
+    if (isDuplicate) {
+      toast.error('A destination with this name already exists');
+      return;
+    }
+    
     const destinations = [...(tour.destinations || [])];
     destinations[index] = destination;
     updateField('destinations', destinations);

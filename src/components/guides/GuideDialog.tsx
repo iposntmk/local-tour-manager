@@ -96,7 +96,7 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
               <Label htmlFor="note">Note</Label>
               <TextareaWithSave
                 id="note"
-                storageKey="guide-note"
+                storageKey={guide ? `guide-note-edit-${guide.id}` : 'guide-note-create'}
                 value={formData.note}
                 onValueChange={(value) => setFormData({ ...formData, note: value })}
                 placeholder="Languages, specialties, etc."

@@ -162,8 +162,8 @@ const DetailedExpenses = () => {
                 <Upload className="h-4 w-4 mr-2" />
                 Import
               </Button>
-              <Button variant="destructive" onClick={handleDeleteAll}>
-                <Trash className="h-4 w-4 mr-2" />
+              <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
+                <Trash className="h-4 w-4" />
                 Delete All
               </Button>
               <Button onClick={() => handleOpenDialog()}>
@@ -366,6 +366,16 @@ const DetailedExpenses = () => {
         title="Import Detailed Expenses"
         description="Import detailed expenses from a text file or paste data. Each line should have: name,price"
         placeholder="Enter expenses (one per line, format: name,price)&#10;Example:&#10;Airport Transfer,500000&#10;Hotel Booking,3000000&#10;Tour Guide Fee,800000"
+        parseItem={(parts: string[]) => {
+          if (parts.length >= 2 && parts[0].trim()) {
+            const name = parts[0].trim();
+            const price = parseFloat(parts[1].replace(/[^\d.-]/g, ''));
+            if (!isNaN(price) && price > 0) {
+              return { name, price };
+            }
+          }
+          return null;
+        }}
       />
     </Layout>
   );

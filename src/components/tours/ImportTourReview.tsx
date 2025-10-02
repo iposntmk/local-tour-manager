@@ -395,7 +395,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
                       <Label>Company</Label>
                       <div className="flex gap-2">
                         <Select
-                          value={item.tour.companyRef?.id || ''}
+                          value={item.tour.companyRef?.id || undefined}
                           onValueChange={(val) => {
                             const selected = companies.find(c => c.id === val);
                             if (selected) setRef(idx, 'companyRef', { id: selected.id, nameAtBooking: selected.name });
@@ -419,7 +419,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
                       <Label>Guide</Label>
                       <div className="flex gap-2">
                         <Select
-                          value={item.tour.guideRef?.id || ''}
+                          value={item.tour.guideRef?.id || undefined}
                           onValueChange={(val) => {
                             const selected = guides.find(g => g.id === val);
                             if (selected) setRef(idx, 'guideRef', { id: selected.id, nameAtBooking: selected.name });
@@ -443,7 +443,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
                       <Label>Client Nationality</Label>
                       <div className="flex gap-2">
                         <Select
-                          value={item.tour.clientNationalityRef?.id || ''}
+                          value={item.tour.clientNationalityRef?.id || undefined}
                           onValueChange={(val) => {
                             const selected = nationalities.find(n => n.id === val);
                             if (selected) setRef(idx, 'clientNationalityRef', { id: selected.id, nameAtBooking: selected.name });
@@ -488,7 +488,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
                           </div>
                           <div className="flex gap-2">
                             <Select
-                              value={(dest as any).matchedId || ''}
+                              value={(dest as any).matchedId || undefined}
                               onValueChange={(val) => {
                                 const selected = destinations.find(d => d.id === val);
                                 if (selected) {
@@ -549,7 +549,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
                           </div>
                           <div className="flex gap-2">
                             <Select
-                              value={(exp as any).matchedId || ''}
+                              value={(exp as any).matchedId || undefined}
                               onValueChange={(val) => {
                                 const selected = expenses.find(e => e.id === val);
                                 if (selected) {
@@ -610,7 +610,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
                           </div>
                           <div className="flex gap-2">
                             <Select
-                              value={(meal as any).matchedId || ''}
+                              value={(meal as any).matchedId || undefined}
                               onValueChange={(val) => {
                                 const selected = shoppings.find(s => s.id === val);
                                 if (selected) {
@@ -670,7 +670,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
                             )}
                           </div>
                           <Select
-                            value={(allow as any).matchedProvinceId || ''}
+                            value={(allow as any).matchedProvinceId || undefined}
                             onValueChange={(val) => {
                               const selected = provinces.find(p => p.id === val);
                               if (selected) {

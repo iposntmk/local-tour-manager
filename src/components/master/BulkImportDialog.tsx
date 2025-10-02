@@ -25,6 +25,8 @@ export const BulkImportDialog = <T = any,>({
   placeholder = 'Enter items (one per line, format: name,price)\nExample:\nHa Long Bay,1500000\nSapa Trek,2000000',
   parseItem
 }: BulkImportDialogProps<T>) => {
+  // Create unique storage key based on dialog title
+  const storageKey = `bulk-import-${title.toLowerCase().replace(/\s+/g, '-')}`;
   const [textInput, setTextInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -144,7 +146,7 @@ export const BulkImportDialog = <T = any,>({
             <Label htmlFor="import-textarea">Import Data</Label>
             <TextareaWithSave
               id="import-textarea"
-              storageKey="bulk-import-data"
+              storageKey={storageKey}
               value={textInput}
               onValueChange={setTextInput}
               placeholder={placeholder}
