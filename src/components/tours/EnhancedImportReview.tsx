@@ -1235,37 +1235,35 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-4">
+      {/* Compact Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Import Review</h2>
-          <p className="text-muted-foreground">
-            Review and edit {draft.length} tour(s) before importing
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={Object.keys(validationWarnings).length === 0 ? "default" : "secondary"}>
-            {Object.keys(validationWarnings).length === 0 ? "Ready to import" : `${Object.keys(validationWarnings).length} warnings`}
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Import Review</h2>
+          <Badge variant="outline" className="text-xs">
+            {draft.length} tour{draft.length !== 1 ? 's' : ''}
+          </Badge>
+          <Badge variant={Object.keys(validationWarnings).length === 0 ? "default" : "secondary"} className="text-xs">
+            {Object.keys(validationWarnings).length === 0 ? "Ready" : `${Object.keys(validationWarnings).length} warnings`}
           </Badge>
         </div>
       </div>
 
-      {/* Search */}
+      {/* Compact Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground h-3 w-3" />
         <Input
-          placeholder="Search tours by tour code, client name, company, guide, or nationality..."
+          placeholder="Search tours..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
+          className="pl-7 h-8 text-sm"
         />
       </div>
 
       {/* Content */}
-      <div className="space-y-4">
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-4">
+      <div className="space-y-3">
+          <ScrollArea className="h-[600px]">
+            <div className="space-y-3">
               {filteredTours.map((item, index) => {
                 const originalIndex = draft.findIndex(d => d === item);
                 const tour = item.tour;
@@ -1274,64 +1272,65 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
                 return (
                   <Card key={originalIndex} className={warnings.length > 0 ? "border-yellow-500" : ""}>
-                    <CardHeader className="pb-3">
+                    <CardHeader className="pb-2 pt-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{tour.tourCode || `Tour ${originalIndex + 1}`}</CardTitle>
-                        <div className="flex items-center gap-2">
+                        <CardTitle className="text-base">{tour.tourCode || `Tour ${originalIndex + 1}`}</CardTitle>
+                        <div className="flex items-center gap-1">
                           {warnings.length > 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                              {warnings.length} warning{warnings.length > 1 ? 's' : ''}
+                            <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                              {warnings.length}w
                             </Badge>
                           )}
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => removeTour(originalIndex)}
+                            className="h-6 w-6 p-0"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-2">
                       <Tabs defaultValue="info" className="w-full">
-                        <TabsList className="grid w-full grid-cols-6">
-                          <TabsTrigger value="info" className="text-xs">Info</TabsTrigger>
-                          <TabsTrigger value="destinations" className="text-xs">
-                            Destinations
-                            <Badge variant="secondary" className="ml-1 text-xs">
+                        <TabsList className="grid w-full grid-cols-6 h-8">
+                          <TabsTrigger value="info" className="text-xs px-2">Info</TabsTrigger>
+                          <TabsTrigger value="destinations" className="text-xs px-1">
+                            Dest
+                            <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">
                               {tour.destinations?.length || 0}
                             </Badge>
                           </TabsTrigger>
-                          <TabsTrigger value="expenses" className="text-xs">
-                            Expenses
-                            <Badge variant="secondary" className="ml-1 text-xs">
+                          <TabsTrigger value="expenses" className="text-xs px-1">
+                            Exp
+                            <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">
                               {tour.expenses?.length || 0}
                             </Badge>
                           </TabsTrigger>
-                          <TabsTrigger value="meals" className="text-xs">
+                          <TabsTrigger value="meals" className="text-xs px-1">
                             Meals
-                            <Badge variant="secondary" className="ml-1 text-xs">
+                            <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">
                               {tour.meals?.length || 0}
                             </Badge>
                           </TabsTrigger>
-                          <TabsTrigger value="allowances" className="text-xs">
-                            Allowances
-                            <Badge variant="secondary" className="ml-1 text-xs">
+                          <TabsTrigger value="allowances" className="text-xs px-1">
+                            Allow
+                            <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">
                               {tour.allowances?.length || 0}
                             </Badge>
                           </TabsTrigger>
-                          <TabsTrigger value="summary" className="text-xs">Summary</TabsTrigger>
+                          <TabsTrigger value="summary" className="text-xs px-1">Summary</TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="info" className="space-y-3 mt-4">
+                        <TabsContent value="info" className="space-y-2 mt-2">
                           {warnings.length > 0 && (
-                            <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                              <div className="flex items-start gap-2">
-                                <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                            <div className="p-2 bg-yellow-50 rounded border border-yellow-200">
+                              <div className="flex items-start gap-1">
+                                <AlertCircle className="h-3 w-3 text-yellow-600 mt-0.5" />
                                 <div className="flex-1">
-                                  <div className="text-sm font-medium text-yellow-800">Warnings:</div>
-                                  <ul className="list-disc list-inside mt-1 text-sm text-yellow-700 space-y-1">
+                                  <div className="text-xs font-medium text-yellow-800">Warnings:</div>
+                                  <ul className="list-disc list-inside mt-0.5 text-xs text-yellow-700 space-y-0.5">
                                     {warnings.map((warning, i) => (
                                       <li key={i}>{warning}</li>
                                     ))}
@@ -1340,38 +1339,36 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                               </div>
                             </div>
                           )}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-sm font-medium">Client Name</Label>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={tour.clientName || ''}
-                              onChange={(e) => updateTourField(originalIndex, 'clientName', e.target.value)}
-                              className={`h-8 ${!tour.clientName ? 'border-yellow-500' : ''}`}
-                            />
-                          </div>
+                          <Label className="text-xs font-medium">Client Name</Label>
+                          <Input
+                            value={tour.clientName || ''}
+                            onChange={(e) => updateTourField(originalIndex, 'clientName', e.target.value)}
+                            className={`h-7 text-xs ${!tour.clientName ? 'border-yellow-500' : ''}`}
+                          />
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">Tour Code</Label>
+                          <Label className="text-xs font-medium">Tour Code</Label>
                           <Input
                             value={tour.tourCode || ''}
                             onChange={(e) => updateTourField(originalIndex, 'tourCode', e.target.value)}
-                            className={`h-8 ${!tour.tourCode ? 'border-yellow-500' : ''}`}
+                            className={`h-7 text-xs ${!tour.tourCode ? 'border-yellow-500' : ''}`}
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <Label className="text-sm font-medium">
+                          <Label className="text-xs font-medium">
                             Company
                             {raw.company && (
                               <span className="text-xs text-muted-foreground ml-1">
-                                (JSON: "{raw.company}")
+                                ({raw.company})
                               </span>
                             )}
                           </Label>
-                          <div className={!tour.companyRef?.id ? 'border-2 border-yellow-500 rounded-md' : ''}>
+                          <div className={!tour.companyRef?.id ? 'border border-yellow-500 rounded' : ''}>
                             <EntitySelector
                               entities={companies}
                               selected={tour.companyRef}
@@ -1386,15 +1383,15 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           </div>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">
+                          <Label className="text-xs font-medium">
                             Guide
                             {raw.guide && (
                               <span className="text-xs text-muted-foreground ml-1">
-                                (JSON: "{raw.guide}")
+                                ({raw.guide})
                               </span>
                             )}
                           </Label>
-                          <div className={!tour.guideRef?.id ? 'border-2 border-yellow-500 rounded-md' : ''}>
+                          <div className={!tour.guideRef?.id ? 'border border-yellow-500 rounded' : ''}>
                             <EntitySelector
                               entities={guides}
                               selected={tour.guideRef}
@@ -1409,15 +1406,15 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           </div>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">
+                          <Label className="text-xs font-medium">
                             Nationality
                             {raw.nationality && (
                               <span className="text-xs text-muted-foreground ml-1">
-                                (JSON: "{raw.nationality}")
+                                ({raw.nationality})
                               </span>
                             )}
                           </Label>
-                          <div className={!tour.clientNationalityRef?.id ? 'border-2 border-yellow-500 rounded-md' : ''}>
+                          <div className={!tour.clientNationalityRef?.id ? 'border border-yellow-500 rounded' : ''}>
                             <EntitySelector
                               entities={nationalities}
                               selected={tour.clientNationalityRef}
@@ -1433,32 +1430,32 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-sm font-medium">Start Date</Label>
+                          <Label className="text-xs font-medium">Start Date</Label>
                           <Input
                             type="date"
                             value={tour.startDate || ''}
                             onChange={(e) => updateTourField(originalIndex, 'startDate', e.target.value)}
-                            className={`h-8 ${!tour.startDate ? 'border-yellow-500' : ''}`}
+                            className={`h-7 text-xs ${!tour.startDate ? 'border-yellow-500' : ''}`}
                           />
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">End Date</Label>
+                          <Label className="text-xs font-medium">End Date</Label>
                           <Input
                             type="date"
                             value={tour.endDate || ''}
                             onChange={(e) => updateTourField(originalIndex, 'endDate', e.target.value)}
-                            className={`h-8 ${!tour.endDate ? 'border-yellow-500' : ''}`}
+                            className={`h-7 text-xs ${!tour.endDate ? 'border-yellow-500' : ''}`}
                           />
                         </div>
                       </div>
                         </TabsContent>
 
-                        <TabsContent value="destinations" className="mt-4">
+                        <TabsContent value="destinations" className="mt-2">
                           <SubcollectionSection
                             title="Destinations"
-                            icon={<MapPin className="h-4 w-4" />}
+                            icon={<MapPin className="h-3 w-3" />}
                             items={tour.destinations || []}
                             tourIndex={originalIndex}
                             sectionKey="destinations"
@@ -1471,10 +1468,10 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           />
                         </TabsContent>
 
-                        <TabsContent value="expenses" className="mt-4">
+                        <TabsContent value="expenses" className="mt-2">
                           <SubcollectionSection
                             title="Expenses"
-                            icon={<Receipt className="h-4 w-4" />}
+                            icon={<Receipt className="h-3 w-3" />}
                             items={tour.expenses || []}
                             tourIndex={originalIndex}
                             sectionKey="expenses"
@@ -1487,10 +1484,10 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           />
                         </TabsContent>
 
-                        <TabsContent value="meals" className="mt-4">
+                        <TabsContent value="meals" className="mt-2">
                           <SubcollectionSection
                             title="Meals"
-                            icon={<Utensils className="h-4 w-4" />}
+                            icon={<Utensils className="h-3 w-3" />}
                             items={tour.meals || []}
                             tourIndex={originalIndex}
                             sectionKey="meals"
@@ -1503,10 +1500,10 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           />
                         </TabsContent>
 
-                        <TabsContent value="allowances" className="mt-4">
+                        <TabsContent value="allowances" className="mt-2">
                           <SubcollectionSection
                             title="Allowances"
-                            icon={<DollarSign className="h-4 w-4" />}
+                            icon={<DollarSign className="h-3 w-3" />}
                             items={tour.allowances || []}
                             tourIndex={originalIndex}
                             sectionKey="allowances"
@@ -1519,10 +1516,10 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                           />
                         </TabsContent>
 
-                        <TabsContent value="summary" className="mt-4">
+                        <TabsContent value="summary" className="mt-2">
                           <SubcollectionSection
                             title="Summary"
-                            icon={<DollarSign className="h-4 w-4" />}
+                            icon={<DollarSign className="h-3 w-3" />}
                             items={tour.summary ? [tour.summary] : []}
                             tourIndex={originalIndex}
                             sectionKey="summary"
@@ -1651,7 +1648,7 @@ function EntitySelector({ entities, selected, onSelect, onCreateNew, placeholder
   }, [entities, searchQuery]);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1">
       <Select
         value={selected?.id || undefined}
         onValueChange={(value) => {
@@ -1660,27 +1657,27 @@ function EntitySelector({ entities, selected, onSelect, onCreateNew, placeholder
         }}
         onOpenChange={setIsOpen}
       >
-        <SelectTrigger className="h-8 flex-1">
+        <SelectTrigger className="h-7 flex-1 text-xs">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          <div className="p-2">
+          <div className="p-1">
             <Input
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8"
+              className="h-7 text-xs"
               onClick={(e) => e.stopPropagation()}
             />
           </div>
           <Separator />
           {filteredEntities.map((entity) => (
-            <SelectItem key={entity.id} value={entity.id}>
+            <SelectItem key={entity.id} value={entity.id} className="text-xs">
               {entity.name}
             </SelectItem>
           ))}
           {filteredEntities.length === 0 && (
-            <div className="p-2 text-sm text-muted-foreground text-center">
+            <div className="p-1 text-xs text-muted-foreground text-center">
               No results found
             </div>
           )}
@@ -1691,9 +1688,9 @@ function EntitySelector({ entities, selected, onSelect, onCreateNew, placeholder
         variant="outline"
         size="sm"
         onClick={onCreateNew}
-        className="h-8 w-8 p-0"
+        className="h-7 w-7 p-0"
       >
-        <Plus className="h-4 w-4" />
+        <Plus className="h-3 w-3" />
       </Button>
     </div>
   );

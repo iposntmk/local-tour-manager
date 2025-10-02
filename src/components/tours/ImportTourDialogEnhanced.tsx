@@ -401,10 +401,10 @@ export const ImportTourDialogEnhanced = ({ onImport, trigger }: ImportTourDialog
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-6xl max-h-[95vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Import Tours from JSON</DialogTitle>
-          <DialogDescription>Upload or paste JSON, then review and edit tour data before importing.</DialogDescription>
+      <DialogContent className="w-[95vw] sm:max-w-7xl max-h-[95vh] overflow-hidden">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="text-lg">Import Tours from JSON</DialogTitle>
+          <DialogDescription className="text-sm">Upload or paste JSON, then review and edit tour data before importing.</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-hidden">
           {reviewItems.length === 0 ? (
