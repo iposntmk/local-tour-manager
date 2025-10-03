@@ -31,6 +31,7 @@ export interface Allowance {
   date: string;
   name: string;
   price: number;
+  quantity?: number;
 }
 
 export interface TourSummary {

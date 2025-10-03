@@ -254,6 +254,7 @@ export type Database = {
           id: string
           name: string
           price: number | null
+          quantity: number
           tour_id: string
         }
         Insert: {
@@ -262,6 +263,7 @@ export type Database = {
           id?: string
           name: string
           price?: number | null
+          quantity?: number
           tour_id: string
         }
         Update: {
@@ -270,6 +272,7 @@ export type Database = {
           id?: string
           name?: string
           price?: number | null
+          quantity?: number
           tour_id?: string
         }
         Relationships: [

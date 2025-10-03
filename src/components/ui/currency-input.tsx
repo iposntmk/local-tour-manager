@@ -34,16 +34,18 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const input = e.target.value;
       const cleaned = input.replace(/[^0-9]/g, '');
-      const parsed = parseNumber(cleaned);
+      const parsed = parseInt(cleaned) || 0;
 
-      setDisplayValue(cleaned ? formatNumber(parsed) : '');
+      // Don't format while typing - just show the cleaned numbers
+      setDisplayValue(cleaned);
       onChange?.(parsed);
     };
 
     const handleBlur = () => {
-      if (value !== undefined) {
-        setDisplayValue(value ? formatNumber(value) : '');
-      }
+      // Format the number when user leaves the field
+      const numValue = parseNumber(displayValue);
+      setDisplayValue(numValue ? formatNumber(numValue) : '');
+      onChange?.(numValue);
     };
 
     const handleQuickAmount = (amount: number) => {

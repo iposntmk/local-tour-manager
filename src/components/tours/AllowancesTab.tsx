@@ -20,7 +20,7 @@ interface AllowancesTabProps {
 
 export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0 });
+  const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0, quantity: 1 });
   const [openProvince, setOpenProvince] = useState(false);
   const [openExpense, setOpenExpense] = useState(false);
   const queryClient = useQueryClient();
@@ -88,7 +88,7 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ date: '', name: '', price: 0 });
+    setFormData({ date: '', name: '', price: 0, quantity: 1 });
   };
 
   return (
@@ -146,6 +146,13 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
+            <Input
+              type="number"
+              placeholder="Quantity"
+              value={formData.quantity || 1}
+              onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+              min="1"
+            />
             <DateInput
               value={formData.date}
               onChange={(date) => setFormData({ ...formData, date })}
@@ -179,41 +186,59 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]">#</TableHead>
-                <TableHead>Allowance</TableHead>
-                <TableHead>Amount</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Total Amount</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allowances.map((allowance, index) => (
-                <TableRow key={index} className="animate-fade-in">
-                  <TableCell className="font-medium">{index + 1}</TableCell>
-                  <TableCell className="font-medium">{allowance.name}</TableCell>
-                  <TableCell>{allowance.price.toLocaleString()} ₫</TableCell>
-                  <TableCell>{formatDate(allowance.date)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(index)}
-                        className="hover-scale"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteMutation.mutate(index)}
-                        className="hover-scale text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {allowances.map((allowance, index) => {
+                const quantity = allowance.quantity || 1;
+                const total = allowance.price * quantity;
+                return (
+                  <TableRow key={index} className="animate-fade-in">
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell className="font-medium">{allowance.name}</TableCell>
+                    <TableCell>{allowance.price.toLocaleString()} ₫</TableCell>
+                    <TableCell>{quantity}</TableCell>
+                    <TableCell className="font-semibold">{total.toLocaleString()} ₫</TableCell>
+                    <TableCell>{formatDate(allowance.date)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(index)}
+                          className="hover-scale"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteMutation.mutate(index)}
+                          className="hover-scale text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              <TableRow className="bg-muted/50 font-semibold">
+                <TableCell colSpan={3} className="text-right">Total:</TableCell>
+                <TableCell>
+                  {allowances.reduce((sum, a) => sum + (a.quantity || 1), 0)} days
+                </TableCell>
+                <TableCell className="font-bold">
+                  {allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0).toLocaleString()} ₫
+                </TableCell>
+                <TableCell colSpan={2}></TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         )}
