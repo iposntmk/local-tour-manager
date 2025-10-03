@@ -90,4 +90,12 @@ export interface TourQuery {
   guideId?: string;
   startDate?: string;
   endDate?: string;
+  nationalityId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface TourListResult {
+  tours: Tour[];
+  total: number;
 }
