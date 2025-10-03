@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TourForm } from '@/components/tours/TourForm';
 import { TourInfoForm } from '@/components/tours/TourInfoForm';
@@ -104,7 +105,15 @@ const TourDetail = () => {
 
   const handleInfoSave = (data: TourInput) => {
     if (id && !isNewTour) {
-      updateMutation.mutate({ id, patch: data });
+      const totalGuests = (data.adults || 0) + (data.children || 0);
+      let totalDays = 0;
+      if (data.startDate && data.endDate) {
+        try {
+          // Total Days = end date - start date (exclusive difference)
+          totalDays = Math.max(0, differenceInDays(new Date(data.endDate), new Date(data.startDate)));
+        } catch {}
+      }
+      updateMutation.mutate({ id, patch: { ...data, totalGuests, totalDays } });
     }
   };
 
@@ -154,78 +163,76 @@ const TourDetail = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="animate-fade-in">
         {isNewTour ? (
           <>
             {/* Header without tabs for new tour */}
-            <div className={headerClasses}>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
+            <div className={`${headerClasses} border-b pb-4 pt-4 bg-blue-100 dark:bg-blue-900 sticky top-[57px] z-40`}>
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 flex-shrink min-w-0">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => navigate('/tours')}
-                    className="hover-scale"
+                    className="hover-scale h-8 w-8 flex-shrink-0"
+                    title="Back to tours list"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <div>
-                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold">New Tour</h1>
-                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground">Create a new tour</p>
+                  <div className="min-w-0">
+                    <h1 className="text-base sm:text-2xl md:text-3xl font-bold truncate">New Tour</h1>
+                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground truncate">Create a new tour</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-lg border bg-card p-4 sm:p-6 animate-scale-in">
+            <div className="rounded-lg border bg-card p-4 sm:p-6 animate-scale-in mt-6">
               <TourForm onSubmit={handleSave} />
             </div>
           </>
         ) : tour ? (
           <Tabs defaultValue="info" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             {/* Header with tabs inside Tabs context */}
-            <div className={headerClasses}>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
+            <div className={`${headerClasses} border-b pb-4 pt-4 bg-blue-100 dark:bg-blue-900 sticky top-[57px] z-40`}>
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 flex-shrink min-w-0">
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => navigate('/tours')}
-                    className="hover-scale h-9 w-9 sm:h-10 sm:w-10"
+                    className="hover-scale h-8 w-8 flex-shrink-0"
                     title="Back to tours list"
                   >
-                    <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <div>
-                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold">
+                  <div className="min-w-0">
+                    <h1 className="text-base sm:text-2xl md:text-3xl font-bold truncate">
                       {tour?.tourCode || 'Tour Details'}
-                      {tour?.startDate && tour?.endDate && (
-                        <span className="ml-2 text-sm sm:text-base text-muted-foreground">
-                          | {formatDateDMY(tour.startDate)} - {formatDateDMY(tour.endDate)}
-                        </span>
-                      )}
                     </h1>
-                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground">Manage tour information</p>
+                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground truncate">Manage tour information</p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 sm:justify-end">
+                <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
                   {shouldShowSaveButton() && (
                     <Button
                       variant="default"
                       size="sm"
                       onClick={handleHeaderSave}
-                      className="hover-scale"
+                      className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                      title="Save tour info"
                     >
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Info
+                      <Save className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Save Info</span>
                     </Button>
                   )}
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={() => setDeleteDialogOpen(true)}
-                    className="hover-scale"
+                    className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                    title="Delete tour"
                   >
                     <Trash2 className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Delete</span>

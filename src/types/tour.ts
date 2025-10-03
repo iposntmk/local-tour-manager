@@ -60,6 +60,7 @@ export interface Tour {
   startDate: string;
   endDate: string;
   totalDays: number;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   // Subcollections stored as nested arrays
@@ -82,6 +83,7 @@ export interface TourInput {
   clientPhone?: string;
   startDate: string;
   endDate: string;
+  notes?: string;
 }
 
 export interface TourQuery {

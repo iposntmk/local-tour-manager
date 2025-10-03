@@ -3,6 +3,7 @@ import type { Tour, Destination, Expense, Meal, Allowance } from '@/types/tour';
 import type { Company, Guide, Nationality } from '@/types/master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -288,10 +289,10 @@ export function TourEditForm({ tour, companies, guides, nationalities, onUpdate 
                           </div>
                           <div>
                             <Label>Price</Label>
-                            <Input
-                              type="number"
+                            <CurrencyInput
                               value={destination.price}
-                              onChange={(e) => updateDestination(index, { ...destination, price: parseFloat(e.target.value) || 0 })}
+                              onChange={(value) => updateDestination(index, { ...destination, price: value })}
+                              placeholder="Price (VND)"
                             />
                           </div>
                           <div>
@@ -354,10 +355,10 @@ export function TourEditForm({ tour, companies, guides, nationalities, onUpdate 
                           </div>
                           <div>
                             <Label>Price</Label>
-                            <Input
-                              type="number"
+                            <CurrencyInput
                               value={expense.price}
-                              onChange={(e) => updateExpense(index, { ...expense, price: parseFloat(e.target.value) || 0 })}
+                              onChange={(value) => updateExpense(index, { ...expense, price: value })}
+                              placeholder="Price (VND)"
                             />
                           </div>
                           <div>
@@ -420,10 +421,10 @@ export function TourEditForm({ tour, companies, guides, nationalities, onUpdate 
                           </div>
                           <div>
                             <Label>Price</Label>
-                            <Input
-                              type="number"
+                            <CurrencyInput
                               value={meal.price}
-                              onChange={(e) => updateMeal(index, { ...meal, price: parseFloat(e.target.value) || 0 })}
+                              onChange={(value) => updateMeal(index, { ...meal, price: value })}
+                              placeholder="Price (VND)"
                             />
                           </div>
                           <div>
@@ -494,10 +495,10 @@ export function TourEditForm({ tour, companies, guides, nationalities, onUpdate 
                           </div>
                           <div>
                             <Label>Price</Label>
-                            <Input
-                              type="number"
+                            <CurrencyInput
                               value={allowance.price}
-                              onChange={(e) => updateAllowance(index, { ...allowance, price: parseFloat(e.target.value) || 0 })}
+                              onChange={(value) => updateAllowance(index, { ...allowance, price: value })}
+                              placeholder="Price (VND)"
                             />
                           </div>
                         </div>
@@ -533,31 +534,28 @@ export function TourEditForm({ tour, companies, guides, nationalities, onUpdate 
                 </div>
                 <div>
                   <Label htmlFor="advancePayment">Advance Payment</Label>
-                  <Input
-                    id="advancePayment"
-                    type="number"
+                  <CurrencyInput
                     value={tour.summary?.advancePayment || 0}
-                    onChange={(e) => updateField('summary', { ...tour.summary, advancePayment: parseFloat(e.target.value) || 0 })}
+                    onChange={(value) => updateField('summary', { ...tour.summary, advancePayment: value })}
+                    placeholder="0"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="companyTip">Company Tip</Label>
-                  <Input
-                    id="companyTip"
-                    type="number"
+                  <CurrencyInput
                     value={tour.summary?.companyTip || 0}
-                    onChange={(e) => updateField('summary', { ...tour.summary, companyTip: parseFloat(e.target.value) || 0 })}
+                    onChange={(value) => updateField('summary', { ...tour.summary, companyTip: value })}
+                    placeholder="0"
                   />
                 </div>
                 <div>
                   <Label htmlFor="finalTotal">Final Total</Label>
-                  <Input
-                    id="finalTotal"
-                    type="number"
+                  <CurrencyInput
                     value={tour.summary?.finalTotal || 0}
-                    onChange={(e) => updateField('summary', { ...tour.summary, finalTotal: parseFloat(e.target.value) || 0 })}
+                    onChange={(value) => updateField('summary', { ...tour.summary, finalTotal: value })}
+                    placeholder="0"
                   />
                 </div>
               </div>

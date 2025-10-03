@@ -52,6 +52,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
       clientPhone: initialData.clientPhone,
       startDate: initialData.startDate,
       endDate: initialData.endDate,
+      notes: initialData.notes,
     } : {
       adults: 1,
       children: 0,
@@ -76,6 +77,19 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
   const adults = watch('adults');
   const children = watch('children');
   const totalGuests = (adults || 0) + (children || 0);
+
+  const startDate = watch('startDate');
+  const endDate = watch('endDate');
+
+  // Calculate total days dynamically based on start and end dates
+  const totalDays = (() => {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays + 1; // Include both start and end dates
+  })();
 
   const handleFormSubmit = (data: TourInput) => {
     // Validate required fields
@@ -322,6 +336,12 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
           <Input value={totalGuests} disabled className="bg-muted" />
         </div>
 
+        {/* Total Days from DB (display only) */}
+        <div className="space-y-2">
+          <Label>Total Days</Label>
+          <Input value={totalDays > 0 ? `${totalDays} day${totalDays !== 1 ? 's' : ''}` : ''} disabled className="bg-muted" />
+        </div>
+
         {/* Driver Name */}
         <div className="space-y-2">
           <Label htmlFor="driverName">Driver Name</Label>
@@ -367,6 +387,18 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
             <p className="text-sm text-destructive">{errors.endDate.message}</p>
           )}
         </div>
+      </div>
+
+      {/* Notes - Full width */}
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <textarea
+          id="notes"
+          {...register('notes')}
+          placeholder="Add any additional notes about this tour..."
+          rows={4}
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+        />
       </div>
 
       {showSubmitButton && (

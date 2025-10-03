@@ -18,6 +18,17 @@ import {
   ArrowUpDown,
   Upload,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { SearchInput } from '@/components/master/SearchInput';
 
 // Define ProcessResult type for bulk import
@@ -37,6 +48,28 @@ import { formatDateDMY } from '@/lib/date-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour, TourListResult, TourQuery } from '@/types/tour';
 import Fuse from 'fuse.js';
+
+// Helper function to format date range
+const formatDateRange = (startDate: string, endDate: string): string => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const startDay = start.getDate();
+  const startMonth = start.getMonth();
+  const startYear = start.getFullYear();
+
+  const endDay = end.getDate();
+  const endMonth = end.getMonth();
+  const endYear = end.getFullYear();
+
+  // If same month and year, show: dd - dd/mm/yyyy
+  if (startMonth === endMonth && startYear === endYear) {
+    return `${startDay} - ${endDay}/${String(endMonth + 1).padStart(2, '0')}/${startYear}`;
+  }
+
+  // Otherwise show full dates
+  return `${formatDateDMY(startDate)} → ${formatDateDMY(endDate)}`;
+};
 
 const Tours = () => {
   const [search, setSearch] = useState('');
@@ -220,11 +253,7 @@ const Tours = () => {
   // });
 
   const handleDeleteAll = () => {
-    // Commented out: deleteAllTours functionality not available
-    toast.error('Bulk delete not available. Please delete tours individually.');
-    // if (confirm('Are you sure you want to delete ALL tours? This action cannot be undone.')) {
-    //   deleteAllMutation.mutate();
-    // }
+    toast.warning('Bulk delete not available. Please delete tours individually.');
   };
 
   const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
@@ -627,25 +656,25 @@ const Tours = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="animate-fade-in">
         {/* Sticky Header - Always pinned to top */}
-        <div className={headerClasses}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-lg sm:text-2xl md:text-3xl font-bold">Tours</h1>
-              <p className="text-xs sm:text-sm md:text-base text-muted-foreground">Manage your tours and itineraries</p>
+        <div className={`${headerClasses} border-b pb-4 pt-4 bg-gray-100 dark:bg-gray-900 sticky top-[57px] z-40 space-y-4`}>
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex-shrink min-w-0">
+              <h1 className="text-base sm:text-2xl md:text-3xl font-bold">Tours</h1>
+              <p className="text-xs sm:text-sm md:text-base text-muted-foreground truncate">Manage your tours and itineraries</p>
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
               <ImportTourDialogEnhanced
                 onImport={handleImport}
                 trigger={
                   <Button
                     variant="outline"
                     size="sm"
-                    className="hover-scale sm:h-10 sm:px-4 sm:text-sm"
+                    className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
                   >
-                    <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
-                    Import JSON
+                    <Upload className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Import</span>
                   </Button>
                 }
               />
@@ -653,27 +682,47 @@ const Tours = () => {
                 onClick={handleExportAll}
                 variant="outline"
                 size="sm"
-                className="hover-scale sm:h-10 sm:px-4 sm:text-sm"
+                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
               >
-                <FileDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
-                Export All
+                <FileDown className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Export All</span>
               </Button>
-              <Button
-                onClick={handleDeleteAll}
-                variant="outline"
-                size="sm"
-                className="hover-scale text-destructive hover:text-destructive sm:h-10 sm:px-4 sm:text-sm"
-              >
-                <Trash className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
-                Delete All
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover-scale text-destructive hover:text-destructive h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                  >
+                    <Trash className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Delete All</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete all tours from the database.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAll}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete All Tours
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button
                 onClick={() => navigate('/tours/new')}
                 size="sm"
-                className="hover-scale sm:h-10 sm:px-4 sm:text-sm"
+                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
               >
-                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
-                New Tour
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">New Tour</span>
               </Button>
             </div>
           </div>
@@ -685,32 +734,32 @@ const Tours = () => {
           />
 
           {/* Filters */}
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filters
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs sm:text-sm font-semibold flex items-center gap-1 sm:gap-2">
+                <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Filters</span>
               </h2>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setFiltersExpanded(!filtersExpanded)}
-                className="ml-auto h-8 w-8 p-0"
+                className="ml-auto h-7 w-7 p-0 sm:h-8 sm:w-8"
               >
-                {filtersExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {filtersExpanded ? <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" /> : <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />}
               </Button>
             </div>
 
             <div className={`transition-all duration-200 overflow-hidden ${filtersExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <Filter className="h-3 w-3" />
                       Nationality
                     </label>
                     <Select value={nationalityFilter} onValueChange={setNationalityFilter}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 sm:h-10">
                         <SelectValue placeholder="All Nationalities" />
                       </SelectTrigger>
                       <SelectContent>
@@ -730,7 +779,7 @@ const Tours = () => {
                       Month
                     </label>
                     <Select value={monthFilter} onValueChange={setMonthFilter}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 sm:h-10">
                         <SelectValue placeholder="All Months" />
                       </SelectTrigger>
                       <SelectContent>
@@ -750,7 +799,7 @@ const Tours = () => {
                       Sort By
                     </label>
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 sm:h-10">
                         <SelectValue placeholder="Sort by..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -770,8 +819,8 @@ const Tours = () => {
                 </div>
 
                 {hasActiveFilters && (
-                  <Button variant="outline" onClick={clearFilters} className="sm:self-end">
-                    <X className="h-4 w-4 mr-2" />
+                  <Button variant="outline" onClick={clearFilters} className="h-8 sm:h-10 sm:self-end">
+                    <X className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                     Clear Filters
                   </Button>
                 )}
@@ -800,19 +849,19 @@ const Tours = () => {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
             ))}
           </div>
         ) : totalTours === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-muted-foreground mt-6">
             {!hasActiveFilters && !search.trim()
               ? 'No tours found. Create your first tour to get started.'
               : 'No tours match your current filters.'}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {tours.map((tour, index) => {
               const isExpanded = expandedCards.has(tour.id);
               return (
@@ -824,12 +873,22 @@ const Tours = () => {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
-                        <h3 className="font-bold text-base sm:text-lg">{tour.tourCode}</h3>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-bold text-base sm:text-lg">{tour.tourCode}</h3>
+                          <Badge variant="outline" className="text-xs">
+                            {formatDateRange(tour.startDate, tour.endDate)}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <Badge variant="outline" className="text-xs">
                             {tour.clientNationalityRef.nameAtBooking}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">{tour.totalDays}d</span>
+                          <Badge variant="outline" className="text-xs">
+                            {tour.totalDays} {tour.totalDays === 1 ? 'day' : 'days'}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {tour.adults + tour.children} guest{(tour.adults + tour.children) !== 1 ? 's' : ''}
+                          </Badge>
                         </div>
                       </div>
                       <Button
@@ -843,16 +902,7 @@ const Tours = () => {
                     </div>
 
                     <div className="space-y-2 text-sm cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Users className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{tour.clientName}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Calendar className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">
-                          {formatDate(tour.startDate)} → {formatDate(tour.endDate)}
-                        </span>
-                      </div>
+
                       {tour.summary?.finalTotal !== undefined && (
                         <div className="flex items-center justify-between pt-1 border-t">
                           <span className="text-muted-foreground text-xs">Final Total</span>
@@ -899,32 +949,34 @@ const Tours = () => {
                       </div>
                     )}
 
-                    <div className="flex flex-wrap gap-2 pt-2 border-t">
+                    <div className="flex gap-2 pt-2 border-t justify-end">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1"
+                        className="h-8 w-8 p-0"
                         onClick={(e) => handleExportSingle(tour, e)}
+                        title="Export to Excel"
                       >
-                        <FileDown className="h-3 w-3 mr-1" />
-                        Export Excel
+                        <FileDown className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
+                        className="h-8 w-8 p-0"
                         onClick={(e) => handleDuplicate(tour.id, e)}
+                        title="Duplicate tour"
                       >
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copy
+                        <Copy className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                         onClick={(e) => handleDelete(tour.id, e)}
                         disabled={deleteMutation.isPending}
+                        title="Delete tour"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

@@ -6,6 +6,7 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
   Select,
   SelectContent,
@@ -129,11 +130,10 @@ function SubcollectionSection({
                   </span>
                 )}
               </Label>
-              <Input
-                type="number"
+              <CurrencyInput
                 value={item.advancePayment || 0}
-                onChange={(e) => onUpdate(index, 'advancePayment', parseFloat(e.target.value) || 0)}
-                className="h-8 text-sm mt-1"
+                onChange={(value) => onUpdate(index, 'advancePayment', value)}
+                size="compact"
               />
             </div>
 
@@ -147,11 +147,10 @@ function SubcollectionSection({
                   </span>
                 )}
               </Label>
-              <Input
-                type="number"
+              <CurrencyInput
                 value={item.totalAfterAdvance || 0}
-                onChange={(e) => onUpdate(index, 'totalAfterAdvance', parseFloat(e.target.value) || 0)}
-                className="h-8 text-sm mt-1"
+                onChange={(value) => onUpdate(index, 'totalAfterAdvance', value)}
+                size="compact"
               />
             </div>
 
@@ -165,11 +164,10 @@ function SubcollectionSection({
                   </span>
                 )}
               </Label>
-              <Input
-                type="number"
+              <CurrencyInput
                 value={item.companyTip || 0}
-                onChange={(e) => onUpdate(index, 'companyTip', parseFloat(e.target.value) || 0)}
-                className="h-8 text-sm mt-1"
+                onChange={(value) => onUpdate(index, 'companyTip', value)}
+                size="compact"
               />
             </div>
 
@@ -351,11 +349,10 @@ function SubcollectionSection({
                 </span>
               )}
             </Label>
-            <Input
-              type="number"
+            <CurrencyInput
               value={item.price || 0}
-              onChange={(e) => onUpdate(index, 'price', parseFloat(e.target.value) || 0)}
-              className="h-7 text-xs"
+              onChange={(value) => onUpdate(index, 'price', value)}
+              size="compact"
             />
           </div>
           {matchType !== 'allowance' && (
@@ -491,11 +488,10 @@ function SubcollectionSection({
           </TableCell>
           <TableCell className="text-xs">
             <div className="space-y-1">
-              <Input
-                type="number"
+              <CurrencyInput
                 value={item.price || 0}
-                onChange={(e) => onUpdate(index, 'price', parseFloat(e.target.value) || 0)}
-                className="h-7 text-xs"
+                onChange={(value) => onUpdate(index, 'price', value)}
+                size="compact"
               />
               {rawItem?.price !== undefined && (
                 <div className="text-xs text-muted-foreground">JSON: {rawItem.price}</div>
@@ -605,11 +601,10 @@ function SubcollectionSection({
         </TableCell>
         <TableCell className="text-xs">
           <div className="space-y-1">
-            <Input
-              type="number"
+            <CurrencyInput
               value={item.price || 0}
-              onChange={(e) => onUpdate(index, 'price', parseFloat(e.target.value) || 0)}
-              className="h-7 text-xs"
+              onChange={(value) => onUpdate(index, 'price', value)}
+              size="compact"
             />
             {rawItem?.price !== undefined && (
               <div className="text-xs text-muted-foreground">JSON: {rawItem.price}</div>

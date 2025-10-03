@@ -152,8 +152,10 @@ export class SupabaseStore implements DataStore {
 
   private mapTour(row: any): Tour {
     const totalGuests = (row.adults || 0) + (row.children || 0);
-    const totalDays = differenceInDays(new Date(row.end_date), new Date(row.start_date)) + 1;
-    
+    // Read total_days from DB when available; fallback to exclusive diff
+    const computedExclusive = Math.max(0, differenceInDays(new Date(row.end_date), new Date(row.start_date)));
+    const totalDays = typeof row.total_days === 'number' ? row.total_days : computedExclusive;
+
     return {
       id: row.id,
       tourCode: row.tour_code,
@@ -178,6 +180,7 @@ export class SupabaseStore implements DataStore {
       startDate: row.start_date,
       endDate: row.end_date,
       totalDays,
+      notes: row.notes || '',
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       destinations: [],
@@ -1424,7 +1427,8 @@ export class SupabaseStore implements DataStore {
     }
 
     const totalGuests = (tour.adults || 0) + (tour.children || 0);
-    const totalDays = differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1;
+    // Total Days = end date - start date (exclusive)
+    const totalDays = Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)));
 
     const { data, error } = await this.supabase
       .from('tours')
@@ -1445,6 +1449,7 @@ export class SupabaseStore implements DataStore {
         start_date: tour.startDate,
         end_date: tour.endDate,
         total_days: totalDays,
+        notes: tour.notes || '',
         total_tabs: tour.summary?.totalTabs ?? 0,
         advance_payment: tour.summary?.advancePayment ?? 0,
         total_after_advance: tour.summary?.totalAfterAdvance ?? 0,
@@ -1556,6 +1561,7 @@ export class SupabaseStore implements DataStore {
     if (tour.startDate !== undefined) updates.start_date = tour.startDate;
     if (tour.endDate !== undefined) updates.end_date = tour.endDate;
     if (tour.totalDays !== undefined) updates.total_days = tour.totalDays;
+    if (tour.notes !== undefined) updates.notes = tour.notes;
     if (tour.summary !== undefined) {
       updates.total_tabs = tour.summary.totalTabs ?? 0;
       updates.advance_payment = tour.summary.advancePayment ?? 0;
