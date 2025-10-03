@@ -92,7 +92,8 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
   };
 
   const totalGuests = tour ? tour.totalGuests : 1;
-  const totalAmount = shoppings.reduce((sum, s) => sum + s.price * totalGuests, 0);
+  const totalAmount = shoppings.reduce((sum, s) => sum + s.price, 0);
+  const totalTip = shoppings.filter(s => s.name === 'TIP').reduce((sum, s) => sum + s.price, 0);
 
   return (
     <div className="space-y-6">
@@ -189,8 +190,6 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
             <TableRow>
               <TableHead>Shopping Item</TableHead>
               <TableHead>Price</TableHead>
-              <TableHead>Guests</TableHead>
-              <TableHead className="text-right">Total</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -198,7 +197,7 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
           <TableBody>
             {shoppings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
                   No shopping items added yet
                 </TableCell>
               </TableRow>
@@ -207,10 +206,6 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
                 <TableRow key={index}>
                   <TableCell className="font-medium">{shopping.name}</TableCell>
                   <TableCell>{shopping.price.toLocaleString()} ₫</TableCell>
-                  <TableCell>{totalGuests}</TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {(shopping.price * totalGuests).toLocaleString()} ₫
-                  </TableCell>
                   <TableCell>{formatDate(shopping.date)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -236,10 +231,14 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
           </TableBody>
         </Table>
         {shoppings.length > 0 && (
-          <div className="border-t p-4 bg-muted/50">
+          <div className="border-t p-4 bg-muted/50 space-y-2">
             <div className="flex justify-between items-center font-semibold">
               <span>Total Shopping Amount:</span>
               <span className="text-lg">{totalAmount.toLocaleString()} ₫</span>
+            </div>
+            <div className="flex justify-between items-center font-semibold text-primary">
+              <span>Total Tip:</span>
+              <span className="text-lg">{totalTip.toLocaleString()} ₫</span>
             </div>
           </div>
         )}

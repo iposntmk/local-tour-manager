@@ -1294,7 +1294,8 @@ export class SupabaseStore implements DataStore {
         tour_destinations(*),
         tour_expenses(*),
         tour_meals(*),
-        tour_allowances(*)
+        tour_allowances(*),
+        tour_shoppings(*)
       `
           : '*',
         { count: 'exact' }
@@ -1307,7 +1308,8 @@ export class SupabaseStore implements DataStore {
         .order('date', { foreignTable: 'tour_destinations' })
         .order('date', { foreignTable: 'tour_expenses' })
         .order('date', { foreignTable: 'tour_meals' })
-        .order('date', { foreignTable: 'tour_allowances' });
+        .order('date', { foreignTable: 'tour_allowances' })
+        .order('date', { foreignTable: 'tour_shoppings' });
     }
 
     if (query?.tourCode) queryBuilder = queryBuilder.ilike('tour_code', `%${query.tourCode}%`);
@@ -1357,6 +1359,11 @@ export class SupabaseStore implements DataStore {
           name: a.name,
           price: Number(a.price) || 0,
           quantity: a.quantity || 1,
+        }));
+        tour.shoppings = (row.tour_shoppings || []).map((s: any) => ({
+          name: s.name,
+          price: Number(s.price) || 0,
+          date: s.date,
         }));
       }
       return tour;
