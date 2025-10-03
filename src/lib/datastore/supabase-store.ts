@@ -1351,6 +1351,7 @@ export class SupabaseStore implements DataStore {
           date: a.date,
           name: a.name,
           price: Number(a.price) || 0,
+          quantity: a.quantity || 1,
         }));
       }
       return tour;
@@ -1404,6 +1405,7 @@ export class SupabaseStore implements DataStore {
       date: a.date,
       name: a.name,
       price: Number(a.price) || 0,
+      quantity: a.quantity || 1,
     }));
 
     return tour;
@@ -1766,6 +1768,7 @@ export class SupabaseStore implements DataStore {
       date: row.date,
       name: row.name,
       price: Number(row.price) || 0,
+      quantity: row.quantity || 1,
     }));
   }
 
@@ -1775,6 +1778,7 @@ export class SupabaseStore implements DataStore {
       date: allowance.date,
       name: allowance.name,
       price: allowance.price,
+      quantity: allowance.quantity || 1,
     });
     if (error) throw error;
   }
@@ -1786,6 +1790,7 @@ export class SupabaseStore implements DataStore {
         date: allowance.date,
         name: allowance.name,
         price: allowance.price,
+        quantity: allowance.quantity || 1,
       }).eq('id', rows[index].id);
       if (error) throw error;
     }
