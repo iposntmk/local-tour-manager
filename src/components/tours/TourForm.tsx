@@ -24,12 +24,12 @@ import {
 } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign, Calculator } from 'lucide-react';
-import type { Tour, TourInput, Destination, Expense, Meal, Allowance, TourSummary } from '@/types/tour';
+import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign, Calculator, ShoppingBag } from 'lucide-react';
+import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary } from '@/types/tour';
 
 interface TourFormProps {
   initialData?: Tour;
-  onSubmit: (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => void;
+  onSubmit: (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; shoppings: Shopping[]; summary: TourSummary }) => void;
 }
 
 export function TourForm({ initialData, onSubmit }: TourFormProps) {
@@ -45,6 +45,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const [expenses, setExpenses] = useState<Expense[]>(initialData?.expenses || []);
   const [meals, setMeals] = useState<Meal[]>(initialData?.meals || []);
   const [allowances, setAllowances] = useState<Allowance[]>(initialData?.allowances || []);
+  const [shoppings, setShoppings] = useState<Shopping[]>(initialData?.shoppings || []);
   const [summary, setSummary] = useState<TourSummary>(initialData?.summary || {
     totalTabs: 0,
     advancePayment: 0,
@@ -60,6 +61,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const [expForm, setExpForm] = useState<Expense>({ name: '', price: 0, date: '' });
   const [mealForm, setMealForm] = useState<Meal>({ name: '', price: 0, date: '' });
   const [allowForm, setAllowForm] = useState<Allowance>({ date: '', name: '', price: 0 });
+  const [shopForm, setShopForm] = useState<Shopping>({ name: '', price: 0, date: '' });
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TourInput>({
     defaultValues: initialData ? {
@@ -125,9 +127,10 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
     const totalDestinations = destinations.reduce((sum, d) => sum + (d.price * totalGuests), 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + (e.price * totalGuests), 0);
     const totalMeals = meals.reduce((sum, m) => sum + (m.price * totalGuests), 0);
+    const totalShoppings = shoppings.reduce((sum, s) => sum + (s.price * totalGuests), 0);
     const totalAllowances = allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0);
 
-    const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;
+    const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalShoppings + totalAllowances;
     const totalAfterAdvance = calculatedTotal - (summary.advancePayment || 0);
     const totalAfterCollections = totalAfterAdvance + (summary.collectionsForCompany || 0);
     const totalAfterTip = totalAfterCollections + (summary.companyTip || 0);
@@ -141,7 +144,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
       totalAfterTip,
       finalTotal,
     }));
-  }, [destinations, expenses, meals, allowances, totalGuests, summary.advancePayment, summary.collectionsForCompany, summary.companyTip]);
+  }, [destinations, expenses, meals, shoppings, allowances, totalGuests, summary.advancePayment, summary.collectionsForCompany, summary.companyTip]);
 
   const handleFormSubmit = (data: TourInput) => {
     // Validate required fields
@@ -192,6 +195,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
       expenses,
       meals,
       allowances,
+      shoppings,
       summary,
     });
   };
@@ -203,7 +207,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 h-auto">
+        <TabsList className="grid w-full grid-cols-7 h-auto">
           <TabsTrigger value="info" className="flex-col sm:flex-row gap-1 py-2">
             <Info className="h-4 w-4" />
             <span className="hidden sm:inline">Tour Info</span>
@@ -232,6 +236,15 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
             {meals.length > 0 && (
               <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
                 {meals.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="shoppings" className="flex-col sm:flex-row gap-1 py-2 relative">
+            <ShoppingBag className="h-4 w-4" />
+            <span className="hidden sm:inline">Shopping</span>
+            {shoppings.length > 0 && (
+              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
+                {shoppings.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -646,6 +659,48 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
           </div>
         </TabsContent>
 
+        <TabsContent value="shoppings" className="space-y-4 mt-6">
+          <div className="rounded-lg border bg-card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Add Shopping</h3>
+            <div className="grid grid-cols-1 gap-3 sm:gap-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="justify-between">
+                    {shopForm.name || "Select shopping..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search shopping..." />
+                    <CommandEmpty>No shopping found.</CommandEmpty>
+                    <CommandGroup>
+                      {shoppingItems.map((item) => (
+                        <CommandItem key={item.id} value={item.name} onSelect={() => setShopForm({ ...shopForm, name: item.name })}>
+                          {item.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <CurrencyInput placeholder="Price" value={shopForm.price} onChange={(price) => setShopForm({ ...shopForm, price })} />
+              <DateInput value={shopForm.date} onChange={(date) => setShopForm({ ...shopForm, date })} />
+            </div>
+            <Button type="button" className="mt-4" onClick={() => { if (shopForm.name && shopForm.date) { setShoppings([...shoppings, shopForm]); setShopForm({ name: '', price: 0, date: '' }); } }}>
+              <Plus className="h-4 w-4 mr-2" />Add
+            </Button>
+          </div>
+          <div className="rounded-lg border divide-y">
+            {shoppings.map((shop, idx) => (
+              <div key={idx} className="p-4 flex justify-between items-center">
+                <div><div className="font-medium">{shop.name}</div><div className="text-xs text-muted-foreground">{shop.date} • {shop.price.toLocaleString()} ₫</div></div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShoppings(shoppings.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+
         <TabsContent value="allowances" className="space-y-4 mt-6">
           <div className="rounded-lg border bg-card p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Add Allowance</h3>
@@ -691,7 +746,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         <TabsContent value="summary" className="space-y-4 mt-6">
           <div className="space-y-6">
             {/* Totals Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="rounded-lg border bg-card p-4">
                 <div className="text-sm font-medium text-muted-foreground mb-1">Destinations</div>
                 <div className="text-xl font-bold">{destinations.reduce((sum, d) => sum + (d.price * totalGuests), 0).toLocaleString()} ₫</div>
@@ -708,6 +763,12 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 <div className="text-sm font-medium text-muted-foreground mb-1">Meals</div>
                 <div className="text-xl font-bold">{meals.reduce((sum, m) => sum + (m.price * totalGuests), 0).toLocaleString()} ₫</div>
                 <p className="text-xs text-muted-foreground mt-1">{meals.length} item(s)</p>
+              </div>
+
+              <div className="rounded-lg border bg-card p-4">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Shopping</div>
+                <div className="text-xl font-bold">{shoppings.reduce((sum, s) => sum + (s.price * totalGuests), 0).toLocaleString()} ₫</div>
+                <p className="text-xs text-muted-foreground mt-1">{shoppings.length} item(s)</p>
               </div>
 
               <div className="rounded-lg border bg-card p-4">
