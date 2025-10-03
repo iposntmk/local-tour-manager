@@ -15,6 +15,7 @@ import {
   Filter,
   X,
   Trash,
+  ArrowUpDown,
 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +34,7 @@ const Tours = () => {
   const [search, setSearch] = useState('');
   const [nationalityFilter, setNationalityFilter] = useState<string>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('startDate-asc');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [filtersExpanded, setFiltersExpanded] = useState(() => {
     const saved = localStorage.getItem('tours.filtersExpanded');
@@ -92,7 +94,40 @@ const Tours = () => {
     cacheTime: 300000, // Keep in cache for 5 minutes
   });
 
-  const tours = toursResult?.tours ?? [];
+  const tours = useMemo(() => {
+    const tourList = toursResult?.tours ?? [];
+
+    // Sort tours based on selected sort option
+    const [field, order] = sortBy.split('-');
+    const sorted = [...tourList].sort((a, b) => {
+      let comparison = 0;
+
+      switch (field) {
+        case 'startDate':
+          comparison = a.startDate.localeCompare(b.startDate);
+          break;
+        case 'endDate':
+          comparison = a.endDate.localeCompare(b.endDate);
+          break;
+        case 'tourCode':
+          comparison = a.tourCode.localeCompare(b.tourCode);
+          break;
+        case 'clientName':
+          comparison = a.clientName.localeCompare(b.clientName);
+          break;
+        case 'createdAt':
+          comparison = a.createdAt.localeCompare(b.createdAt);
+          break;
+        default:
+          comparison = a.startDate.localeCompare(b.startDate);
+      }
+
+      return order === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [toursResult?.tours, sortBy]);
+
   const totalTours = toursResult?.total ?? 0;
   const totalPages = totalTours > 0 ? Math.ceil(totalTours / pageSize) : 1;
 
@@ -624,7 +659,7 @@ const Tours = () => {
 
             <div className={`transition-all duration-200 overflow-hidden ${filtersExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
               <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <Filter className="h-3 w-3" />
@@ -661,6 +696,30 @@ const Tours = () => {
                             {new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <ArrowUpDown className="h-3 w-3" />
+                      Sort By
+                    </label>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sort by..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="startDate-desc">Start Date (Newest First)</SelectItem>
+                        <SelectItem value="startDate-asc">Start Date (Oldest First)</SelectItem>
+                        <SelectItem value="endDate-desc">End Date (Newest First)</SelectItem>
+                        <SelectItem value="endDate-asc">End Date (Oldest First)</SelectItem>
+                        <SelectItem value="tourCode-asc">Tour Code (A-Z)</SelectItem>
+                        <SelectItem value="tourCode-desc">Tour Code (Z-A)</SelectItem>
+                        <SelectItem value="clientName-asc">Client Name (A-Z)</SelectItem>
+                        <SelectItem value="clientName-desc">Client Name (Z-A)</SelectItem>
+                        <SelectItem value="createdAt-desc">Created (Newest First)</SelectItem>
+                        <SelectItem value="createdAt-asc">Created (Oldest First)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -750,6 +809,14 @@ const Tours = () => {
                           {formatDate(tour.startDate)} → {formatDate(tour.endDate)}
                         </span>
                       </div>
+                      {tour.summary?.finalTotal !== undefined && (
+                        <div className="flex items-center justify-between pt-1 border-t">
+                          <span className="text-muted-foreground text-xs">Final Total</span>
+                          <span className="font-semibold text-primary">
+                            {tour.summary.finalTotal.toLocaleString('en-US')} VND
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {isExpanded && (
