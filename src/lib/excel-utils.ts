@@ -178,9 +178,8 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
 
   const totalGuests = tour.totalGuests || tour.adults + tour.children;
   const dataStartRow = 3; // Bắt đầu từ row 3
-  let currentRow = dataStartRow;
 
-  // Helper function để thêm row với border cho 11 cột (A-K)
+  // Helper function để thêm border cho 11 cột (A-K)
   const applyRowBorder = (row: ExcelJS.Row) => {
     for (let col = 1; col <= 11; col += 1) {
       row.getCell(col).border = thinBorder;
@@ -198,13 +197,49 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
 
   const allowances = tour.allowances || [];
 
-  // Add all allowances first so the section starts right below the header
-  if (allowances && allowances.length > 0) {
-    allowances.forEach(allowance => {
-      const row = worksheet.getRow(currentRow);
+  const serviceItems: { name: string; price: number }[] = [];
+  if (tour.destinations && tour.destinations.length > 0) {
+    tour.destinations.forEach(d => {
+      serviceItems.push({ name: `vé ${d.name || ''}`, price: d.price || 0 });
+    });
+  }
+  if (tour.expenses && tour.expenses.length > 0) {
+    tour.expenses.forEach(e => {
+      serviceItems.push({ name: e.name || '', price: e.price || 0 });
+    });
+  }
+  if (tour.meals && tour.meals.length > 0) {
+    tour.meals.forEach(m => {
+      serviceItems.push({ name: m.name || '', price: m.price || 0 });
+    });
+  }
 
-      setCodeAndDateCells(row);
+  const dataRowCount = Math.max(serviceItems.length, allowances.length);
+  let lastDataRow = dataStartRow - 1;
 
+  for (let index = 0; index < dataRowCount; index += 1) {
+    const rowNumber = dataStartRow + index;
+    const row = worksheet.getRow(rowNumber);
+
+    setCodeAndDateCells(row);
+
+    const service = serviceItems[index];
+    if (service) {
+      row.getCell(3).value = service.name;
+      row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
+
+      row.getCell(4).value = service.price;
+      row.getCell(4).numFmt = currencyFormat;
+
+      row.getCell(5).value = totalGuests;
+      row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+
+      row.getCell(6).value = { formula: `D${rowNumber}*E${rowNumber}` };
+      row.getCell(6).numFmt = currencyFormat;
+    }
+
+    const allowance = allowances[index];
+    if (allowance) {
       row.getCell(7).value = allowance.province || '';
 
       row.getCell(8).value = 1;
@@ -215,66 +250,23 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
 
       row.getCell(10).value = allowance.amount || 0;
       row.getCell(10).numFmt = currencyFormat;
+    }
 
-      row.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
+    if (service || allowance) {
+      row.getCell(11).value = { formula: `F${rowNumber}+J${rowNumber}` };
       row.getCell(11).numFmt = currencyFormat;
-
-      applyRowBorder(row);
-      currentRow++;
-    });
-  }
-
-  // Helper to add a service row
-  const addServiceRow = (name: string, price: number) => {
-    const row = worksheet.getRow(currentRow);
-
-    setCodeAndDateCells(row);
-
-    row.getCell(3).value = name;
-    row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
-
-    row.getCell(4).value = price;
-    row.getCell(4).numFmt = currencyFormat;
-
-    row.getCell(5).value = totalGuests;
-    row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
-
-    row.getCell(6).value = { formula: `D${currentRow}*E${currentRow}` };
-    row.getCell(6).numFmt = currencyFormat;
-
-    row.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
-    row.getCell(11).numFmt = currencyFormat;
+    }
 
     applyRowBorder(row);
-    currentRow++;
-  };
-
-  // Add all destinations
-  if (tour.destinations && tour.destinations.length > 0) {
-    tour.destinations.forEach(d => {
-      addServiceRow(`vé ${d.name || ''}`, d.price || 0);
-    });
+    lastDataRow = rowNumber;
   }
 
-  // Add all expenses
-  if (tour.expenses && tour.expenses.length > 0) {
-    tour.expenses.forEach(e => {
-      addServiceRow(e.name || '', e.price || 0);
-    });
-  }
-
-  // Add all meals
-  if (tour.meals && tour.meals.length > 0) {
-    tour.meals.forEach(m => {
-      addServiceRow(m.name || '', m.price || 0);
-    });
-  }
-
-  const dataEndRow = currentRow - 1;
+  const dataEndRow = lastDataRow;
+  const totalsRowIndex = dataEndRow >= dataStartRow ? dataEndRow + 1 : dataStartRow;
+  const totalsRow = worksheet.getRow(totalsRowIndex);
+  let currentRow = totalsRowIndex + 1;
 
   // Row tổng cộng với background vàng theo mẫu
-  const totalsRow = worksheet.getRow(currentRow);
-  currentRow++;
 
   // Merge A-C cho "dịch vụ"
   worksheet.mergeCells(`A${totalsRow.number}:C${totalsRow.number}`);
