@@ -170,8 +170,8 @@ const TourDetail = () => {
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                   <div>
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">New Tour</h1>
-                    <p className="text-sm sm:text-base text-muted-foreground">Create a new tour</p>
+                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold">New Tour</h1>
+                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground">Create a new tour</p>
                   </div>
                 </div>
               </div>
@@ -191,21 +191,21 @@ const TourDetail = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => navigate('/tours')}
-                    className="hover-scale"
+                    className="hover-scale h-9 w-9 sm:h-10 sm:w-10"
                     title="Back to tours list"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </Button>
                   <div>
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
+                    <h1 className="text-lg sm:text-2xl md:text-3xl font-bold">
                       {tour?.tourCode || 'Tour Details'}
                       {tour?.startDate && tour?.endDate && (
-                        <span className="ml-3 text-muted-foreground">
+                        <span className="ml-2 text-sm sm:text-base text-muted-foreground">
                           | {formatDateDMY(tour.startDate)} - {formatDateDMY(tour.endDate)}
                         </span>
                       )}
                     </h1>
-                    <p className="text-sm sm:text-base text-muted-foreground">Manage tour information</p>
+                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground">Manage tour information</p>
                   </div>
                 </div>
 
@@ -234,7 +234,7 @@ const TourDetail = () => {
               </div>
 
               <div className="pt-4">
-                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1 rounded-xl bg-background shadow-sm border p-1 h-auto">
                   <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
                   <TabsTrigger value="destinations" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
