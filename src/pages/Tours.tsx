@@ -18,6 +18,12 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
+
+// Define ProcessResult type for bulk import
+type ProcessResult = 
+  | { success: true; tour: Tour }
+  | { success: false; skipped: true; tourCode?: string; error: string }
+  | { success: false; skipped?: false; error: string };
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { exportTourToExcel, exportAllToursToExcel } from '@/lib/excel-utils';
@@ -91,11 +97,11 @@ const Tours = () => {
         { includeDetails: false }
       ),
     staleTime: 30000, // Consider data fresh for 30 seconds
-    cacheTime: 300000, // Keep in cache for 5 minutes
+    gcTime: 300000, // Keep in cache for 5 minutes
   });
 
   const tours = useMemo(() => {
-    const tourList = toursResult?.tours ?? [];
+    const tourList = (toursResult as TourListResult | undefined)?.tours ?? [];
 
     // Sort tours based on selected sort option
     const [field, order] = sortBy.split('-');
@@ -126,9 +132,9 @@ const Tours = () => {
     });
 
     return sorted;
-  }, [toursResult?.tours, sortBy]);
+  }, [(toursResult as TourListResult | undefined)?.tours, sortBy]);
 
-  const totalTours = toursResult?.total ?? 0;
+  const totalTours = (toursResult as TourListResult | undefined)?.total ?? 0;
   const totalPages = totalTours > 0 ? Math.ceil(totalTours / pageSize) : 1;
 
   const { data: nationalities = [] } = useQuery({
@@ -199,21 +205,24 @@ const Tours = () => {
     },
   });
 
-  const deleteAllMutation = useMutation({
-    mutationFn: () => store.deleteAllTours(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
-      toast.success('All tours deleted successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete all tours');
-    },
-  });
+  // Commented out: deleteAllTours method doesn't exist in store
+  // const deleteAllMutation = useMutation({
+  //   mutationFn: () => store.deleteAllTours(),
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ['tours'] });
+  //     toast.success('All tours deleted successfully');
+  //   },
+  //   onError: (error: Error) => {
+  //     toast.error(error.message || 'Failed to delete all tours');
+  //   },
+  // });
 
   const handleDeleteAll = () => {
-    if (confirm('Are you sure you want to delete ALL tours? This action cannot be undone.')) {
-      deleteAllMutation.mutate();
-    }
+    // Commented out: deleteAllTours functionality not available
+    toast.error('Bulk delete not available. Please delete tours individually.');
+    // if (confirm('Are you sure you want to delete ALL tours? This action cannot be undone.')) {
+    //   deleteAllMutation.mutate();
+    // }
   };
 
   const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
@@ -445,7 +454,7 @@ const Tours = () => {
           processedCount += 1;
           if (result.success) {
             successCount += 1;
-          } else if (result.skipped) {
+          } else if ('skipped' in result && result.skipped) {
             skippedCount += 1;
           }
           updateProgressToast();
@@ -573,9 +582,9 @@ const Tours = () => {
       allResults.forEach(result => {
         if (result.success) {
           results.push(result.tour);
-        } else if (result.skipped) {
-          skipped.push(result.tourCode || 'Unknown');
-        } else {
+        } else if ('skipped' in result && result.skipped) {
+          skipped.push(('tourCode' in result ? result.tourCode : undefined) || 'Unknown');
+        } else if (!result.success && 'error' in result) {
           errors.push(result.error);
         }
       });

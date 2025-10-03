@@ -104,7 +104,7 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ name: '', price: 0, guests: 0, date: '' });
+    setFormData({ name: '', price: 0, date: '' });
   };
 
   return (

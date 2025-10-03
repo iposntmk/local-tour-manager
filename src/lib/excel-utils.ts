@@ -83,7 +83,7 @@ const styleMergedRange = (worksheet: Worksheet, range: string, value: string, op
   }
 
   for (let row = startCell.row; row <= endCell.row; row += 1) {
-    const worksheetRow = worksheet.getRow(row);
+    const worksheetRow = worksheet.getRow(Number(row));
     for (let col = startCell.col; col <= endCell.col; col += 1) {
       const cell = worksheetRow.getCell(col);
       cell.fill = infoFill;
@@ -137,9 +137,9 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
 
   const h1Cells = [
     { cell: 'A1', value: 'code', fill: headerFill },
-    { cell: 'C1', value: 'vé + ăn + uống + chi phí', fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B050' } } }, // Green
-    { cell: 'G1', value: 'Công tác phí (CTP) + ngủ', fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B050' } } }, // Green
-    { cell: 'K1', value: 'Tổng tour', fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } } }, // Orange
+    { cell: 'C1', value: 'vé + ăn + uống + chi phí', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } }, // Green
+    { cell: 'G1', value: 'Công tác phí (CTP) + ngủ', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } }, // Green
+    { cell: 'K1', value: 'Tổng tour', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFC000' } } }, // Orange
   ];
 
   h1Cells.forEach(({ cell, value, fill }) => {
