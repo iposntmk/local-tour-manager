@@ -1,9 +1,17 @@
-import ExcelJS from 'exceljs';
-import type { Alignment, Fill } from 'exceljs';
+import type { Alignment, Fill, Row, Worksheet, Workbook } from 'exceljs';
 import type { Tour } from '@/types/tour';
 
 const currencyFormat = '#,##0';
 const workbookMimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+type ExcelJSType = typeof import('exceljs');
+
+let ExcelJSModule: ExcelJSType | undefined;
+
+const loadExcelJS = async (): Promise<ExcelJSType> => {
+  ExcelJSModule ??= await import('exceljs');
+  return ExcelJSModule;
+};
 
 const thinBorder = {
   top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -41,7 +49,7 @@ const sanitizeSheetName = (name: string) => {
   return cleaned.length > 31 ? cleaned.slice(0, 31) : cleaned;
 };
 
-const ensureUniqueSheetName = (workbook: ExcelJS.Workbook, baseName: string) => {
+const ensureUniqueSheetName = (workbook: Workbook, baseName: string) => {
   const name = sanitizeSheetName(baseName);
   let attempt = 1;
   let uniqueName = name;
@@ -54,13 +62,13 @@ const ensureUniqueSheetName = (workbook: ExcelJS.Workbook, baseName: string) => 
   return uniqueName;
 };
 
-const applyRowBorder = (row: ExcelJS.Row, start = 1, end = 8) => {
+const applyRowBorder = (row: Row, start = 1, end = 8) => {
   for (let col = start; col <= end; col += 1) {
     row.getCell(col).border = thinBorder;
   }
 };
 
-const styleMergedRange = (worksheet: ExcelJS.Worksheet, range: string, value: string, options?: {
+const styleMergedRange = (worksheet: Worksheet, range: string, value: string, options?: {
   bold?: boolean;
   alignment?: Alignment;
 }) => {
@@ -85,7 +93,7 @@ const styleMergedRange = (worksheet: ExcelJS.Worksheet, range: string, value: st
   }
 };
 
-const downloadWorkbook = async (workbook: ExcelJS.Workbook, filename: string) => {
+const downloadWorkbook = async (workbook: Workbook, filename: string) => {
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: workbookMimeType });
   const url = window.URL.createObjectURL(blob);
@@ -98,7 +106,7 @@ const downloadWorkbook = async (workbook: ExcelJS.Workbook, filename: string) =>
   window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 };
 
-const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBuildResult => {
+const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResult => {
   const sheetName = ensureUniqueSheetName(workbook, tour.tourCode || 'Tour');
   const worksheet = workbook.addWorksheet(sheetName);
 
@@ -180,7 +188,7 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
   const dataStartRow = 3; // Bắt đầu từ row 3
 
   // Helper function để thêm border cho 11 cột (A-K)
-  const applyRowBorder = (row: ExcelJS.Row) => {
+  const applyRowBorder = (row: Row) => {
     for (let col = 1; col <= 11; col += 1) {
       row.getCell(col).border = thinBorder;
     }
@@ -188,7 +196,7 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
 
   let firstDataRow = true;
 
-  const setCodeAndDateCells = (row: ExcelJS.Row) => {
+  const setCodeAndDateCells = (row: Row) => {
     if (!firstDataRow) return;
     row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
     row.getCell(2).value = `${formatDisplayDate(tour.startDate)} - ${formatDisplayDate(tour.endDate)}`;
@@ -391,7 +399,7 @@ const formatSheetNameForFormula = (name: string) => {
 };
 
 const populateOverviewSheet = (
-  worksheet: ExcelJS.Worksheet,
+  worksheet: Worksheet,
   tours: Tour[],
   entries: TourSheetBuildResult[],
 ) => {
@@ -458,6 +466,7 @@ const populateOverviewSheet = (
 };
 
 export const exportTourToExcel = async (tour: Tour) => {
+  const ExcelJS = await loadExcelJS();
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Local Tour Manager';
   workbook.calcProperties.fullCalcOnLoad = true;
@@ -470,6 +479,7 @@ export const exportTourToExcel = async (tour: Tour) => {
 export const exportAllToursToExcel = async (tours: Tour[]) => {
   if (!tours.length) return;
 
+  const ExcelJS = await loadExcelJS();
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Local Tour Manager';
   workbook.calcProperties.fullCalcOnLoad = true;
