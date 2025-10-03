@@ -25,14 +25,14 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
   const computedAdvance = calculatedTotal;
 
   const [summary, setSummary] = useState<TourSummary>(() => {
-    const existingSummary = tour.summary || {};
+    const existingSummary = tour.summary as TourSummary | undefined;
     return {
-      totalTabs: existingSummary.totalTabs || calculatedTotal,
-      advancePayment: existingSummary.advancePayment || computedAdvance,
+      totalTabs: existingSummary?.totalTabs ?? calculatedTotal,
+      advancePayment: existingSummary?.advancePayment ?? computedAdvance,
       totalAfterAdvance: 0,
-      companyTip: existingSummary.companyTip || 0,
+      companyTip: existingSummary?.companyTip ?? 0,
       totalAfterTip: 0,
-      collectionsForCompany: existingSummary.collectionsForCompany || 0,
+      collectionsForCompany: existingSummary?.collectionsForCompany ?? 0,
       totalAfterCollections: 0,
       finalTotal: 0,
     };

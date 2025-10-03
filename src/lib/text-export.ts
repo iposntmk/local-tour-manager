@@ -37,7 +37,7 @@ export const exportTourToTxt = (tour: Tour) => {
   const lines: string[] = [];
 
   const totalGuests = tour.totalGuests ?? tour.adults + tour.children;
-  const summary = tour.summary ?? {};
+  const summary = tour.summary as typeof tour.summary;
 
   lines.push(`Tour Code: ${tour.tourCode}`);
   lines.push(`Client: ${tour.clientName}`);
