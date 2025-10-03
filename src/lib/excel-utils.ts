@@ -198,6 +198,32 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
 
   const allowances = tour.allowances || [];
 
+  // Add all allowances first so the section starts right below the header
+  if (allowances && allowances.length > 0) {
+    allowances.forEach(allowance => {
+      const row = worksheet.getRow(currentRow);
+
+      setCodeAndDateCells(row);
+
+      row.getCell(7).value = allowance.province || '';
+
+      row.getCell(8).value = 1;
+      row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
+
+      row.getCell(9).value = allowance.amount || 0;
+      row.getCell(9).numFmt = currencyFormat;
+
+      row.getCell(10).value = allowance.amount || 0;
+      row.getCell(10).numFmt = currencyFormat;
+
+      row.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
+      row.getCell(11).numFmt = currencyFormat;
+
+      applyRowBorder(row);
+      currentRow++;
+    });
+  }
+
   // Helper to add a service row
   const addServiceRow = (name: string, price: number) => {
     const row = worksheet.getRow(currentRow);
@@ -241,32 +267,6 @@ const buildTourWorksheet = (workbook: ExcelJS.Workbook, tour: Tour): TourSheetBu
   if (tour.meals && tour.meals.length > 0) {
     tour.meals.forEach(m => {
       addServiceRow(m.name || '', m.price || 0);
-    });
-  }
-
-  // Add all allowances
-  if (allowances && allowances.length > 0) {
-    allowances.forEach(allowance => {
-      const row = worksheet.getRow(currentRow);
-
-      setCodeAndDateCells(row);
-
-      row.getCell(7).value = allowance.province || '';
-
-      row.getCell(8).value = 1;
-      row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
-
-      row.getCell(9).value = allowance.amount || 0;
-      row.getCell(9).numFmt = currencyFormat;
-
-      row.getCell(10).value = allowance.amount || 0;
-      row.getCell(10).numFmt = currencyFormat;
-
-      row.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
-      row.getCell(11).numFmt = currencyFormat;
-
-      applyRowBorder(row);
-      currentRow++;
     });
   }
 
