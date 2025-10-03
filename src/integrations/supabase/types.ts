@@ -390,6 +390,44 @@ export type Database = {
           },
         ]
       }
+      tour_shoppings: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          name: string
+          price: number
+          tour_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          name: string
+          price?: number
+          tour_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          name?: string
+          price?: number
+          tour_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_shoppings_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tourist_destinations: {
         Row: {
           created_at: string | null

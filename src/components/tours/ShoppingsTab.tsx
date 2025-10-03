@@ -34,7 +34,7 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (shopping: Shopping) => store.addShopping(tourId, shopping),
+    mutationFn: (shopping: Shopping) => store.addTourShopping(tourId, shopping),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       toast.success('Shopping added');
@@ -44,7 +44,7 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
 
   const updateMutation = useMutation({
     mutationFn: ({ index, shopping }: { index: number; shopping: Shopping }) =>
-      store.updateShopping(tourId, index, shopping),
+      store.updateTourShopping(tourId, index, shopping),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       toast.success('Shopping updated');
@@ -53,7 +53,7 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (index: number) => store.removeShopping(tourId, index),
+    mutationFn: (index: number) => store.removeTourShopping(tourId, index),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       toast.success('Shopping removed');
