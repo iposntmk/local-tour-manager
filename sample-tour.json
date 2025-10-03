@@ -1,0 +1,177 @@
+{
+  "id": "test-tour-1",
+  "tourCode": "GP150625/Army",
+  "companyRef": {
+    "id": "1",
+    "nameAtBooking": "GP"
+  },
+  "guideRef": {
+    "id": "1",
+    "nameAtBooking": "Cao Hữu Tú"
+  },
+  "clientNationalityRef": {
+    "id": "1",
+    "nameAtBooking": "USA"
+  },
+  "clientName": "Amy Wong",
+  "adults": 5,
+  "children": 0,
+  "totalGuests": 5,
+  "driverName": "",
+  "clientPhone": "",
+  "startDate": "2025-06-24",
+  "endDate": "2025-07-01",
+  "totalDays": 8,
+  "createdAt": "2025-10-02T12:30:54.790Z",
+  "updatedAt": "2025-10-02T12:30:54.791Z",
+  "destinations": [
+    {
+      "id": "dest_1759408254791_0.6429870539535827",
+      "name": "Động Thiên Đường",
+      "price": 0,
+      "date": "2025-06-24"
+    },
+    {
+      "id": "dest_1759408254791_0.4670263662378884",
+      "name": "Vịnh Mốc",
+      "price": 0,
+      "date": "2025-06-25"
+    },
+    {
+      "id": "dest_1759408254791_0.2577434270330501",
+      "name": "Cầu Hiền Lương",
+      "price": 0,
+      "date": "2025-06-25"
+    },
+    {
+      "id": "dest_1759408254791_0.516023599743614",
+      "name": "Đại Nội",
+      "price": 0,
+      "date": "2025-06-25"
+    },
+    {
+      "id": "dest_1759408254791_0.8738252047078747",
+      "name": "Lăng Tự Đức",
+      "price": 0,
+      "date": "2025-06-26"
+    },
+    {
+      "id": "dest_1759408254791_0.7341507525861561",
+      "name": "Cung An Định",
+      "price": 0,
+      "date": "2025-06-26"
+    },
+    {
+      "id": "dest_1759408254791_0.8306856979137123",
+      "name": "Ngũ Hành Sơn",
+      "price": 0,
+      "date": "2025-06-27"
+    },
+    {
+      "id": "dest_1759408254791_0.9487313766560703",
+      "name": "Bà Nà Hills",
+      "price": 0,
+      "date": "2025-06-27"
+    },
+    {
+      "id": "dest_1759408254791_0.5278409278968752",
+      "name": "Hội An",
+      "price": 0,
+      "date": "2025-06-28"
+    },
+    {
+      "id": "dest_1759408254791_0.48119927148082287",
+      "name": "Cẩm Thanh",
+      "price": 0,
+      "date": "2025-06-28"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "exp_1759408254791_0.7669867539483817",
+      "name": "Cafe",
+      "price": 70000,
+      "date": "2025-06-28"
+    }
+  ],
+  "meals": [
+    {
+      "id": "meal_1759408254791_0.5270868808032358",
+      "name": "Ăn trưa HDV book",
+      "price": 200000,
+      "date": "2025-06-24"
+    },
+    {
+      "id": "meal_1759408254791_0.18606286360572444",
+      "name": "Ăn trưa HDV book",
+      "price": 200000,
+      "date": "2025-06-25"
+    },
+    {
+      "id": "meal_1759408254791_0.03814096774514475",
+      "name": "Ăn trưa HDV book",
+      "price": 200000,
+      "date": "2025-06-26"
+    }
+  ],
+  "allowances": [
+    {
+      "id": "allow_1759408254791_0.7214518332971918",
+      "date": "2025-06-24",
+      "province": "Quảng Bình",
+      "amount": 800000
+    },
+    {
+      "id": "allow_1759408254791_0.7532724671266637",
+      "date": "2025-06-25",
+      "province": "Quảng Trị",
+      "amount": 800000
+    },
+    {
+      "id": "allow_1759408254791_0.5962304923556594",
+      "date": "2025-06-26",
+      "province": "Thừa Thiên Huế",
+      "amount": 600000
+    },
+    {
+      "id": "allow_1759408254791_0.8791806369066413",
+      "date": "2025-06-27",
+      "province": "Đà Nẵng",
+      "amount": 600000
+    },
+    {
+      "id": "allow_1759408254791_0.6079116920360659",
+      "date": "2025-06-28",
+      "province": "Quảng Nam",
+      "amount": 600000
+    },
+    {
+      "id": "allow_1759408254791_0.947316233160669",
+      "date": "2025-06-29",
+      "province": "Quảng Nam",
+      "amount": 600000
+    },
+    {
+      "id": "allow_1759408254791_0.7818274055728922",
+      "date": "2025-06-30",
+      "province": "Quảng Nam",
+      "amount": 600000
+    },
+    {
+      "id": "allow_1759408254791_0.26336341807714625",
+      "date": "2025-07-01",
+      "province": "Đà Nẵng",
+      "amount": 600000
+    }
+  ],
+  "summary": {
+    "totalTabs": 0,
+    "advancePayment": 1000000,
+    "totalAfterAdvance": 0,
+    "companyTip": 20000000,
+    "totalAfterTip": 0,
+    "collectionsForCompany": 0,
+    "totalAfterCollections": 0,
+    "finalTotal": 0
+  }
+}
