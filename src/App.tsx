@@ -15,6 +15,7 @@ import DetailedExpenses from "./pages/DetailedExpenses";
 import Tours from "./pages/Tours";
 import TourDetail from "./pages/TourDetail";
 import NotFound from "./pages/NotFound";
+import Statistics from "./pages/Statistics";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => {
             <Route path="/detailed-expenses" element={<DetailedExpenses />} />
             <Route path="/tours" element={<Tours />} />
             <Route path="/tours/:id" element={<TourDetail />} />
+            <Route path="/statistics" element={<Statistics />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
