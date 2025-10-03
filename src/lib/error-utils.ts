@@ -53,7 +53,11 @@ export function handleImportError(error: any, context: ErrorContext): string {
     const errorMessage = error.message.toLowerCase();
     
     // Database errors
-    if (errorMessage.includes('unique constraint') || errorMessage.includes('duplicate')) {
+    if (
+      errorMessage.includes('unique constraint') ||
+      errorMessage.includes('duplicate') ||
+      errorMessage.includes('tour code already exists')
+    ) {
       return 'Tour code already exists';
     }
     if (errorMessage.includes('foreign key constraint')) {

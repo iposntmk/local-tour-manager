@@ -98,6 +98,7 @@ export interface DataStore {
   bulkCreateDetailedExpenses(inputs: DetailedExpenseInput[]): Promise<DetailedExpense[]>;
   
   // Tours
+  listTourCodes(): Promise<string[]>;
   listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<Tour[]>;
   getTour(id: string): Promise<Tour | undefined>;
   createTour(input: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; summary?: TourSummary }): Promise<Tour>;

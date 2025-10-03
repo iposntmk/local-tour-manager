@@ -1265,6 +1265,14 @@ export class SupabaseStore implements DataStore {
   }
 
   // Tours
+  async listTourCodes(): Promise<string[]> {
+    const { data, error } = await this.supabase.from('tours').select('tour_code');
+    if (error) throw error;
+    return (data || [])
+      .map((row: any) => row.tour_code as string | null)
+      .filter((code): code is string => Boolean(code));
+  }
+
   async listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<Tour[]> {
     const includeDetails = options?.includeDetails ?? false;
 
@@ -1379,17 +1387,6 @@ export class SupabaseStore implements DataStore {
   }
 
   async createTour(tour: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; summary?: TourSummary }): Promise<Tour> {
-    // Check for duplicate tour code
-    const { data: existing } = await this.supabase
-      .from('tours')
-      .select('id')
-      .ilike('tour_code', tour.tourCode)
-      .maybeSingle();
-
-    if (existing) {
-      throw new Error('A tour with this tour code already exists');
-    }
-
     const totalGuests = (tour.adults || 0) + (tour.children || 0);
     const totalDays = differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1;
 
@@ -1456,9 +1453,13 @@ export class SupabaseStore implements DataStore {
         throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
       }
     }
-    
-    const createdTour = await this.getTour(data.id) as Tour;
-    
+
+    if (!data) {
+      throw new Error('Failed to create tour');
+    }
+
+    const createdTour = this.mapTour(data as any);
+
     // Add subcollections if provided
     try {
       if (tour.destinations && tour.destinations.length > 0) {
@@ -1796,76 +1797,135 @@ export class SupabaseStore implements DataStore {
   }
 
   async importData(data: any): Promise<void> {
-    if (data.guides) {
-      for (const guide of data.guides) {
-        const { id, createdAt, updatedAt, ...rest } = guide;
+    const processInBatches = async <T>(items: T[], batchSize: number, handler: (item: T) => Promise<void>) => {
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        await Promise.all(batch.map(handler));
+      }
+    };
+
+    if (data.guides?.length) {
+      await processInBatches(data.guides, 10, async (guide) => {
+        const { id, createdAt, updatedAt, ...rest } = guide as any;
         await this.createGuide(rest);
-      }
+      });
     }
-    if (data.companies) {
-      for (const company of data.companies) {
-        const { id, createdAt, updatedAt, ...rest } = company;
+    if (data.companies?.length) {
+      await processInBatches(data.companies, 10, async (company) => {
+        const { id, createdAt, updatedAt, ...rest } = company as any;
         await this.createCompany(rest);
-      }
+      });
     }
-    if (data.nationalities) {
-      for (const nationality of data.nationalities) {
-        const { id, createdAt, updatedAt, ...rest } = nationality;
+    if (data.nationalities?.length) {
+      await processInBatches(data.nationalities, 10, async (nationality) => {
+        const { id, createdAt, updatedAt, ...rest } = nationality as any;
         await this.createNationality(rest);
-      }
+      });
     }
-    if (data.provinces) {
-      for (const province of data.provinces) {
-        const { id, createdAt, updatedAt, ...rest } = province;
+    if (data.provinces?.length) {
+      await processInBatches(data.provinces, 10, async (province) => {
+        const { id, createdAt, updatedAt, ...rest } = province as any;
         await this.createProvince(rest);
-      }
+      });
     }
-    if (data.touristDestinations) {
-      for (const destination of data.touristDestinations) {
-        const { id, createdAt, updatedAt, ...rest } = destination;
+    if (data.touristDestinations?.length) {
+      await processInBatches(data.touristDestinations, 10, async (destination) => {
+        const { id, createdAt, updatedAt, ...rest } = destination as any;
         await this.createTouristDestination(rest);
-      }
+      });
     }
-    if (data.shoppings) {
-      for (const shopping of data.shoppings) {
-        const { id, createdAt, updatedAt, ...rest } = shopping;
+    if (data.shoppings?.length) {
+      await processInBatches(data.shoppings, 10, async (shopping) => {
+        const { id, createdAt, updatedAt, ...rest } = shopping as any;
         await this.createShopping(rest);
-      }
+      });
     }
-    if (data.expenseCategories) {
-      for (const category of data.expenseCategories) {
-        const { id, createdAt, updatedAt, ...rest } = category;
+    if (data.expenseCategories?.length) {
+      await processInBatches(data.expenseCategories, 10, async (category) => {
+        const { id, createdAt, updatedAt, ...rest } = category as any;
         await this.createExpenseCategory(rest);
-      }
+      });
     }
-    if (data.detailedExpenses) {
-      for (const expense of data.detailedExpenses) {
-        const { id, createdAt, updatedAt, ...rest } = expense;
+    if (data.detailedExpenses?.length) {
+      await processInBatches(data.detailedExpenses, 10, async (expense) => {
+        const { id, createdAt, updatedAt, ...rest } = expense as any;
         await this.createDetailedExpense(rest);
-      }
+      });
     }
-    if (data.tours) {
-      for (const tour of data.tours) {
-        const { id, createdAt, updatedAt, destinations, expenses, meals, allowances, summary, ...tourInput } = tour;
-        const createdTour = await this.createTour(tourInput);
-        
-        // Add subcollections
-        if (destinations && destinations.length > 0) {
-          await Promise.all(destinations.map(dest => this.addDestination(createdTour.id, dest)));
-        }
-        if (expenses && expenses.length > 0) {
-          await Promise.all(expenses.map(exp => this.addExpense(createdTour.id, exp)));
-        }
-        if (meals && meals.length > 0) {
-          await Promise.all(meals.map(meal => this.addMeal(createdTour.id, meal)));
-        }
-        if (allowances && allowances.length > 0) {
-          await Promise.all(allowances.map(allow => this.addAllowance(createdTour.id, allow)));
-        }
-        if (summary) {
-          await this.updateTour(createdTour.id, { summary });
-        }
-      }
+    if (data.tours?.length) {
+      await processInBatches(data.tours, 3, async (tour) => {
+        const {
+          id,
+          createdAt,
+          updatedAt,
+          totalGuests,
+          totalDays,
+          destinations,
+          expenses,
+          meals,
+          allowances,
+          summary,
+          ...tourInput
+        } = tour as any;
+
+        const sanitizedDestinations = (destinations || []).map((dest: any) => ({
+          name: dest.name,
+          price: Number(dest.price) || 0,
+          date: dest.date,
+        }));
+
+        const sanitizedExpenses = (expenses || []).map((expense: any) => ({
+          name: expense.name,
+          price: Number(expense.price) || 0,
+          date: expense.date,
+        }));
+
+        const sanitizedMeals = (meals || []).map((meal: any) => ({
+          name: meal.name,
+          price: Number(meal.price) || 0,
+          date: meal.date,
+        }));
+
+        const sanitizedAllowances = (allowances || []).map((allowance: any) => ({
+          date: allowance.date,
+          province: allowance.province,
+          amount: Number(allowance.amount) || 0,
+        }));
+
+        const sanitizedSummary = summary
+          ? {
+              totalTabs: Number(summary.totalTabs) || 0,
+              advancePayment: summary.advancePayment !== undefined ? Number(summary.advancePayment) || 0 : 0,
+              totalAfterAdvance: summary.totalAfterAdvance !== undefined ? Number(summary.totalAfterAdvance) || 0 : 0,
+              companyTip: summary.companyTip !== undefined ? Number(summary.companyTip) || 0 : 0,
+              totalAfterTip: summary.totalAfterTip !== undefined ? Number(summary.totalAfterTip) || 0 : 0,
+              collectionsForCompany:
+                summary.collectionsForCompany !== undefined ? Number(summary.collectionsForCompany) || 0 : 0,
+              totalAfterCollections:
+                summary.totalAfterCollections !== undefined ? Number(summary.totalAfterCollections) || 0 : 0,
+              finalTotal: summary.finalTotal !== undefined ? Number(summary.finalTotal) || 0 : 0,
+            }
+          : undefined;
+
+        await this.createTour({
+          tourCode: tourInput.tourCode,
+          companyRef: tourInput.companyRef,
+          guideRef: tourInput.guideRef,
+          clientNationalityRef: tourInput.clientNationalityRef,
+          clientName: tourInput.clientName,
+          adults: Number(tourInput.adults) || 0,
+          children: Number(tourInput.children) || 0,
+          driverName: tourInput.driverName,
+          clientPhone: tourInput.clientPhone,
+          startDate: tourInput.startDate,
+          endDate: tourInput.endDate,
+          destinations: sanitizedDestinations.length ? sanitizedDestinations : undefined,
+          expenses: sanitizedExpenses.length ? sanitizedExpenses : undefined,
+          meals: sanitizedMeals.length ? sanitizedMeals : undefined,
+          allowances: sanitizedAllowances.length ? sanitizedAllowances : undefined,
+          summary: sanitizedSummary,
+        });
+      });
     }
   }
 

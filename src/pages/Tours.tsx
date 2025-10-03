@@ -284,8 +284,12 @@ const Tours = () => {
       const skipped: string[] = [];
 
       // Load existing tours to check for duplicates
-      const existingTours = await store.listTours({});
-      const existingTourCodes = new Set(existingTours.map(t => t.tourCode.toLowerCase()));
+      const existingCodes = await store.listTourCodes();
+      const existingTourCodes = new Set(
+        existingCodes
+          .filter(code => Boolean(code))
+          .map(code => code.toLowerCase())
+      );
 
       // Load master data once for auto-matching fallback
       const [masterDestinations, masterExpenses, masterShoppings] = await Promise.all([
@@ -388,6 +392,10 @@ const Tours = () => {
               allowances: cleanAllowances,
               summary: tour.summary,
             });
+
+            if (createdTour.tourCode) {
+              existingTourCodes.add(createdTour.tourCode.toLowerCase());
+            }
 
             return { success: true, tour: createdTour };
           } catch (error) {

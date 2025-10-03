@@ -89,6 +89,8 @@ export const ImportTourDialogEnhanced = ({ onImport, trigger }: ImportTourDialog
   const [reviewItems, setReviewItems] = useState<{ tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string } }[]>([]);
   const [entityCaches, setEntityCaches] = useState<EntityCaches | null>(null);
   const entityLoadPromiseRef = useRef<Promise<EntityCaches> | null>(null);
+  const [existingTourCodes, setExistingTourCodes] = useState<string[]>([]);
+  const tourCodesPromiseRef = useRef<Promise<string[]> | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -135,13 +137,42 @@ export const ImportTourDialogEnhanced = ({ onImport, trigger }: ImportTourDialog
     return loadPromise;
   }, [entityCaches]);
 
+  const loadExistingTourCodes = useCallback(async (): Promise<string[]> => {
+    if (existingTourCodes.length > 0) {
+      return existingTourCodes;
+    }
+
+    if (tourCodesPromiseRef.current) {
+      return tourCodesPromiseRef.current;
+    }
+
+    const loadPromise = store
+      .listTourCodes()
+      .then((codes) => {
+        const normalized = codes
+          .filter(code => Boolean(code))
+          .map(code => code.toLowerCase());
+        setExistingTourCodes(normalized);
+        return normalized;
+      })
+      .finally(() => {
+        tourCodesPromiseRef.current = null;
+      });
+
+    tourCodesPromiseRef.current = loadPromise;
+    return loadPromise;
+  }, [existingTourCodes]);
+
   useEffect(() => {
     if (open) {
       loadEntityCaches().catch(error => {
         console.error('Failed to preload entities for import dialog', error);
       });
+      loadExistingTourCodes().catch(error => {
+        console.error('Failed to preload tour codes for import dialog', error);
+      });
     }
-  }, [open, loadEntityCaches]);
+  }, [open, loadEntityCaches, loadExistingTourCodes]);
 
   const findEntityRef = (
     caches: EntityCaches,
@@ -360,13 +391,30 @@ export const ImportTourDialogEnhanced = ({ onImport, trigger }: ImportTourDialog
       }
 
       const rawTours = Array.isArray(parsed) ? parsed : [parsed];
-      
+
       try {
         const caches = await loadEntityCaches();
-        
+        const existingCodes = existingTourCodes.length > 0
+          ? existingTourCodes
+          : await loadExistingTourCodes();
+        const existingCodeSet = new Set(existingCodes);
+        const seenInBatch = new Set<string>();
+
+        const duplicateCodes = new Set<string>();
+
         const transformed = rawTours.map((tour, index) => {
           try {
-            return transformImportedTour(tour, caches);
+            const transformedTour = transformImportedTour(tour, caches);
+            const code = transformedTour.tour.tourCode?.trim();
+            if (code) {
+              const normalized = code.toLowerCase();
+              if (existingCodeSet.has(normalized) || seenInBatch.has(normalized)) {
+                duplicateCodes.add(code);
+              } else {
+                seenInBatch.add(normalized);
+              }
+            }
+            return transformedTour;
           } catch (error) {
             const tourCode = tour.tour?.tourCode || tour.tourCode || `Tour ${index + 1}`;
             throw new Error(`${tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -374,6 +422,12 @@ export const ImportTourDialogEnhanced = ({ onImport, trigger }: ImportTourDialog
         });
 
         setReviewItems(transformed);
+        if (duplicateCodes.size > 0) {
+          toast.message('Detected existing tour codes', {
+            description: Array.from(duplicateCodes).join(', '),
+            duration: 6000,
+          });
+        }
         toast.message('Review required', { description: 'Review and edit tour data before importing.' });
       } catch (error) {
         if (error instanceof Error && error.message.includes('Failed to preload entities')) {
@@ -472,6 +526,16 @@ export const ImportTourDialogEnhanced = ({ onImport, trigger }: ImportTourDialog
                 onConfirm={async (tours) => {
                   try {
                     await onImport(tours);
+                    setExistingTourCodes(prev => {
+                      const updated = new Set(prev);
+                      tours.forEach((tour) => {
+                        const code = tour.tourCode?.toLowerCase();
+                        if (code) {
+                          updated.add(code);
+                        }
+                      });
+                      return Array.from(updated);
+                    });
                     setReviewItems([]);
                     setJsonInput('');
                     setOpen(false);

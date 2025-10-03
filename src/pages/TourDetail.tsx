@@ -56,7 +56,12 @@ const TourDetail = () => {
     },
     onError: (error: Error) => {
       const errorMessage = error.message.toLowerCase();
-      if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('tour_code')) {
+      if (
+        errorMessage.includes('unique') ||
+        errorMessage.includes('duplicate') ||
+        errorMessage.includes('tour_code') ||
+        errorMessage.includes('tour code')
+      ) {
         toast.error('This tour code already exists. Please use a different tour code.');
       } else {
         toast.error(error.message || 'Failed to create tour');
@@ -74,7 +79,12 @@ const TourDetail = () => {
     },
     onError: (error: Error) => {
       const errorMessage = error.message.toLowerCase();
-      if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('tour_code')) {
+      if (
+        errorMessage.includes('unique') ||
+        errorMessage.includes('duplicate') ||
+        errorMessage.includes('tour_code') ||
+        errorMessage.includes('tour code')
+      ) {
         toast.error('This tour code already exists. Please use a different tour code.');
       } else {
         toast.error(error.message || 'Failed to update tour');
