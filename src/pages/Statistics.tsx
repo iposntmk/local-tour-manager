@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { store } from '@/lib/datastore';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour } from '@/types/tour';
+import { getSupabaseClient } from '@/lib/datastore/supabase-client';
 
 const UNKNOWN_GUIDE_ID = '__unknown_guide__';
 const UNKNOWN_COMPANY_ID = '__unknown_company__';
@@ -26,6 +27,15 @@ const calculateAllowanceTotal = (tour: Tour) =>
     (sum, allowance) => sum + allowance.price * (allowance.quantity ?? 1),
     0
   );
+
+const calculateTipTotal = (tour: Tour) => {
+  const tipItems = (tour.shoppings || []).filter(shopping => shopping.name === 'TIP');
+  const total = tipItems.reduce((sum, shopping) => sum + shopping.price, 0);
+  if (tipItems.length > 0) {
+    console.log(`Tour ${tour.tourCode}: Found ${tipItems.length} TIP items, total: ${total}`, tipItems);
+  }
+  return total;
+};
 
 const getTourMonth = (tour: Tour) => (tour.startDate ? tour.startDate.slice(0, 7) : UNKNOWN_MONTH);
 
@@ -40,6 +50,9 @@ const normalizeCompany = (tour: Tour) => ({
 });
 
 const Statistics = () => {
+  const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
+
   const { data: toursResult, isLoading } = useQuery({
     queryKey: ['statistics', 'tours'],
     queryFn: () => store.listTours(undefined, { includeDetails: true }),
@@ -49,9 +62,39 @@ const Statistics = () => {
 
   const tours = toursResult?.tours ?? [];
 
+  // Debug: Check if shoppings are loaded
+  if (tours.length > 0) {
+    console.log('Statistics - Sample tour data:', {
+      tourCount: tours.length,
+      firstTour: tours[0],
+      hasShoppings: tours.some(t => t.shoppings && t.shoppings.length > 0),
+      shoppingsExample: tours.find(t => t.shoppings && t.shoppings.length > 0)?.shoppings,
+    });
+  }
+
   const [selectedGuide, setSelectedGuide] = useState('all');
   const [selectedCompany, setSelectedCompany] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('all');
+
+  // Realtime subscription for tour_shoppings, tour_allowances, and tours changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('statistics-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tour_shoppings' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['statistics', 'tours'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tour_allowances' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['statistics', 'tours'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tours' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['statistics', 'tours'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, queryClient]);
 
   const availableGuides = useMemo(() => {
     const map = new Map<string, string>();
@@ -105,27 +148,28 @@ const Statistics = () => {
     return filteredTours.reduce(
       (acc, tour) => {
         const revenue = calculateAllowanceTotal(tour);
-        const tip = tour.summary?.companyTip ?? 0;
+        const tip = calculateTipTotal(tour);
         acc.revenue += revenue;
         acc.tip += tip;
+        acc.totalPerTour += revenue + tip;
         acc.tours += 1;
         acc.guests += tour.totalGuests ?? 0;
         return acc;
       },
-      { revenue: 0, tip: 0, tours: 0, guests: 0 }
+      { revenue: 0, tip: 0, totalPerTour: 0, tours: 0, guests: 0 }
     );
   }, [filteredTours]);
 
   const guideStats = useMemo(() => {
     const map = new Map<
       string,
-      { id: string; name: string; totalTours: number; totalRevenue: number; totalTip: number }
+      { id: string; name: string; totalTours: number; totalRevenue: number; totalTip: number; totalPerTour: number }
     >();
 
     filteredTours.forEach(tour => {
       const guide = normalizeGuide(tour);
       const revenue = calculateAllowanceTotal(tour);
-      const tip = tour.summary?.companyTip ?? 0;
+      const tip = calculateTipTotal(tour);
 
       if (!map.has(guide.id)) {
         map.set(guide.id, {
@@ -134,6 +178,7 @@ const Statistics = () => {
           totalTours: 0,
           totalRevenue: 0,
           totalTip: 0,
+          totalPerTour: 0,
         });
       }
 
@@ -141,21 +186,22 @@ const Statistics = () => {
       entry.totalTours += 1;
       entry.totalRevenue += revenue;
       entry.totalTip += tip;
+      entry.totalPerTour += revenue + tip;
     });
 
-    return Array.from(map.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
+    return Array.from(map.values()).sort((a, b) => b.totalPerTour - a.totalPerTour);
   }, [filteredTours]);
 
   const companyStats = useMemo(() => {
     const map = new Map<
       string,
-      { id: string; name: string; totalTours: number; totalRevenue: number; totalTip: number }
+      { id: string; name: string; totalTours: number; totalRevenue: number; totalTip: number; totalPerTour: number }
     >();
 
     filteredTours.forEach(tour => {
       const company = normalizeCompany(tour);
       const revenue = calculateAllowanceTotal(tour);
-      const tip = tour.summary?.companyTip ?? 0;
+      const tip = calculateTipTotal(tour);
 
       if (!map.has(company.id)) {
         map.set(company.id, {
@@ -164,6 +210,7 @@ const Statistics = () => {
           totalTours: 0,
           totalRevenue: 0,
           totalTip: 0,
+          totalPerTour: 0,
         });
       }
 
@@ -171,21 +218,22 @@ const Statistics = () => {
       entry.totalTours += 1;
       entry.totalRevenue += revenue;
       entry.totalTip += tip;
+      entry.totalPerTour += revenue + tip;
     });
 
-    return Array.from(map.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
+    return Array.from(map.values()).sort((a, b) => b.totalPerTour - a.totalPerTour);
   }, [filteredTours]);
 
   const monthlyStats = useMemo(() => {
     const map = new Map<
       string,
-      { month: string; totalTours: number; totalRevenue: number; totalTip: number }
+      { month: string; totalTours: number; totalRevenue: number; totalTip: number; totalPerTour: number }
     >();
 
     filteredTours.forEach(tour => {
       const month = getTourMonth(tour);
       const revenue = calculateAllowanceTotal(tour);
-      const tip = tour.summary?.companyTip ?? 0;
+      const tip = calculateTipTotal(tour);
 
       if (!map.has(month)) {
         map.set(month, {
@@ -193,6 +241,7 @@ const Statistics = () => {
           totalTours: 0,
           totalRevenue: 0,
           totalTip: 0,
+          totalPerTour: 0,
         });
       }
 
@@ -200,6 +249,7 @@ const Statistics = () => {
       entry.totalTours += 1;
       entry.totalRevenue += revenue;
       entry.totalTip += tip;
+      entry.totalPerTour += revenue + tip;
     });
 
     return Array.from(map.values()).sort((a, b) => {
@@ -302,7 +352,7 @@ const Statistics = () => {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Card className="bg-primary/10">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Tours</CardTitle>
@@ -336,7 +386,16 @@ const Statistics = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{formatCurrency(totals.tip)}</div>
-              <p className="text-xs text-muted-foreground">Sum of company tip amounts</p>
+              <p className="text-xs text-muted-foreground">Sum of shopping items named "TIP"</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-primary/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Per Tour</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{formatCurrency(totals.totalPerTour)}</div>
+              <p className="text-xs text-muted-foreground">Allowance + Tip</p>
             </CardContent>
           </Card>
         </div>
@@ -361,6 +420,7 @@ const Statistics = () => {
                       <TableHead className="text-right">Tours</TableHead>
                       <TableHead className="text-right">Allowance (CTP)</TableHead>
                       <TableHead className="text-right">Total Tip</TableHead>
+                      <TableHead className="text-right">Total Per Tour</TableHead>
                       <TableHead className="text-right">Avg. Tip / Tour</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -371,6 +431,7 @@ const Statistics = () => {
                         <TableCell className="text-right">{guide.totalTours}</TableCell>
                         <TableCell className="text-right">{formatCurrency(guide.totalRevenue)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(guide.totalTip)}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(guide.totalPerTour)}</TableCell>
                         <TableCell className="text-right">
                           {guide.totalTours > 0 ? formatCurrency(Math.round(guide.totalTip / guide.totalTours)) : formatCurrency(0)}
                         </TableCell>
@@ -403,6 +464,7 @@ const Statistics = () => {
                       <TableHead className="text-right">Tours</TableHead>
                       <TableHead className="text-right">Allowance (CTP)</TableHead>
                       <TableHead className="text-right">Total Tip</TableHead>
+                      <TableHead className="text-right">Total Per Tour</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -412,6 +474,7 @@ const Statistics = () => {
                         <TableCell className="text-right">{company.totalTours}</TableCell>
                         <TableCell className="text-right">{formatCurrency(company.totalRevenue)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(company.totalTip)}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(company.totalPerTour)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -441,6 +504,7 @@ const Statistics = () => {
                       <TableHead className="text-right">Tours</TableHead>
                       <TableHead className="text-right">Allowance (CTP)</TableHead>
                       <TableHead className="text-right">Total Tip</TableHead>
+                      <TableHead className="text-right">Total Per Tour</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -450,6 +514,7 @@ const Statistics = () => {
                         <TableCell className="text-right">{month.totalTours}</TableCell>
                         <TableCell className="text-right">{formatCurrency(month.totalRevenue)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(month.totalTip)}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(month.totalPerTour)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

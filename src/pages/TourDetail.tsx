@@ -272,7 +272,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Shopping</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {tour.shoppings?.length || 0} | {(tour.shoppings.reduce((sum, s) => sum + (s.price * tour.totalGuests), 0) / 1000).toFixed(0)}k
+                        {tour.shoppings?.length || 0} | {(tour.shoppings.reduce((sum, s) => sum + s.price, 0) / 1000).toFixed(0)}k
                       </span>
                     </div>
                   </TabsTrigger>
@@ -298,7 +298,7 @@ const TourDetail = () => {
                           ((tour.destinations.reduce((sum, d) => sum + (d.price * tour.totalGuests), 0) +
                             tour.expenses.reduce((sum, e) => sum + (e.price * tour.totalGuests), 0) +
                             tour.meals.reduce((sum, m) => sum + (m.price * tour.totalGuests), 0) +
-                            tour.shoppings.reduce((sum, s) => sum + (s.price * tour.totalGuests), 0) +
+                            tour.shoppings.reduce((sum, s) => sum + s.price, 0) +
                             tour.allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0)) / 1000).toFixed(0)
                         }k
                       </span>

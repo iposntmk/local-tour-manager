@@ -127,7 +127,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
     const totalDestinations = destinations.reduce((sum, d) => sum + (d.price * totalGuests), 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + (e.price * totalGuests), 0);
     const totalMeals = meals.reduce((sum, m) => sum + (m.price * totalGuests), 0);
-    const totalShoppings = shoppings.reduce((sum, s) => sum + (s.price * totalGuests), 0);
+    const totalShoppings = shoppings.reduce((sum, s) => sum + s.price, 0);
     const totalAllowances = allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0);
 
     const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalShoppings + totalAllowances;
@@ -767,7 +767,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
 
               <div className="rounded-lg border bg-card p-4">
                 <div className="text-sm font-medium text-muted-foreground mb-1">Shopping</div>
-                <div className="text-xl font-bold">{shoppings.reduce((sum, s) => sum + (s.price * totalGuests), 0).toLocaleString()} ₫</div>
+                <div className="text-xl font-bold">{shoppings.reduce((sum, s) => sum + s.price, 0).toLocaleString()} ₫</div>
                 <p className="text-xs text-muted-foreground mt-1">{shoppings.length} item(s)</p>
               </div>
 
