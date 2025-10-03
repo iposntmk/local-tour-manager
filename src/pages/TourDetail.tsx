@@ -236,10 +236,18 @@ const TourDetail = () => {
               <div className="pt-4">
                 <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1">
                   <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
-                  <TabsTrigger value="destinations" className="text-xs sm:text-sm">Destinations</TabsTrigger>
-                  <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expenses</TabsTrigger>
-                  <TabsTrigger value="meals" className="text-xs sm:text-sm">Meals</TabsTrigger>
-                  <TabsTrigger value="allowances" className="text-xs sm:text-sm">Allowances</TabsTrigger>
+                  <TabsTrigger value="destinations" className="text-xs sm:text-sm">
+                    Destinations ({tour.destinations?.length || 0})
+                  </TabsTrigger>
+                  <TabsTrigger value="expenses" className="text-xs sm:text-sm">
+                    Expenses ({tour.expenses?.length || 0})
+                  </TabsTrigger>
+                  <TabsTrigger value="meals" className="text-xs sm:text-sm">
+                    Meals ({tour.meals?.length || 0})
+                  </TabsTrigger>
+                  <TabsTrigger value="allowances" className="text-xs sm:text-sm">
+                    Allowances ({tour.allowances?.length || 0})
+                  </TabsTrigger>
                   <TabsTrigger value="summary" className="text-xs sm:text-sm">Summary</TabsTrigger>
                 </TabsList>
               </div>
