@@ -249,27 +249,27 @@ export type Database = {
       }
       tour_allowances: {
         Row: {
-          amount: number | null
+          price: number | null
           created_at: string | null
           date: string
           id: string
-          province: string
+          name: string
           tour_id: string
         }
         Insert: {
-          amount?: number | null
+          price?: number | null
           created_at?: string | null
           date: string
           id?: string
-          province: string
+          name: string
           tour_id: string
         }
         Update: {
-          amount?: number | null
+          price?: number | null
           created_at?: string | null
           date?: string
           id?: string
-          province?: string
+          name?: string
           tour_id?: string
         }
         Relationships: [

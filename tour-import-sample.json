@@ -43,8 +43,8 @@
       ],
       "allowances": [
         {
-          "province": "Hà Nội",
-          "amount": 200000,
+          "name": "Hà Nội",
+          "price": 200000,
           "date": "2025-01-15",
           "orderIndex": 0
         }

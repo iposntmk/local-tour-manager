@@ -20,14 +20,25 @@ interface AllowancesTabProps {
 
 export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Allowance>({ date: '', province: '', amount: 0 });
+  const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0 });
   const [openProvince, setOpenProvince] = useState(false);
+  const [openExpense, setOpenExpense] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: provinces = [] } = useQuery({
     queryKey: ['provinces'],
     queryFn: () => store.listProvinces({ status: 'active' }),
   });
+
+  const { data: allDetailedExpenses = [] } = useQuery({
+    queryKey: ['detailedExpenses'],
+    queryFn: () => store.listDetailedExpenses({ status: 'active' }),
+  });
+
+  // Filter detailed expenses to only show CTP category
+  const detailedExpenses = allDetailedExpenses.filter(
+    exp => exp.categoryRef?.nameAtBooking === 'CTP'
+  );
 
   const addMutation = useMutation({
     mutationFn: (allowance: Allowance) => store.addAllowance(tourId, allowance),
@@ -59,7 +70,7 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Validate required fields
-    if (!formData.province || !formData.date) {
+    if (!formData.name || !formData.date) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -77,7 +88,7 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ date: '', province: '', amount: 0 });
+    setFormData({ date: '', name: '', price: 0 });
   };
 
   return (
@@ -87,47 +98,42 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
           {editingIndex !== null ? 'Edit Allowance' : 'Add Allowance'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <DateInput
-              value={formData.date}
-              onChange={(date) => setFormData({ ...formData, date })}
-              required
-            />
-            <Popover open={openProvince} onOpenChange={setOpenProvince}>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Popover open={openExpense} onOpenChange={setOpenExpense}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
-                  aria-expanded={openProvince}
+                  aria-expanded={openExpense}
                   className="justify-between"
                 >
-                  {formData.province || "Select province..."}
+                  {formData.name || "Select allowance..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Search province..." />
+                  <CommandInput placeholder="Search allowance..." />
                   <CommandList>
-                    <CommandEmpty>No province found.</CommandEmpty>
+                    <CommandEmpty>No allowance found.</CommandEmpty>
                     <CommandGroup>
-                      {provinces.map((prov) => (
+                      {detailedExpenses.map((exp) => (
                         <CommandItem
-                          key={prov.id}
-                          value={prov.name}
+                          key={exp.id}
+                          value={exp.name}
                           onSelect={() => {
                             const today = new Date().toISOString().split('T')[0];
-                            setFormData({ ...formData, province: prov.name, date: formData.date || today });
-                            setOpenProvince(false);
+                            setFormData({ ...formData, name: exp.name, price: exp.price, date: formData.date || today });
+                            setOpenExpense(false);
                           }}
                         >
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              formData.province === prov.name ? "opacity-100" : "opacity-0"
+                              formData.name === exp.name ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {prov.name}
+                          {exp.name} ({exp.price.toLocaleString()} ₫)
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -137,20 +143,25 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
             </Popover>
             <CurrencyInput
               placeholder="Amount (VND)"
-              value={formData.amount}
-              onChange={(amount) => setFormData({ ...formData, amount })}
+              value={formData.price}
+              onChange={(price) => setFormData({ ...formData, price })}
             />
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" className="hover-scale">
-              <Plus className="h-4 w-4 mr-2" />
-              {editingIndex !== null ? 'Update' : 'Add'}
-            </Button>
-            {editingIndex !== null && (
-              <Button type="button" variant="outline" onClick={handleCancel}>
-                Cancel
+            <DateInput
+              value={formData.date}
+              onChange={(date) => setFormData({ ...formData, date })}
+              required
+            />
+            <div className="flex gap-2">
+              <Button type="submit" className="hover-scale flex-1">
+                <Plus className="h-4 w-4 mr-2" />
+                {editingIndex !== null ? 'Update' : 'Add'}
               </Button>
-            )}
+              {editingIndex !== null && (
+                <Button type="button" variant="outline" onClick={handleCancel}>
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </div>
@@ -164,54 +175,47 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
             No allowances added yet
           </div>
         ) : (
-          <div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Province</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">#</TableHead>
+                <TableHead>Allowance</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allowances.map((allowance, index) => (
+                <TableRow key={index} className="animate-fade-in">
+                  <TableCell className="font-medium">{index + 1}</TableCell>
+                  <TableCell className="font-medium">{allowance.name}</TableCell>
+                  <TableCell>{allowance.price.toLocaleString()} ₫</TableCell>
+                  <TableCell>{formatDate(allowance.date)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(index)}
+                        className="hover-scale"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(index)}
+                        className="hover-scale text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allowances.map((allowance, index) => (
-                  <TableRow key={index} className="animate-fade-in">
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>{formatDate(allowance.date)}</TableCell>
-                    <TableCell className="font-medium">{allowance.province}</TableCell>
-                    <TableCell>{allowance.amount.toLocaleString()} ₫</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(index)}
-                          className="hover-scale"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteMutation.mutate(index)}
-                          className="hover-scale text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
-              <div className="text-lg font-semibold">
-                Total: {allowances.reduce((sum, allowance) => sum + allowance.amount, 0).toLocaleString()} ₫
-              </div>
-            </div>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

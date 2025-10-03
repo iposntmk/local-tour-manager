@@ -1,107 +1,102 @@
-Ok, mình đã viết lại đầy đủ prompt cho Gemini theo yêu cầu của bạn, đảm bảo rõ ràng và dễ copy-paste trực tiếp:
+
+
+Nhiệm vụ: Đọc ảnh/file **“chương trình tour”** và **trả về nhiều đối tượng JSON hợp lệ** theo **schema bên dưới**.
+
+* Output phải bắt đầu bằng `[` và kết thúc bằng `]`.
+* Giữa các tour có dấu phẩy `,`.
+* **CHỈ** trả về JSON, không thêm văn bản/markdown/giải thích.
+
+### Quy tắc chung
+
+* Nếu thiếu dữ liệu:
+
+  * string = `""`
+  * number = `0`
+  * boolean = `false`
+  * array = `[]`
+* Ngày (`date`): định dạng `"yyyy-mm-dd"`.
+
+  * Nếu thiếu → `""`.
+  * Nếu không ghi năm → mặc định **2025**.
+* Tiền tệ: chỉ lấy **số** (không ký tự, không dấu chấm/phẩy, không “k/đ/vnd”).
+
+  * Ví dụ: `150k` → `150000`, `200.000đ` → `200000`.
+* Không bịa thêm dữ liệu.
 
 ---
 
-### Prompt cho Gemini
+### 1. Nguồn dữ liệu ưu tiên
 
-Nhiệm vụ: Đọc ảnh/file “chương trình tour” và **trả về nhiều đối tượng JSON hợp lệ** theo **schema bên dưới** (tiếng Việt có dấu, đã chuẩn hóa).
-Thêm dấu ngoặc vuông `[` và `]` ở đầu và cuối tệp, đồng thời thêm dấu phẩy `,` vào giữa mỗi đối tượng tour để tạo thành một mảng JSON hợp lệ.
-
-**CHỈ** trả về JSON, **không** thêm văn bản/markdown/giải thích.
-
-Nếu thiếu dữ liệu:
-
-* string = `""`
-* number = `0`
-* boolean = `false`
-* array = `[]`
-
-Định dạng ngày:
-
-* Tất cả trường ngày (`date`) phải có định dạng `"yyyy-mm-dd"`.
-* Nếu thiếu ngày: để `""`.
-* Nếu ảnh không ghi năm: mặc định **2025**.
-
-Tiền tệ: chỉ lấy **số** (không ký tự, không dấu chấm/phẩy, không “k/đ/vnd”).
-Ví dụ: `150k` → `150000`, `200.000đ` → `200000`.
+1. Header (Code đoàn, Số khách, HDV, Lái xe).
+2. Bảng khách (tên, quốc tịch → suy luận `clientNationality`).
+3. Bảng lịch ngày (Ngày, Tham quan, Ăn trưa, Ăn tối, Khách sạn).
+4. Ghi chú cuối trang (NOTE).
 
 ---
 
-## Quy tắc chuẩn hóa & trích xuất
+### 2. Trường chính (`tour`)
 
-1. **Nguồn dữ liệu ưu tiên**
+* `tourCode`: từ “Code đoàn”/“Mã tour”.
+* `adults`, `children`, `totalGuests`: từ “Số khách”.
+* `tourGuide`: **luôn gán cố định** `"Cao Hữu Tú"`.
+* `driverName`: từ “Lái xe”. Nếu trống → `""`.
+* `company`: chỉ lấy từ cụm “Khách sạn: … đặt/book”. Không suy luận.
+* `clientPhone`: lấy từ ghi chú (nếu có).
+* `clientNationality`:
 
-   * Header/ô tiêu đề (Code đoàn, Số khách, Hướng dẫn, Lái xe…).
-   * Bảng khách (tên, quốc tịch, hộ chiếu → suy luận `clientNationality` nếu thiếu).
-   * Bảng lịch ngày (cột Ngày, Tham quan, Ăn trưa, Ăn tối, Khách sạn).
-   * Ghi chú cuối trang (NOTE).
+  * Nếu có bảng khách → lấy quốc tịch phổ biến.
+  * Nếu không → suy luận từ mã vùng điện thoại (E.164).
+  * Nếu không xác định → `""`.
+* Ngày:
 
-2. **Trường chính**
-
-   * `tourCode`: lấy nguyên văn từ “Code đoàn”/“Mã tour”.
-   * `adults`, `children`, `totalGuests`: lấy từ “Số khách”.
-   * `tourGuide`, `driverName`: từ “Hướng dẫn”, “Lái xe”. Nếu trống → `""`.
-   * `clientPhone`: lấy từ ghi chú (nếu có).
-   * `company`: chỉ lấy từ cụm “Khách sạn: [company] đặt/book”. Không suy luận.
-   * `clientNationality`:
-
-     * Nếu có bảng khách → lấy quốc tịch phổ biến (đa số).
-     * Nếu không → suy luận từ mã vùng điện thoại theo E.164 (`+1`→USA, `+84`→Vietnam, …).
-     * Nếu không xác định được → `""`.
-
-3. **Ngày**
-
-   * `startDate`: ngày nhỏ nhất trong cột “Ngày”.
-   * `endDate`: ngày lớn nhất trong cột “Ngày”.
-   * `totalDays`: hiệu số ngày + 1. Nếu thiếu start hoặc end → `0`.
-
-4. **destinations**
-
-   * Quét cột **Tham quan**, tách theo dấu phẩy.
-   * Bỏ qua tên chứa từ: `chợ, chùa, nhà thờ, đèo hải vân, lăng cô, cầu rồng, an bằng, biển`.
-   * `name`: chuẩn hóa ngắn gọn, đúng chính tả, không thêm tỉnh.
-   * `date`: ngày của dòng.
-   * `price`: nếu cùng dòng có giá vé → rút số, nếu không → `0`.
-
-5. **expenses**
-
-   * Từ cột Ăn trưa/Ăn tối hoặc ghi chú có dạng chi phí (ví dụ: vé tham quan nhưng không map được vào destination).
-   * Record: `{ "name","date","price" }`.
-
-6. **meals**
-
-   * Quét cột Ăn trưa / Ăn tối.
-   * Chỉ lấy các ô chứa từ: `hdv book`, `hdv đặt`, `book`, `đặt`.
-   * `name`: “Ăn trưa HDV book” hoặc “Ăn tối HDV book”.
-   * `price`: số tiền chuẩn hóa.
-
-7. **allowances**
-
-   * Suy luận tỉnh từ điểm tham quan chính trong ngày:
-
-     * Quảng Bình (Phong Nha, Thiên Đường…),
-     * Quảng Trị (Vịnh Mốc…),
-     * Huế (Đại Nội, Lăng Tự Đức, Thiên Mụ…),
-     * Đà Nẵng (Ngũ Hành Sơn, Bà Nà Hills, Cầu Rồng…),
-     * Quảng Nam (Hội An, Cẩm Thanh…).
-   * Record: `{ "date","province","amount" }`.
-
-     * Nếu Quảng Bình/Quảng Trị → `800000`, ngược lại → `600000`.
-     * Nếu không suy luận được → `province=""`, `amount=600000`.
-
-8. **summary**
-
-   * Nếu ảnh không có dữ liệu → tất cả để `0`.
-
-9. **Nguyên tắc an toàn**
-
-   * Không bịa thêm dữ liệu.
-   * Xử lý cả viết tắt và không dấu (`DH`→Đại Học, `NHS`→Ngũ Hành Sơn…).
-   * Chuẩn hóa chữ hoa đầu tên riêng.
+  * `startDate`: ngày nhỏ nhất trong cột “Ngày”.
+  * `endDate`: ngày lớn nhất trong cột “Ngày”.
+  * `totalDays`: (end – start) + 1, nếu thiếu thì `0`.
 
 ---
 
-## SCHEMA JSON PHẢI TRẢ RA
+### 3. Subcollections
+
+**a) destinations**
+
+* Quét cột **Tham quan**, tách theo dấu phẩy.
+* Bỏ qua điểm có từ: `chợ, chùa, nhà thờ, đèo hải vân, lăng cô, cầu rồng, an bằng, biển, làng hương, làng nón, la vang, cửa đại, lang co, thiên mụ, hải vọng đài, đỗ quyên, ngũ hồ, thác đỗ quyên, vọng hải đài`.
+* nếu chỉ đón sân bay / don sb no guide và không có điểm tham quan thì không đưa vào.
+* `name`: chuẩn hóa ngắn gọn, chính tả đúng, không thêm tỉnh.
+* `date`: ngày của dòng.
+* `price`: nếu cùng dòng có giá vé → số, nếu không → `0`.
+
+**b) expenses**
+
+* Từ cột Ăn trưa/Ăn tối hoặc ghi chú có chi phí (nhưng không gắn được vào destination).
+* Record: `{ "name","date","price" }`.
+
+**c) meals**
+
+* Quét cột Ăn trưa / Ăn tối.
+* Chỉ lấy ô chứa `hdv book`, `hdv đặt`, `book`, `đặt`.
+* `name`: “Ăn trưa HDV book” hoặc “Ăn tối HDV book”.
+* `price`: số tiền chuẩn hóa.
+
+**d) allowances**
+
+* Suy luận tỉnh từ điểm chính trong ngày → đặt tên công tác phí.
+* nếu chỉ đón sân bay / don sb no guide và không có điểm tham quan thì không đưa vào.
+* Giá trị mặc định theo tỉnh:
+
+  * Quảng Bình / Quảng Trị → `800000`
+  * Huế / Đà Nẵng / Quảng Nam → `600000`
+  * Bạch Mã - Huế → `900000`
+  * Khác → `600000`
+* Record: `{ "name","price","date" }`.
+
+**e) summary**
+
+* Nếu không có dữ liệu → tất cả = `0`.
+
+---
+
+### 4. Schema JSON (phải xuất ra)
 
 ```json
 [
@@ -109,7 +104,7 @@ Ví dụ: `150k` → `150000`, `200.000đ` → `200000`.
     "tour": {
       "tourCode": "",
       "company": "",
-      "tourGuide": "",
+      "tourGuide": "Cao Hữu Tú",
       "clientName": "",
       "clientNationality": "",
       "adults": 0,
@@ -123,37 +118,16 @@ Ví dụ: `150k` → `150000`, `200.000đ` → `200000`.
     },
     "subcollections": {
       "destinations": [
-        {
-          "name": "",
-          "price": 0,
-          "province": "",
-          "date": "",
-          "orderIndex": 0
-        }
+        { "name": "", "price": 0, "province": "", "date": "", "orderIndex": 0 }
       ],
       "expenses": [
-        {
-          "name": "",
-          "price": 0,
-          "date": "",
-          "orderIndex": 0
-        }
+        { "name": "", "price": 0, "date": "", "orderIndex": 0 }
       ],
       "meals": [
-        {
-          "name": "",
-          "price": 0,
-          "date": "",
-          "orderIndex": 0
-        }
+        { "name": "", "price": 0, "date": "", "orderIndex": 0 }
       ],
       "allowances": [
-        {
-          "province": "",
-          "amount": 0,
-          "date": "",
-          "orderIndex": 0
-        }
+        { "name": "", "price": 0, "date": "", "orderIndex": 0 }
       ],
       "summary": {
         "totalTabs": 0,
@@ -168,11 +142,4 @@ Ví dụ: `150k` → `150000`, `200.000đ` → `200000`.
     }
   }
 ]
-```
-
-**Lưu ý cuối cùng**: Output phải bắt đầu bằng `[` và kết thúc bằng `]`, giữa các tour có dấu phẩy `,`.
-
----
-
-Bạn có muốn mình rút gọn version **mini** (ngắn gọn hơn, dễ copy nhanh vào Gemini) không?
 

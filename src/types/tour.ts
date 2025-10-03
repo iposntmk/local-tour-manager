@@ -29,8 +29,8 @@ export interface Meal {
 
 export interface Allowance {
   date: string;
-  province: string;
-  amount: number;
+  name: string;
+  price: number;
 }
 
 export interface TourSummary {
