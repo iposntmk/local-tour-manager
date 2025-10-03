@@ -21,14 +21,11 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
   // Bước 2: Tổng các tabs
   const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;
 
-  // Bước 3: Xử lý tiền ứng
-  const computedAdvance = calculatedTotal;
-
   const [summary, setSummary] = useState<TourSummary>(() => {
     const existingSummary = tour.summary as TourSummary | undefined;
     return {
-      totalTabs: (existingSummary?.totalTabs && existingSummary.totalTabs > 0) ? existingSummary.totalTabs : calculatedTotal,
-      advancePayment: existingSummary?.advancePayment ?? computedAdvance,
+      totalTabs: calculatedTotal,
+      advancePayment: existingSummary?.advancePayment ?? 0,
       totalAfterAdvance: 0,
       companyTip: existingSummary?.companyTip ?? 0,
       totalAfterTip: 0,
@@ -37,6 +34,11 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
       finalTotal: 0,
     };
   });
+
+  // Auto-update totalTabs when items change
+  useEffect(() => {
+    setSummary(prev => ({ ...prev, totalTabs: calculatedTotal }));
+  }, [calculatedTotal]);
 
   // Bước 4: Tính toán tuần tự
   useEffect(() => {
@@ -136,9 +138,9 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
           <CardTitle>Financial Summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
-            <span className="font-medium">Total Tabs</span>
-            <span className="font-bold">{summary.totalTabs?.toLocaleString() || 0} ₫</span>
+          <div className="flex justify-between items-center py-2 bg-primary/10 px-3 rounded">
+            <span className="font-medium">Total Tabs (Auto-calculated)</span>
+            <span className="font-bold text-primary">{summary.totalTabs?.toLocaleString() || 0} ₫</span>
           </div>
           <Separator />
           

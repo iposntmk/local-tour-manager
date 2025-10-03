@@ -68,9 +68,30 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
       toast.error('Please fill in all required fields');
       return;
     }
+
     if (editingIndex !== null) {
+      // Check for duplicate expense name when editing (case-insensitive, excluding current index)
+      const isDuplicate = expenses.some((exp, i) =>
+        i !== editingIndex && exp.name.toLowerCase() === formData.name.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        toast.error('An expense with this name already exists');
+        return;
+      }
+
       updateMutation.mutate({ index: editingIndex, expense: formData });
     } else {
+      // Check for duplicate expense name
+      const isDuplicate = expenses.some(exp =>
+        exp.name.toLowerCase() === formData.name.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        toast.error('An expense with this name already exists');
+        return;
+      }
+
       addMutation.mutate(formData);
     }
   };

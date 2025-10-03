@@ -68,9 +68,30 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
       toast.error('Please fill in all required fields');
       return;
     }
+
     if (editingIndex !== null) {
+      // Check for duplicate meal name when editing (case-insensitive, excluding current index)
+      const isDuplicate = meals.some((meal, i) =>
+        i !== editingIndex && meal.name.toLowerCase() === formData.name.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        toast.error('A meal with this name already exists');
+        return;
+      }
+
       updateMutation.mutate({ index: editingIndex, meal: formData });
     } else {
+      // Check for duplicate meal name
+      const isDuplicate = meals.some(meal =>
+        meal.name.toLowerCase() === formData.name.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        toast.error('A meal with this name already exists');
+        return;
+      }
+
       addMutation.mutate(formData);
     }
   };

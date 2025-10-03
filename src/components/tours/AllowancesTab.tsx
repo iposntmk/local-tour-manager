@@ -83,8 +83,28 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
     }
 
     if (editingIndex !== null) {
+      // Check for duplicate allowance name when editing (case-insensitive, excluding current index)
+      const isDuplicate = allowances.some((allow, i) =>
+        i !== editingIndex && allow.name.toLowerCase() === formData.name.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        toast.error('An allowance with this name already exists');
+        return;
+      }
+
       updateMutation.mutate({ index: editingIndex, allowance: formData });
     } else {
+      // Check for duplicate allowance name
+      const isDuplicate = allowances.some(allow =>
+        allow.name.toLowerCase() === formData.name.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        toast.error('An allowance with this name already exists');
+        return;
+      }
+
       addMutation.mutate(formData);
     }
   };

@@ -525,9 +525,231 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   workbook.creator = 'Local Tour Manager';
   workbook.calcProperties.fullCalcOnLoad = true;
 
-  const overviewSheet = workbook.addWorksheet('Tổng hợp');
-  const entries = tours.map(tour => buildTourWorksheet(workbook, tour));
-  populateOverviewSheet(overviewSheet, tours, entries);
+  // Create single sheet with all tours
+  const worksheet = workbook.addWorksheet('All Tours');
+
+  worksheet.properties.defaultRowHeight = 20;
+  worksheet.columns = [
+    { key: 'code', width: 15 },           // A - code
+    { key: 'date', width: 25 },           // B - ngày
+    { key: 'service', width: 30 },        // C - vé + ăn + uống + chi phí
+    { key: 'price', width: 15 },          // D - giá vé/đơn giá
+    { key: 'quantity', width: 12 },       // E - số khách
+    { key: 'total', width: 15 },          // F - thành tiền
+    { key: 'location', width: 20 },       // G - Địa điểm/tỉnh
+    { key: 'days', width: 12 },           // H - số ngày
+    { key: 'ctp', width: 15 },            // I - CTP
+    { key: 'ctpTotal', width: 15 },       // J - thành tiền
+    { key: 'tourTotal', width: 15 },      // K - Tổng tour
+  ];
+
+  // Single header for all tours (row 1)
+  const header1Row = worksheet.getRow(1);
+  header1Row.height = 30;
+
+  worksheet.mergeCells('A1:B1');
+  worksheet.mergeCells('C1:F1');
+  worksheet.mergeCells('G1:J1');
+
+  const h1Cells = [
+    { cell: 'A1', value: 'code', fill: headerFill },
+    { cell: 'C1', value: 'vé + ăn + uống + chi phí', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } },
+    { cell: 'G1', value: 'Công tác phí (CTP) + ngủ', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } },
+    { cell: 'K1', value: 'Tổng tour', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFC000' } } },
+  ];
+
+  h1Cells.forEach(({ cell, value, fill }) => {
+    const c = worksheet.getCell(cell);
+    c.value = value;
+    c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    c.fill = fill;
+    c.border = thinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  });
+
+  for (let col = 1; col <= 11; col++) {
+    header1Row.getCell(col).border = thinBorder;
+  }
+
+  // Header row 2
+  const headerRow = worksheet.getRow(2);
+  const headers = [
+    'code', 'ngày', 'vé/ăn/uống/chi phí', 'giá vé/đơn giá', 'số khách',
+    'thành tiền', 'Địa điểm/tỉnh', 'số ngày', 'CTP', 'thành tiền', '',
+  ];
+
+  headers.forEach((header, idx) => {
+    const cell = headerRow.getCell(idx + 1);
+    cell.value = header;
+    cell.font = { bold: true };
+    cell.border = thinBorder;
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  });
+
+  headerRow.height = 30;
+
+  // Freeze header rows (first 2 rows)
+  worksheet.views = [{ state: 'frozen', ySplit: 2 }];
+
+  let currentRow = 3; // Start data from row 3
+  const allTourTotalCells: string[] = [];
+
+  tours.forEach((tour, tourIndex) => {
+
+    const totalGuests = tour.totalGuests || tour.adults + tour.children;
+    const dataStartRow = currentRow;
+
+    const applyRowBorderLocal = (row: Row) => {
+      for (let col = 1; col <= 11; col += 1) {
+        row.getCell(col).border = thinBorder;
+      }
+    };
+
+    let firstDataRow = true;
+    const setCodeAndDateCells = (row: Row) => {
+      if (!firstDataRow) return;
+      row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
+      row.getCell(2).value = `${formatDisplayDate(tour.startDate)} - ${formatDisplayDate(tour.endDate)}`;
+      firstDataRow = false;
+    };
+
+    const allowances = tour.allowances || [];
+    const serviceItems: { name: string; price: number }[] = [];
+
+    if (tour.destinations && tour.destinations.length > 0) {
+      tour.destinations.forEach(d => {
+        serviceItems.push({ name: `vé ${d.name || ''}`, price: d.price || 0 });
+      });
+    }
+    if (tour.expenses && tour.expenses.length > 0) {
+      tour.expenses.forEach(e => {
+        serviceItems.push({ name: e.name || '', price: e.price || 0 });
+      });
+    }
+    if (tour.meals && tour.meals.length > 0) {
+      tour.meals.forEach(m => {
+        serviceItems.push({ name: m.name || '', price: m.price || 0 });
+      });
+    }
+
+    const allowancesByName = new Map<string, { name: string; totalPrice: number; days: number }>();
+    allowances.forEach(allowance => {
+      const name = allowance.name || '';
+      if (!allowancesByName.has(name)) {
+        allowancesByName.set(name, { name, totalPrice: 0, days: 0 });
+      }
+      const group = allowancesByName.get(name)!;
+      group.totalPrice += allowance.price || 0;
+      group.days += 1;
+    });
+
+    const mergedAllowances = Array.from(allowancesByName.values());
+    const dataRowCount = Math.max(serviceItems.length, mergedAllowances.length);
+
+    for (let index = 0; index < dataRowCount; index += 1) {
+      const rowNumber = currentRow;
+      const row = worksheet.getRow(rowNumber);
+
+      setCodeAndDateCells(row);
+
+      const service = serviceItems[index];
+      const allowance = mergedAllowances[index];
+
+      if (service) {
+        row.getCell(3).value = service.name;
+        row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
+        row.getCell(4).value = service.price;
+        row.getCell(4).numFmt = currencyFormat;
+        row.getCell(5).value = totalGuests;
+        row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(6).value = { formula: `D${rowNumber}*E${rowNumber}` };
+        row.getCell(6).numFmt = currencyFormat;
+      }
+
+      if (allowance) {
+        row.getCell(7).value = allowance.name;
+        row.getCell(7).alignment = { vertical: 'middle', horizontal: 'left' };
+        row.getCell(8).value = allowance.days;
+        row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(9).value = allowance.totalPrice / allowance.days;
+        row.getCell(9).numFmt = currencyFormat;
+        row.getCell(10).value = { formula: `H${rowNumber}*I${rowNumber}` };
+        row.getCell(10).numFmt = currencyFormat;
+      }
+
+      applyRowBorderLocal(row);
+      currentRow++;
+    }
+
+    const dataEndRow = currentRow - 1;
+    const totalsRow = worksheet.getRow(currentRow);
+
+    worksheet.mergeCells(`C${currentRow}:E${currentRow}`);
+    totalsRow.getCell(3).value = 'dịch vụ';
+    totalsRow.getCell(3).font = { bold: true };
+    totalsRow.getCell(3).fill = totalsFill;
+    totalsRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+
+    totalsRow.getCell(1).fill = totalsFill;
+    totalsRow.getCell(2).fill = totalsFill;
+
+    if (dataEndRow >= dataStartRow) {
+      totalsRow.getCell(6).value = { formula: `SUM(F${dataStartRow}:F${dataEndRow})` };
+    } else {
+      totalsRow.getCell(6).value = 0;
+    }
+    totalsRow.getCell(6).numFmt = currencyFormat;
+    totalsRow.getCell(6).fill = totalsFill;
+
+    totalsRow.getCell(7).value = 'công tác phí';
+    totalsRow.getCell(7).font = { bold: true };
+    totalsRow.getCell(7).fill = totalsFill;
+    totalsRow.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
+
+    totalsRow.getCell(8).fill = totalsFill;
+    totalsRow.getCell(9).fill = totalsFill;
+
+    if (dataEndRow >= dataStartRow) {
+      totalsRow.getCell(10).value = { formula: `SUM(J${dataStartRow}:J${dataEndRow})` };
+    } else {
+      totalsRow.getCell(10).value = 0;
+    }
+    totalsRow.getCell(10).numFmt = currencyFormat;
+    totalsRow.getCell(10).fill = totalsFill;
+
+    totalsRow.getCell(11).value = { formula: `F${currentRow}+J${currentRow}` };
+    totalsRow.getCell(11).numFmt = currencyFormat;
+    totalsRow.getCell(11).fill = totalsFill;
+
+    applyRowBorderLocal(totalsRow);
+
+    allTourTotalCells.push(`K${currentRow}`);
+
+    currentRow++;
+    // Empty line between tours
+    currentRow++;
+  });
+
+  // Grand total row
+  const grandTotalRow = worksheet.getRow(currentRow);
+  worksheet.mergeCells(`A${currentRow}:J${currentRow}`);
+  grandTotalRow.getCell(1).value = 'TỔNG CỘNG TẤT CẢ TOURS';
+  grandTotalRow.getCell(1).font = { bold: true, size: 14 };
+  grandTotalRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+  grandTotalRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6600' } };
+
+  const grandTotalFormula = allTourTotalCells.join('+');
+  grandTotalRow.getCell(11).value = { formula: grandTotalFormula };
+  grandTotalRow.getCell(11).numFmt = currencyFormat;
+  grandTotalRow.getCell(11).font = { bold: true, size: 14 };
+  grandTotalRow.getCell(11).alignment = { horizontal: 'right', vertical: 'middle' };
+  grandTotalRow.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6600' } };
+
+  for (let col = 1; col <= 11; col++) {
+    grandTotalRow.getCell(col).border = thinBorder;
+  }
+
+  grandTotalRow.height = 30;
 
   await downloadWorkbook(workbook, `All_Tours_${Date.now()}.xlsx`);
 };

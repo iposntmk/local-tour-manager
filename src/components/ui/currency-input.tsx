@@ -1,4 +1,4 @@
-import { forwardRef, useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -19,11 +19,16 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const [displayValue, setDisplayValue] = useState(
       value ? formatNumber(value) : ''
     );
+    const [isFocused, setIsFocused] = useState(false);
+    const isInternalChange = useRef(false);
 
-    // Sync internal display when value prop changes
+    // Sync internal display when value prop changes from external source
     useEffect(() => {
-      setDisplayValue(value ? formatNumber(value) : '');
-    }, [value]);
+      if (!isFocused && !isInternalChange.current) {
+        setDisplayValue(value ? formatNumber(value) : '');
+      }
+      isInternalChange.current = false;
+    }, [value, isFocused]);
 
     const parseNumber = (str: string): number => {
       const cleaned = str.replace(/\./g, '');
@@ -34,17 +39,31 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const input = e.target.value;
       const cleaned = input.replace(/[^0-9]/g, '');
-      const parsed = parseInt(cleaned) || 0;
 
-      // Don't format while typing - just show the cleaned numbers
+      // Update display value with raw input (no formatting while typing)
       setDisplayValue(cleaned);
+
+      // Parse and send the numeric value
+      const parsed = cleaned === '' ? 0 : parseInt(cleaned);
+      isInternalChange.current = true;
       onChange?.(parsed);
     };
 
+    const handleFocus = () => {
+      setIsFocused(true);
+      // Remove formatting when focused for easier editing
+      const numValue = parseNumber(displayValue);
+      if (numValue > 0) {
+        setDisplayValue(numValue.toString());
+      }
+    };
+
     const handleBlur = () => {
+      setIsFocused(false);
       // Format the number when user leaves the field
       const numValue = parseNumber(displayValue);
       setDisplayValue(numValue ? formatNumber(numValue) : '');
+      isInternalChange.current = true;
       onChange?.(numValue);
     };
 
@@ -61,6 +80,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
           type="text"
           value={displayValue}
           onChange={handleChange}
+          onFocus={handleFocus}
           onBlur={handleBlur}
         />
         {showQuickAmounts && (
