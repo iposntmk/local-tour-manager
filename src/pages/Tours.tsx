@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import type { Tour, TourQuery } from '@/types/tour';
+import type { Tour, TourListResult, TourQuery } from '@/types/tour';
 import Fuse from 'fuse.js';
 
 const Tours = () => {
@@ -301,6 +301,103 @@ const Tours = () => {
       const errors = [];
       const skipped: string[] = [];
 
+      const matchesQueryFilters = (query: TourQuery | undefined, tour: Tour) => {
+        if (!query) return true;
+
+        if (query.tourCode && !tour.tourCode.toLowerCase().includes(query.tourCode.toLowerCase())) {
+          return false;
+        }
+
+        if (query.clientName && !tour.clientName.toLowerCase().includes(query.clientName.toLowerCase())) {
+          return false;
+        }
+
+        if (query.companyId && tour.companyRef?.id !== query.companyId) {
+          return false;
+        }
+
+        if (query.guideId && tour.guideRef?.id !== query.guideId) {
+          return false;
+        }
+
+        if (query.nationalityId && tour.clientNationalityRef?.id !== query.nationalityId) {
+          return false;
+        }
+
+        if (query.startDate && tour.startDate < query.startDate) {
+          return false;
+        }
+
+        if (query.endDate && tour.endDate > query.endDate) {
+          return false;
+        }
+
+        return true;
+      };
+
+      const appendTourToCache = (newTour: Tour) => {
+        const queries = queryClient.getQueriesData<TourListResult>({ queryKey: ['tours'] });
+
+        queries.forEach(([queryKey, data]) => {
+          if (!data) return;
+          if (!Array.isArray(queryKey)) return;
+
+          const baseQuery = (queryKey[1] ?? undefined) as TourQuery | undefined;
+          if (!matchesQueryFilters(baseQuery, newTour)) {
+            return;
+          }
+
+          const currentPageKey = queryKey[2] as number | undefined;
+          const pageSizeKey = queryKey[3] as number | undefined;
+          const updatedTotal = data.total + 1;
+
+          if (currentPageKey && currentPageKey > 1) {
+            queryClient.setQueryData(queryKey, {
+              tours: data.tours,
+              total: updatedTotal,
+            });
+            return;
+          }
+
+          const dedupedTours = data.tours.filter(tourItem => tourItem.id !== newTour.id);
+          const orderedTours = [...dedupedTours, newTour].sort((a, b) =>
+            (b.startDate ?? '').localeCompare(a.startDate ?? '')
+          );
+          const limit = typeof pageSizeKey === 'number' ? pageSizeKey : undefined;
+          const limitedTours = typeof limit === 'number' ? orderedTours.slice(0, limit) : orderedTours;
+
+          queryClient.setQueryData(queryKey, {
+            tours: limitedTours,
+            total: updatedTotal,
+          });
+        });
+      };
+
+      type ProcessResult =
+        | { success: true; tour: Tour }
+        | { success: false; error: string; skipped?: false }
+        | { success: false; skipped: true; tourCode?: string; error: string };
+
+      let processedCount = 0;
+      let successCount = 0;
+      let skippedCount = 0;
+      let progressToastId: string | number | undefined;
+
+      const updateProgressToast = () => {
+        if (tours.length <= 10) return;
+        const progress = Math.round((processedCount / tours.length) * 100);
+        const descriptionParts = [`${successCount}/${tours.length} imported`];
+        if (skippedCount > 0) {
+          descriptionParts.push(`${skippedCount} skipped`);
+        }
+
+        progressToastId = toast.message(`Importing tours... ${progress}%`, {
+          id: progressToastId,
+          description: descriptionParts.join(' • '),
+          duration: 1000,
+        });
+      };
+
       // Load existing tours to check for duplicates
       const { tours: existingTours } = await store.listTours({});
       const existingTourCodes = new Set(existingTours.map(t => t.tourCode.toLowerCase()));
@@ -323,118 +420,127 @@ const Tours = () => {
 
       // Process all tours in parallel with concurrency limit
       const concurrencyLimit = 10; // Process 10 tours at a time
-      const processWithConcurrency = async (tours: Partial<Tour>[], limit: number) => {
-        const results: any[] = [];
+      const processWithConcurrency = async (toursToProcess: Partial<Tour>[], limit: number) => {
+        const aggregatedResults: ProcessResult[] = [];
 
-        for (let i = 0; i < tours.length; i += limit) {
-          const batch = tours.slice(i, i + limit);
-          const batchResults = await Promise.all(
+        const recordResult = <T extends ProcessResult>(result: T): T => {
+          aggregatedResults.push(result);
+          processedCount += 1;
+          if (result.success) {
+            successCount += 1;
+          } else if (result.skipped) {
+            skippedCount += 1;
+          }
+          updateProgressToast();
+          return result;
+        };
+
+        for (let i = 0; i < toursToProcess.length; i += limit) {
+          const batch = toursToProcess.slice(i, i + limit);
+          await Promise.all(
             batch.map(async (tour, batchIndex) => {
               const globalIndex = i + batchIndex;
-          try {
-            // Check for duplicate tour code
-            if (tour.tourCode && existingTourCodes.has(tour.tourCode.toLowerCase())) {
-              return {
-                success: false,
-                skipped: true,
-                tourCode: tour.tourCode,
-                error: `Tour with tour code "${tour.tourCode}" already exists`
-              };
-            }
 
-            // Validate tour data before attempting to create
-            const validation = validateTourData(tour);
-            if (!validation.valid) {
-              throw new Error(validation.errors.join(', '));
-            }
-
-            // Clean matched properties and normalize dates + apply auto-match fallback
-            const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => {
-              const normalized = { ...dest, date: normalizeDate(dest.date) } as any;
-              if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                const m = autoMatch(normalized.name, destMap);
-                if (m) {
-                  normalized.name = m.name;
-                  normalized.price = Number(m.price) || 0;
-                }
+              // Check for duplicate tour code
+              if (tour.tourCode && existingTourCodes.has(tour.tourCode.toLowerCase())) {
+                return recordResult({
+                  success: false,
+                  skipped: true,
+                  tourCode: tour.tourCode,
+                  error: `Tour with tour code "${tour.tourCode}" already exists`,
+                });
               }
-              return normalized;
-            });
-            const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => {
-              const normalized = { ...exp, date: normalizeDate(exp.date) } as any;
-              if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                const m = autoMatch(normalized.name, expMap);
-                if (m) {
-                  normalized.name = m.name;
-                  normalized.price = Number(m.price) || 0;
+
+              try {
+                // Validate tour data before attempting to create
+                const validation = validateTourData(tour);
+                if (!validation.valid) {
+                  throw new Error(validation.errors.join(', '));
                 }
-              }
-              return normalized;
-            });
-            const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => {
-              const normalized = { ...meal, date: normalizeDate(meal.date) } as any;
-              if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                const m = autoMatch(normalized.name, mealMap);
-                if (m) {
-                  normalized.name = m.name;
-                  normalized.price = Number(m.price) || 0;
+
+                // Clean matched properties and normalize dates + apply auto-match fallback
+                const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => {
+                  const normalized = { ...dest, date: normalizeDate(dest.date) } as any;
+                  if ((!normalized.price || normalized.price === 0) && normalized.name) {
+                    const m = autoMatch(normalized.name, destMap);
+                    if (m) {
+                      normalized.name = m.name;
+                      normalized.price = Number(m.price) || 0;
+                    }
+                  }
+                  return normalized;
+                });
+                const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => {
+                  const normalized = { ...exp, date: normalizeDate(exp.date) } as any;
+                  if ((!normalized.price || normalized.price === 0) && normalized.name) {
+                    const m = autoMatch(normalized.name, expMap);
+                    if (m) {
+                      normalized.name = m.name;
+                      normalized.price = Number(m.price) || 0;
+                    }
+                  }
+                  return normalized;
+                });
+                const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => {
+                  const normalized = { ...meal, date: normalizeDate(meal.date) } as any;
+                  if ((!normalized.price || normalized.price === 0) && normalized.name) {
+                    const m = autoMatch(normalized.name, mealMap);
+                    if (m) {
+                      normalized.name = m.name;
+                      normalized.price = Number(m.price) || 0;
+                    }
+                  }
+                  return normalized;
+                });
+                const cleanAllowances = tour.allowances?.map((allow) => ({
+                  ...allow,
+                  date: normalizeDate(allow.date),
+                }));
+
+                // Create the tour with all subcollections in one call
+                const createdTour = await store.createTour({
+                  tourCode: tour.tourCode!,
+                  companyRef: tour.companyRef,
+                  guideRef: tour.guideRef,
+                  clientNationalityRef: tour.clientNationalityRef,
+                  clientName: tour.clientName!,
+                  adults: tour.adults!,
+                  children: tour.children!,
+                  driverName: tour.driverName,
+                  clientPhone: tour.clientPhone,
+                  startDate: normalizeDate(tour.startDate!)!,
+                  endDate: normalizeDate(tour.endDate!)!,
+                  destinations: cleanDestinations,
+                  expenses: cleanExpenses,
+                  meals: cleanMeals,
+                  allowances: cleanAllowances,
+                  summary: tour.summary,
+                });
+
+                appendTourToCache(createdTour);
+                if (tour.tourCode) {
+                  existingTourCodes.add(tour.tourCode.toLowerCase());
                 }
+
+                return recordResult({ success: true, tour: createdTour });
+              } catch (error) {
+                const tourCode = tour.tourCode || `Tour ${globalIndex + 1}`;
+                const context = {
+                  operation: 'importTour',
+                  tourCode,
+                  tourIndex: globalIndex,
+                  data: tour,
+                  timestamp: new Date().toISOString(),
+                };
+
+                const errorMsg = handleImportError(error, context);
+                return recordResult({ success: false, error: `${tourCode}: ${errorMsg}` });
               }
-              return normalized;
-            });
-            const cleanAllowances = tour.allowances?.map((allow) => ({
-              ...allow,
-              date: normalizeDate(allow.date),
-            }));
-
-            // Create the tour with all subcollections in one call
-            const createdTour = await store.createTour({
-              tourCode: tour.tourCode!,
-              companyRef: tour.companyRef,
-              guideRef: tour.guideRef,
-              clientNationalityRef: tour.clientNationalityRef,
-              clientName: tour.clientName!,
-              adults: tour.adults!,
-              children: tour.children!,
-              driverName: tour.driverName,
-              clientPhone: tour.clientPhone,
-              startDate: normalizeDate(tour.startDate!)!,
-              endDate: normalizeDate(tour.endDate!)!,
-              destinations: cleanDestinations,
-              expenses: cleanExpenses,
-              meals: cleanMeals,
-              allowances: cleanAllowances,
-              summary: tour.summary,
-            });
-
-            return { success: true, tour: createdTour };
-          } catch (error) {
-            const tourCode = tour.tourCode || `Tour ${globalIndex + 1}`;
-            const context = {
-              operation: 'importTour',
-              tourCode,
-              tourIndex: globalIndex,
-              data: tour,
-              timestamp: new Date().toISOString(),
-            };
-
-            const errorMsg = handleImportError(error, context);
-            return { success: false, error: `${tourCode}: ${errorMsg}` };
-          }
             })
           );
-
-          results.push(...batchResults);
-
-          // Show progress for large imports
-          if (tours.length > 10) {
-            const processed = Math.min(i + limit, tours.length);
-            const progress = Math.round((processed / tours.length) * 100);
-            toast.message(`Importing tours... ${progress}% (${processed}/${tours.length})`, { duration: 1000 });
-          }
         }
 
-        return results;
+        return aggregatedResults;
       };
 
       const allResults = await processWithConcurrency(tours, concurrencyLimit);
