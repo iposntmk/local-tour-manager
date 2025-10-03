@@ -45,7 +45,11 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       toast.success('Allowance added');
-      setFormData({ date: '', name: '', price: 0 });
+      setFormData({ date: '', name: '', price: 0, quantity: 1 });
+    },
+    onError: (error) => {
+      console.error('Error adding allowance:', error);
+      toast.error('Failed to add allowance: ' + (error instanceof Error ? error.message : 'Unknown error'));
     },
   });
 
@@ -69,11 +73,15 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log('Submitting allowance:', formData);
+
     // Validate required fields
     if (!formData.name || !formData.date) {
       toast.error('Please fill in all required fields');
       return;
     }
+
     if (editingIndex !== null) {
       updateMutation.mutate({ index: editingIndex, allowance: formData });
     } else {
@@ -98,7 +106,7 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
           {editingIndex !== null ? 'Edit Allowance' : 'Add Allowance'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Popover open={openExpense} onOpenChange={setOpenExpense}>
               <PopoverTrigger asChild>
                 <Button
@@ -123,7 +131,13 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
                           value={exp.name}
                           onSelect={() => {
                             const today = new Date().toISOString().split('T')[0];
-                            setFormData({ ...formData, name: exp.name, price: exp.price, date: formData.date || today });
+                            setFormData({
+                              ...formData,
+                              name: exp.name,
+                              price: exp.price,
+                              date: formData.date || today,
+                              quantity: formData.quantity || 1
+                            });
                             setOpenExpense(false);
                           }}
                         >
@@ -142,9 +156,14 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
               </PopoverContent>
             </Popover>
             <CurrencyInput
-              placeholder="Amount (VND)"
+              placeholder="Price (VND)"
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
+            />
+            <DateInput
+              value={formData.date}
+              onChange={(date) => setFormData({ ...formData, date })}
+              required
             />
             <Input
               type="number"
@@ -152,11 +171,6 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
               value={formData.quantity || 1}
               onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
               min="1"
-            />
-            <DateInput
-              value={formData.date}
-              onChange={(date) => setFormData({ ...formData, date })}
-              required
             />
             <div className="flex gap-2">
               <Button type="submit" className="hover-scale flex-1">
