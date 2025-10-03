@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { Tour, TourInput, Destination, Expense, Meal, Allowance, TourSummary } from '@/types/tour';
+import { formatDateDMY } from '@/lib/date-utils';
 
 const TourDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -196,7 +197,14 @@ const TourDetail = () => {
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                   <div>
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{tour?.tourCode || 'Tour Details'}</h1>
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
+                      {tour?.tourCode || 'Tour Details'}
+                      {tour?.startDate && tour?.endDate && (
+                        <span className="ml-3 text-muted-foreground">
+                          | {formatDateDMY(tour.startDate)} - {formatDateDMY(tour.endDate)}
+                        </span>
+                      )}
+                    </h1>
                     <p className="text-sm sm:text-base text-muted-foreground">Manage tour information</p>
                   </div>
                 </div>

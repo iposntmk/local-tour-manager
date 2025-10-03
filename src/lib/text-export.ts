@@ -1,4 +1,5 @@
 import { formatDate } from '@/lib/utils';
+import { formatDateDMY } from '@/lib/date-utils';
 import type { Tour } from '@/types/tour';
 
 type Numeric = number | null | undefined;
@@ -116,7 +117,9 @@ export const exportTourToTxt = (tour: Tour) => {
 
   appendSection(lines, 'Summary', summaryItems);
 
-  lines.push('', `Generated on: ${new Date().toLocaleString()}`);
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  lines.push('', `Generated on: ${formatDateDMY(now)} ${time}`);
 
   const txtContent = lines.join('\n');
   const blob = new Blob([txtContent], { type: 'text/plain' });

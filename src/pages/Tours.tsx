@@ -32,6 +32,7 @@ import { handleImportError, validateTourData, createImportError } from '@/lib/er
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
+import { formatDateDMY } from '@/lib/date-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour, TourListResult, TourQuery } from '@/types/tour';
 import Fuse from 'fuse.js';
