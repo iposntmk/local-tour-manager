@@ -25,26 +25,33 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
       }
     }, [value]);
 
+    const formatDateToString = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     const handleIncrement = () => {
       if (!value) {
-        const today = new Date().toISOString().split('T')[0];
-        onChange?.(today);
+        const today = new Date();
+        onChange?.(formatDateToString(today));
         return;
       }
-      const date = new Date(value);
+      const date = new Date(value + 'T00:00:00');
       date.setDate(date.getDate() + 1);
-      onChange?.(date.toISOString().split('T')[0]);
+      onChange?.(formatDateToString(date));
     };
 
     const handleDecrement = () => {
       if (!value) {
-        const today = new Date().toISOString().split('T')[0];
-        onChange?.(today);
+        const today = new Date();
+        onChange?.(formatDateToString(today));
         return;
       }
-      const date = new Date(value);
+      const date = new Date(value + 'T00:00:00');
       date.setDate(date.getDate() - 1);
-      onChange?.(date.toISOString().split('T')[0]);
+      onChange?.(formatDateToString(date));
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,8 +67,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
 
     const handleCalendarSelect = (date: Date | undefined) => {
       if (date) {
-        const formatted = date.toISOString().split('T')[0];
-        onChange?.(formatted);
+        onChange?.(formatDateToString(date));
         setOpen(false);
       }
     };
@@ -101,7 +107,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
             <PopoverContent className="w-auto p-0" align="end">
               <CalendarComponent
                 mode="single"
-                selected={value ? new Date(value) : undefined}
+                selected={value ? new Date(value + 'T00:00:00') : undefined}
                 onSelect={handleCalendarSelect}
                 initialFocus
               />

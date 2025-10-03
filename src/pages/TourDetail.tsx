@@ -237,18 +237,55 @@ const TourDetail = () => {
                 <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1">
                   <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
                   <TabsTrigger value="destinations" className="text-xs sm:text-sm">
-                    Destinations ({tour.destinations?.length || 0})
+                    <div className="flex flex-col items-center">
+                      <span>Destinations</span>
+                      <span className="text-xs sm:text-sm font-bold">
+                        {tour.destinations?.length || 0} | {(tour.destinations.reduce((sum, d) => sum + (d.price * tour.totalGuests), 0) / 1000).toFixed(0)}k
+                      </span>
+                    </div>
                   </TabsTrigger>
                   <TabsTrigger value="expenses" className="text-xs sm:text-sm">
-                    Expenses ({tour.expenses?.length || 0})
+                    <div className="flex flex-col items-center">
+                      <span>Expenses</span>
+                      <span className="text-xs sm:text-sm font-bold">
+                        {tour.expenses?.length || 0} | {(tour.expenses.reduce((sum, e) => sum + (e.price * tour.totalGuests), 0) / 1000).toFixed(0)}k
+                      </span>
+                    </div>
                   </TabsTrigger>
                   <TabsTrigger value="meals" className="text-xs sm:text-sm">
-                    Meals ({tour.meals?.length || 0})
+                    <div className="flex flex-col items-center">
+                      <span>Meals</span>
+                      <span className="text-xs sm:text-sm font-bold">
+                        {tour.meals?.length || 0} | {(tour.meals.reduce((sum, m) => sum + (m.price * tour.totalGuests), 0) / 1000).toFixed(0)}k
+                      </span>
+                    </div>
                   </TabsTrigger>
                   <TabsTrigger value="allowances" className="text-xs sm:text-sm">
-                    Allowances ({tour.allowances?.length || 0})
+                    <div className="flex flex-col items-center">
+                      <span>Allowances</span>
+                      <span className="text-xs sm:text-sm font-bold">
+                        {tour.allowances?.length || 0} | {(tour.allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0) / 1000).toFixed(0)}k
+                      </span>
+                    </div>
                   </TabsTrigger>
-                  <TabsTrigger value="summary" className="text-xs sm:text-sm">Summary</TabsTrigger>
+                  <TabsTrigger value="summary" className="text-xs sm:text-sm">
+                    <div className="flex flex-col items-center">
+                      <span>Summary</span>
+                      <span className="text-xs sm:text-sm font-bold">
+                        {
+                          ((tour.destinations?.length || 0) +
+                           (tour.expenses?.length || 0) +
+                           (tour.meals?.length || 0) +
+                           (tour.allowances?.length || 0))
+                        } | {
+                          ((tour.destinations.reduce((sum, d) => sum + (d.price * tour.totalGuests), 0) +
+                            tour.expenses.reduce((sum, e) => sum + (e.price * tour.totalGuests), 0) +
+                            tour.meals.reduce((sum, m) => sum + (m.price * tour.totalGuests), 0) +
+                            tour.allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0)) / 1000).toFixed(0)
+                        }k
+                      </span>
+                    </div>
+                  </TabsTrigger>
                 </TabsList>
               </div>
             </div>
