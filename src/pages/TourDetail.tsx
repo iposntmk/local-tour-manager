@@ -12,6 +12,7 @@ import { TourInfoForm } from '@/components/tours/TourInfoForm';
 import { DestinationsTab } from '@/components/tours/DestinationsTab';
 import { ExpensesTab } from '@/components/tours/ExpensesTab';
 import { MealsTab } from '@/components/tours/MealsTab';
+import { ShoppingsTab } from '@/components/tours/ShoppingsTab';
 import { AllowancesTab } from '@/components/tours/AllowancesTab';
 import { SummaryTab } from '@/components/tours/SummaryTab';
 import { toast } from 'sonner';
@@ -26,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Tour, TourInput, Destination, Expense, Meal, Allowance, TourSummary } from '@/types/tour';
+import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary } from '@/types/tour';
 import { formatDateDMY } from '@/lib/date-utils';
 
 const TourDetail = () => {
@@ -46,7 +47,7 @@ const TourDetail = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (input: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => {
+    mutationFn: async (input: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; shoppings: Shopping[]; summary: TourSummary }) => {
       // Pass subcollections directly to createTour - it will handle them internally
       const createdTour = await store.createTour(input);
       return createdTour;
@@ -93,12 +94,12 @@ const TourDetail = () => {
     },
   });
 
-  const handleSave = (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; summary: TourSummary }) => {
+  const handleSave = (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; shoppings: Shopping[]; summary: TourSummary }) => {
     if (isNewTour) {
       createMutation.mutate(data);
     } else if (id) {
       // For updates, only update the basic tour info (not subcollections here)
-      const { destinations, expenses, meals, allowances, ...tourInput } = data;
+      const { destinations, expenses, meals, allowances, shoppings, ...tourInput } = data;
       updateMutation.mutate({ id, patch: { ...tourInput, summary: data.summary } });
     }
   };
@@ -267,6 +268,14 @@ const TourDetail = () => {
                       </span>
                     </div>
                   </TabsTrigger>
+                  <TabsTrigger value="shoppings" className="text-xs sm:text-sm">
+                    <div className="flex flex-col items-center">
+                      <span>Shopping</span>
+                      <span className="text-xs sm:text-sm font-bold">
+                        {tour.shoppings?.length || 0} | {(tour.shoppings.reduce((sum, s) => sum + (s.price * tour.totalGuests), 0) / 1000).toFixed(0)}k
+                      </span>
+                    </div>
+                  </TabsTrigger>
                   <TabsTrigger value="allowances" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
                       <span>Allowances</span>
@@ -283,11 +292,13 @@ const TourDetail = () => {
                           ((tour.destinations?.length || 0) +
                            (tour.expenses?.length || 0) +
                            (tour.meals?.length || 0) +
+                           (tour.shoppings?.length || 0) +
                            (tour.allowances?.length || 0))
                         } | {
                           ((tour.destinations.reduce((sum, d) => sum + (d.price * tour.totalGuests), 0) +
                             tour.expenses.reduce((sum, e) => sum + (e.price * tour.totalGuests), 0) +
                             tour.meals.reduce((sum, m) => sum + (m.price * tour.totalGuests), 0) +
+                            tour.shoppings.reduce((sum, s) => sum + (s.price * tour.totalGuests), 0) +
                             tour.allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0)) / 1000).toFixed(0)
                         }k
                       </span>
@@ -314,6 +325,10 @@ const TourDetail = () => {
 
             <TabsContent value="meals" className="animate-fade-in">
               <MealsTab tourId={tour.id} meals={tour.meals} />
+            </TabsContent>
+
+            <TabsContent value="shoppings" className="animate-fade-in">
+              <ShoppingsTab tourId={tour.id} shoppings={tour.shoppings} />
             </TabsContent>
 
             <TabsContent value="allowances" className="animate-fade-in">

@@ -34,6 +34,14 @@ export interface Allowance {
   quantity?: number;
 }
 
+export interface Shopping {
+  name: string;
+  price: number;
+  date: string;
+  matchedId?: string;
+  matchedPrice?: number;
+}
+
 export interface TourSummary {
   totalTabs: number;
   advancePayment?: number;
@@ -68,6 +76,7 @@ export interface Tour {
   expenses: Expense[];
   meals: Meal[];
   allowances: Allowance[];
+  shoppings: Shopping[];
   summary: TourSummary;
 }
 
