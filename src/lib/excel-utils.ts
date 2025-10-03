@@ -222,7 +222,20 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     });
   }
 
-  const dataRowCount = Math.max(serviceItems.length, allowances.length);
+  // Group allowances by province and sum amounts
+  const allowancesByProvince = new Map<string, { province: string; totalAmount: number; days: number }>();
+  allowances.forEach(allowance => {
+    const province = allowance.province || '';
+    if (!allowancesByProvince.has(province)) {
+      allowancesByProvince.set(province, { province, totalAmount: 0, days: 0 });
+    }
+    const group = allowancesByProvince.get(province)!;
+    group.totalAmount += allowance.amount || 0;
+    group.days += 1;
+  });
+
+  const mergedAllowances = Array.from(allowancesByProvince.values());
+  const dataRowCount = Math.max(serviceItems.length, mergedAllowances.length);
   let lastDataRow = dataStartRow - 1;
 
   for (let index = 0; index < dataRowCount; index += 1) {
@@ -232,6 +245,8 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     setCodeAndDateCells(row);
 
     const service = serviceItems[index];
+    const allowance = mergedAllowances[index];
+
     if (service) {
       row.getCell(3).value = service.name;
       row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
@@ -246,24 +261,22 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
       row.getCell(6).numFmt = currencyFormat;
     }
 
-    const allowance = allowances[index];
     if (allowance) {
-      row.getCell(7).value = allowance.province || '';
+      row.getCell(7).value = allowance.province;
+      row.getCell(7).alignment = { vertical: 'middle', horizontal: 'left' };
 
-      row.getCell(8).value = 1;
+      row.getCell(8).value = allowance.days;
       row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
 
-      row.getCell(9).value = allowance.amount || 0;
+      row.getCell(9).value = allowance.totalAmount / allowance.days;
       row.getCell(9).numFmt = currencyFormat;
 
-      row.getCell(10).value = allowance.amount || 0;
+      // Column J: Use formula H * I
+      row.getCell(10).value = { formula: `H${rowNumber}*I${rowNumber}` };
       row.getCell(10).numFmt = currencyFormat;
     }
 
-    if (service || allowance) {
-      row.getCell(11).value = { formula: `F${rowNumber}+J${rowNumber}` };
-      row.getCell(11).numFmt = currencyFormat;
-    }
+    // Don't show total in column K for data rows (only from totals row onwards)
 
     applyRowBorder(row);
     lastDataRow = rowNumber;
@@ -276,16 +289,16 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
 
   // Row tổng cộng với background vàng theo mẫu
 
-  // Merge A-C cho "dịch vụ"
-  worksheet.mergeCells(`A${totalsRow.number}:C${totalsRow.number}`);
-  totalsRow.getCell(1).value = 'dịch vụ';
-  totalsRow.getCell(1).font = { bold: true };
-  totalsRow.getCell(1).fill = totalsFill;
-  totalsRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+  // Merge C-E cho "dịch vụ"
+  worksheet.mergeCells(`C${totalsRow.number}:E${totalsRow.number}`);
+  totalsRow.getCell(3).value = 'dịch vụ';
+  totalsRow.getCell(3).font = { bold: true };
+  totalsRow.getCell(3).fill = totalsFill;
+  totalsRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
 
-  // D-E: Empty with yellow fill
-  totalsRow.getCell(4).fill = totalsFill;
-  totalsRow.getCell(5).fill = totalsFill;
+  // A-B: Empty with yellow fill
+  totalsRow.getCell(1).fill = totalsFill;
+  totalsRow.getCell(2).fill = totalsFill;
 
   // F: Tổng thành tiền (vé + ăn + uống + chi phí)
   if (dataEndRow >= dataStartRow) {
@@ -296,12 +309,15 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
   totalsRow.getCell(6).numFmt = currencyFormat;
   totalsRow.getCell(6).fill = totalsFill;
 
-  // Merge G-I cho "CTP"
-  worksheet.mergeCells(`G${totalsRow.number}:I${totalsRow.number}`);
-  totalsRow.getCell(7).value = 'CTP';
+  // G: công tác phí label (same row as dịch vụ)
+  totalsRow.getCell(7).value = 'công tác phí';
   totalsRow.getCell(7).font = { bold: true };
   totalsRow.getCell(7).fill = totalsFill;
-  totalsRow.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+  totalsRow.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
+
+  // H-I: Empty with yellow fill
+  totalsRow.getCell(8).fill = totalsFill;
+  totalsRow.getCell(9).fill = totalsFill;
 
   // J: Tổng CTP
   if (dataEndRow >= dataStartRow) {
@@ -319,88 +335,100 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
 
   applyRowBorder(totalsRow);
 
-  // TỔNG KẾT section theo mẫu
-  currentRow++; // Empty row
+  // Check if TỔNG KẾT section should be displayed
+  const advancePayment = tour.summary?.advancePayment ?? 0;
+  const collectionsForCompany = tour.summary?.collectionsForCompany ?? 0;
+  const companyTip = tour.summary?.companyTip ?? 0;
+  const showSummary = advancePayment !== 0 || collectionsForCompany !== 0 || companyTip !== 0;
 
-  // Row: TỔNG KẾT title
-  const summaryTitleRow = worksheet.getRow(currentRow);
-  currentRow++;
+  let finalTotalRow: Row;
 
-  worksheet.mergeCells(`A${summaryTitleRow.number}:G${summaryTitleRow.number}`);
-  summaryTitleRow.getCell(1).value = 'TỔNG KẾT';
-  summaryTitleRow.getCell(1).font = { bold: true };
-  summaryTitleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-  summaryTitleRow.getCell(1).fill = summaryTitleFill;
+  if (showSummary) {
+    // TỔNG KẾT section theo mẫu
+    currentRow++; // Empty row
 
-  applyRowBorder(summaryTitleRow);
-
-  // Helper function for summary rows
-  const summaryValueColumn = 2; // Column B
-  const summaryValueColumnLetter = 'B';
-
-  const addSummaryRow = (label: string, formula?: string, value?: number) => {
-    const row = worksheet.getRow(currentRow);
+    // Row: TỔNG KẾT title
+    const summaryTitleRow = worksheet.getRow(currentRow);
     currentRow++;
 
-    // A: Label
-    row.getCell(1).value = label;
-    row.getCell(1).font = { bold: true };
-    row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    worksheet.mergeCells(`J${summaryTitleRow.number}:K${summaryTitleRow.number}`);
+    summaryTitleRow.getCell(10).value = 'TỔNG KẾT';
+    summaryTitleRow.getCell(10).font = { bold: true };
+    summaryTitleRow.getCell(10).alignment = { horizontal: 'center', vertical: 'middle' };
+    summaryTitleRow.getCell(10).fill = summaryTitleFill;
 
-    // B: Value/formula
-    if (formula) {
-      row.getCell(summaryValueColumn).value = { formula };
-    } else if (value !== undefined) {
-      row.getCell(summaryValueColumn).value = value;
-    }
-    row.getCell(summaryValueColumn).numFmt = currencyFormat;
-    row.getCell(summaryValueColumn).font = { bold: true };
-    row.getCell(summaryValueColumn).alignment = { horizontal: 'left', vertical: 'middle' };
+    applyRowBorder(summaryTitleRow);
 
-    // Apply borders
-    applyRowBorder(row);
+    // Helper function for summary rows
+    const summaryLabelColumn = 10; // Column J
+    const summaryValueColumn = 11; // Column K
+    const summaryValueColumnLetter = 'K';
 
-    return row;
-  };
+    const addSummaryRow = (label: string, formula?: string, value?: number) => {
+      const row = worksheet.getRow(currentRow);
+      currentRow++;
 
-  // Row: Tổng tabs
-  const totalTabsRow = addSummaryRow('Tổng tabs', `K${totalsRow.number}`);
+      // J: Label (right aligned)
+      row.getCell(summaryLabelColumn).value = label;
+      row.getCell(summaryLabelColumn).font = { bold: true };
+      row.getCell(summaryLabelColumn).alignment = { horizontal: 'right', vertical: 'middle' };
 
-  // Row: Tạm ứng
-  const advanceRow = addSummaryRow('Tạm ứng', undefined, tour.summary?.advancePayment ?? 1000000);
+      // K: Value/formula (right aligned)
+      if (formula) {
+        row.getCell(summaryValueColumn).value = { formula };
+      } else if (value !== undefined) {
+        row.getCell(summaryValueColumn).value = value;
+      }
+      row.getCell(summaryValueColumn).numFmt = currencyFormat;
+      row.getCell(summaryValueColumn).font = { bold: true };
+      row.getCell(summaryValueColumn).alignment = { horizontal: 'right', vertical: 'middle' };
 
-  // Row: Sau tạm ứng
-  const afterAdvanceRow = addSummaryRow(
-    'Sau tạm ứng',
-    `${summaryValueColumnLetter}${totalTabsRow.number}-${summaryValueColumnLetter}${advanceRow.number}`,
-  );
+      // Apply borders
+      applyRowBorder(row);
 
-  // Row: Thu của khách
-  const collectionsRow = addSummaryRow('Thu của khách', undefined, tour.summary?.collectionsForCompany ?? 0);
+      return row;
+    };
 
-  // Row: Sau thu khách
-  const afterCollectionsRow = addSummaryRow(
-    'Sau thu khách',
-    `${summaryValueColumnLetter}${afterAdvanceRow.number}-${summaryValueColumnLetter}${collectionsRow.number}`,
-  );
+    // Row: Tổng chi phí + công tác phí
+    const totalTabsRow = addSummaryRow('Tổng chi phí + công tác phí', `K${totalsRow.number}`);
 
-  // Row: Tip HDV
-  const tipRow = addSummaryRow('Tip HDV', undefined, tour.summary?.companyTip ?? 20000000);
+    // Row: Tạm ứng
+    const advanceRow = addSummaryRow('Tạm ứng', undefined, advancePayment);
 
-  // Row: Sau tip HDV
-  const afterTipRow = addSummaryRow(
-    'Sau tip HDV',
-    `${summaryValueColumnLetter}${afterCollectionsRow.number}+${summaryValueColumnLetter}${tipRow.number}`,
-  );
+    // Row: Sau tạm ứng
+    const afterAdvanceRow = addSummaryRow(
+      'Sau tạm ứng',
+      `${summaryValueColumnLetter}${totalTabsRow.number}-${summaryValueColumnLetter}${advanceRow.number}`,
+    );
 
-  // Row: TỔNG CỘNG
-  const finalTotalRow = addSummaryRow('TỔNG CỘNG', `${summaryValueColumnLetter}${afterTipRow.number}`);
-  finalTotalRow.getCell(1).font = { bold: true };
-  finalTotalRow.getCell(summaryValueColumn).font = { bold: true };
+    // Row: Thu của khách
+    const collectionsRow = addSummaryRow('Thu của khách', undefined, collectionsForCompany);
+
+    // Row: Sau thu khách
+    const afterCollectionsRow = addSummaryRow(
+      'Sau thu khách',
+      `${summaryValueColumnLetter}${afterAdvanceRow.number}-${summaryValueColumnLetter}${collectionsRow.number}`,
+    );
+
+    // Row: Tip HDV nhận từ công ty
+    const tipRow = addSummaryRow('Tip HDV nhận từ công ty', undefined, companyTip);
+
+    // Row: Sau tip HDV
+    const afterTipRow = addSummaryRow(
+      'Sau tip HDV',
+      `${summaryValueColumnLetter}${afterCollectionsRow.number}+${summaryValueColumnLetter}${tipRow.number}`,
+    );
+
+    // Row: TỔNG CỘNG (display in column K only)
+    finalTotalRow = addSummaryRow('TỔNG CỘNG', `${summaryValueColumnLetter}${afterTipRow.number}`);
+  } else {
+    // No summary section, final total is just the totals row
+    finalTotalRow = totalsRow;
+  }
 
   return {
     sheetName,
-    finalTotalCell: `${summaryValueColumnLetter}${finalTotalRow.number}`,
+    finalTotalCell: showSummary ? `K${finalTotalRow.number}` : `K${totalsRow.number}`,
   };
 };
 
