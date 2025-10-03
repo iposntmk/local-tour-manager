@@ -74,6 +74,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
       clientPhone: initialData.clientPhone,
       startDate: initialData.startDate,
       endDate: initialData.endDate,
+      notes: initialData.notes,
     } : {
       adults: 1,
       children: 0,
@@ -118,6 +119,29 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const adults = watch('adults');
   const children = watch('children');
   const totalGuests = (adults || 0) + (children || 0);
+
+  // Auto-calculate totals for Financial Summary
+  useEffect(() => {
+    const totalDestinations = destinations.reduce((sum, d) => sum + (d.price * totalGuests), 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + (e.price * totalGuests), 0);
+    const totalMeals = meals.reduce((sum, m) => sum + (m.price * totalGuests), 0);
+    const totalAllowances = allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0);
+
+    const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;
+    const totalAfterAdvance = calculatedTotal - (summary.advancePayment || 0);
+    const totalAfterCollections = totalAfterAdvance + (summary.collectionsForCompany || 0);
+    const totalAfterTip = totalAfterCollections + (summary.companyTip || 0);
+    const finalTotal = totalAfterTip;
+
+    setSummary(prev => ({
+      ...prev,
+      totalTabs: calculatedTotal,
+      totalAfterAdvance,
+      totalAfterCollections,
+      totalAfterTip,
+      finalTotal,
+    }));
+  }, [destinations, expenses, meals, allowances, totalGuests, summary.advancePayment, summary.collectionsForCompany, summary.companyTip]);
 
   const handleFormSubmit = (data: TourInput) => {
     // Validate required fields
@@ -467,6 +491,18 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
               )}
             </div>
           </div>
+
+          {/* Notes - Full width */}
+          <div className="space-y-2 mt-4">
+            <Label htmlFor="notes">Notes</Label>
+            <textarea
+              id="notes"
+              {...register('notes')}
+              placeholder="Add any additional notes about this tour..."
+              rows={4}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="destinations" className="space-y-4 mt-6">
@@ -653,79 +689,97 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         </TabsContent>
 
         <TabsContent value="summary" className="space-y-4 mt-6">
-          <div className="rounded-lg border bg-card p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-4">Financial Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="totalTabs">Total Tabs</Label>
-                <CurrencyInput
-                  id="totalTabs"
-                  value={summary.totalTabs}
-                  onChange={(value) => setSummary({ ...summary, totalTabs: value })}
-                />
+          <div className="space-y-6">
+            {/* Totals Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-lg border bg-card p-4">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Destinations</div>
+                <div className="text-xl font-bold">{destinations.reduce((sum, d) => sum + (d.price * totalGuests), 0).toLocaleString()} ₫</div>
+                <p className="text-xs text-muted-foreground mt-1">{destinations.length} item(s)</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="advancePayment">Advance Payment</Label>
-                <CurrencyInput
-                  id="advancePayment"
-                  value={summary.advancePayment || 0}
-                  onChange={(value) => setSummary({ ...summary, advancePayment: value })}
-                />
+              <div className="rounded-lg border bg-card p-4">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Expenses</div>
+                <div className="text-xl font-bold">{expenses.reduce((sum, e) => sum + (e.price * totalGuests), 0).toLocaleString()} ₫</div>
+                <p className="text-xs text-muted-foreground mt-1">{expenses.length} item(s)</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="totalAfterAdvance">Total After Advance</Label>
-                <CurrencyInput
-                  id="totalAfterAdvance"
-                  value={summary.totalAfterAdvance || 0}
-                  onChange={(value) => setSummary({ ...summary, totalAfterAdvance: value })}
-                />
+              <div className="rounded-lg border bg-card p-4">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Meals</div>
+                <div className="text-xl font-bold">{meals.reduce((sum, m) => sum + (m.price * totalGuests), 0).toLocaleString()} ₫</div>
+                <p className="text-xs text-muted-foreground mt-1">{meals.length} item(s)</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="companyTip">Company Tip</Label>
-                <CurrencyInput
-                  id="companyTip"
-                  value={summary.companyTip || 0}
-                  onChange={(value) => setSummary({ ...summary, companyTip: value })}
-                />
+              <div className="rounded-lg border bg-card p-4">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Allowances</div>
+                <div className="text-xl font-bold">{allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0).toLocaleString()} ₫</div>
+                <p className="text-xs text-muted-foreground mt-1">{allowances.length} item(s)</p>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="totalAfterTip">Total After Tip</Label>
-                <CurrencyInput
-                  id="totalAfterTip"
-                  value={summary.totalAfterTip || 0}
-                  onChange={(value) => setSummary({ ...summary, totalAfterTip: value })}
-                />
-              </div>
+            {/* Financial Summary */}
+            <div className="rounded-lg border bg-card p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-4">Financial Summary</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-2 bg-primary/10 px-3 rounded">
+                  <span className="font-medium">Total Tabs (Auto-calculated)</span>
+                  <span className="font-bold text-primary">{summary.totalTabs?.toLocaleString() || 0} ₫</span>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="collectionsForCompany">Collections for Company</Label>
-                <CurrencyInput
-                  id="collectionsForCompany"
-                  value={summary.collectionsForCompany || 0}
-                  onChange={(value) => setSummary({ ...summary, collectionsForCompany: value })}
-                />
-              </div>
+                <div className="h-px bg-border" />
 
-              <div className="space-y-2">
-                <Label htmlFor="totalAfterCollections">Total After Collections</Label>
-                <CurrencyInput
-                  id="totalAfterCollections"
-                  value={summary.totalAfterCollections || 0}
-                  onChange={(value) => setSummary({ ...summary, totalAfterCollections: value })}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="advancePayment">Advance Payment (Input)</Label>
+                  <CurrencyInput
+                    id="advancePayment"
+                    value={summary.advancePayment || 0}
+                    onChange={(value) => setSummary({ ...summary, advancePayment: value })}
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="finalTotal">Final Total</Label>
-                <CurrencyInput
-                  id="finalTotal"
-                  value={summary.finalTotal || 0}
-                  onChange={(value) => setSummary({ ...summary, finalTotal: value })}
-                />
+                <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
+                  <span className="font-medium">Total After Advance</span>
+                  <span className="font-bold">{summary.totalAfterAdvance?.toLocaleString() || 0} ₫</span>
+                </div>
+
+                <div className="h-px bg-border" />
+
+                <div className="space-y-2">
+                  <Label htmlFor="collectionsForCompany">Collections for Company (Input)</Label>
+                  <CurrencyInput
+                    id="collectionsForCompany"
+                    value={summary.collectionsForCompany || 0}
+                    onChange={(value) => setSummary({ ...summary, collectionsForCompany: value })}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
+                  <span className="font-medium">Total After Collections</span>
+                  <span className="font-bold">{summary.totalAfterCollections?.toLocaleString() || 0} ₫</span>
+                </div>
+
+                <div className="h-px bg-border" />
+
+                <div className="space-y-2">
+                  <Label htmlFor="companyTip">Company Tip (Input)</Label>
+                  <CurrencyInput
+                    id="companyTip"
+                    value={summary.companyTip || 0}
+                    onChange={(value) => setSummary({ ...summary, companyTip: value })}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
+                  <span className="font-medium">Total After Tip</span>
+                  <span className="font-bold">{summary.totalAfterTip?.toLocaleString() || 0} ₫</span>
+                </div>
+
+                <div className="h-px bg-border" />
+
+                <div className="flex justify-between items-center py-3 bg-primary/10 px-4 rounded-lg mt-4">
+                  <span className="text-lg font-bold">Final Total</span>
+                  <span className="text-lg font-bold text-primary">{summary.finalTotal?.toLocaleString() || 0} ₫</span>
+                </div>
               </div>
             </div>
           </div>
