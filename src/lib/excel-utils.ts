@@ -335,6 +335,9 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
   applyRowBorder(summaryTitleRow);
 
   // Helper function for summary rows
+  const summaryValueColumn = 2; // Column B
+  const summaryValueColumnLetter = 'B';
+
   const addSummaryRow = (label: string, formula?: string, value?: number) => {
     const row = worksheet.getRow(currentRow);
     currentRow++;
@@ -344,14 +347,15 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     row.getCell(1).font = { bold: true };
     row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
 
-    // K: Value/formula
+    // B: Value/formula
     if (formula) {
-      row.getCell(11).value = { formula };
+      row.getCell(summaryValueColumn).value = { formula };
     } else if (value !== undefined) {
-      row.getCell(11).value = value;
+      row.getCell(summaryValueColumn).value = value;
     }
-    row.getCell(11).numFmt = currencyFormat;
-    row.getCell(11).font = { bold: true };
+    row.getCell(summaryValueColumn).numFmt = currencyFormat;
+    row.getCell(summaryValueColumn).font = { bold: true };
+    row.getCell(summaryValueColumn).alignment = { horizontal: 'left', vertical: 'middle' };
 
     // Apply borders
     applyRowBorder(row);
@@ -366,28 +370,37 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
   const advanceRow = addSummaryRow('Tạm ứng', undefined, tour.summary?.advancePayment ?? 1000000);
 
   // Row: Sau tạm ứng
-  const afterAdvanceRow = addSummaryRow('Sau tạm ứng', `K${totalTabsRow.number}-K${advanceRow.number}`);
+  const afterAdvanceRow = addSummaryRow(
+    'Sau tạm ứng',
+    `${summaryValueColumnLetter}${totalTabsRow.number}-${summaryValueColumnLetter}${advanceRow.number}`,
+  );
 
   // Row: Thu của khách
   const collectionsRow = addSummaryRow('Thu của khách', undefined, tour.summary?.collectionsForCompany ?? 0);
 
   // Row: Sau thu khách
-  const afterCollectionsRow = addSummaryRow('Sau thu khách', `K${afterAdvanceRow.number}-K${collectionsRow.number}`);
+  const afterCollectionsRow = addSummaryRow(
+    'Sau thu khách',
+    `${summaryValueColumnLetter}${afterAdvanceRow.number}-${summaryValueColumnLetter}${collectionsRow.number}`,
+  );
 
   // Row: Tip HDV
   const tipRow = addSummaryRow('Tip HDV', undefined, tour.summary?.companyTip ?? 20000000);
 
   // Row: Sau tip HDV
-  const afterTipRow = addSummaryRow('Sau tip HDV', `K${afterCollectionsRow.number}+K${tipRow.number}`);
+  const afterTipRow = addSummaryRow(
+    'Sau tip HDV',
+    `${summaryValueColumnLetter}${afterCollectionsRow.number}+${summaryValueColumnLetter}${tipRow.number}`,
+  );
 
   // Row: TỔNG CỘNG
-  const finalTotalRow = addSummaryRow('TỔNG CỘNG', `K${afterTipRow.number}`);
+  const finalTotalRow = addSummaryRow('TỔNG CỘNG', `${summaryValueColumnLetter}${afterTipRow.number}`);
   finalTotalRow.getCell(1).font = { bold: true };
-  finalTotalRow.getCell(11).font = { bold: true };
+  finalTotalRow.getCell(summaryValueColumn).font = { bold: true };
 
   return {
     sheetName,
-    finalTotalCell: `K${finalTotalRow.number}`,
+    finalTotalCell: `${summaryValueColumnLetter}${finalTotalRow.number}`,
   };
 };
 
