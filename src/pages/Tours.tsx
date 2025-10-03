@@ -16,6 +16,7 @@ import {
   X,
   Trash,
   ArrowUpDown,
+  Upload,
 } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 
@@ -631,21 +632,47 @@ const Tours = () => {
         <div className={headerClasses}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Tours</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Manage your tours and itineraries</p>
+              <h1 className="text-lg sm:text-2xl md:text-3xl font-bold">Tours</h1>
+              <p className="text-xs sm:text-sm md:text-base text-muted-foreground">Manage your tours and itineraries</p>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
-              <ImportTourDialogEnhanced onImport={handleImport} />
-              <Button onClick={handleExportAll} variant="outline" className="hover-scale">
-                <FileDown className="h-4 w-4 mr-2" />
+              <ImportTourDialogEnhanced
+                onImport={handleImport}
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover-scale sm:h-10 sm:px-4 sm:text-sm"
+                  >
+                    <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
+                    Import JSON
+                  </Button>
+                }
+              />
+              <Button
+                onClick={handleExportAll}
+                variant="outline"
+                size="sm"
+                className="hover-scale sm:h-10 sm:px-4 sm:text-sm"
+              >
+                <FileDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
                 Export All
               </Button>
-              <Button onClick={handleDeleteAll} variant="outline" className="hover-scale text-destructive hover:text-destructive">
-                <Trash className="h-4 w-4 mr-2" />
+              <Button
+                onClick={handleDeleteAll}
+                variant="outline"
+                size="sm"
+                className="hover-scale text-destructive hover:text-destructive sm:h-10 sm:px-4 sm:text-sm"
+              >
+                <Trash className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
                 Delete All
               </Button>
-              <Button onClick={() => navigate('/tours/new')} className="hover-scale">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button
+                onClick={() => navigate('/tours/new')}
+                size="sm"
+                className="hover-scale sm:h-10 sm:px-4 sm:text-sm"
+              >
+                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
                 New Tour
               </Button>
             </div>
