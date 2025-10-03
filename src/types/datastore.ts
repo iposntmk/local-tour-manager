@@ -1,4 +1,4 @@
-import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput } from './master';
+import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput } from './master';
 import type {
   Tour,
   TourInput,
@@ -7,6 +7,7 @@ import type {
   Expense,
   Meal,
   Allowance,
+  Shopping as TourShopping,
   TourSummary,
   TourListResult,
 } from './tour';
@@ -75,15 +76,15 @@ export interface DataStore {
   bulkCreateTouristDestinations(inputs: TouristDestinationInput[]): Promise<TouristDestination[]>;
   
   // Shopping
-  listShoppings(query?: SearchQuery): Promise<Shopping[]>;
-  getShopping(id: string): Promise<Shopping | undefined>;
-  createShopping(input: ShoppingInput): Promise<Shopping>;
-  updateShopping(id: string, patch: Partial<Shopping>): Promise<void>;
+  listShoppings(query?: SearchQuery): Promise<MasterShopping[]>;
+  getShopping(id: string): Promise<MasterShopping | undefined>;
+  createShopping(input: ShoppingInput): Promise<MasterShopping>;
+  updateShopping(id: string, patch: Partial<MasterShopping>): Promise<void>;
   toggleShoppingStatus(id: string): Promise<void>;
-  duplicateShopping(id: string): Promise<Shopping>;
+  duplicateShopping(id: string): Promise<MasterShopping>;
   deleteShopping(id: string): Promise<void>;
   deleteAllShoppings(): Promise<void>;
-  bulkCreateShoppings(inputs: ShoppingInput[]): Promise<Shopping[]>;
+  bulkCreateShoppings(inputs: ShoppingInput[]): Promise<MasterShopping[]>;
 
   // Expense Categories
   listExpenseCategories(query?: SearchQuery): Promise<ExpenseCategory[]>;
@@ -110,7 +111,7 @@ export interface DataStore {
   // Tours
   listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult>;
   getTour(id: string): Promise<Tour | undefined>;
-  createTour(input: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; summary?: TourSummary }): Promise<Tour>;
+  createTour(input: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; shoppings?: TourShopping[]; summary?: TourSummary }): Promise<Tour>;
   updateTour(id: string, patch: Partial<Tour>): Promise<void>;
   deleteTour(id: string): Promise<void>;
   duplicateTour(id: string): Promise<Tour>;
@@ -131,6 +132,10 @@ export interface DataStore {
   addAllowance(tourId: string, allowance: Allowance): Promise<void>;
   updateAllowance(tourId: string, index: number, allowance: Allowance): Promise<void>;
   removeAllowance(tourId: string, index: number): Promise<void>;
+  
+  addTourShopping(tourId: string, shopping: TourShopping): Promise<void>;
+  updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void>;
+  removeTourShopping(tourId: string, index: number): Promise<void>;
   
   // Data management
   exportData(): Promise<any>;
