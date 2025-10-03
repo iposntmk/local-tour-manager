@@ -409,14 +409,99 @@ function SubcollectionSection({
     const matchedItem = matchFunction && item.name ? matchFunction(item.name) : null;
     const hasMatch = matchedItem !== null;
     const rawItem = rawData && rawData[index];
-    const useCombobox = (matchType === 'destination' || matchType === 'expense' || matchType === 'meal') && masterData.length > 0;
-    const useProvinceCombobox = matchType === 'allowance' && masterData.length > 0;
+    const useCombobox = (matchType === 'destination' || matchType === 'expense' || matchType === 'meal' || matchType === 'allowance') && masterData.length > 0;
 
-    // Render allowance row with different structure
+    // Render allowance row with Name/Price/Date structure (same as expenses)
     if (matchType === 'allowance') {
+      const matchedAllowance = matchFunction ? matchFunction(item.name) : null;
+      const hasAllowanceMatch = matchedAllowance !== null;
+
       return (
         <TableRow key={index}>
           <TableCell className="text-xs font-medium">{index + 1}</TableCell>
+          <TableCell className="text-xs">
+            <div className="space-y-1">
+              {useCombobox ? (
+                <Popover open={openCombobox[index]} onOpenChange={(open) => setOpenCombobox({ ...openCombobox, [index]: open })}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openCombobox[index]}
+                      className={cn(
+                        "h-7 justify-between text-xs w-full",
+                        hasAllowanceMatch ? "border-green-500 bg-green-50" : "border-yellow-500 bg-yellow-50"
+                      )}
+                    >
+                      {item.name || "Select allowance..."}
+                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search allowance..." className="h-7 text-xs" />
+                      <CommandList>
+                        <CommandEmpty>No allowance found.</CommandEmpty>
+                        <CommandGroup>
+                          {masterData.map((allowance: any) => (
+                            <CommandItem
+                              key={allowance.id}
+                              value={allowance.name}
+                              onSelect={() => {
+                                onUpdate(index, 'name', allowance.name);
+                                onUpdate(index, 'price', allowance.price);
+                                setOpenCombobox({ ...openCombobox, [index]: false });
+                              }}
+                              className="text-xs"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-3 w-3",
+                                  item.name === allowance.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {allowance.name} ({allowance.price.toLocaleString()} ₫)
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Input
+                  value={item.name || ''}
+                  onChange={(e) => onUpdate(index, 'name', e.target.value)}
+                  className={cn(
+                    "h-7 text-xs",
+                    hasAllowanceMatch ? "border-green-500 bg-green-50" : "border-yellow-500 bg-yellow-50"
+                  )}
+                />
+              )}
+              {rawItem?.name && (
+                <div className="text-xs text-muted-foreground">JSON: "{rawItem.name}"</div>
+              )}
+              {hasAllowanceMatch && (
+                <div className="flex items-center gap-1 text-xs text-green-600">
+                  <Check className="h-3 w-3" />
+                  Matched: {matchedAllowance.name}
+                </div>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className="text-xs">
+            <div className="space-y-1">
+              <Input
+                type="number"
+                value={item.price || 0}
+                onChange={(e) => onUpdate(index, 'price', parseFloat(e.target.value) || 0)}
+                className="h-7 text-xs"
+              />
+              {rawItem?.price !== undefined && (
+                <div className="text-xs text-muted-foreground">JSON: {rawItem.price}</div>
+              )}
+            </div>
+          </TableCell>
           <TableCell className="text-xs">
             <div className="space-y-1">
               <Input
@@ -427,76 +512,6 @@ function SubcollectionSection({
               />
               {rawItem?.date && (
                 <div className="text-xs text-muted-foreground">JSON: "{rawItem.date}"</div>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-xs">
-            <div className="space-y-1">
-              {useProvinceCombobox ? (
-                <Popover open={openCombobox[index]} onOpenChange={(open) => setOpenCombobox({ ...openCombobox, [index]: open })}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openCombobox[index]}
-                      className="h-7 justify-between text-xs w-full"
-                    >
-                      {item.province || "Select province..."}
-                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search province..." className="h-7 text-xs" />
-                      <CommandList>
-                        <CommandEmpty>No province found.</CommandEmpty>
-                        <CommandGroup>
-                          {masterData.map((prov: any) => (
-                            <CommandItem
-                              key={prov.id}
-                              value={prov.name}
-                              onSelect={() => {
-                                onUpdate(index, 'province', prov.name);
-                                setOpenCombobox({ ...openCombobox, [index]: false });
-                              }}
-                              className="text-xs"
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-3 w-3",
-                                  item.province === prov.name ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {prov.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Input
-                  value={item.province || ''}
-                  onChange={(e) => onUpdate(index, 'province', e.target.value)}
-                  className="h-7 text-xs"
-                />
-              )}
-              {rawItem?.province && (
-                <div className="text-xs text-muted-foreground">JSON: "{rawItem.province}"</div>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-xs">
-            <div className="space-y-1">
-              <Input
-                type="number"
-                value={item.amount || 0}
-                onChange={(e) => onUpdate(index, 'amount', parseFloat(e.target.value) || 0)}
-                className="h-7 text-xs"
-              />
-              {rawItem?.amount !== undefined && (
-                <div className="text-xs text-muted-foreground">JSON: {rawItem.amount}</div>
               )}
             </div>
           </TableCell>
@@ -527,7 +542,10 @@ function SubcollectionSection({
                     variant="outline"
                     role="combobox"
                     aria-expanded={openCombobox[index]}
-                    className="h-7 justify-between text-xs w-full"
+                    className={cn(
+                      "h-7 justify-between text-xs w-full",
+                      hasMatch ? "border-green-500 bg-green-50" : "border-yellow-500 bg-yellow-50"
+                    )}
                   >
                     {item.name || "Select..."}
                     <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
@@ -568,7 +586,10 @@ function SubcollectionSection({
               <Input
                 value={item.name || ''}
                 onChange={(e) => onUpdate(index, 'name', e.target.value)}
-                className="h-7 text-xs"
+                className={cn(
+                  "h-7 text-xs",
+                  hasMatch ? "border-green-500 bg-green-50" : "border-yellow-500 bg-yellow-50"
+                )}
               />
             )}
             {rawItem?.name && (
@@ -643,19 +664,9 @@ function SubcollectionSection({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px] text-xs">#</TableHead>
-                {matchType === 'allowance' ? (
-                  <>
-                    <TableHead className="text-xs">Date / JSON</TableHead>
-                    <TableHead className="text-xs">Province / JSON</TableHead>
-                    <TableHead className="text-xs">Amount / JSON</TableHead>
-                  </>
-                ) : (
-                  <>
-                    <TableHead className="text-xs">Name / JSON</TableHead>
-                    <TableHead className="text-xs">Price / JSON</TableHead>
-                    <TableHead className="text-xs">Date / JSON</TableHead>
-                  </>
-                )}
+                <TableHead className="text-xs">Name / JSON</TableHead>
+                <TableHead className="text-xs">Price / JSON</TableHead>
+                <TableHead className="text-xs">Date / JSON</TableHead>
                 <TableHead className="text-xs w-[80px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -677,6 +688,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   const [expenses, setExpenses] = useState<DetailedExpense[]>([]);
   const [shoppings, setShoppings] = useState<Shopping[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
+  const [ctpAllowances, setCtpAllowances] = useState<DetailedExpense[]>([]);
   const [draft, setDraft] = useState<ReviewItem[]>(items);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -691,17 +703,15 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   const [initialEntityName, setInitialEntityName] = useState<string>('');
   const [targetItemIndex, setTargetItemIndex] = useState<number | null>(null);
 
-  // Virtualization state
-  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 });
+  // Remove virtualization - let cards auto-size
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const ITEM_HEIGHT = 400; // Approximate height of each tour card
-  const BUFFER_SIZE = 5; // Number of items to render above/below visible area
 
   // Cache Fuse instances to avoid recreation on every search
   const fuseInstancesRef = useRef<{
     destinations?: Fuse<TouristDestination>;
     expenses?: Fuse<DetailedExpense>;
     shoppings?: Fuse<Shopping>;
+    allowances?: Fuse<DetailedExpense>;
   }>({});
 
   // Load all entities - optimized with caching
@@ -726,23 +736,33 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         setShoppings(s);
         setProvinces(p);
 
+        // Filter expenses for CTP category only (for allowances)
+        const ctpExpenses = e.filter(exp => exp.categoryRef?.nameAtBooking === 'CTP');
+        setCtpAllowances(ctpExpenses);
+
         // Create Fuse instances once and cache them
         fuseInstancesRef.current = {
           destinations: new Fuse(d, {
             keys: ['name'],
-            threshold: 0.4,
+            threshold: 0.5,
             includeScore: true,
             ignoreLocation: true,
           }),
           expenses: new Fuse(e, {
             keys: ['name'],
-            threshold: 0.4,
+            threshold: 0.5,
             includeScore: true,
             ignoreLocation: true,
           }),
-          shoppings: new Fuse(s, {
+          shoppings: new Fuse(e, {
             keys: ['name'],
-            threshold: 0.4,
+            threshold: 0.5,
+            includeScore: true,
+            ignoreLocation: true,
+          }),
+          allowances: new Fuse(ctpExpenses, {
+            keys: ['name'],
+            threshold: 0.5,
             includeScore: true,
             ignoreLocation: true,
           }),
@@ -752,19 +772,25 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         const matchDestinationLocal = (destinationName: string) => {
           if (!destinationName.trim() || !fuseInstancesRef.current.destinations) return null;
           const matches = fuseInstancesRef.current.destinations.search(destinationName);
-          return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+          return matches.length > 0 && matches[0].score && matches[0].score < 0.5 ? matches[0].item : null;
         };
 
         const matchExpenseLocal = (expenseName: string) => {
           if (!expenseName.trim() || !fuseInstancesRef.current.expenses) return null;
           const matches = fuseInstancesRef.current.expenses.search(expenseName);
-          return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+          return matches.length > 0 && matches[0].score && matches[0].score < 0.5 ? matches[0].item : null;
         };
 
         const matchShoppingLocal = (shoppingName: string) => {
           if (!shoppingName.trim() || !fuseInstancesRef.current.shoppings) return null;
           const matches = fuseInstancesRef.current.shoppings.search(shoppingName);
-          return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+          return matches.length > 0 && matches[0].score && matches[0].score < 0.5 ? matches[0].item : null;
+        };
+
+        const matchAllowanceLocal = (allowanceName: string) => {
+          if (!allowanceName || !allowanceName.trim() || !fuseInstancesRef.current.allowances) return null;
+          const matches = fuseInstancesRef.current.allowances.search(allowanceName);
+          return matches.length > 0 && matches[0].score && matches[0].score < 0.5 ? matches[0].item : null;
         };
 
         // Auto-match using fuzzy search
@@ -801,12 +827,12 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
           if (item.raw.company && !tour.companyRef?.id) {
             const companyFuse = new Fuse(c, {
               keys: ['name'],
-              threshold: 0.4,
+              threshold: 0.5,
               includeScore: true,
               ignoreLocation: true,
             });
             const companyMatch = companyFuse.search(item.raw.company);
-            if (companyMatch.length > 0 && companyMatch[0].score && companyMatch[0].score < 0.4) {
+            if (companyMatch.length > 0 && companyMatch[0].score && companyMatch[0].score < 0.5) {
               const matched = companyMatch[0].item;
               tour.companyRef = { id: matched.id, nameAtBooking: matched.name };
             }
@@ -816,27 +842,37 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
           if (item.raw.guide && !tour.guideRef?.id) {
             const guideFuse = new Fuse(g, {
               keys: ['name'],
-              threshold: 0.4,
+              threshold: 0.5,
               includeScore: true,
               ignoreLocation: true,
             });
             const guideMatch = guideFuse.search(item.raw.guide);
-            if (guideMatch.length > 0 && guideMatch[0].score && guideMatch[0].score < 0.4) {
+            if (guideMatch.length > 0 && guideMatch[0].score && guideMatch[0].score < 0.5) {
               const matched = guideMatch[0].item;
               tour.guideRef = { id: matched.id, nameAtBooking: matched.name };
             }
           }
 
-          // Fuzzy match nationality
+          // Fuzzy match nationality - if multiple nationalities, take only the first one
           if (item.raw.nationality && !tour.clientNationalityRef?.id) {
+            // Extract first nationality if there are multiple (separated by comma, slash, or other delimiters)
+            let nationalityToMatch = item.raw.nationality;
+            const separators = [',', '/', '-', '&', 'and'];
+            for (const sep of separators) {
+              if (nationalityToMatch.includes(sep)) {
+                nationalityToMatch = nationalityToMatch.split(sep)[0].trim();
+                break;
+              }
+            }
+
             const nationalityFuse = new Fuse(n, {
               keys: ['name', 'iso2'],
-              threshold: 0.3,
+              threshold: 0.5,
               includeScore: true,
               ignoreLocation: true,
             });
-            const nationalityMatch = nationalityFuse.search(item.raw.nationality);
-            if (nationalityMatch.length > 0 && nationalityMatch[0].score && nationalityMatch[0].score < 0.3) {
+            const nationalityMatch = nationalityFuse.search(nationalityToMatch);
+            if (nationalityMatch.length > 0 && nationalityMatch[0].score && nationalityMatch[0].score < 0.5) {
               const matched = nationalityMatch[0].item;
               tour.clientNationalityRef = { id: matched.id, nameAtBooking: matched.name };
             }
@@ -880,11 +916,11 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
             });
           }
 
-          // Fuzzy match meals - auto-apply matched values (using shopping data)
+          // Fuzzy match meals - auto-apply matched values (using detailed expenses)
           if (tour.meals && tour.meals.length > 0) {
             tour.meals = tour.meals.map(meal => {
               if (!meal.name) return meal;
-              const matched = matchShoppingLocal(meal.name);
+              const matched = matchExpenseLocal(meal.name);
               if (matched) {
                 return {
                   ...meal,
@@ -895,6 +931,25 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                 };
               }
               return meal;
+            });
+          }
+
+          // Fuzzy match allowances - auto-apply matched values (using CTP detailed expenses)
+          if (tour.allowances && tour.allowances.length > 0) {
+            tour.allowances = tour.allowances.map(allowance => {
+              if (!allowance.name) return allowance;
+              const matched = matchAllowanceLocal(allowance.name);
+              if (matched) {
+                console.log('Matched allowance:', allowance.name, '-> Master:', matched.name, 'Price:', matched.price);
+                return {
+                  ...allowance,
+                  name: matched.name,
+                  price: matched.price,
+                  matchedId: matched.id,
+                  matchedPrice: matched.price
+                };
+              }
+              return allowance;
             });
           }
 
@@ -961,7 +1016,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
           'tour.expenses.name',
           'tour.meals.name'
         ],
-        threshold: 0.4,
+        threshold: 0.5,
         includeScore: true,
       });
 
@@ -981,31 +1036,6 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
       return aIndex - bIndex; // Maintain original order for same warning status
     });
   }, [draft, searchQuery, validationWarnings]);
-
-  // Handle scroll for virtualization
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!scrollContainerRef.current) return;
-
-      const scrollTop = scrollContainerRef.current.scrollTop;
-      const viewportHeight = scrollContainerRef.current.clientHeight;
-
-      const start = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_SIZE);
-      const end = Math.min(
-        filteredTours.length,
-        Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + BUFFER_SIZE
-      );
-
-      setVisibleRange({ start, end });
-    };
-
-    const scrollElement = scrollContainerRef.current;
-    if (scrollElement) {
-      scrollElement.addEventListener('scroll', handleScroll);
-      handleScroll(); // Initial calculation
-      return () => scrollElement.removeEventListener('scroll', handleScroll);
-    }
-  }, [filteredTours.length, BUFFER_SIZE, ITEM_HEIGHT]);
 
   // Final validation for import
   const validateForImport = (): { valid: boolean; errors: string[] } => {
@@ -1042,10 +1072,10 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     
     const fuse = new Fuse(entities, {
       keys: ['name'],
-      threshold: 0.4,
+      threshold: 0.5,
       includeScore: true,
     });
-    
+
     return fuse.search(query).map(result => result.item);
   };
 
@@ -1053,19 +1083,25 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   const matchDestination = (destinationName: string) => {
     if (!destinationName.trim() || !fuseInstancesRef.current.destinations) return null;
     const matches = fuseInstancesRef.current.destinations.search(destinationName);
-    return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+    return matches.length > 0 && matches[0].score && matches[0].score < 0.5 ? matches[0].item : null;
   };
 
   const matchExpense = (expenseName: string) => {
     if (!expenseName.trim() || !fuseInstancesRef.current.expenses) return null;
     const matches = fuseInstancesRef.current.expenses.search(expenseName);
-    return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+    return matches.length > 0 && matches[0].score && matches[0].score < 0.5 ? matches[0].item : null;
   };
 
   const matchShopping = (shoppingName: string) => {
     if (!shoppingName.trim() || !fuseInstancesRef.current.shoppings) return null;
     const matches = fuseInstancesRef.current.shoppings.search(shoppingName);
-    return matches.length > 0 && matches[0].score && matches[0].score < 0.4 ? matches[0].item : null;
+    return matches.length > 0 && matches[0].score && matches[0].score < 0.5 ? matches[0].item : null;
+  };
+
+  const matchAllowance = (allowanceName: string) => {
+    if (!allowanceName || !allowanceName.trim() || !fuseInstancesRef.current.allowances) return null;
+    const matches = fuseInstancesRef.current.allowances.search(allowanceName);
+    return matches.length > 0 && matches[0].score && matches[0].score < 0.5 ? matches[0].item : null;
   };
 
   // Update subcollection items
@@ -1281,33 +1317,19 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
       {/* Content */}
       <div className="space-y-3">
-          <ScrollArea className="h-[600px]" ref={scrollContainerRef as any}>
-            <div
-              className="space-y-3"
-              style={{
-                height: `${filteredTours.length * ITEM_HEIGHT}px`,
-                position: 'relative'
-              }}
-            >
-              {filteredTours.slice(visibleRange.start, visibleRange.end).map((item, index) => {
-                const actualIndex = visibleRange.start + index;
+          <ScrollArea className="h-[calc(100vh-300px)]" ref={scrollContainerRef as any}>
+            <div className="space-y-4 pr-4">
+              {filteredTours.map((item, index) => {
                 const originalIndex = draft.findIndex(d => d === item);
                 const tour = item.tour;
                 const raw = item.raw;
                 const warnings = validationWarnings[originalIndex] || [];
 
                 return (
-                  <Card
-                    key={originalIndex}
-                    className={warnings.length > 0 ? "border-yellow-500" : ""}
-                    style={{
-                      position: 'absolute',
-                      top: `${actualIndex * ITEM_HEIGHT}px`,
-                      left: 0,
-                      right: 0,
-                      width: '100%'
-                    }}
-                  >
+                  <div key={originalIndex}>
+                    <Card
+                      className={warnings.length > 0 ? "border-yellow-500" : ""}
+                    >
                     <CardHeader className="pb-2 pt-3">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base">{tour.tourCode || `Tour ${originalIndex + 1}`}</CardTitle>
@@ -1529,9 +1551,9 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                             sectionKey="meals"
                             onUpdate={(index, field, value) => updateMeal(originalIndex, index, field, value)}
                             onRemove={(index) => removeMeal(originalIndex, index)}
-                            matchFunction={matchShopping}
+                            matchFunction={matchExpense}
                             matchType="meal"
-                            masterData={shoppings}
+                            masterData={expenses}
                             rawData={raw.meals || []}
                           />
                         </TabsContent>
@@ -1545,9 +1567,9 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                             sectionKey="allowances"
                             onUpdate={(index, field, value) => updateAllowance(originalIndex, index, field, value)}
                             onRemove={(index) => removeAllowance(originalIndex, index)}
-                            matchFunction={null}
+                            matchFunction={matchAllowance}
                             matchType="allowance"
-                            masterData={provinces}
+                            masterData={ctpAllowances}
                             rawData={raw.allowances || []}
                           />
                         </TabsContent>
@@ -1569,6 +1591,10 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                       </Tabs>
                     </CardContent>
                   </Card>
+                  {index < filteredTours.length - 1 && (
+                    <div className="my-4 border-t border-gray-300" />
+                  )}
+                  </div>
                 );
               })}
             </div>
@@ -1615,7 +1641,15 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                     price: matchedPrice !== undefined ? matchedPrice : meal.price,
                   }));
                 }
-                
+
+                // Apply matched prices to allowances then strip metadata
+                if (tour.allowances) {
+                  tour.allowances = tour.allowances.map(({ matchedId, matchedPrice, ...allowance }: any) => ({
+                    ...allowance,
+                    price: matchedPrice !== undefined ? matchedPrice : allowance.price,
+                  }));
+                }
+
                 return tour;
               });
               

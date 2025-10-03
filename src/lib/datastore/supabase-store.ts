@@ -1349,8 +1349,8 @@ export class SupabaseStore implements DataStore {
         }));
         tour.allowances = (row.tour_allowances || []).map((a: any) => ({
           date: a.date,
-          province: a.province,
-          amount: Number(a.amount) || 0,
+          name: a.name,
+          price: Number(a.price) || 0,
         }));
       }
       return tour;
@@ -1402,8 +1402,8 @@ export class SupabaseStore implements DataStore {
     }));
     tour.allowances = (row.tour_allowances || []).map((a: any) => ({
       date: a.date,
-      province: a.province,
-      amount: Number(a.amount) || 0,
+      name: a.name,
+      price: Number(a.price) || 0,
     }));
 
     return tour;
@@ -1773,8 +1773,8 @@ export class SupabaseStore implements DataStore {
     const { error } = await this.supabase.from('tour_allowances').insert({
       tour_id: tourId,
       date: allowance.date,
-      province: allowance.province,
-      amount: allowance.amount,
+      name: allowance.name,
+      price: allowance.price,
     });
     if (error) throw error;
   }
@@ -1784,8 +1784,8 @@ export class SupabaseStore implements DataStore {
     if (rows && rows[index]) {
       const { error } = await this.supabase.from('tour_allowances').update({
         date: allowance.date,
-        province: allowance.province,
-        amount: allowance.amount,
+        name: allowance.name,
+        price: allowance.price,
       }).eq('id', rows[index].id);
       if (error) throw error;
     }

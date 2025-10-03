@@ -509,10 +509,17 @@ const Tours = () => {
                   }
                   return normalized;
                 });
-                const cleanAllowances = tour.allowances?.map((allow) => ({
-                  ...allow,
-                  date: normalizeDate(allow.date),
-                }));
+                const cleanAllowances = tour.allowances?.map(({ matchedId, matchedPrice, ...allow }: any) => {
+                  const normalized = { ...allow, date: normalizeDate(allow.date) } as any;
+                  if ((!normalized.price || normalized.price === 0) && normalized.name) {
+                    const m = autoMatch(normalized.name, expMap);
+                    if (m) {
+                      normalized.name = m.name;
+                      normalized.price = Number(m.price) || 0;
+                    }
+                  }
+                  return normalized;
+                });
 
                 // Create the tour with all subcollections in one call
                 const createdTour = await store.createTour({
