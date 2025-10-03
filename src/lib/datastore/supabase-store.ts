@@ -20,7 +20,18 @@ import type {
   ExpenseCategoryInput,
   DetailedExpenseInput,
 } from '@/types/master';
-import type { Tour, Destination, Expense, Meal, Allowance, TourQuery, EntityRef, TourInput, TourSummary } from '@/types/tour';
+import type {
+  Tour,
+  Destination,
+  Expense,
+  Meal,
+  Allowance,
+  TourQuery,
+  EntityRef,
+  TourInput,
+  TourSummary,
+  TourListResult,
+} from '@/types/tour';
 import { generateSearchKeywords } from '@/lib/string-utils';
 import { differenceInDays } from 'date-fns';
 
@@ -1265,7 +1276,7 @@ export class SupabaseStore implements DataStore {
   }
 
   // Tours
-  async listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<Tour[]> {
+  async listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult> {
     const includeDetails = options?.includeDetails ?? false;
 
     // Fetch tours with optional nested relations to avoid unnecessary payload
@@ -1280,7 +1291,8 @@ export class SupabaseStore implements DataStore {
         tour_meals(*),
         tour_allowances(*)
       `
-          : '*'
+          : '*',
+        { count: 'exact' }
       )
       .order('start_date', { ascending: false });
 
@@ -1299,11 +1311,25 @@ export class SupabaseStore implements DataStore {
     if (query?.guideId) queryBuilder = queryBuilder.eq('guide_id', query.guideId);
     if (query?.startDate) queryBuilder = queryBuilder.gte('start_date', query.startDate);
     if (query?.endDate) queryBuilder = queryBuilder.lte('end_date', query.endDate);
+    if (query?.nationalityId) queryBuilder = queryBuilder.eq('nationality_id', query.nationalityId);
 
-    const { data, error } = await queryBuilder;
+    const limit = typeof query?.limit === 'number' ? query.limit : undefined;
+    const offset = typeof query?.offset === 'number' ? query.offset : undefined;
+
+    if (typeof limit === 'number' && limit > 0) {
+      if (typeof offset === 'number' && offset >= 0) {
+        queryBuilder = queryBuilder.range(offset, offset + limit - 1);
+      } else {
+        queryBuilder = queryBuilder.limit(limit);
+      }
+    } else if (limit === 0) {
+      queryBuilder = queryBuilder.limit(0);
+    }
+
+    const { data, error, count } = await queryBuilder;
     if (error) throw error;
 
-    return (data || []).map((row: any) => {
+    const tours = (data || []).map((row: any) => {
       const tour = this.mapTour(row);
       if (includeDetails) {
         tour.destinations = (row.tour_destinations || []).map((d: any) => ({
@@ -1329,6 +1355,11 @@ export class SupabaseStore implements DataStore {
       }
       return tour;
     });
+
+    return {
+      tours,
+      total: typeof count === 'number' ? count : tours.length,
+    };
   }
 
   async getTour(id: string): Promise<Tour | null> {
@@ -1770,7 +1801,7 @@ export class SupabaseStore implements DataStore {
 
   // Data Import/Export
   async exportData(): Promise<any> {
-    const [guides, companies, nationalities, provinces, destinations, shoppings, categories, expenses, tours] = await Promise.all([
+    const [guides, companies, nationalities, provinces, destinations, shoppings, categories, expenses, tourResult] = await Promise.all([
       this.listGuides(),
       this.listCompanies(),
       this.listNationalities(),
@@ -1791,7 +1822,7 @@ export class SupabaseStore implements DataStore {
       shoppings,
       expenseCategories: categories,
       detailedExpenses: expenses,
-      tours,
+      tours: tourResult.tours,
     };
   }
 

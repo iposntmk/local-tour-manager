@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import type { Tour } from '@/types/tour';
+import type { Tour, TourQuery } from '@/types/tour';
 import Fuse from 'fuse.js';
 
 const Tours = () => {
@@ -41,7 +41,7 @@ const Tours = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(20); // Show 20 tours per page
+  const pageSize = 20; // Show 20 tours per page
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -50,51 +50,69 @@ const Tours = () => {
     localStorage.setItem('tours.filtersExpanded', JSON.stringify(filtersExpanded));
   }, [filtersExpanded]);
 
-  const { data: tours = [], isLoading } = useQuery({
-    queryKey: ['tours', search],
-    queryFn: () => store.listTours({ tourCode: search }, { includeDetails: false }),
+  const baseTourQuery = useMemo((): TourQuery => {
+    const query: TourQuery = {};
+    const trimmedSearch = search.trim();
+
+    if (trimmedSearch) {
+      query.tourCode = trimmedSearch;
+    }
+
+    if (nationalityFilter !== 'all') {
+      query.nationalityId = nationalityFilter;
+    }
+
+    if (monthFilter !== 'all') {
+      const [yearStr, monthStr] = monthFilter.split('-');
+      const year = Number(yearStr);
+      const month = Number(monthStr);
+      if (!Number.isNaN(year) && !Number.isNaN(month)) {
+        query.startDate = `${monthFilter}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        query.endDate = `${monthFilter}-${String(lastDay).padStart(2, '0')}`;
+      }
+    }
+
+    return query;
+  }, [search, nationalityFilter, monthFilter]);
+
+  const {
+    data: toursResult,
+    isLoading,
+  } = useQuery({
+    queryKey: ['tours', baseTourQuery, currentPage, pageSize],
+    queryFn: () =>
+      store.listTours(
+        {
+          ...baseTourQuery,
+          limit: pageSize,
+          offset: (currentPage - 1) * pageSize,
+        },
+        { includeDetails: false }
+      ),
     staleTime: 30000, // Consider data fresh for 30 seconds
     cacheTime: 300000, // Keep in cache for 5 minutes
   });
+
+  const tours = toursResult?.tours ?? [];
+  const totalTours = toursResult?.total ?? 0;
+  const totalPages = totalTours > 0 ? Math.ceil(totalTours / pageSize) : 1;
 
   const { data: nationalities = [] } = useQuery({
     queryKey: ['nationalities'],
     queryFn: () => store.listNationalities({}),
   });
 
-  // Filter tours by nationality and month
-  const filteredTours = useMemo(() => {
-    return tours.filter(tour => {
-      // Nationality filter
-      if (nationalityFilter !== 'all' && tour.clientNationalityRef.id !== nationalityFilter) {
-        return false;
-      }
-
-      // Month filter
-      if (monthFilter !== 'all') {
-        const tourMonth = tour.startDate.substring(0, 7); // YYYY-MM format
-        if (tourMonth !== monthFilter) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [tours, nationalityFilter, monthFilter]);
-
-  // Paginate filtered tours
-  const paginatedTours = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return filteredTours.slice(startIndex, endIndex);
-  }, [filteredTours, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(filteredTours.length / pageSize);
-
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [nationalityFilter, monthFilter, search]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   // Get unique months from tours
   const availableMonths = useMemo(() => {
@@ -174,13 +192,13 @@ const Tours = () => {
   };
 
   const handleExportAll = async () => {
-    if (tours.length === 0) {
+    if (totalTours === 0) {
       toast.error('No tours to export');
       return;
     }
 
     try {
-      const toursWithDetails = await store.listTours({ tourCode: search }, { includeDetails: true });
+      const { tours: toursWithDetails } = await store.listTours({ ...baseTourQuery }, { includeDetails: true });
 
       if (toursWithDetails.length === 0) {
         toast.error('No tours to export');
@@ -284,7 +302,7 @@ const Tours = () => {
       const skipped: string[] = [];
 
       // Load existing tours to check for duplicates
-      const existingTours = await store.listTours({});
+      const { tours: existingTours } = await store.listTours({});
       const existingTourCodes = new Set(existingTours.map(t => t.tourCode.toLowerCase()));
 
       // Load master data once for auto-matching fallback
@@ -441,14 +459,7 @@ const Tours = () => {
     onSuccess: async (result, tours) => {
       const { imported, skipped } = result;
 
-      // Instead of invalidating, directly set the query data to avoid refetching
-      await queryClient.cancelQueries({ queryKey: ['tours'] });
-
-      const previousTours = queryClient.getQueryData<Tour[]>(['tours']) || [];
-      const newTours = [...previousTours, ...imported];
-
-      // Update cache directly
-      queryClient.setQueryData(['tours'], newTours);
+      await queryClient.invalidateQueries({ queryKey: ['tours'] });
 
       // Show success message with details
       if (skipped.length > 0) {
@@ -579,7 +590,7 @@ const Tours = () => {
               {hasActiveFilters && (
                 <div className="flex items-center gap-2 text-sm mt-3">
                   <span className="text-muted-foreground">
-                    Showing {filteredTours.length} of {tours.length} tours
+                    Showing {tours.length} of {totalTours} tours
                   </span>
                   {nationalityFilter !== 'all' && (
                     <Badge variant="secondary">
@@ -603,13 +614,15 @@ const Tours = () => {
               <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : filteredTours.length === 0 ? (
+        ) : totalTours === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            {tours.length === 0 ? 'No tours found. Create your first tour to get started.' : 'No tours match your filters.'}
+            {!hasActiveFilters && !search.trim()
+              ? 'No tours found. Create your first tour to get started.'
+              : 'No tours match your current filters.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {paginatedTours.map((tour, index) => {
+            {tours.map((tour, index) => {
               const isExpanded = expandedCards.has(tour.id);
               return (
                 <div
@@ -774,9 +787,17 @@ const Tours = () => {
         )}
 
         {/* Pagination Info */}
-        {filteredTours.length > 0 && (
+        {totalTours > 0 && tours.length > 0 && (
           <div className="text-center text-sm text-muted-foreground mt-4">
-            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredTours.length)} of {filteredTours.length} tours
+            Showing
+            {' '}
+            {((currentPage - 1) * pageSize) + 1}
+            {' '}
+            to
+            {' '}
+            {((currentPage - 1) * pageSize) + tours.length}
+            {' '}
+            of {totalTours} tours
           </div>
         )}
       </div>
