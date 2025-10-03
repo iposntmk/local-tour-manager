@@ -1,5 +1,15 @@
 import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput } from './master';
-import type { Tour, TourInput, TourQuery, Destination, Expense, Meal, Allowance, TourSummary } from './tour';
+import type {
+  Tour,
+  TourInput,
+  TourQuery,
+  Destination,
+  Expense,
+  Meal,
+  Allowance,
+  TourSummary,
+  TourListResult,
+} from './tour';
 
 export interface SearchQuery {
   search?: string;
@@ -98,7 +108,7 @@ export interface DataStore {
   bulkCreateDetailedExpenses(inputs: DetailedExpenseInput[]): Promise<DetailedExpense[]>;
   
   // Tours
-  listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<Tour[]>;
+  listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult>;
   getTour(id: string): Promise<Tour | undefined>;
   createTour(input: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; summary?: TourSummary }): Promise<Tour>;
   updateTour(id: string, patch: Partial<Tour>): Promise<void>;
