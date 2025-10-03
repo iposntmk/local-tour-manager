@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users, Building2, Globe, ArrowRight } from 'lucide-react';
+import { MapPin, Users, Building2, Globe, ArrowRight, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -34,6 +34,13 @@ const Index = () => {
       description: 'Manage client nationality information',
       action: () => navigate('/nationalities'),
       color: 'text-success'
+    },
+    {
+      icon: BarChart3,
+      title: 'Statistics',
+      description: 'Track revenue, allowances, and tips across tours',
+      action: () => navigate('/statistics'),
+      color: 'text-primary'
     },
   ];
 
