@@ -123,8 +123,8 @@ export function TourEditForm({ tour, companies, guides, nationalities, onUpdate 
   const addAllowance = () => {
     const newAllowance: Allowance = {
       date: tour.startDate || '',
-      province: '',
-      amount: 0
+      name: '',
+      price: 0
     };
     updateField('allowances', [...(tour.allowances || []), newAllowance]);
   };
@@ -486,18 +486,18 @@ export function TourEditForm({ tour, companies, guides, nationalities, onUpdate 
                             />
                           </div>
                           <div>
-                            <Label>Province</Label>
+                            <Label>Name</Label>
                             <Input
-                              value={allowance.province}
-                              onChange={(e) => updateAllowance(index, { ...allowance, province: e.target.value })}
+                              value={allowance.name}
+                              onChange={(e) => updateAllowance(index, { ...allowance, name: e.target.value })}
                             />
                           </div>
                           <div>
-                            <Label>Amount</Label>
+                            <Label>Price</Label>
                             <Input
                               type="number"
-                              value={allowance.amount}
-                              onChange={(e) => updateAllowance(index, { ...allowance, amount: parseFloat(e.target.value) || 0 })}
+                              value={allowance.price}
+                              onChange={(e) => updateAllowance(index, { ...allowance, price: parseFloat(e.target.value) || 0 })}
                             />
                           </div>
                         </div>

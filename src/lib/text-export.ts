@@ -84,7 +84,7 @@ export const exportTourToTxt = (tour: Tour) => {
     lines,
     'Allowances',
     (tour.allowances ?? []).map(allowance => {
-      return `${formatDateOrNA(allowance.date)} • ${allowance.province} - ${formatAmount(allowance.amount)}`;
+      return `${formatDateOrNA(allowance.date)} • ${allowance.name} - ${formatAmount(allowance.price)}`;
     })
   );
 

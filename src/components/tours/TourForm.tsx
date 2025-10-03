@@ -59,7 +59,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const [destForm, setDestForm] = useState<Destination>({ name: '', price: 0, date: '' });
   const [expForm, setExpForm] = useState<Expense>({ name: '', price: 0, date: '' });
   const [mealForm, setMealForm] = useState<Meal>({ name: '', price: 0, date: '' });
-  const [allowForm, setAllowForm] = useState<Allowance>({ date: '', province: '', amount: 0 });
+  const [allowForm, setAllowForm] = useState<Allowance>({ date: '', name: '', price: 0 });
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TourInput>({
     defaultValues: initialData ? {
@@ -618,17 +618,17 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" role="combobox" className="justify-between">
-                    {allowForm.province || "Select province..."}
+                    {allowForm.name || "Select allowance..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0">
                   <Command>
-                    <CommandInput placeholder="Search province..." />
-                    <CommandEmpty>No province found.</CommandEmpty>
+                    <CommandInput placeholder="Search allowance..." />
+                    <CommandEmpty>No allowance found.</CommandEmpty>
                     <CommandGroup>
                       {provinces.map((prov) => (
-                        <CommandItem key={prov.id} value={prov.name} onSelect={() => setAllowForm({ ...allowForm, province: prov.name })}>
+                        <CommandItem key={prov.id} value={prov.name} onSelect={() => setAllowForm({ ...allowForm, name: prov.name })}>
                           {prov.name}
                         </CommandItem>
                       ))}
@@ -636,16 +636,16 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <CurrencyInput placeholder="Amount" value={allowForm.amount} onChange={(amount) => setAllowForm({ ...allowForm, amount })} />
+              <CurrencyInput placeholder="Price" value={allowForm.price} onChange={(price) => setAllowForm({ ...allowForm, price })} />
             </div>
-            <Button type="button" className="mt-4" onClick={() => { if (allowForm.date && allowForm.province) { setAllowances([...allowances, allowForm]); setAllowForm({ date: '', province: '', amount: 0 }); } }}>
+            <Button type="button" className="mt-4" onClick={() => { if (allowForm.date && allowForm.name) { setAllowances([...allowances, allowForm]); setAllowForm({ date: '', name: '', price: 0 }); } }}>
               <Plus className="h-4 w-4 mr-2" />Add
             </Button>
           </div>
           <div className="rounded-lg border divide-y">
             {allowances.map((allow, idx) => (
               <div key={idx} className="p-4 flex justify-between items-center">
-                <div><div className="font-medium">{allow.province}</div><div className="text-xs text-muted-foreground">{allow.date} • {allow.amount.toLocaleString()} ₫</div></div>
+                <div><div className="font-medium">{allow.name}</div><div className="text-xs text-muted-foreground">{allow.date} • {allow.price.toLocaleString()} ₫</div></div>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setAllowances(allowances.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}

@@ -189,14 +189,14 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
           // Fuzzy match allowances (provinces)
           if (tour.allowances && tour.allowances.length > 0) {
             tour.allowances = tour.allowances.map(allow => {
-              if (!allow.province) return allow;
+              if (!allow.name) return allow;
               const provFuse = new Fuse(p, {
                 keys: ['name'],
                 threshold: 0.4,
                 includeScore: true,
                 ignoreLocation: true,
               });
-              const provMatch = provFuse.search(allow.province);
+              const provMatch = provFuse.search(allow.name);
               if (provMatch.length > 0 && provMatch[0].score && provMatch[0].score < 0.4) {
                 const matched = provMatch[0].item;
                 return { ...allow, matchedProvinceId: matched.id, province: matched.name };
@@ -662,8 +662,8 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
                         <div key={allowIdx} className="p-3 space-y-2">
                           <div className="flex justify-between items-start gap-2">
                             <div className="flex-1">
-                              <div className="font-medium text-sm">{allow.province}</div>
-                              <div className="text-xs text-muted-foreground">{allow.date} • {allow.amount.toLocaleString()} ₫</div>
+                              <div className="font-medium text-sm">{allow.name}</div>
+                              <div className="text-xs text-muted-foreground">{allow.date} • {allow.price.toLocaleString()} ₫</div>
                             </div>
                             {(allow as any).matchedProvinceId && (
                               <Badge variant="secondary" className="text-xs">Matched</Badge>

@@ -16,7 +16,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
   const totalDestinations = tour.destinations.reduce((sum, d) => sum + (d.price * tour.totalGuests), 0);
   const totalExpenses = tour.expenses.reduce((sum, e) => sum + (e.price * tour.totalGuests), 0);
   const totalMeals = tour.meals.reduce((sum, m) => sum + (m.price * tour.totalGuests), 0);
-  const totalAllowances = tour.allowances.reduce((sum, a) => sum + a.amount, 0);
+  const totalAllowances = tour.allowances.reduce((sum, a) => sum + a.price, 0);
 
   // Bước 2: Tổng các tabs
   const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;

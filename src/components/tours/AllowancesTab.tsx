@@ -45,7 +45,7 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       toast.success('Allowance added');
-      setFormData({ date: '', province: '', amount: 0 });
+      setFormData({ date: '', name: '', price: 0 });
     },
   });
 

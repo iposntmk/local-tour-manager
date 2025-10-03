@@ -1764,8 +1764,8 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
     return (data || []).map((row) => ({
       date: row.date,
-      province: row.province,
-      amount: Number(row.amount) || 0,
+      name: row.name,
+      price: Number(row.price) || 0,
     }));
   }
 

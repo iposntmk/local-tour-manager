@@ -222,19 +222,19 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     });
   }
 
-  // Group allowances by province and sum amounts
-  const allowancesByProvince = new Map<string, { province: string; totalAmount: number; days: number }>();
+  // Group allowances by name and sum prices
+  const allowancesByName = new Map<string, { name: string; totalPrice: number; days: number }>();
   allowances.forEach(allowance => {
-    const province = allowance.province || '';
-    if (!allowancesByProvince.has(province)) {
-      allowancesByProvince.set(province, { province, totalAmount: 0, days: 0 });
+    const name = allowance.name || '';
+    if (!allowancesByName.has(name)) {
+      allowancesByName.set(name, { name, totalPrice: 0, days: 0 });
     }
-    const group = allowancesByProvince.get(province)!;
-    group.totalAmount += allowance.amount || 0;
+    const group = allowancesByName.get(name)!;
+    group.totalPrice += allowance.price || 0;
     group.days += 1;
   });
 
-  const mergedAllowances = Array.from(allowancesByProvince.values());
+  const mergedAllowances = Array.from(allowancesByName.values());
   const dataRowCount = Math.max(serviceItems.length, mergedAllowances.length);
   let lastDataRow = dataStartRow - 1;
 
@@ -262,13 +262,13 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     }
 
     if (allowance) {
-      row.getCell(7).value = allowance.province;
+      row.getCell(7).value = allowance.name;
       row.getCell(7).alignment = { vertical: 'middle', horizontal: 'left' };
 
       row.getCell(8).value = allowance.days;
       row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
 
-      row.getCell(9).value = allowance.totalAmount / allowance.days;
+      row.getCell(9).value = allowance.totalPrice / allowance.days;
       row.getCell(9).numFmt = currencyFormat;
 
       // Column J: Use formula H * I
@@ -602,9 +602,9 @@ export const importTourFromExcel = async (file: File): Promise<Partial<Tour>> =>
           const allowData = XLSX.utils.sheet_to_json(allowSheet) as any[];
           tourData.allowances = allowData.map((row: any) => ({
             id: `allow_${Date.now()}_${Math.random()}`,
-            province: row.Province,
+            name: row.Province || row.Name,
             date: row.Date,
-            amount: Number(row.Amount) || 0,
+            price: Number(row.Amount || row.Price) || 0,
           }));
         }
         
