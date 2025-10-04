@@ -902,6 +902,12 @@ const Tours = () => {
                     </div>
 
                     <div className="space-y-2 text-sm cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
+                      <div className="flex items-center justify-between pt-1 border-t">
+                        <span className="text-muted-foreground text-xs">Total Allowance</span>
+                        <span className="font-semibold">
+                          {tour.allowances?.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0).toLocaleString('en-US')} VND
+                        </span>
+                      </div>
 
                       {tour.summary?.finalTotal !== undefined && (
                         <div className="flex items-center justify-between pt-1 border-t">

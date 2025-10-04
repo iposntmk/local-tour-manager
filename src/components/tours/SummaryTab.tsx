@@ -129,6 +129,9 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
             <p className="text-xs text-muted-foreground mt-1">
               {tour.allowances.length} item(s)
             </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Calculation: price × quantity
+            </p>
           </CardContent>
         </Card>
       </div>

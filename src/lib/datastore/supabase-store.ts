@@ -153,9 +153,9 @@ export class SupabaseStore implements DataStore {
 
   private mapTour(row: any): Tour {
     const totalGuests = (row.adults || 0) + (row.children || 0);
-    // Read total_days from DB when available; fallback to exclusive diff
-    const computedExclusive = Math.max(0, differenceInDays(new Date(row.end_date), new Date(row.start_date)));
-    const totalDays = typeof row.total_days === 'number' ? row.total_days : computedExclusive;
+    // Read total_days from DB when available; fallback to inclusive diff (counting both start and end days)
+    const computedInclusive = Math.max(1, differenceInDays(new Date(row.end_date), new Date(row.start_date)) + 1);
+    const totalDays = typeof row.total_days === 'number' ? row.total_days : computedInclusive;
 
     return {
       id: row.id,
@@ -1297,7 +1297,7 @@ export class SupabaseStore implements DataStore {
         tour_allowances(*),
         tour_shoppings(*)
       `
-          : '*',
+          : `*, tour_allowances(price, quantity)`,
         { count: 'exact' }
       )
       .order('start_date', { ascending: false });
@@ -1364,6 +1364,14 @@ export class SupabaseStore implements DataStore {
           name: s.name,
           price: Number(s.price) || 0,
           date: s.date,
+        }));
+      } else {
+        // When not including full details, still map allowances for total calculation
+        tour.allowances = (row.tour_allowances || []).map((a: any) => ({
+          date: '',
+          name: '',
+          price: Number(a.price) || 0,
+          quantity: a.quantity || 1,
         }));
       }
       return tour;
@@ -1443,8 +1451,8 @@ export class SupabaseStore implements DataStore {
     }
 
     const totalGuests = (tour.adults || 0) + (tour.children || 0);
-    // Total Days = end date - start date (exclusive)
-    const totalDays = Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)));
+    // Total Days = (end date - start date) + 1 (inclusive, counting both start and end days)
+    const totalDays = Math.max(1, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1);
 
     const { data, error } = await this.supabase
       .from('tours')
