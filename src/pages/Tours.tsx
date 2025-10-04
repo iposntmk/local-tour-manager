@@ -17,7 +17,10 @@ import {
   Trash,
   ArrowUpDown,
   Upload,
+  PlusCircle,
+  Save,
 } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -177,6 +180,12 @@ const Tours = () => {
     queryFn: () => store.listNationalities({}),
   });
 
+  // Fetch the specific detailed expense for the tooltip
+  const { data: bulkExpense } = useQuery({
+    queryKey: ['detailedExpense', '4a17d85e-7072-4863-839e-2377618095fe'],
+    queryFn: () => store.getDetailedExpense('4a17d85e-7072-4863-839e-2377618095fe'),
+  });
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -255,6 +264,162 @@ const Tours = () => {
   const handleDeleteAll = () => {
     toast.warning('Bulk delete not available. Please delete tours individually.');
   };
+
+  const saveAllTourInfoMutation = useMutation({
+    mutationFn: async () => {
+      const loadingToast = toast.loading('Recalculating and saving all tour info...');
+
+      try {
+        // Get all tours with details
+        const { tours: allTours } = await store.listTours({}, { includeDetails: true });
+
+        let updatedCount = 0;
+        const errors: string[] = [];
+
+        // For each tour, recalculate totalDays and totalGuests
+        for (const tour of allTours) {
+          try {
+            const totalGuests = (tour.adults || 0) + (tour.children || 0);
+            let totalDays = 0;
+
+            if (tour.startDate && tour.endDate) {
+              // Calculate totalDays (inclusive difference)
+              totalDays = Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1);
+            }
+
+            // Update the tour with recalculated values
+            await store.updateTour(tour.id, { totalGuests, totalDays });
+            updatedCount++;
+          } catch (error) {
+            errors.push(`${tour.tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+
+        toast.dismiss(loadingToast);
+        return { updatedCount, errors, totalTours: allTours.length };
+      } catch (error) {
+        toast.dismiss(loadingToast);
+        throw error;
+      }
+    },
+    onSuccess: ({ updatedCount, errors, totalTours }) => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+
+      if (errors.length > 0) {
+        toast.error(`Updated ${updatedCount} of ${totalTours} tours. ${errors.length} failed: ${errors.join(', ')}`, {
+          duration: 10000,
+        });
+      } else {
+        toast.success(`✅ Successfully updated ${updatedCount} tour(s)!`, {
+          duration: 5000,
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update tours: ${error.message}`);
+    },
+  });
+
+  const addExpensesToAllMutation = useMutation({
+    mutationFn: async () => {
+      // Show initial toast
+      const loadingToast = toast.loading('Syncing expenses to all tours...');
+
+      try {
+        // Get the specific detailed expense
+        const detailedExpense = await store.getDetailedExpense('4a17d85e-7072-4863-839e-2377618095fe');
+        if (!detailedExpense) {
+          throw new Error('Expense not found');
+        }
+
+        // Get all tours with details
+        const { tours: allTours } = await store.listTours({}, { includeDetails: true });
+
+        let addedCount = 0;
+        let removedCount = 0;
+        const errors: string[] = [];
+
+        // For each tour, sync expenses to match totalDays
+        for (const tour of allTours) {
+          try {
+            const totalDays = tour.totalDays || 0;
+            const expenseName = detailedExpense.name;
+
+            // Count existing rows of this expense
+            const existingExpenses = tour.expenses?.filter(exp => exp.name === expenseName) || [];
+            const currentCount = existingExpenses.length;
+
+            // If counts match, skip this tour
+            if (currentCount === totalDays) {
+              continue;
+            }
+
+            // Need to add more rows
+            if (currentCount < totalDays) {
+              const rowsToAdd = totalDays - currentCount;
+              for (let i = 0; i < rowsToAdd; i++) {
+                const dayOffset = currentCount + i;
+                const expenseDate = new Date(tour.startDate);
+                expenseDate.setDate(expenseDate.getDate() + dayOffset);
+                const dateStr = expenseDate.toISOString().split('T')[0];
+
+                await store.addExpense(tour.id, {
+                  name: expenseName,
+                  price: detailedExpense.price,
+                  date: dateStr,
+                });
+                addedCount++;
+              }
+            }
+            // Need to remove excess rows
+            else if (currentCount > totalDays) {
+              const rowsToRemove = currentCount - totalDays;
+
+              // Find indices of this expense and remove the last ones
+              const allExpenses = tour.expenses || [];
+              const indicesToRemove: number[] = [];
+
+              for (let i = allExpenses.length - 1; i >= 0 && indicesToRemove.length < rowsToRemove; i--) {
+                if (allExpenses[i].name === expenseName) {
+                  indicesToRemove.push(i);
+                }
+              }
+
+              // Remove in reverse order to maintain indices
+              for (const index of indicesToRemove) {
+                await store.removeExpense(tour.id, index);
+                removedCount++;
+              }
+            }
+          } catch (error) {
+            errors.push(`${tour.tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+
+        toast.dismiss(loadingToast);
+        return { addedCount, removedCount, errors, totalTours: allTours.length, expenseName: detailedExpense.name };
+      } catch (error) {
+        toast.dismiss(loadingToast);
+        throw error;
+      }
+    },
+    onSuccess: ({ addedCount, removedCount, errors, totalTours, expenseName }) => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+
+      if (errors.length > 0) {
+        toast.error(`Synced "${expenseName}" expenses (added ${addedCount}, removed ${removedCount}) to ${totalTours} tours, but ${errors.length} failed: ${errors.join(', ')}`, {
+          duration: 10000,
+        });
+      } else {
+        toast.success(`✅ Successfully synced "${expenseName}" expenses to ${totalTours} tours! (Added ${addedCount}, Removed ${removedCount})`, {
+          duration: 5000,
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to sync expenses: ${error.message}`);
+    },
+  });
 
   const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
     const detailedTour = await store.getTour(tour.id);
@@ -687,6 +852,78 @@ const Tours = () => {
                 <FileDown className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Export All</span>
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                    title="Recalculate and save totalDays and totalGuests for all tours"
+                  >
+                    <Save className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Save All Tour Info</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Save All Tour Info?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will recalculate and update <strong>totalDays</strong> and <strong>totalGuests</strong> for all tours based on their start date, end date, adults, and children values.
+                      <div className="mt-2">This ensures all tour cards display the correct information.</div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => saveAllTourInfoMutation.mutate()}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      Save All Tour Info
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                    title={bulkExpense ? `Add "${bulkExpense.name}" to all tours` : 'Add Expenses to All'}
+                  >
+                    <PlusCircle className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add Expenses to All</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Sync Expenses to All Tours?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will sync <strong>"{bulkExpense?.name || 'the selected expense'}"</strong> for all tours to match their total days.
+                      <div className="mt-2">
+                        • If a tour has <strong>fewer</strong> rows than total days: missing rows will be added
+                      </div>
+                      <div>
+                        • If a tour has <strong>more</strong> rows than total days: excess rows will be removed
+                      </div>
+                      <div>
+                        • If a tour already has the correct number of rows: it will be skipped
+                      </div>
+                      {bulkExpense && <div className="mt-2">Price per expense: <strong>{bulkExpense.price.toLocaleString()} ₫</strong></div>}
+                      <div className="mt-2 text-destructive">This action cannot be undone.</div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => addExpensesToAllMutation.mutate()}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      Sync Expenses
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button

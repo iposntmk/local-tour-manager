@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
@@ -10,53 +10,116 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, formatDate } from '@/lib/utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import type { Shopping } from '@/types/tour';
 
 interface ShoppingsTabProps {
-  tourId: string;
+  tourId?: string;
   shoppings: Shopping[];
+  onChange?: (shoppings: Shopping[]) => void;
 }
 
-export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
+export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Shopping>({ name: '', price: 0, date: '' });
   const [openShopping, setOpenShopping] = useState(false);
+  const [showNewShoppingDialog, setShowNewShoppingDialog] = useState(false);
+  const [newShoppingName, setNewShoppingName] = useState('');
   const queryClient = useQueryClient();
 
   const { data: tour } = useQuery({
     queryKey: ['tour', tourId],
-    queryFn: () => store.getTour(tourId),
+    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
+    enabled: !!tourId,
   });
+
+  // Initialize formData with tour's end date
+  const [formData, setFormData] = useState<Shopping>(() => ({
+    name: '',
+    price: 0,
+    date: tour?.endDate || ''
+  }));
 
   const { data: shoppingItems = [] } = useQuery({
     queryKey: ['shoppings'],
     queryFn: () => store.listShoppings({ status: 'active' }),
   });
 
+  // Update formData date when tour data loads
+  useEffect(() => {
+    if (tour?.endDate && !formData.date) {
+      setFormData(prev => ({ ...prev, date: tour.endDate }));
+    }
+  }, [tour?.endDate]);
+
   const addMutation = useMutation({
-    mutationFn: (shopping: Shopping) => store.addTourShopping(tourId, shopping),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: (shopping: Shopping) => {
+      if (tourId) {
+        return store.addTourShopping(tourId, shopping);
+      }
+      return Promise.resolve(shopping);
+    },
+    onSuccess: (newShopping) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        onChange?.([...shoppings, newShopping]);
+      }
       toast.success('Shopping added');
-      setFormData({ name: '', price: 0, date: '' });
+      setFormData({ name: '', price: 0, date: tour?.endDate || '' });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, shopping }: { index: number; shopping: Shopping }) =>
-      store.updateTourShopping(tourId, index, shopping),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: ({ index, shopping }: { index: number; shopping: Shopping }) => {
+      if (tourId) {
+        return store.updateTourShopping(tourId, index, shopping);
+      }
+      return Promise.resolve(shopping);
+    },
+    onSuccess: (updated, { index }) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        const newShoppings = [...shoppings];
+        newShoppings[index] = updated;
+        onChange?.(newShoppings);
+      }
       toast.success('Shopping updated');
       setEditingIndex(null);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (index: number) => store.removeTourShopping(tourId, index),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: (index: number) => {
+      if (tourId) {
+        return store.removeTourShopping(tourId, index);
+      }
+      return Promise.resolve();
+    },
+    onSuccess: (_, index) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        onChange?.(shoppings.filter((_, i) => i !== index));
+      }
       toast.success('Shopping removed');
+    },
+  });
+
+  const createShoppingMutation = useMutation({
+    mutationFn: (name: string) => store.createShopping({ name, status: 'active' }),
+    onSuccess: (newShopping) => {
+      queryClient.invalidateQueries({ queryKey: ['shoppings'] });
+      toast.success('Shopping item created');
+      setShowNewShoppingDialog(false);
+      setNewShoppingName('');
+      // Auto-select the newly created shopping item
+      setFormData({ ...formData, name: newShopping.name });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create shopping: ${error.message}`);
     },
   });
 
@@ -88,7 +151,15 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ name: '', price: 0, date: '' });
+    setFormData({ name: '', price: 0, date: tour?.endDate || '' });
+  };
+
+  const handleCreateNewShopping = () => {
+    if (!newShoppingName.trim()) {
+      toast.error('Please enter a shopping name');
+      return;
+    }
+    createShoppingMutation.mutate(newShoppingName.trim());
   };
 
   const totalGuests = tour ? tour.totalGuests : 1;
@@ -105,46 +176,57 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-sm font-medium mb-2 block">Shopping Item *</label>
-            <Popover open={openShopping} onOpenChange={setOpenShopping}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  className="w-full justify-between"
-                >
-                  {formData.name || "Select shopping..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0">
-                <Command>
-                  <CommandInput placeholder="Search shopping..." />
-                  <CommandEmpty>No shopping found.</CommandEmpty>
-                  <CommandList>
-                    <CommandGroup>
-                      {shoppingItems.map((item) => (
-                        <CommandItem
-                          key={item.id}
-                          value={item.name}
-                          onSelect={() => {
-                            setFormData({ ...formData, name: item.name });
-                            setOpenShopping(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              formData.name === item.name ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {item.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              <Popover open={openShopping} onOpenChange={setOpenShopping}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="flex-1 justify-between"
+                  >
+                    {formData.name || "Select shopping..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search shopping..." />
+                    <CommandEmpty>No shopping found.</CommandEmpty>
+                    <CommandList>
+                      <CommandGroup>
+                        {shoppingItems.map((item) => (
+                          <CommandItem
+                            key={item.id}
+                            value={item.name}
+                            onSelect={() => {
+                              setFormData({ ...formData, name: item.name });
+                              setOpenShopping(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.name === item.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {item.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowNewShoppingDialog(true)}
+                title="Add new shopping item"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium mb-2 block">Price *</label>
@@ -243,6 +325,54 @@ export function ShoppingsTab({ tourId, shoppings }: ShoppingsTabProps) {
           </div>
         )}
       </div>
+
+      {/* New Shopping Item Dialog */}
+      <Dialog open={showNewShoppingDialog} onOpenChange={setShowNewShoppingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Shopping Item</DialogTitle>
+            <DialogDescription>
+              Create a new shopping item to add to the master shopping list.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-shopping-name">Shopping Name *</Label>
+              <Input
+                id="new-shopping-name"
+                placeholder="e.g., TIP, Souvenir Shop"
+                value={newShoppingName}
+                onChange={(e) => setNewShoppingName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCreateNewShopping();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNewShoppingDialog(false);
+                setNewShoppingName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewShopping}
+              disabled={createShoppingMutation.isPending}
+            >
+              {createShoppingMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

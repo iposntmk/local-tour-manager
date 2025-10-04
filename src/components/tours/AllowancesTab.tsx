@@ -14,11 +14,12 @@ import { DateInput } from '@/components/ui/date-input';
 import type { Allowance } from '@/types/tour';
 
 interface AllowancesTabProps {
-  tourId: string;
+  tourId?: string;
   allowances: Allowance[];
+  onChange?: (allowances: Allowance[]) => void;
 }
 
-export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
+export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0, quantity: 1 });
   const [openProvince, setOpenProvince] = useState(false);
@@ -41,9 +42,18 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
   );
 
   const addMutation = useMutation({
-    mutationFn: (allowance: Allowance) => store.addAllowance(tourId, allowance),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: (allowance: Allowance) => {
+      if (tourId) {
+        return store.addAllowance(tourId, allowance);
+      }
+      return Promise.resolve(allowance);
+    },
+    onSuccess: (newAllowance) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        onChange?.([...allowances, newAllowance]);
+      }
       toast.success('Allowance added');
       setFormData({ date: '', name: '', price: 0, quantity: 1 });
     },
@@ -54,19 +64,38 @@ export function AllowancesTab({ tourId, allowances }: AllowancesTabProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, allowance }: { index: number; allowance: Allowance }) =>
-      store.updateAllowance(tourId, index, allowance),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: ({ index, allowance }: { index: number; allowance: Allowance }) => {
+      if (tourId) {
+        return store.updateAllowance(tourId, index, allowance);
+      }
+      return Promise.resolve(allowance);
+    },
+    onSuccess: (updated, { index }) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        const newAllowances = [...allowances];
+        newAllowances[index] = updated;
+        onChange?.(newAllowances);
+      }
       toast.success('Allowance updated');
       setEditingIndex(null);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (index: number) => store.removeAllowance(tourId, index),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: (index: number) => {
+      if (tourId) {
+        return store.removeAllowance(tourId, index);
+      }
+      return Promise.resolve();
+    },
+    onSuccess: (_, index) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        onChange?.(allowances.filter((_, i) => i !== index));
+      }
       toast.success('Allowance removed');
     },
   });

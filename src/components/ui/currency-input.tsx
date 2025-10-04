@@ -38,6 +38,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       value ? formatNumber(value) : ''
     );
     const [isFocused, setIsFocused] = useState(false);
+    const [isComposing, setIsComposing] = useState(false);
     const isInternalChange = useRef(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,20 +62,28 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       const input = e.target.value;
       const selectionStart = e.target.selectionStart ?? input.length;
 
+      // If in composition (IME), keep raw text and skip formatting
+      if (isComposing) {
+        setDisplayValue(input);
+        return;
+      }
+
       // Count digits to the left of the caret in the raw input
       const digitsLeftOfCaret = (input.slice(0, selectionStart).match(/\d/g) || []).length;
 
       // Strip all non-digits and compute numeric value
       const cleaned = input.replace(/\D/g, '');
-      const parsed = cleaned === '' ? 0 : parseInt(cleaned, 10);
+      const parsed = cleaned === '' ? NaN : parseInt(cleaned, 10);
 
       // Format with thousand separators
       const formatted = cleaned ? formatNumber(parsed) : '';
       setDisplayValue(formatted);
 
-      // Emit numeric value
-      isInternalChange.current = true;
-      onChange?.(parsed);
+      // Emit numeric value only when we have digits. Avoid emitting 0 while user clears input.
+      if (cleaned) {
+        isInternalChange.current = true;
+        onChange?.(parsed);
+      }
 
       // Restore caret position based on number of digits to the left
       requestAnimationFrame(() => {
@@ -112,6 +121,22 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       onChange?.(numValue);
     };
 
+    const handleCompositionStart = () => {
+      setIsComposing(true);
+    };
+
+    const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
+      setIsComposing(false);
+      // After composition ends, re-run change formatting on the final value
+      const syntheticEvent = {
+        target: e.target as unknown as HTMLInputElement,
+      } as React.ChangeEvent<HTMLInputElement>;
+      // Manually call change handler with current input value
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (syntheticEvent.target as any).value = (e.target as HTMLInputElement).value;
+      handleChange(syntheticEvent);
+    };
+
     const handleQuickAmount = (amount: number) => {
       setDisplayValue(formatNumber(amount));
       isInternalChange.current = true;
@@ -144,8 +169,12 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
             {...props}
             ref={inputRef}
             type="text"
+            inputMode="numeric"
+            autoComplete="off"
             value={displayValue}
             onChange={handleChange}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             onFocus={handleFocus}
             onBlur={handleBlur}
             disabled={props.disabled}

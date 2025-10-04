@@ -11,22 +11,31 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, formatDate } from '@/lib/utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import type { Meal } from '@/types/tour';
 
 interface MealsTabProps {
-  tourId: string;
+  tourId?: string;
   meals: Meal[];
+  onChange?: (meals: Meal[]) => void;
 }
 
-export function MealsTab({ tourId, meals }: MealsTabProps) {
+export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Meal>({ name: '', price: 0, date: '' });
   const [openMeal, setOpenMeal] = useState(false);
+  const [showNewMealDialog, setShowNewMealDialog] = useState(false);
+  const [newMealName, setNewMealName] = useState('');
+  const [newMealPrice, setNewMealPrice] = useState(0);
+  const [newMealCategoryId, setNewMealCategoryId] = useState('');
+  const [openCategory, setOpenCategory] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: tour } = useQuery({
     queryKey: ['tour', tourId],
-    queryFn: () => store.getTour(tourId),
+    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
+    enabled: !!tourId,
   });
 
   const { data: detailedExpenses = [] } = useQuery({
@@ -34,30 +43,94 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
     queryFn: () => store.listDetailedExpenses({ status: 'active' }),
   });
 
+  const { data: expenseCategories = [] } = useQuery({
+    queryKey: ['expenseCategories'],
+    queryFn: () => store.listExpenseCategories({ status: 'active' }),
+  });
+
   const addMutation = useMutation({
-    mutationFn: (meal: Meal) => store.addMeal(tourId, meal),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: (meal: Meal) => {
+      if (tourId) {
+        return store.addMeal(tourId, meal);
+      }
+      return Promise.resolve(meal);
+    },
+    onSuccess: (newMeal) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        onChange?.([...meals, newMeal]);
+      }
       toast.success('Meal added');
       setFormData({ name: '', price: 0, date: '' });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, meal }: { index: number; meal: Meal }) =>
-      store.updateMeal(tourId, index, meal),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: ({ index, meal }: { index: number; meal: Meal }) => {
+      if (tourId) {
+        return store.updateMeal(tourId, index, meal);
+      }
+      return Promise.resolve(meal);
+    },
+    onSuccess: (updated, { index }) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        const newMeals = [...meals];
+        newMeals[index] = updated;
+        onChange?.(newMeals);
+      }
       toast.success('Meal updated');
       setEditingIndex(null);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (index: number) => store.removeMeal(tourId, index),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: (index: number) => {
+      if (tourId) {
+        return store.removeMeal(tourId, index);
+      }
+      return Promise.resolve();
+    },
+    onSuccess: (_, index) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        onChange?.(meals.filter((_, i) => i !== index));
+      }
       toast.success('Meal removed');
+    },
+  });
+
+  const createMealMutation = useMutation({
+    mutationFn: ({ name, price, categoryId }: { name: string; price: number; categoryId: string }) => {
+      const category = expenseCategories.find(c => c.id === categoryId);
+      if (!category) {
+        throw new Error('Category not found');
+      }
+      return store.createDetailedExpense({
+        name,
+        price,
+        categoryRef: {
+          id: categoryId,
+          nameAtBooking: category.name
+        },
+        status: 'active'
+      });
+    },
+    onSuccess: (newMeal) => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success('Detailed meal created');
+      setShowNewMealDialog(false);
+      setNewMealName('');
+      setNewMealPrice(0);
+      setNewMealCategoryId('');
+      // Auto-select the newly created meal
+      setFormData({ ...formData, name: newMeal.name, price: newMeal.price });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create meal: ${error.message}`);
     },
   });
 
@@ -91,6 +164,26 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
     addMutation.mutate(mealToDuplicate);
   };
 
+  const handleCreateNewMeal = () => {
+    if (!newMealName.trim()) {
+      toast.error('Please enter a meal name');
+      return;
+    }
+    if (newMealPrice <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    if (!newMealCategoryId) {
+      toast.error('Please select a category');
+      return;
+    }
+    createMealMutation.mutate({
+      name: newMealName.trim(),
+      price: newMealPrice,
+      categoryId: newMealCategoryId
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-6">
@@ -99,48 +192,59 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Popover open={openMeal} onOpenChange={setOpenMeal}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openMeal}
-                  className="justify-between"
-                >
-                  {formData.name || "Select meal..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search meal..." />
-                  <CommandList>
-                    <CommandEmpty>No meal found.</CommandEmpty>
-                    <CommandGroup>
-                      {detailedExpenses.map((item) => (
-                        <CommandItem
-                          key={item.id}
-                          value={item.name}
-                          onSelect={() => {
-                            const today = new Date().toISOString().split('T')[0];
-                            setFormData({ ...formData, name: item.name, price: item.price, date: formData.date || today });
-                            setOpenMeal(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              formData.name === item.name ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {item.name} ({item.price.toLocaleString()} ₫)
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              <Popover open={openMeal} onOpenChange={setOpenMeal}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openMeal}
+                    className="flex-1 justify-between"
+                  >
+                    {formData.name || "Select meal..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search meal..." />
+                    <CommandList>
+                      <CommandEmpty>No meal found.</CommandEmpty>
+                      <CommandGroup>
+                        {detailedExpenses.map((item) => (
+                          <CommandItem
+                            key={item.id}
+                            value={item.name}
+                            onSelect={() => {
+                              const today = new Date().toISOString().split('T')[0];
+                              setFormData({ ...formData, name: item.name, price: item.price, date: formData.date || today });
+                              setOpenMeal(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.name === item.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {item.name} ({item.price.toLocaleString()} ₫)
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowNewMealDialog(true)}
+                title="Add new meal"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <CurrencyInput
               placeholder="Price (VND)"
               value={formData.price}
@@ -244,6 +348,106 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
           </div>
         )}
       </div>
+
+      {/* New Meal Dialog */}
+      <Dialog open={showNewMealDialog} onOpenChange={setShowNewMealDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Detailed Meal</DialogTitle>
+            <DialogDescription>
+              Create a new detailed meal that can be reused across tours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-meal-name">Meal Name</Label>
+              <Input
+                id="new-meal-name"
+                placeholder="e.g., Breakfast, Lunch, Dinner"
+                value={newMealName}
+                onChange={(e) => setNewMealName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="meal-category">Expense Category</Label>
+              <Popover open={openCategory} onOpenChange={setOpenCategory}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="meal-category"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCategory}
+                    className="justify-between w-full"
+                  >
+                    {newMealCategoryId
+                      ? expenseCategories.find((cat) => cat.id === newMealCategoryId)?.name
+                      : "Select category..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search category..." />
+                    <CommandList>
+                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandGroup>
+                        {expenseCategories.map((cat) => (
+                          <CommandItem
+                            key={cat.id}
+                            value={cat.name}
+                            onSelect={() => {
+                              setNewMealCategoryId(cat.id);
+                              setOpenCategory(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                newMealCategoryId === cat.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {cat.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-meal-price">Default Price (VND)</Label>
+              <CurrencyInput
+                id="new-meal-price"
+                placeholder="Default price"
+                value={newMealPrice}
+                onChange={setNewMealPrice}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNewMealDialog(false);
+                setNewMealName('');
+                setNewMealPrice(0);
+                setNewMealCategoryId('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewMeal}
+              disabled={createMealMutation.isPending}
+            >
+              {createMealMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
