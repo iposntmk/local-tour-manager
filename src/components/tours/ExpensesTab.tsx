@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -70,28 +70,8 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
     }
 
     if (editingIndex !== null) {
-      // Check for duplicate expense name when editing (case-insensitive, excluding current index)
-      const isDuplicate = expenses.some((exp, i) =>
-        i !== editingIndex && exp.name.toLowerCase() === formData.name.toLowerCase()
-      );
-
-      if (isDuplicate) {
-        toast.error('An expense with this name already exists');
-        return;
-      }
-
       updateMutation.mutate({ index: editingIndex, expense: formData });
     } else {
-      // Check for duplicate expense name
-      const isDuplicate = expenses.some(exp =>
-        exp.name.toLowerCase() === formData.name.toLowerCase()
-      );
-
-      if (isDuplicate) {
-        toast.error('An expense with this name already exists');
-        return;
-      }
-
       addMutation.mutate(formData);
     }
   };
@@ -104,6 +84,11 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
   const handleCancel = () => {
     setEditingIndex(null);
     setFormData({ name: '', price: 0, date: '' });
+  };
+
+  const handleDuplicate = (index: number) => {
+    const expenseToDuplicate = expenses[index];
+    addMutation.mutate(expenseToDuplicate);
   };
 
   return (
@@ -222,14 +207,25 @@ export function ExpensesTab({ tourId, expenses }: ExpensesTabProps) {
                             size="sm"
                             onClick={() => handleEdit(index)}
                             className="hover-scale"
+                            title="Edit"
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleDuplicate(index)}
+                            className="hover-scale"
+                            title="Duplicate"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => deleteMutation.mutate(index)}
                             className="hover-scale text-destructive hover:text-destructive"
+                            title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

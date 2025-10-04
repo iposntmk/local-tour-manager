@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -70,28 +70,8 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
     }
 
     if (editingIndex !== null) {
-      // Check for duplicate meal name when editing (case-insensitive, excluding current index)
-      const isDuplicate = meals.some((meal, i) =>
-        i !== editingIndex && meal.name.toLowerCase() === formData.name.toLowerCase()
-      );
-
-      if (isDuplicate) {
-        toast.error('A meal with this name already exists');
-        return;
-      }
-
       updateMutation.mutate({ index: editingIndex, meal: formData });
     } else {
-      // Check for duplicate meal name
-      const isDuplicate = meals.some(meal =>
-        meal.name.toLowerCase() === formData.name.toLowerCase()
-      );
-
-      if (isDuplicate) {
-        toast.error('A meal with this name already exists');
-        return;
-      }
-
       addMutation.mutate(formData);
     }
   };
@@ -104,6 +84,11 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
   const handleCancel = () => {
     setEditingIndex(null);
     setFormData({ name: '', price: 0, date: '' });
+  };
+
+  const handleDuplicate = (index: number) => {
+    const mealToDuplicate = meals[index];
+    addMutation.mutate(mealToDuplicate);
   };
 
   return (
@@ -222,14 +207,25 @@ export function MealsTab({ tourId, meals }: MealsTabProps) {
                             size="sm"
                             onClick={() => handleEdit(index)}
                             className="hover-scale"
+                            title="Edit"
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleDuplicate(index)}
+                            className="hover-scale"
+                            title="Duplicate"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => deleteMutation.mutate(index)}
                             className="hover-scale text-destructive hover:text-destructive"
+                            title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
