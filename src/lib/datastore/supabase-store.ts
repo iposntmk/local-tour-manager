@@ -1417,6 +1417,7 @@ export class SupabaseStore implements DataStore {
       name: e.name,
       price: Number(e.price) || 0,
       date: e.date,
+      guests: e.guests !== null && e.guests !== undefined ? Number(e.guests) : undefined,
     }));
     tour.meals = (row.tour_meals || []).map((m: any) => ({
       name: m.name,
@@ -1737,13 +1738,20 @@ export class SupabaseStore implements DataStore {
   async updateExpense(tourId: string, index: number, expense: Expense): Promise<void> {
     const { data: rows } = await this.supabase.from('tour_expenses').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_expenses').update({
+      console.log('Updating expense in DB - ID:', rows[index].id, 'Guests:', expense.guests);
+      const updateData = {
         name: expense.name,
         price: expense.price,
         date: expense.date,
         guests: expense.guests,
-      }).eq('id', rows[index].id);
-      if (error) throw error;
+      };
+      console.log('Update data:', updateData);
+      const { error } = await this.supabase.from('tour_expenses').update(updateData).eq('id', rows[index].id);
+      if (error) {
+        console.error('Error updating expense:', error);
+        throw error;
+      }
+      console.log('Expense updated successfully in DB');
     }
   }
 

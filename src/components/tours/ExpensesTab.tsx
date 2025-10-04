@@ -70,12 +70,14 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
   const updateMutation = useMutation({
     mutationFn: ({ index, expense }: { index: number; expense: Expense }) => {
       if (tourId) {
+        console.log('Updating expense with guests:', expense.guests);
         return store.updateExpense(tourId, index, expense);
       }
       return Promise.resolve(expense);
     },
-    onSuccess: (updated, { index }) => {
+    onSuccess: (updated, { index, expense }) => {
       if (tourId) {
+        console.log('Expense updated successfully, guests:', expense.guests);
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       } else {
         const newExps = [...expenses];
