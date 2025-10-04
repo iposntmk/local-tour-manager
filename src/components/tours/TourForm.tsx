@@ -1,7 +1,7 @@
 import { formatDate, cn, getRequiredFieldClasses } from "@/lib/utils";
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -16,12 +16,14 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign, Calculator, ShoppingBag } from 'lucide-react';
@@ -36,10 +38,32 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const [companyOpen, setCompanyOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [nationalityOpen, setNationalityOpen] = useState(false);
-  
+  const [destinationOpen, setDestinationOpen] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [mealOpen, setMealOpen] = useState(false);
+
   const [selectedCompanyId, setSelectedCompanyId] = useState(initialData?.companyRef.id || '');
   const [selectedGuideId, setSelectedGuideId] = useState(initialData?.guideRef.id || '');
   const [selectedNationalityId, setSelectedNationalityId] = useState(initialData?.clientNationalityRef.id || '');
+
+  // States for creating new master data
+  const [showNewDestinationDialog, setShowNewDestinationDialog] = useState(false);
+  const [newDestinationName, setNewDestinationName] = useState('');
+  const [newDestinationPrice, setNewDestinationPrice] = useState(0);
+  const [newDestinationProvinceId, setNewDestinationProvinceId] = useState('');
+  const [openProvince, setOpenProvince] = useState(false);
+
+  const [showNewExpenseDialog, setShowNewExpenseDialog] = useState(false);
+  const [newExpenseName, setNewExpenseName] = useState('');
+  const [newExpensePrice, setNewExpensePrice] = useState(0);
+  const [newExpenseCategoryId, setNewExpenseCategoryId] = useState('');
+  const [openExpenseCategory, setOpenExpenseCategory] = useState(false);
+
+  const [showNewMealDialog, setShowNewMealDialog] = useState(false);
+  const [newMealName, setNewMealName] = useState('');
+  const [newMealPrice, setNewMealPrice] = useState(0);
+  const [newMealCategoryId, setNewMealCategoryId] = useState('');
+  const [openMealCategory, setOpenMealCategory] = useState(false);
 
   const [destinations, setDestinations] = useState<Destination[]>(initialData?.destinations || []);
   const [expenses, setExpenses] = useState<Expense[]>(initialData?.expenses || []);
@@ -62,6 +86,8 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const [mealForm, setMealForm] = useState<Meal>({ name: '', price: 0, date: '' });
   const [allowForm, setAllowForm] = useState<Allowance>({ date: '', name: '', price: 0 });
   const [shopForm, setShopForm] = useState<Shopping>({ name: '', price: 0, date: '' });
+
+  const queryClient = useQueryClient();
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TourInput>({
     defaultValues: initialData ? {
@@ -118,6 +144,107 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
     queryFn: () => store.listProvinces({ status: 'active' }),
   });
 
+  const { data: expenseCategories = [] } = useQuery({
+    queryKey: ['expenseCategories'],
+    queryFn: () => store.listExpenseCategories({ status: 'active' }),
+  });
+
+  // Mutation for creating new tourist destination
+  const createDestinationMutation = useMutation({
+    mutationFn: ({ name, price, provinceId }: { name: string; price: number; provinceId: string }) => {
+      const province = provinces.find(p => p.id === provinceId);
+      if (!province) {
+        throw new Error('Province not found');
+      }
+      return store.createTouristDestination({
+        name,
+        price,
+        provinceRef: {
+          id: provinceId,
+          nameAtBooking: province.name
+        },
+        status: 'active'
+      });
+    },
+    onSuccess: (newDestination) => {
+      queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
+      toast.success('Tourist destination created');
+      setShowNewDestinationDialog(false);
+      setNewDestinationName('');
+      setNewDestinationPrice(0);
+      setNewDestinationProvinceId('');
+      // Auto-select the newly created destination
+      setDestForm({ ...destForm, name: newDestination.name, price: newDestination.price });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create destination: ${error.message}`);
+    },
+  });
+
+  // Mutation for creating new detailed expense
+  const createExpenseMutation = useMutation({
+    mutationFn: ({ name, price, categoryId }: { name: string; price: number; categoryId: string }) => {
+      const category = expenseCategories.find(c => c.id === categoryId);
+      if (!category) {
+        throw new Error('Category not found');
+      }
+      return store.createDetailedExpense({
+        name,
+        price,
+        categoryRef: {
+          id: categoryId,
+          nameAtBooking: category.name
+        },
+        status: 'active'
+      });
+    },
+    onSuccess: (newExpense) => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success('Detailed expense created');
+      setShowNewExpenseDialog(false);
+      setNewExpenseName('');
+      setNewExpensePrice(0);
+      setNewExpenseCategoryId('');
+      // Auto-select the newly created expense
+      setExpForm({ ...expForm, name: newExpense.name, price: newExpense.price });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create expense: ${error.message}`);
+    },
+  });
+
+  // Mutation for creating new detailed meal
+  const createMealMutation = useMutation({
+    mutationFn: ({ name, price, categoryId }: { name: string; price: number; categoryId: string }) => {
+      const category = expenseCategories.find(c => c.id === categoryId);
+      if (!category) {
+        throw new Error('Category not found');
+      }
+      return store.createDetailedExpense({
+        name,
+        price,
+        categoryRef: {
+          id: categoryId,
+          nameAtBooking: category.name
+        },
+        status: 'active'
+      });
+    },
+    onSuccess: (newMeal) => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success('Detailed meal created');
+      setShowNewMealDialog(false);
+      setNewMealName('');
+      setNewMealPrice(0);
+      setNewMealCategoryId('');
+      // Auto-select the newly created meal
+      setMealForm({ ...mealForm, name: newMeal.name, price: newMeal.price });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create meal: ${error.message}`);
+    },
+  });
+
   const adults = watch('adults');
   const children = watch('children');
   const totalGuests = (adults || 0) + (children || 0);
@@ -149,7 +276,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const handleFormSubmit = (data: TourInput) => {
     // Validate required fields
     const missingFields: string[] = [];
-    
+
     if (!data.tourCode?.trim()) {
       missingFields.push('Tour Code');
     }
@@ -197,6 +324,66 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
       allowances,
       shoppings,
       summary,
+    });
+  };
+
+  const handleCreateNewDestination = () => {
+    if (!newDestinationName.trim()) {
+      toast.error('Please enter a destination name');
+      return;
+    }
+    if (newDestinationPrice <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    if (!newDestinationProvinceId) {
+      toast.error('Please select a province');
+      return;
+    }
+    createDestinationMutation.mutate({
+      name: newDestinationName.trim(),
+      price: newDestinationPrice,
+      provinceId: newDestinationProvinceId
+    });
+  };
+
+  const handleCreateNewExpense = () => {
+    if (!newExpenseName.trim()) {
+      toast.error('Please enter an expense name');
+      return;
+    }
+    if (newExpensePrice <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    if (!newExpenseCategoryId) {
+      toast.error('Please select a category');
+      return;
+    }
+    createExpenseMutation.mutate({
+      name: newExpenseName.trim(),
+      price: newExpensePrice,
+      categoryId: newExpenseCategoryId
+    });
+  };
+
+  const handleCreateNewMeal = () => {
+    if (!newMealName.trim()) {
+      toast.error('Please enter a meal name');
+      return;
+    }
+    if (newMealPrice <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    if (!newMealCategoryId) {
+      toast.error('Please select a category');
+      return;
+    }
+    createMealMutation.mutate({
+      name: newMealName.trim(),
+      price: newMealPrice,
+      categoryId: newMealCategoryId
     });
   };
 
@@ -522,27 +709,49 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
           <div className="rounded-lg border bg-card p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Add Destination</h3>
             <div className="grid grid-cols-1 gap-3 sm:gap-4">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="justify-between">
-                    {destForm.name || "Select destination..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Search destination..." />
-                    <CommandEmpty>No destination found.</CommandEmpty>
-                    <CommandGroup>
-                      {touristDestinations.map((dest) => (
-                        <CommandItem key={dest.id} value={dest.name} onSelect={() => setDestForm({ ...destForm, name: dest.name, price: dest.price })}>
-                          {dest.name} ({dest.price.toLocaleString()} ₫)
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Popover open={destinationOpen} onOpenChange={setDestinationOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="justify-between flex-1">
+                      {destForm.name || "Select destination..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search destination..." />
+                      <CommandList>
+                        <CommandEmpty>No destination found.</CommandEmpty>
+                        <CommandGroup>
+                          {touristDestinations.map((dest) => (
+                            <CommandItem key={dest.id} value={dest.name} onSelect={() => {
+                              setDestForm({ ...destForm, name: dest.name, price: dest.price });
+                              setDestinationOpen(false);
+                            }}>
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  destForm.name === dest.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {dest.name} ({dest.price.toLocaleString()} ₫)
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowNewDestinationDialog(true)}
+                  title="Add new destination type"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <CurrencyInput placeholder="Price" value={destForm.price} onChange={(price) => setDestForm({ ...destForm, price })} />
               <DateInput value={destForm.date} onChange={(date) => setDestForm({ ...destForm, date })} />
             </div>
@@ -579,27 +788,49 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
           <div className="rounded-lg border bg-card p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Add Expense</h3>
             <div className="grid grid-cols-1 gap-3 sm:gap-4">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="justify-between">
-                    {expForm.name || "Select expense..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Search expense..." />
-                    <CommandEmpty>No expense found.</CommandEmpty>
-                    <CommandGroup>
-                      {detailedExpenses.map((exp) => (
-                        <CommandItem key={exp.id} value={exp.name} onSelect={() => setExpForm({ ...expForm, name: exp.name, price: exp.price })}>
-                          {exp.name} ({exp.price.toLocaleString()} ₫)
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Popover open={expenseOpen} onOpenChange={setExpenseOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="justify-between flex-1">
+                      {expForm.name || "Select expense..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search expense..." />
+                      <CommandList>
+                        <CommandEmpty>No expense found.</CommandEmpty>
+                        <CommandGroup>
+                          {detailedExpenses.map((exp) => (
+                            <CommandItem key={exp.id} value={exp.name} onSelect={() => {
+                              setExpForm({ ...expForm, name: exp.name, price: exp.price });
+                              setExpenseOpen(false);
+                            }}>
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  expForm.name === exp.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {exp.name} ({exp.price.toLocaleString()} ₫)
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowNewExpenseDialog(true)}
+                  title="Add new expense type"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <CurrencyInput placeholder="Price" value={expForm.price} onChange={(price) => setExpForm({ ...expForm, price })} />
               <DateInput value={expForm.date} onChange={(date) => setExpForm({ ...expForm, date })} />
             </div>
@@ -621,27 +852,49 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
           <div className="rounded-lg border bg-card p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold mb-4">Add Meal</h3>
             <div className="grid grid-cols-1 gap-3 sm:gap-4">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="justify-between">
-                    {mealForm.name || "Select meal..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Search meal..." />
-                    <CommandEmpty>No meal found.</CommandEmpty>
-                    <CommandGroup>
-                      {shoppingItems.map((item) => (
-                        <CommandItem key={item.id} value={item.name} onSelect={() => setMealForm({ ...mealForm, name: item.name })}>
-                          {item.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Popover open={mealOpen} onOpenChange={setMealOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="justify-between flex-1">
+                      {mealForm.name || "Select meal..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search meal..." />
+                      <CommandList>
+                        <CommandEmpty>No meal found.</CommandEmpty>
+                        <CommandGroup>
+                          {detailedExpenses.map((item) => (
+                            <CommandItem key={item.id} value={item.name} onSelect={() => {
+                              setMealForm({ ...mealForm, name: item.name, price: item.price });
+                              setMealOpen(false);
+                            }}>
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  mealForm.name === item.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {item.name} ({item.price.toLocaleString()} ₫)
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowNewMealDialog(true)}
+                  title="Add new meal type"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <CurrencyInput placeholder="Price" value={mealForm.price} onChange={(price) => setMealForm({ ...mealForm, price })} />
               <DateInput value={mealForm.date} onChange={(date) => setMealForm({ ...mealForm, date })} />
             </div>
@@ -846,6 +1099,309 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog for creating new destination */}
+      <Dialog open={showNewDestinationDialog} onOpenChange={setShowNewDestinationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Tourist Destination</DialogTitle>
+            <DialogDescription>
+              Create a new tourist destination that can be reused across tours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-destination-name">Destination Name</Label>
+              <Input
+                id="new-destination-name"
+                placeholder="e.g., Ha Long Bay, Hoi An"
+                value={newDestinationName}
+                onChange={(e) => setNewDestinationName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="destination-province">Province</Label>
+              <Popover open={openProvince} onOpenChange={setOpenProvince}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="destination-province"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openProvince}
+                    className="justify-between w-full"
+                    type="button"
+                  >
+                    {newDestinationProvinceId
+                      ? provinces.find((prov) => prov.id === newDestinationProvinceId)?.name
+                      : "Select province..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search province..." />
+                    <CommandList>
+                      <CommandEmpty>No province found.</CommandEmpty>
+                      <CommandGroup>
+                        {provinces.map((prov) => (
+                          <CommandItem
+                            key={prov.id}
+                            value={prov.name}
+                            onSelect={() => {
+                              setNewDestinationProvinceId(prov.id);
+                              setOpenProvince(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                newDestinationProvinceId === prov.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {prov.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-destination-price">Default Price (VND)</Label>
+              <CurrencyInput
+                id="new-destination-price"
+                placeholder="Default price"
+                value={newDestinationPrice}
+                onChange={setNewDestinationPrice}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNewDestinationDialog(false);
+                setNewDestinationName('');
+                setNewDestinationPrice(0);
+                setNewDestinationProvinceId('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewDestination}
+              disabled={createDestinationMutation.isPending}
+            >
+              {createDestinationMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for creating new expense */}
+      <Dialog open={showNewExpenseDialog} onOpenChange={setShowNewExpenseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Detailed Expense</DialogTitle>
+            <DialogDescription>
+              Create a new detailed expense that can be reused across tours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-expense-name">Expense Name</Label>
+              <Input
+                id="new-expense-name"
+                placeholder="e.g., Hotel, Transport, Food"
+                value={newExpenseName}
+                onChange={(e) => setNewExpenseName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expense-category">Expense Category</Label>
+              <Popover open={openExpenseCategory} onOpenChange={setOpenExpenseCategory}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="expense-category"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openExpenseCategory}
+                    className="justify-between w-full"
+                    type="button"
+                  >
+                    {newExpenseCategoryId
+                      ? expenseCategories.find((cat) => cat.id === newExpenseCategoryId)?.name
+                      : "Select category..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search category..." />
+                    <CommandList>
+                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandGroup>
+                        {expenseCategories.map((cat) => (
+                          <CommandItem
+                            key={cat.id}
+                            value={cat.name}
+                            onSelect={() => {
+                              setNewExpenseCategoryId(cat.id);
+                              setOpenExpenseCategory(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                newExpenseCategoryId === cat.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {cat.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-expense-price">Default Price (VND)</Label>
+              <CurrencyInput
+                id="new-expense-price"
+                placeholder="Default price"
+                value={newExpensePrice}
+                onChange={setNewExpensePrice}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNewExpenseDialog(false);
+                setNewExpenseName('');
+                setNewExpensePrice(0);
+                setNewExpenseCategoryId('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewExpense}
+              disabled={createExpenseMutation.isPending}
+            >
+              {createExpenseMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for creating new meal */}
+      <Dialog open={showNewMealDialog} onOpenChange={setShowNewMealDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Detailed Meal</DialogTitle>
+            <DialogDescription>
+              Create a new detailed meal that can be reused across tours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-meal-name">Meal Name</Label>
+              <Input
+                id="new-meal-name"
+                placeholder="e.g., Breakfast, Lunch, Dinner"
+                value={newMealName}
+                onChange={(e) => setNewMealName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="meal-category">Expense Category</Label>
+              <Popover open={openMealCategory} onOpenChange={setOpenMealCategory}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="meal-category"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openMealCategory}
+                    className="justify-between w-full"
+                    type="button"
+                  >
+                    {newMealCategoryId
+                      ? expenseCategories.find((cat) => cat.id === newMealCategoryId)?.name
+                      : "Select category..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search category..." />
+                    <CommandList>
+                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandGroup>
+                        {expenseCategories.map((cat) => (
+                          <CommandItem
+                            key={cat.id}
+                            value={cat.name}
+                            onSelect={() => {
+                              setNewMealCategoryId(cat.id);
+                              setOpenMealCategory(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                newMealCategoryId === cat.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {cat.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-meal-price">Default Price (VND)</Label>
+              <CurrencyInput
+                id="new-meal-price"
+                placeholder="Default price"
+                value={newMealPrice}
+                onChange={setNewMealPrice}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNewMealDialog(false);
+                setNewMealName('');
+                setNewMealPrice(0);
+                setNewMealCategoryId('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewMeal}
+              disabled={createMealMutation.isPending}
+            >
+              {createMealMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex justify-end">
         <Button type="submit" className="hover-scale">

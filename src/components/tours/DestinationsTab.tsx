@@ -11,22 +11,31 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, formatDate } from '@/lib/utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import type { Destination } from '@/types/tour';
 
 interface DestinationsTabProps {
-  tourId: string;
+  tourId?: string;
   destinations: Destination[];
+  onChange?: (destinations: Destination[]) => void;
 }
 
-export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) {
+export function DestinationsTab({ tourId, destinations, onChange }: DestinationsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Destination>({ name: '', price: 0, date: '' });
   const [openDestination, setOpenDestination] = useState(false);
+  const [showNewDestinationDialog, setShowNewDestinationDialog] = useState(false);
+  const [newDestinationName, setNewDestinationName] = useState('');
+  const [newDestinationPrice, setNewDestinationPrice] = useState(0);
+  const [newDestinationProvinceId, setNewDestinationProvinceId] = useState('');
+  const [openProvince, setOpenProvince] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: tour } = useQuery({
     queryKey: ['tour', tourId],
-    queryFn: () => store.getTour(tourId),
+    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
+    enabled: !!tourId,
   });
 
   const { data: touristDestinations = [] } = useQuery({
@@ -34,30 +43,98 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
     queryFn: () => store.listTouristDestinations({ status: 'active' }),
   });
 
+  const { data: provinces = [] } = useQuery({
+    queryKey: ['provinces'],
+    queryFn: () => store.listProvinces({ status: 'active' }),
+  });
+
   const addMutation = useMutation({
-    mutationFn: (destination: Destination) => store.addDestination(tourId, destination),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: (destination: Destination) => {
+      if (tourId) {
+        return store.addDestination(tourId, destination);
+      }
+      // Create mode: just return the destination
+      return Promise.resolve(destination);
+    },
+    onSuccess: (newDest) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        // Create mode: call onChange with updated list
+        onChange?.([...destinations, newDest]);
+      }
       toast.success('Destination added');
       setFormData({ name: '', price: 0, date: '' });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, destination }: { index: number; destination: Destination }) =>
-      store.updateDestination(tourId, index, destination),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: ({ index, destination }: { index: number; destination: Destination }) => {
+      if (tourId) {
+        return store.updateDestination(tourId, index, destination);
+      }
+      return Promise.resolve(destination);
+    },
+    onSuccess: (updated, { index }) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        // Create mode: call onChange with updated list
+        const newDests = [...destinations];
+        newDests[index] = updated;
+        onChange?.(newDests);
+      }
       toast.success('Destination updated');
       setEditingIndex(null);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (index: number) => store.removeDestination(tourId, index),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+    mutationFn: (index: number) => {
+      if (tourId) {
+        return store.removeDestination(tourId, index);
+      }
+      return Promise.resolve();
+    },
+    onSuccess: (_, index) => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      } else {
+        // Create mode: call onChange with updated list
+        onChange?.(destinations.filter((_, i) => i !== index));
+      }
       toast.success('Destination removed');
+    },
+  });
+
+  const createDestinationMutation = useMutation({
+    mutationFn: ({ name, price, provinceId }: { name: string; price: number; provinceId: string }) => {
+      const province = provinces.find(p => p.id === provinceId);
+      if (!province) {
+        throw new Error('Province not found');
+      }
+      return store.createTouristDestination({
+        name,
+        price,
+        provinceRef: {
+          id: provinceId,
+          nameAtBooking: province.name
+        },
+        status: 'active'
+      });
+    },
+    onSuccess: (newDestination) => {
+      queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
+      toast.success('Tourist destination created');
+      setShowNewDestinationDialog(false);
+      setNewDestinationName('');
+      setNewDestinationPrice(0);
+      setNewDestinationProvinceId('');
+      // Auto-select the newly created destination
+      setFormData({ ...formData, name: newDestination.name, price: newDestination.price });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create destination: ${error.message}`);
     },
   });
 
@@ -107,6 +184,26 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
     setFormData({ name: '', price: 0, date: '' });
   };
 
+  const handleCreateNewDestination = () => {
+    if (!newDestinationName.trim()) {
+      toast.error('Please enter a destination name');
+      return;
+    }
+    if (newDestinationPrice <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    if (!newDestinationProvinceId) {
+      toast.error('Please select a province');
+      return;
+    }
+    createDestinationMutation.mutate({
+      name: newDestinationName.trim(),
+      price: newDestinationPrice,
+      provinceId: newDestinationProvinceId
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-6">
@@ -115,53 +212,64 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Popover open={openDestination} onOpenChange={setOpenDestination}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openDestination}
-                  className="justify-between"
-                >
-                  {formData.name || "Select destination..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search destination..." />
-                  <CommandList>
-                    <CommandEmpty>No destination found.</CommandEmpty>
-                    <CommandGroup>
-                      {touristDestinations.map((dest) => (
-                        <CommandItem
-                          key={dest.id}
-                          value={dest.name}
-                          onSelect={() => {
-                            const today = new Date().toISOString().split('T')[0];
-                            setFormData({
-                              ...formData,
-                              name: dest.name,
-                              price: dest.price,
-                              date: formData.date || today // Keep existing date or use today
-                            });
-                            setOpenDestination(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              formData.name === dest.name ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {dest.name} ({dest.price.toLocaleString()} ₫)
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              <Popover open={openDestination} onOpenChange={setOpenDestination}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openDestination}
+                    className="flex-1 justify-between"
+                  >
+                    {formData.name || "Select destination..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search destination..." />
+                    <CommandList>
+                      <CommandEmpty>No destination found.</CommandEmpty>
+                      <CommandGroup>
+                        {touristDestinations.map((dest) => (
+                          <CommandItem
+                            key={dest.id}
+                            value={dest.name}
+                            onSelect={() => {
+                              const today = new Date().toISOString().split('T')[0];
+                              setFormData({
+                                ...formData,
+                                name: dest.name,
+                                price: dest.price,
+                                date: formData.date || today // Keep existing date or use today
+                              });
+                              setOpenDestination(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.name === dest.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {dest.name} ({dest.price.toLocaleString()} ₫)
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowNewDestinationDialog(true)}
+                title="Add new destination"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <CurrencyInput
               placeholder="Price (VND)"
               value={formData.price}
@@ -254,6 +362,106 @@ export function DestinationsTab({ tourId, destinations }: DestinationsTabProps) 
           </div>
         )}
       </div>
+
+      {/* New Destination Dialog */}
+      <Dialog open={showNewDestinationDialog} onOpenChange={setShowNewDestinationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Tourist Destination</DialogTitle>
+            <DialogDescription>
+              Create a new tourist destination that can be reused across tours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-destination-name">Destination Name</Label>
+              <Input
+                id="new-destination-name"
+                placeholder="e.g., Ha Long Bay, Hoi An"
+                value={newDestinationName}
+                onChange={(e) => setNewDestinationName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="destination-province">Province</Label>
+              <Popover open={openProvince} onOpenChange={setOpenProvince}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="destination-province"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openProvince}
+                    className="justify-between w-full"
+                  >
+                    {newDestinationProvinceId
+                      ? provinces.find((prov) => prov.id === newDestinationProvinceId)?.name
+                      : "Select province..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search province..." />
+                    <CommandList>
+                      <CommandEmpty>No province found.</CommandEmpty>
+                      <CommandGroup>
+                        {provinces.map((prov) => (
+                          <CommandItem
+                            key={prov.id}
+                            value={prov.name}
+                            onSelect={() => {
+                              setNewDestinationProvinceId(prov.id);
+                              setOpenProvince(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                newDestinationProvinceId === prov.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {prov.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-destination-price">Default Price (VND)</Label>
+              <CurrencyInput
+                id="new-destination-price"
+                placeholder="Default price"
+                value={newDestinationPrice}
+                onChange={setNewDestinationPrice}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNewDestinationDialog(false);
+                setNewDestinationName('');
+                setNewDestinationPrice(0);
+                setNewDestinationProvinceId('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewDestination}
+              disabled={createDestinationMutation.isPending}
+            >
+              {createDestinationMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

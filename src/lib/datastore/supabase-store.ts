@@ -1719,6 +1719,7 @@ export class SupabaseStore implements DataStore {
       name: row.name,
       price: Number(row.price) || 0,
       date: row.date,
+      guests: row.guests !== null && row.guests !== undefined ? Number(row.guests) : undefined,
     }));
   }
 
@@ -1728,6 +1729,7 @@ export class SupabaseStore implements DataStore {
       name: expense.name,
       price: expense.price,
       date: expense.date,
+      guests: expense.guests,
     });
     if (error) throw error;
   }
@@ -1739,6 +1741,7 @@ export class SupabaseStore implements DataStore {
         name: expense.name,
         price: expense.price,
         date: expense.date,
+        guests: expense.guests,
       }).eq('id', rows[index].id);
       if (error) throw error;
     }

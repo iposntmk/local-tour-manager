@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
@@ -80,6 +80,8 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
   const startDate = watch('startDate');
   const endDate = watch('endDate');
+  const tourCode = watch('tourCode');
+  const clientName = watch('clientName');
 
   // Calculate total days dynamically based on start and end dates
   const totalDays = (() => {
@@ -90,6 +92,49 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays + 1; // Include both start and end dates
   })();
+
+  // Auto-save when critical fields change (dates, adults, children)
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    // Skip on initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Only auto-save if we have a tour (editing mode) and required fields are present
+    if (!initialData || !tourCode || !clientName || !startDate || !endDate || !selectedCompanyId || !selectedGuideId || !selectedNationalityId) {
+      return;
+    }
+
+    const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
+    const selectedGuide = guides.find((g) => g.id === selectedGuideId);
+    const selectedNationality = nationalities.find((n) => n.id === selectedNationalityId);
+
+    if (!selectedCompany || !selectedGuide || !selectedNationality) {
+      return;
+    }
+
+    // Auto-save with a small debounce
+    const timeoutId = setTimeout(() => {
+      const formData = {
+        tourCode,
+        clientName,
+        startDate,
+        endDate,
+        adults: adults || 0,
+        children: children || 0,
+        driverName: watch('driverName'),
+        clientPhone: watch('clientPhone'),
+        companyRef: { id: selectedCompany.id, nameAtBooking: selectedCompany.name },
+        guideRef: { id: selectedGuide.id, nameAtBooking: selectedGuide.name },
+        clientNationalityRef: { id: selectedNationality.id, nameAtBooking: selectedNationality.name },
+      };
+      onSubmit(formData);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [startDate, endDate, adults, children]);
 
   const handleFormSubmit = (data: TourInput) => {
     // Validate required fields

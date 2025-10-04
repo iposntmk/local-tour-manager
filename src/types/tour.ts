@@ -15,6 +15,7 @@ export interface Expense {
   name: string;
   price: number;
   date: string;
+  guests?: number; // Number of guests for this expense (defaults to total guests)
   matchedId?: string;
   matchedPrice?: number;
 }
