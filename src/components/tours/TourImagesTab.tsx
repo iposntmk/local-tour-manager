@@ -2,9 +2,15 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Upload, Image as ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface TourImage {
   id: string;
@@ -23,6 +29,7 @@ interface TourImagesTabProps {
 
 export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
   const [uploading, setUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<TourImage | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch images for this tour
@@ -204,15 +211,19 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
                   <img
                     src={getImageUrl(image.storage_path)}
                     alt={image.file_name}
-                    className="w-full aspect-square object-cover"
+                    className="w-full aspect-square object-cover cursor-pointer"
                     loading="lazy"
+                    onClick={() => setSelectedImage(image)}
                   />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => deleteMutation.mutate(image)}
-                      className="hover-scale"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteMutation.mutate(image);
+                      }}
+                      className="hover-scale pointer-events-auto"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
@@ -230,6 +241,52 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
           </div>
         )}
       </div>
+
+      {/* Image Viewer Dialog */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{selectedImage?.file_name}</DialogTitle>
+          </DialogHeader>
+          {selectedImage && (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <img
+                  src={getImageUrl(selectedImage.storage_path)}
+                  alt={selectedImage.file_name}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                />
+              </div>
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <span>
+                  {selectedImage.file_size
+                    ? `${(selectedImage.file_size / 1024).toFixed(0)} KB`
+                    : 'Unknown size'}
+                </span>
+                <span>{new Date(selectedImage.created_at).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(getImageUrl(selectedImage.storage_path), '_blank')}
+                >
+                  Open in New Tab
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    deleteMutation.mutate(selectedImage);
+                    setSelectedImage(null);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

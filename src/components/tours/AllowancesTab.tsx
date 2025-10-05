@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -110,28 +110,8 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
     }
 
     if (editingIndex !== null) {
-      // Check for duplicate allowance name when editing (case-insensitive, excluding current index)
-      const isDuplicate = allowances.some((allow, i) =>
-        i !== editingIndex && allow.name.toLowerCase() === formData.name.toLowerCase()
-      );
-
-      if (isDuplicate) {
-        toast.error('An allowance with this name already exists');
-        return;
-      }
-
       updateMutation.mutate({ index: editingIndex, allowance: formData });
     } else {
-      // Check for duplicate allowance name
-      const isDuplicate = allowances.some(allow =>
-        allow.name.toLowerCase() === formData.name.toLowerCase()
-      );
-
-      if (isDuplicate) {
-        toast.error('An allowance with this name already exists');
-        return;
-      }
-
       addMutation.mutate(formData);
     }
   };
@@ -139,12 +119,43 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
   const handleEdit = (index: number) => {
     setEditingIndex(index);
     setFormData(allowances[index]);
+    // Scroll to the form at the top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Open the combobox after a short delay to allow state to update
+    setTimeout(() => {
+      setOpenExpense(true);
+    }, 100);
   };
 
   const handleCancel = () => {
     setEditingIndex(null);
     setFormData({ date: '', name: '', price: 0, quantity: 1 });
   };
+
+  const handleCopy = (index: number) => {
+    const allowanceToCopy = allowances[index];
+    addMutation.mutate({ ...allowanceToCopy });
+  };
+
+  // Merge rows with same name, date, and price
+  const mergedAllowances = allowances.reduce((acc, allowance, originalIndex) => {
+    const key = `${allowance.name}-${allowance.date}-${allowance.price}`;
+    const existing = acc.find(item => item.key === key);
+
+    if (existing) {
+      existing.quantity += (allowance.quantity || 1);
+      existing.indices.push(originalIndex);
+    } else {
+      acc.push({
+        key,
+        ...allowance,
+        quantity: allowance.quantity || 1,
+        indices: [originalIndex]
+      });
+    }
+
+    return acc;
+  }, [] as Array<Allowance & { key: string; indices: number[] }>);
 
   return (
     <div className="space-y-6">
@@ -256,12 +267,13 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allowances.map((allowance, index) => {
-                const quantity = allowance.quantity || 1;
+              {mergedAllowances.map((allowance, displayIndex) => {
+                const quantity = allowance.quantity;
                 const total = allowance.price * quantity;
+                const firstIndex = allowance.indices[0];
                 return (
-                  <TableRow key={index} className="animate-fade-in">
-                    <TableCell className="font-medium">{index + 1}</TableCell>
+                  <TableRow key={allowance.key} className="animate-fade-in">
+                    <TableCell className="font-medium">{displayIndex + 1}</TableCell>
                     <TableCell className="font-medium">{allowance.name}</TableCell>
                     <TableCell>{allowance.price.toLocaleString()} ₫</TableCell>
                     <TableCell>{quantity}</TableCell>
@@ -272,7 +284,16 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEdit(index)}
+                          onClick={() => handleCopy(firstIndex)}
+                          className="hover-scale"
+                          title="Copy row"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(firstIndex)}
                           className="hover-scale"
                         >
                           <Edit2 className="h-4 w-4" />
@@ -280,7 +301,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteMutation.mutate(index)}
+                          onClick={() => deleteMutation.mutate(firstIndex)}
                           className="hover-scale text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />

@@ -163,7 +163,7 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     'ngày',                    // B
     'vé/ăn/uống/chi phí',      // C
     'giá vé/đơn giá',          // D
-    'số khách',                // E
+    'số khách/ số ngày',       // E
     'thành tiền',              // F
     'Địa điểm/tỉnh',           // G
     'số ngày',                 // H
@@ -205,15 +205,35 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
 
   const allowances = tour.allowances || [];
 
-  const serviceItems: { name: string; price: number }[] = [];
+  const serviceItems: { name: string; price: number; guests?: number }[] = [];
   if (tour.destinations && tour.destinations.length > 0) {
     tour.destinations.forEach(d => {
       serviceItems.push({ name: `vé ${d.name || ''}`, price: d.price || 0 });
     });
   }
   if (tour.expenses && tour.expenses.length > 0) {
+    // Group expenses by ID (from detailed_expenses table) and merge duplicates
+    const expenseMap = new Map<string, { name: string; price: number; guests: number; count: number }>();
     tour.expenses.forEach(e => {
-      serviceItems.push({ name: e.name || '', price: e.price || 0 });
+      const key = e.name || ''; // Using name as key since we want to merge by detailed_expenses ID
+      if (!expenseMap.has(key)) {
+        expenseMap.set(key, {
+          name: e.name || '',
+          price: e.price || 0,
+          guests: e.guests ?? totalGuests,
+          count: 1
+        });
+      } else {
+        // Merge: sum the guests count
+        const existing = expenseMap.get(key)!;
+        existing.guests += (e.guests ?? totalGuests);
+        existing.count += 1;
+      }
+    });
+
+    // Add merged expenses to serviceItems
+    expenseMap.forEach(({ name, price, guests }) => {
+      serviceItems.push({ name, price, guests });
     });
   }
   if (tour.meals && tour.meals.length > 0) {
@@ -254,7 +274,8 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
       row.getCell(4).value = service.price;
       row.getCell(4).numFmt = currencyFormat;
 
-      row.getCell(5).value = totalGuests;
+      const serviceGuests = service.guests ?? totalGuests;
+      row.getCell(5).value = serviceGuests;
       row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
 
       row.getCell(6).value = { formula: `D${rowNumber}*E${rowNumber}` };
@@ -574,7 +595,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   // Header row 2
   const headerRow = worksheet.getRow(2);
   const headers = [
-    'code', 'ngày', 'vé/ăn/uống/chi phí', 'giá vé/đơn giá', 'số khách',
+    'code', 'ngày', 'vé/ăn/uống/chi phí', 'giá vé/đơn giá', 'số khách/ số ngày',
     'thành tiền', 'Địa điểm/tỉnh', 'số ngày', 'CTP', 'thành tiền', '',
   ];
 
@@ -614,7 +635,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
     };
 
     const allowances = tour.allowances || [];
-    const serviceItems: { name: string; price: number }[] = [];
+    const serviceItems: { name: string; price: number; guests?: number }[] = [];
 
     if (tour.destinations && tour.destinations.length > 0) {
       tour.destinations.forEach(d => {
@@ -622,8 +643,28 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
       });
     }
     if (tour.expenses && tour.expenses.length > 0) {
+      // Group expenses by ID (from detailed_expenses table) and merge duplicates
+      const expenseMap = new Map<string, { name: string; price: number; guests: number; count: number }>();
       tour.expenses.forEach(e => {
-        serviceItems.push({ name: e.name || '', price: e.price || 0 });
+        const key = e.name || ''; // Using name as key since we want to merge by detailed_expenses ID
+        if (!expenseMap.has(key)) {
+          expenseMap.set(key, {
+            name: e.name || '',
+            price: e.price || 0,
+            guests: e.guests ?? totalGuests,
+            count: 1
+          });
+        } else {
+          // Merge: sum the guests count
+          const existing = expenseMap.get(key)!;
+          existing.guests += (e.guests ?? totalGuests);
+          existing.count += 1;
+        }
+      });
+
+      // Add merged expenses to serviceItems
+      expenseMap.forEach(({ name, price, guests }) => {
+        serviceItems.push({ name, price, guests });
       });
     }
     if (tour.meals && tour.meals.length > 0) {
@@ -660,7 +701,8 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
         row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
         row.getCell(4).value = service.price;
         row.getCell(4).numFmt = currencyFormat;
-        row.getCell(5).value = totalGuests;
+        const serviceGuests = service.guests ?? totalGuests;
+        row.getCell(5).value = serviceGuests;
         row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(6).value = { formula: `D${rowNumber}*E${rowNumber}` };
         row.getCell(6).numFmt = currencyFormat;

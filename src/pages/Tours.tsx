@@ -75,10 +75,22 @@ const formatDateRange = (startDate: string, endDate: string): string => {
 };
 
 const Tours = () => {
-  const [search, setSearch] = useState('');
-  const [nationalityFilter, setNationalityFilter] = useState<string>('all');
-  const [monthFilter, setMonthFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('startDate-asc');
+  const [search, setSearch] = useState(() => {
+    const saved = localStorage.getItem('tours.search');
+    return saved || '';
+  });
+  const [nationalityFilter, setNationalityFilter] = useState<string>(() => {
+    const saved = localStorage.getItem('tours.nationalityFilter');
+    return saved || 'all';
+  });
+  const [monthFilter, setMonthFilter] = useState<string>(() => {
+    const saved = localStorage.getItem('tours.monthFilter');
+    return saved || 'all';
+  });
+  const [sortBy, setSortBy] = useState<string>(() => {
+    const saved = localStorage.getItem('tours.sortBy');
+    return saved || 'startDate-asc';
+  });
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [filtersExpanded, setFiltersExpanded] = useState(() => {
     const saved = localStorage.getItem('tours.filtersExpanded');
@@ -89,7 +101,23 @@ const Tours = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Save filters expanded state to localStorage
+  // Save filter states to localStorage
+  useEffect(() => {
+    localStorage.setItem('tours.search', search);
+  }, [search]);
+
+  useEffect(() => {
+    localStorage.setItem('tours.nationalityFilter', nationalityFilter);
+  }, [nationalityFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('tours.monthFilter', monthFilter);
+  }, [monthFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('tours.sortBy', sortBy);
+  }, [sortBy]);
+
   useEffect(() => {
     localStorage.setItem('tours.filtersExpanded', JSON.stringify(filtersExpanded));
   }, [filtersExpanded]);
@@ -107,10 +135,12 @@ const Tours = () => {
     }
 
     if (monthFilter !== 'all') {
+      // Filter by start date month only
       const [yearStr, monthStr] = monthFilter.split('-');
       const year = Number(yearStr);
       const month = Number(monthStr);
       if (!Number.isNaN(year) && !Number.isNaN(month)) {
+        // Set both startDate and endDate to cover the entire month for start dates
         query.startDate = `${monthFilter}-01`;
         const lastDay = new Date(year, month, 0).getDate();
         query.endDate = `${monthFilter}-${String(lastDay).padStart(2, '0')}`;
@@ -1096,17 +1126,17 @@ const Tours = () => {
 
               {/* Filter Results Info */}
               {hasActiveFilters && (
-                <div className="flex items-center gap-2 text-sm mt-3">
-                  <span className="text-muted-foreground">
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="text-base sm:text-lg font-semibold">
                     Showing {tours.length} of {totalTours} tours
                   </span>
                   {nationalityFilter !== 'all' && (
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="text-sm font-medium">
                       {nationalities.find(n => n.id === nationalityFilter)?.name}
                     </Badge>
                   )}
                   {monthFilter !== 'all' && (
-                    <Badge variant="secondary">
+                    <Badge variant="default" className="text-sm sm:text-base font-semibold px-3 py-1">
                       {new Date(monthFilter + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
                     </Badge>
                   )}

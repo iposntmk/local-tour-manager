@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Lock } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,7 +13,10 @@ import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Shopping } from '@/types/tour';
+
+const REQUIRED_PIN = '0829101188';
 
 interface ShoppingsTabProps {
   tourId?: string;
@@ -22,6 +25,12 @@ interface ShoppingsTabProps {
 }
 
 export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps) {
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    const saved = sessionStorage.getItem('shopping.unlocked');
+    return saved === 'true';
+  });
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [openShopping, setOpenShopping] = useState(false);
   const [showNewShoppingDialog, setShowNewShoppingDialog] = useState(false);
@@ -139,6 +148,12 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
   const handleEdit = (index: number) => {
     setEditingIndex(index);
     setFormData(shoppings[index]);
+    // Scroll to the form at the top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Open the combobox after a short delay to allow state to update
+    setTimeout(() => {
+      setOpenShopping(true);
+    }, 100);
   };
 
   const handleDelete = (index: number) => {
@@ -163,6 +178,63 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
   const totalGuests = tour ? tour.totalGuests : 1;
   const totalAmount = shoppings.reduce((sum, s) => sum + s.price, 0);
   const totalTip = shoppings.filter(s => s.name === 'TIP').reduce((sum, s) => sum + s.price, 0);
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === REQUIRED_PIN) {
+      setIsUnlocked(true);
+      sessionStorage.setItem('shopping.unlocked', 'true');
+      setPinError(false);
+      setPinInput('');
+    } else {
+      setPinError(true);
+      setPinInput('');
+    }
+  };
+
+  if (!isUnlocked) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Shopping Tab Access
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePinSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="pin" className="text-sm font-medium">
+                  Enter PIN (hint: your phone number)
+                </label>
+                <Input
+                  id="pin"
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={pinInput}
+                  onChange={(e) => {
+                    setPinInput(e.target.value);
+                    setPinError(false);
+                  }}
+                  placeholder="Enter PIN"
+                  className={pinError ? 'border-red-500' : ''}
+                  autoFocus
+                />
+                {pinError && (
+                  <p className="text-sm text-red-500">Incorrect PIN. Please try again.</p>
+                )}
+              </div>
+              <Button type="submit" className="w-full">
+                Unlock Shopping Tab
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

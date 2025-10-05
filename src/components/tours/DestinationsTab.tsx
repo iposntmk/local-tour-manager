@@ -171,6 +171,12 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
   const handleEdit = (index: number) => {
     setEditingIndex(index);
     setFormData(destinations[index]);
+    // Scroll to the form at the top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Open the combobox after a short delay to allow state to update
+    setTimeout(() => {
+      setOpenDestination(true);
+    }, 100);
   };
 
   const handleCancel = () => {

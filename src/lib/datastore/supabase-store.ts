@@ -1317,7 +1317,7 @@ export class SupabaseStore implements DataStore {
     if (query?.companyId) queryBuilder = queryBuilder.eq('company_id', query.companyId);
     if (query?.guideId) queryBuilder = queryBuilder.eq('guide_id', query.guideId);
     if (query?.startDate) queryBuilder = queryBuilder.gte('start_date', query.startDate);
-    if (query?.endDate) queryBuilder = queryBuilder.lte('end_date', query.endDate);
+    if (query?.endDate) queryBuilder = queryBuilder.lte('start_date', query.endDate);
     if (query?.nationalityId) queryBuilder = queryBuilder.eq('nationality_id', query.nationalityId);
 
     const limit = typeof query?.limit === 'number' ? query.limit : undefined;
