@@ -149,6 +149,12 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
   const handleEdit = (index: number) => {
     setEditingIndex(index);
     setFormData(meals[index]);
+    // Scroll to the form at the top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Open the combobox after a short delay to allow state to update
+    setTimeout(() => {
+      setOpenMeal(true);
+    }, 100);
   };
 
   const handleCancel = () => {

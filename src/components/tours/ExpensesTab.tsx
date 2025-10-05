@@ -152,6 +152,12 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
   const handleEdit = (index: number) => {
     setEditingIndex(index);
     setFormData(expenses[index]);
+    // Scroll to the form at the top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Open the combobox after a short delay to allow state to update
+    setTimeout(() => {
+      setOpenExpense(true);
+    }, 100);
   };
 
   const handleCancel = () => {

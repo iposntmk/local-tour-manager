@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
@@ -64,6 +65,21 @@ const TourDetail = () => {
     queryKey: ['tour', id],
     queryFn: () => store.getTour(id!),
     enabled: !isNewTour,
+  });
+
+  // Fetch tour images count
+  const { data: tourImages = [] } = useQuery({
+    queryKey: ['tourImages', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tour_images')
+        .select('*')
+        .eq('tour_id', id!);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !isNewTour && !!id,
   });
 
   const createMutation = useMutation({
@@ -206,98 +222,97 @@ const TourDetail = () => {
           <Tabs defaultValue="info" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             {/* Header with tabs inside Tabs context */}
             <div className={`${headerClasses} border-b pb-4 pt-4 bg-blue-100 dark:bg-blue-900 sticky top-[57px] z-40`}>
-              <div className="flex items-center justify-between gap-2 sm:gap-4">
-                <div className="flex items-center gap-2 flex-shrink min-w-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => navigate('/tours')}
-                    className="hover-scale h-8 w-8 flex-shrink-0"
-                    title="Back to tours list"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <div className="min-w-0">
-                    <h1 className="text-base sm:text-2xl md:text-3xl font-bold truncate">
-                      {isNewTour ? 'New Tour' : (tour?.tourCode || 'Tour Details')}
-                    </h1>
-                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground truncate">
-                      {isNewTour ? 'Create a new tour' : 'Manage tour information'}
-                    </p>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2 sm:gap-4">
+                  <div className="flex items-center gap-2 flex-shrink min-w-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate('/tours')}
+                      className="hover-scale h-8 w-8 flex-shrink-0"
+                      title="Back to tours list"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2 sm:gap-4">
+                        <h1 className="text-base sm:text-2xl md:text-3xl font-bold">
+                          {isNewTour ? 'New Tour' : (tour?.tourCode || 'Tour Details')}
+                        </h1>
+                        {/* Tour Info Summary - Same line as header */}
+                        {displayTour && (
+                          <div className="flex items-baseline gap-2 sm:gap-4 text-xs sm:text-sm">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-muted-foreground">Start</span>
+                              <span className="font-semibold">{displayTour.startDate ? new Date(displayTour.startDate).toLocaleDateString('en-GB') : '-'}</span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-muted-foreground">End</span>
+                              <span className="font-semibold">{displayTour.endDate ? new Date(displayTour.endDate).toLocaleDateString('en-GB') : '-'}</span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-muted-foreground">Days</span>
+                              <span className="font-semibold">{displayTour.totalDays || 0}</span>
+                            </div>
+                            <span className="text-muted-foreground">|</span>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-muted-foreground">Adults</span>
+                              <span className="font-semibold">{displayTour.adults || 0}</span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-muted-foreground">Children</span>
+                              <span className="font-semibold">{displayTour.children || 0}</span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-muted-foreground">Guests</span>
+                              <span className="font-semibold">{totalGuests}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
-                  {isNewTour && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleHeaderSave}
-                      className="hover-scale h-10 px-4"
-                      title="Save tour"
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      <span>Save Tour</span>
-                    </Button>
-                  )}
-                  {!isNewTour && activeTab === 'info' && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleHeaderSave}
-                      className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
-                      title="Save tour info"
-                    >
-                      <Save className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Save Info</span>
-                    </Button>
-                  )}
-                  {!isNewTour && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setDeleteDialogOpen(true)}
-                      className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
-                      title="Delete tour"
-                    >
-                      <Trash2 className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Delete</span>
-                    </Button>
-                  )}
+                  <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
+                    {isNewTour && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleHeaderSave}
+                        className="hover-scale h-10 px-4"
+                        title="Save tour"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        <span>Save Tour</span>
+                      </Button>
+                    )}
+                    {!isNewTour && activeTab === 'info' && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleHeaderSave}
+                        className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                        title="Save tour info"
+                      >
+                        <Save className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Save Info</span>
+                      </Button>
+                    )}
+                    {!isNewTour && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                        title="Delete tour"
+                      >
+                        <Trash2 className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Tour Info Summary - Always Visible */}
-              {displayTour && (
-                <div className="mt-4 p-4 rounded-lg border bg-card">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Start Date</p>
-                      <p className="text-sm font-semibold">{displayTour.startDate ? new Date(displayTour.startDate).toLocaleDateString('en-GB') : '-'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">End Date</p>
-                      <p className="text-sm font-semibold">{displayTour.endDate ? new Date(displayTour.endDate).toLocaleDateString('en-GB') : '-'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Total Days</p>
-                      <p className="text-sm font-semibold">{displayTour.totalDays || 0} {displayTour.totalDays === 1 ? 'day' : 'days'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Adults</p>
-                      <p className="text-sm font-semibold">{displayTour.adults || 0}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Children</p>
-                      <p className="text-sm font-semibold">{displayTour.children || 0}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Total Guests</p>
-                      <p className="text-sm font-semibold">{totalGuests}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div className="pt-4">
                 <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 gap-1 rounded-xl bg-background shadow-sm border p-1 h-auto">
@@ -364,7 +379,12 @@ const TourDetail = () => {
                   </TabsTrigger>
                   {!isNewTour && (
                     <TabsTrigger value="images" className="text-xs sm:text-sm">
-                      Images
+                      <div className="flex flex-col items-center">
+                        <span>Images</span>
+                        <span className="text-xs sm:text-sm font-bold">
+                          {tourImages.length}
+                        </span>
+                      </div>
                     </TabsTrigger>
                   )}
                 </TabsList>

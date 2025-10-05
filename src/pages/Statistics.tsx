@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Lock } from 'lucide-react';
 import { store } from '@/lib/datastore';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour } from '@/types/tour';
@@ -20,6 +22,7 @@ const UNKNOWN_GUIDE_ID = '__unknown_guide__';
 const UNKNOWN_COMPANY_ID = '__unknown_company__';
 const UNKNOWN_NATIONALITY_ID = '__unknown_nationality__';
 const UNKNOWN_MONTH = 'Unknown';
+const REQUIRED_PIN = '0829101188';
 
 const formatCurrency = (value: number) => `${value.toLocaleString()} ₫`;
 
@@ -67,6 +70,13 @@ const normalizeNationality = (tour: Tour) => ({
 const Statistics = () => {
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    const saved = sessionStorage.getItem('statistics.unlocked');
+    return saved === 'true';
+  });
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
 
   const { data: toursResult, isLoading } = useQuery({
     queryKey: ['statistics', 'tours'],
@@ -358,6 +368,65 @@ const Statistics = () => {
     setSelectedNationality('all');
     setSelectedMonth('all');
   };
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === REQUIRED_PIN) {
+      setIsUnlocked(true);
+      sessionStorage.setItem('statistics.unlocked', 'true');
+      setPinError(false);
+      setPinInput('');
+    } else {
+      setPinError(true);
+      setPinInput('');
+    }
+  };
+
+  if (!isUnlocked) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Statistics Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePinSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="pin" className="text-sm font-medium">
+                    Enter PIN (hint: your phone number)
+                  </label>
+                  <Input
+                    id="pin"
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={pinInput}
+                    onChange={(e) => {
+                      setPinInput(e.target.value);
+                      setPinError(false);
+                    }}
+                    placeholder="Enter PIN"
+                    className={pinError ? 'border-red-500' : ''}
+                    autoFocus
+                  />
+                  {pinError && (
+                    <p className="text-sm text-red-500">Incorrect PIN. Please try again.</p>
+                  )}
+                </div>
+                <Button type="submit" className="w-full">
+                  Unlock Statistics
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
