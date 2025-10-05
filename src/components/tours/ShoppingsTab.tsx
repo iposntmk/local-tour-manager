@@ -54,17 +54,16 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
   }, [tour?.endDate]);
 
   const addMutation = useMutation({
-    mutationFn: (shopping: Shopping) => {
+    mutationFn: async (shopping: Shopping) => {
       if (tourId) {
-        return store.addTourShopping(tourId, shopping);
+        await store.addTourShopping(tourId, shopping);
+      } else {
+        onChange?.([...shoppings, shopping]);
       }
-      return Promise.resolve(shopping);
     },
-    onSuccess: (newShopping) => {
+    onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-      } else {
-        onChange?.([...shoppings, newShopping]);
       }
       toast.success('Shopping added');
       setFormData({ name: '', price: 0, date: tour?.endDate || '' });
@@ -72,19 +71,18 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, shopping }: { index: number; shopping: Shopping }) => {
+    mutationFn: async ({ index, shopping }: { index: number; shopping: Shopping }) => {
       if (tourId) {
-        return store.updateTourShopping(tourId, index, shopping);
-      }
-      return Promise.resolve(shopping);
-    },
-    onSuccess: (updated, { index }) => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        await store.updateTourShopping(tourId, index, shopping);
       } else {
         const newShoppings = [...shoppings];
-        newShoppings[index] = updated;
+        newShoppings[index] = shopping;
         onChange?.(newShoppings);
+      }
+    },
+    onSuccess: () => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       }
       toast.success('Shopping updated');
       setEditingIndex(null);
@@ -109,7 +107,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
   });
 
   const createShoppingMutation = useMutation({
-    mutationFn: (name: string) => store.createShopping({ name, status: 'active' }),
+    mutationFn: (name: string) => store.createShopping({ name }),
     onSuccess: (newShopping) => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
       toast.success('Shopping item created');

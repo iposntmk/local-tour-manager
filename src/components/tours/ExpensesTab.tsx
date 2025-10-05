@@ -50,17 +50,16 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (expense: Expense) => {
+    mutationFn: async (expense: Expense) => {
       if (tourId) {
-        return store.addExpense(tourId, expense);
+        await store.addExpense(tourId, expense);
+      } else {
+        onChange?.([...expenses, expense]);
       }
-      return Promise.resolve(expense);
     },
-    onSuccess: (newExp) => {
+    onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-      } else {
-        onChange?.([...expenses, newExp]);
       }
       toast.success('Expense added');
       setFormData({ name: '', price: 0, date: '' });
@@ -68,21 +67,20 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, expense }: { index: number; expense: Expense }) => {
+    mutationFn: async ({ index, expense }: { index: number; expense: Expense }) => {
       if (tourId) {
         console.log('Updating expense with guests:', expense.guests);
-        return store.updateExpense(tourId, index, expense);
+        await store.updateExpense(tourId, index, expense);
+      } else {
+        const newExps = [...expenses];
+        newExps[index] = expense;
+        onChange?.(newExps);
       }
-      return Promise.resolve(expense);
     },
-    onSuccess: (updated, { index, expense }) => {
+    onSuccess: (_, { expense }) => {
       if (tourId) {
         console.log('Expense updated successfully, guests:', expense.guests);
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-      } else {
-        const newExps = [...expenses];
-        newExps[index] = updated;
-        onChange?.(newExps);
       }
       toast.success('Expense updated');
       setEditingIndex(null);
@@ -118,8 +116,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
         categoryRef: {
           id: categoryId,
           nameAtBooking: category.name
-        },
-        status: 'active'
+        }
       });
     },
     onSuccess: (newExpense) => {

@@ -162,8 +162,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         provinceRef: {
           id: provinceId,
           nameAtBooking: province.name
-        },
-        status: 'active'
+        }
       });
     },
     onSuccess: (newDestination) => {
@@ -194,8 +193,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         categoryRef: {
           id: categoryId,
           nameAtBooking: category.name
-        },
-        status: 'active'
+        }
       });
     },
     onSuccess: (newExpense) => {
@@ -226,8 +224,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         categoryRef: {
           id: categoryId,
           nameAtBooking: category.name
-        },
-        status: 'active'
+        }
       });
     },
     onSuccess: (newMeal) => {

@@ -49,19 +49,16 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
   });
 
   const addMutation = useMutation({
-    mutationFn: (destination: Destination) => {
+    mutationFn: async (destination: Destination) => {
       if (tourId) {
-        return store.addDestination(tourId, destination);
+        await store.addDestination(tourId, destination);
+      } else {
+        onChange?.([...destinations, destination]);
       }
-      // Create mode: just return the destination
-      return Promise.resolve(destination);
     },
-    onSuccess: (newDest) => {
+    onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-      } else {
-        // Create mode: call onChange with updated list
-        onChange?.([...destinations, newDest]);
       }
       toast.success('Destination added');
       setFormData({ name: '', price: 0, date: '' });
@@ -69,20 +66,18 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, destination }: { index: number; destination: Destination }) => {
+    mutationFn: async ({ index, destination }: { index: number; destination: Destination }) => {
       if (tourId) {
-        return store.updateDestination(tourId, index, destination);
+        await store.updateDestination(tourId, index, destination);
+      } else {
+        const newDests = [...destinations];
+        newDests[index] = destination;
+        onChange?.(newDests);
       }
-      return Promise.resolve(destination);
     },
-    onSuccess: (updated, { index }) => {
+    onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-      } else {
-        // Create mode: call onChange with updated list
-        const newDests = [...destinations];
-        newDests[index] = updated;
-        onChange?.(newDests);
       }
       toast.success('Destination updated');
       setEditingIndex(null);
@@ -119,8 +114,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
         provinceRef: {
           id: provinceId,
           nameAtBooking: province.name
-        },
-        status: 'active'
+        }
       });
     },
     onSuccess: (newDestination) => {
