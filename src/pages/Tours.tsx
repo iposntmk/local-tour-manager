@@ -267,7 +267,7 @@ const Tours = () => {
 
   const saveAllTourInfoMutation = useMutation({
     mutationFn: async () => {
-      const loadingToast = toast.loading('Recalculating and saving all tour info...');
+      const loadingToast = toast.loading('Recalculating and saving all tour info and summaries...');
 
       try {
         // Get all tours with details
@@ -276,7 +276,7 @@ const Tours = () => {
         let updatedCount = 0;
         const errors: string[] = [];
 
-        // For each tour, recalculate totalDays and totalGuests
+        // For each tour, recalculate totalDays, totalGuests, and summary
         for (const tour of allTours) {
           try {
             const totalGuests = (tour.adults || 0) + (tour.children || 0);
@@ -287,8 +287,35 @@ const Tours = () => {
               totalDays = Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1);
             }
 
+            // Calculate summary
+            const totalDestinations = (tour.destinations || []).reduce((sum, d) => sum + (d.price * totalGuests), 0);
+            const totalExpenses = (tour.expenses || []).reduce((sum, e) => sum + (e.price * totalGuests), 0);
+            const totalMeals = (tour.meals || []).reduce((sum, m) => sum + (m.price * totalGuests), 0);
+            const totalAllowances = (tour.allowances || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0);
+
+            const totalTabs = totalDestinations + totalExpenses + totalMeals + totalAllowances;
+            const advancePayment = tour.summary?.advancePayment || 0;
+            const collectionsForCompany = tour.summary?.collectionsForCompany || 0;
+            const companyTip = tour.summary?.companyTip || 0;
+
+            const totalAfterAdvance = totalTabs - advancePayment;
+            const totalAfterCollections = totalAfterAdvance + collectionsForCompany;
+            const totalAfterTip = totalAfterCollections + companyTip;
+            const finalTotal = totalAfterTip;
+
+            const summary = {
+              totalTabs,
+              advancePayment,
+              totalAfterAdvance,
+              companyTip,
+              totalAfterTip,
+              collectionsForCompany,
+              totalAfterCollections,
+              finalTotal,
+            };
+
             // Update the tour with recalculated values
-            await store.updateTour(tour.id, { totalGuests, totalDays });
+            await store.updateTour(tour.id, { totalGuests, totalDays, summary });
             updatedCount++;
           } catch (error) {
             errors.push(`${tour.tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -310,7 +337,7 @@ const Tours = () => {
           duration: 10000,
         });
       } else {
-        toast.success(`✅ Successfully updated ${updatedCount} tour(s)!`, {
+        toast.success(`✅ Successfully updated ${updatedCount} tour(s) with info and summaries!`, {
           duration: 5000,
         });
       }
@@ -866,10 +893,14 @@ const Tours = () => {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Save All Tour Info?</AlertDialogTitle>
+                    <AlertDialogTitle>Save All Tour Info & Summaries?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will recalculate and update <strong>totalDays</strong> and <strong>totalGuests</strong> for all tours based on their start date, end date, adults, and children values.
-                      <div className="mt-2">This ensures all tour cards display the correct information.</div>
+                      This will recalculate and update for all tours:
+                      <ul className="list-disc ml-4 mt-2">
+                        <li><strong>totalDays</strong> and <strong>totalGuests</strong> from dates and guest counts</li>
+                        <li><strong>Summary financials</strong> (Total Tabs, Final Total, etc.) from destinations, expenses, meals, and allowances</li>
+                      </ul>
+                      <div className="mt-2">This ensures all tour cards display the correct information, including the Final Total.</div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -878,7 +909,7 @@ const Tours = () => {
                       onClick={() => saveAllTourInfoMutation.mutate()}
                       className="bg-primary text-primary-foreground hover:bg-primary/90"
                     >
-                      Save All Tour Info
+                      Save All Info & Summaries
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -1121,10 +1152,10 @@ const Tours = () => {
                             {tour.clientNationalityRef.nameAtBooking}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
-                            {tour.totalDays} {tour.totalDays === 1 ? 'day' : 'days'}
+                            {tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0)} {(tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0)) === 1 ? 'day' : 'days'}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
-                            {tour.adults + tour.children} guest{(tour.adults + tour.children) !== 1 ? 's' : ''}
+                            {tour.totalGuests || ((tour.adults || 0) + (tour.children || 0))} guest{(tour.totalGuests || ((tour.adults || 0) + (tour.children || 0))) !== 1 ? 's' : ''}
                           </Badge>
                         </div>
                       </div>
@@ -1146,7 +1177,7 @@ const Tours = () => {
                         </span>
                       </div>
 
-                      {tour.summary?.finalTotal !== undefined && (
+                      {(tour.summary?.finalTotal !== undefined && tour.summary.finalTotal !== null && tour.summary.finalTotal !== 0) && (
                         <div className="flex items-center justify-between pt-1 border-t">
                           <span className="text-muted-foreground text-xs">Final Total</span>
                           <span className="font-semibold text-primary">

@@ -217,16 +217,28 @@ const TourDetail = () => {
                 </div>
 
                 <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
-                  {shouldShowSaveButton() && (
+                  {isNewTour && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleHeaderSave}
+                      className="hover-scale h-10 px-4"
+                      title="Save tour"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      <span>Save Tour</span>
+                    </Button>
+                  )}
+                  {!isNewTour && activeTab === 'info' && (
                     <Button
                       variant="default"
                       size="sm"
                       onClick={handleHeaderSave}
                       className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
-                      title={isNewTour ? "Save tour" : "Save tour info"}
+                      title="Save tour info"
                     >
                       <Save className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">{isNewTour ? 'Save Tour' : 'Save Info'}</span>
+                      <span className="hidden sm:inline">Save Info</span>
                     </Button>
                   )}
                   {!isNewTour && (
