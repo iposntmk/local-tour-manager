@@ -49,17 +49,16 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (meal: Meal) => {
+    mutationFn: async (meal: Meal) => {
       if (tourId) {
-        return store.addMeal(tourId, meal);
+        await store.addMeal(tourId, meal);
+      } else {
+        onChange?.([...meals, meal]);
       }
-      return Promise.resolve(meal);
     },
-    onSuccess: (newMeal) => {
+    onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-      } else {
-        onChange?.([...meals, newMeal]);
       }
       toast.success('Meal added');
       setFormData({ name: '', price: 0, date: '' });
@@ -67,19 +66,18 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, meal }: { index: number; meal: Meal }) => {
+    mutationFn: async ({ index, meal }: { index: number; meal: Meal }) => {
       if (tourId) {
-        return store.updateMeal(tourId, index, meal);
-      }
-      return Promise.resolve(meal);
-    },
-    onSuccess: (updated, { index }) => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        await store.updateMeal(tourId, index, meal);
       } else {
         const newMeals = [...meals];
-        newMeals[index] = updated;
+        newMeals[index] = meal;
         onChange?.(newMeals);
+      }
+    },
+    onSuccess: () => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       }
       toast.success('Meal updated');
       setEditingIndex(null);
@@ -115,8 +113,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
         categoryRef: {
           id: categoryId,
           nameAtBooking: category.name
-        },
-        status: 'active'
+        }
       });
     },
     onSuccess: (newMeal) => {

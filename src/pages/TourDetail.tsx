@@ -15,6 +15,7 @@ import { MealsTab } from '@/components/tours/MealsTab';
 import { ShoppingsTab } from '@/components/tours/ShoppingsTab';
 import { AllowancesTab } from '@/components/tours/AllowancesTab';
 import { SummaryTab } from '@/components/tours/SummaryTab';
+import { TourImagesTab } from '@/components/tours/TourImagesTab';
 import { toast } from 'sonner';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import {
@@ -67,9 +68,20 @@ const TourDetail = () => {
 
   const createMutation = useMutation({
     mutationFn: async (input: TourInput) => {
+      // Calculate totalGuests and totalDays
+      const totalGuests = (input.adults || 0) + (input.children || 0);
+      let totalDays = 0;
+      if (input.startDate && input.endDate) {
+        try {
+          totalDays = Math.max(0, differenceInDays(new Date(input.endDate), new Date(input.startDate)) + 1);
+        } catch {}
+      }
+      
       // Merge basic tour data with subcollections from newTourData
       const tourData = {
         ...input,
+        totalGuests,
+        totalDays,
         destinations: newTourData.destinations || [],
         expenses: newTourData.expenses || [],
         meals: newTourData.meals || [],
@@ -123,19 +135,18 @@ const TourDetail = () => {
   });
 
   const handleInfoSave = (data: TourInput) => {
-    const totalGuests = (data.adults || 0) + (data.children || 0);
-    let totalDays = 0;
-    if (data.startDate && data.endDate) {
-      try {
-        totalDays = Math.max(0, differenceInDays(new Date(data.endDate), new Date(data.startDate)) + 1);
-      } catch {}
-    }
-
     if (isNewTour) {
-      // For new tours, save to createMutation
-      createMutation.mutate({ ...data, totalGuests, totalDays });
+      // For new tours, save to createMutation (totalDays calculated inside mutation)
+      createMutation.mutate(data);
     } else if (id) {
       // For existing tours, update
+      const totalGuests = (data.adults || 0) + (data.children || 0);
+      let totalDays = 0;
+      if (data.startDate && data.endDate) {
+        try {
+          totalDays = Math.max(0, differenceInDays(new Date(data.endDate), new Date(data.startDate)) + 1);
+        } catch {}
+      }
       updateMutation.mutate({ id, patch: { ...data, totalGuests, totalDays } });
     }
   };
@@ -289,7 +300,7 @@ const TourDetail = () => {
               )}
 
               <div className="pt-4">
-                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 gap-1 rounded-xl bg-background shadow-sm border p-1 h-auto">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 gap-1 rounded-xl bg-background shadow-sm border p-1 h-auto">
                   <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
                   <TabsTrigger value="destinations" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
@@ -351,6 +362,11 @@ const TourDetail = () => {
                       </span>
                     </div>
                   </TabsTrigger>
+                  {!isNewTour && (
+                    <TabsTrigger value="images" className="text-xs sm:text-sm">
+                      Images
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </div>
             </div>
@@ -433,6 +449,11 @@ const TourDetail = () => {
                   }
                 }}
               />
+            </TabsContent>
+            <TabsContent value="images" className="animate-fade-in">
+              {!isNewTour && tour && (
+                <TourImagesTab tourId={id!} tourCode={tour.tourCode} />
+              )}
             </TabsContent>
           </Tabs>
         ) : null}

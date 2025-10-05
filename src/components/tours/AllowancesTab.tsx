@@ -42,17 +42,16 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
   );
 
   const addMutation = useMutation({
-    mutationFn: (allowance: Allowance) => {
+    mutationFn: async (allowance: Allowance) => {
       if (tourId) {
-        return store.addAllowance(tourId, allowance);
+        await store.addAllowance(tourId, allowance);
+      } else {
+        onChange?.([...allowances, allowance]);
       }
-      return Promise.resolve(allowance);
     },
-    onSuccess: (newAllowance) => {
+    onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-      } else {
-        onChange?.([...allowances, newAllowance]);
       }
       toast.success('Allowance added');
       setFormData({ date: '', name: '', price: 0, quantity: 1 });
@@ -64,19 +63,18 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ index, allowance }: { index: number; allowance: Allowance }) => {
+    mutationFn: async ({ index, allowance }: { index: number; allowance: Allowance }) => {
       if (tourId) {
-        return store.updateAllowance(tourId, index, allowance);
-      }
-      return Promise.resolve(allowance);
-    },
-    onSuccess: (updated, { index }) => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        await store.updateAllowance(tourId, index, allowance);
       } else {
         const newAllowances = [...allowances];
-        newAllowances[index] = updated;
+        newAllowances[index] = allowance;
         onChange?.(newAllowances);
+      }
+    },
+    onSuccess: () => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       }
       toast.success('Allowance updated');
       setEditingIndex(null);
