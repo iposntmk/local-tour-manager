@@ -3,6 +3,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import type { Tour, TourSummary } from '@/types/tour';
 import { useState, useEffect } from 'react';
 
@@ -83,7 +84,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalDestinations.toLocaleString()} ₫</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalDestinations)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {tour.destinations.length} item(s)
             </p>
@@ -97,7 +98,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalExpenses.toLocaleString()} ₫</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {tour.expenses.length} item(s)
             </p>
@@ -111,7 +112,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalMeals.toLocaleString()} ₫</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalMeals)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {tour.meals.length} item(s)
             </p>
@@ -125,7 +126,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalAllowances.toLocaleString()} ₫</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalAllowances)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {tour.allowances.length} item(s)
             </p>
@@ -143,10 +144,10 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center py-2 bg-primary/10 px-3 rounded">
             <span className="font-medium">Total Tabs (Auto-calculated)</span>
-            <span className="font-bold text-primary">{summary.totalTabs?.toLocaleString() || 0} ₫</span>
+            <span className="font-bold text-primary">{formatCurrency(summary.totalTabs)}</span>
           </div>
           <Separator />
-          
+
           <div className="space-y-2">
             <Label htmlFor="advancePayment">Advance Payment (Input)</Label>
             <CurrencyInput
@@ -155,10 +156,10 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
               onChange={(value) => handleInputChange('advancePayment', value)}
             />
           </div>
-          
+
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
             <span className="font-medium">Total After Advance</span>
-            <span className="font-bold">{summary.totalAfterAdvance?.toLocaleString() || 0} ₫</span>
+            <span className="font-bold">{formatCurrency(summary.totalAfterAdvance)}</span>
           </div>
           <Separator />
 
@@ -173,7 +174,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
 
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
             <span className="font-medium">Total After Collections</span>
-            <span className="font-bold">{summary.totalAfterCollections?.toLocaleString() || 0} ₫</span>
+            <span className="font-bold">{formatCurrency(summary.totalAfterCollections)}</span>
           </div>
           <Separator />
 
@@ -188,13 +189,13 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
 
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
             <span className="font-medium">Total After Tip</span>
-            <span className="font-bold">{summary.totalAfterTip?.toLocaleString() || 0} ₫</span>
+            <span className="font-bold">{formatCurrency(summary.totalAfterTip)}</span>
           </div>
           <Separator />
-          
+
           <div className="flex justify-between items-center py-3 bg-primary/10 px-4 rounded-lg mt-4">
             <span className="text-lg font-bold">Final Total</span>
-            <span className="text-lg font-bold text-primary">{summary.finalTotal?.toLocaleString() || 0} ₫</span>
+            <span className="text-lg font-bold text-primary">{formatCurrency(summary.finalTotal)}</span>
           </div>
         </CardContent>
       </Card>

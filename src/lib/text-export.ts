@@ -1,5 +1,5 @@
 import { formatDate } from '@/lib/utils';
-import { formatDateDMY } from '@/lib/date-utils';
+import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import type { Tour } from '@/types/tour';
 
 type Numeric = number | null | undefined;
@@ -48,7 +48,7 @@ export const exportTourToTxt = (tour: Tour) => {
   lines.push(`Driver: ${tour.driverName || 'N/A'}`);
   lines.push(`Client Phone: ${tour.clientPhone || 'N/A'}`);
   lines.push(
-    `Dates: ${formatDateOrNA(tour.startDate)} → ${formatDateOrNA(tour.endDate)} (${tour.totalDays ?? 'N/A'} day(s))`
+    `Dates: ${tour.startDate && tour.endDate ? formatDateRangeDisplay(tour.startDate, tour.endDate) : `${formatDateOrNA(tour.startDate)} → ${formatDateOrNA(tour.endDate)}`} (${tour.totalDays ?? 'N/A'} day(s))`
   );
   lines.push(
     `Guests: ${tour.adults} adult(s), ${tour.children} child(ren), total ${totalGuests}`

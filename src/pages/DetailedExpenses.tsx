@@ -2,6 +2,7 @@ import { Layout } from '@/components/Layout';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
+import { formatCurrency } from '@/lib/currency-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -278,7 +279,7 @@ const DetailedExpenses = () => {
                       <td className="p-4 font-medium">{expense.name}</td>
                       <td className="p-4 text-muted-foreground">{expense.categoryRef.nameAtBooking}</td>
                       <td className="p-4 text-muted-foreground">
-                        {expense.price.toLocaleString()} ₫
+                        {formatCurrency(expense.price)}
                       </td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(expense.updatedAt.split("T")[0])}
@@ -333,7 +334,7 @@ const DetailedExpenses = () => {
                     <div className="flex-1">
                       <h3 className="font-medium">{expense.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {expense.categoryRef.nameAtBooking} • {expense.price.toLocaleString()} ₫
+                        {expense.categoryRef.nameAtBooking} • {formatCurrency(expense.price)}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
                         Updated {formatDate(expense.updatedAt.split("T")[0])}

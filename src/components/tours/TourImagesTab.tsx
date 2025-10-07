@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Upload, Image as ImageIcon, X } from 'lucide-react';
+import { Plus, Trash2, Upload, Image as ImageIcon, X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -30,6 +30,10 @@ interface TourImagesTabProps {
 export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<TourImage | null>(null);
+  const [imageScale, setImageScale] = useState(1);
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const queryClient = useQueryClient();
 
   // Fetch images for this tour
@@ -148,6 +152,85 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
     return data.publicUrl;
   };
 
+  // Reset zoom and position when image changes
+  const handleImageSelect = (image: TourImage) => {
+    setSelectedImage(image);
+    setImageScale(1);
+    setImagePosition({ x: 0, y: 0 });
+  };
+
+  const handleImageClose = () => {
+    setSelectedImage(null);
+    setImageScale(1);
+    setImagePosition({ x: 0, y: 0 });
+  };
+
+  // Handle zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setImageScale(prev => Math.max(0.5, Math.min(5, prev + delta)));
+  };
+
+  // Handle mouse drag
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (imageScale > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - imagePosition.x, y: e.clientY - imagePosition.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && imageScale > 1) {
+      setImagePosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Handle touch drag
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (imageScale > 1 && e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - imagePosition.x,
+        y: e.touches[0].clientY - imagePosition.y
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isDragging && imageScale > 1 && e.touches.length === 1) {
+      setImagePosition({
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Zoom controls
+  const handleZoomIn = () => {
+    setImageScale(prev => Math.min(5, prev + 0.25));
+  };
+
+  const handleZoomOut = () => {
+    setImageScale(prev => Math.max(0.5, prev - 0.25));
+  };
+
+  const handleResetZoom = () => {
+    setImageScale(1);
+    setImagePosition({ x: 0, y: 0 });
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -213,23 +296,23 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
                     alt={image.file_name}
                     className="w-full aspect-square object-cover cursor-pointer"
                     loading="lazy"
-                    onClick={() => setSelectedImage(image)}
+                    onClick={() => handleImageSelect(image)}
                   />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                  {/* Delete button - always visible on mobile, hover on desktop */}
+                  <div className="absolute top-2 right-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="destructive"
-                      size="sm"
+                      size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteMutation.mutate(image);
                       }}
-                      className="hover-scale pointer-events-auto"
+                      className="hover-scale h-8 w-8 shadow-lg"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
                     <p className="text-white text-xs truncate">{image.file_name}</p>
                     <p className="text-white/60 text-xs">
                       {image.file_size ? `${(image.file_size / 1024).toFixed(0)} KB` : 'Unknown size'}
@@ -243,47 +326,114 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
       </div>
 
       {/* Image Viewer Dialog */}
-      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{selectedImage?.file_name}</DialogTitle>
+      <Dialog open={!!selectedImage} onOpenChange={handleImageClose}>
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl h-[95vh] p-0 gap-0 flex flex-col">
+          <DialogHeader className="p-4 sm:p-6 pb-2 shrink-0">
+            <DialogTitle className="text-sm sm:text-base truncate pr-8">
+              {selectedImage?.file_name}
+            </DialogTitle>
           </DialogHeader>
           {selectedImage && (
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <img
-                  src={getImageUrl(selectedImage.storage_path)}
-                  alt={selectedImage.file_name}
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
-                />
-              </div>
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
-                <span>
-                  {selectedImage.file_size
-                    ? `${(selectedImage.file_size / 1024).toFixed(0)} KB`
-                    : 'Unknown size'}
-                </span>
-                <span>{new Date(selectedImage.created_at).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-end gap-2">
+            <>
+              {/* Zoom controls */}
+              <div className="absolute top-16 right-4 z-50 flex flex-col gap-2">
                 <Button
-                  variant="outline"
-                  onClick={() => window.open(getImageUrl(selectedImage.storage_path), '_blank')}
+                  variant="secondary"
+                  size="icon"
+                  onClick={handleZoomIn}
+                  className="h-10 w-10 rounded-full shadow-lg"
+                  title="Zoom in"
                 >
-                  Open in New Tab
+                  <ZoomIn className="h-5 w-5" />
                 </Button>
                 <Button
-                  variant="destructive"
-                  onClick={() => {
-                    deleteMutation.mutate(selectedImage);
-                    setSelectedImage(null);
-                  }}
+                  variant="secondary"
+                  size="icon"
+                  onClick={handleZoomOut}
+                  className="h-10 w-10 rounded-full shadow-lg"
+                  title="Zoom out"
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
+                  <ZoomOut className="h-5 w-5" />
                 </Button>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={handleResetZoom}
+                  className="h-10 w-10 rounded-full shadow-lg"
+                  title="Reset zoom"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                </Button>
+                <div className="text-xs text-center bg-secondary rounded-full px-2 py-1 shadow-lg">
+                  {Math.round(imageScale * 100)}%
+                </div>
               </div>
-            </div>
+
+              {/* Image container - scrollable and pannable */}
+              <div
+                className="flex-1 overflow-hidden relative cursor-move select-none"
+                style={{ minHeight: 0 }}
+                onWheel={handleWheel}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 pt-2">
+                  <img
+                    src={getImageUrl(selectedImage.storage_path)}
+                    alt={selectedImage.file_name}
+                    className="rounded-lg max-w-full max-h-full object-contain"
+                    style={{
+                      transform: `scale(${imageScale}) translate(${imagePosition.x / imageScale}px, ${imagePosition.y / imageScale}px)`,
+                      transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                      userSelect: 'none',
+                      pointerEvents: 'none'
+                    }}
+                    draggable={false}
+                  />
+                </div>
+              </div>
+
+              {/* Info and actions - sticky footer */}
+              <div className="border-t bg-background p-4 sm:p-6 space-y-3 shrink-0">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <span>
+                    {selectedImage.file_size
+                      ? `${(selectedImage.file_size / 1024).toFixed(0)} KB`
+                      : 'Unknown size'}
+                  </span>
+                  <span className="text-xs">
+                    {new Date(selectedImage.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(getImageUrl(selectedImage.storage_path), '_blank')}
+                    className="w-full sm:w-auto"
+                  >
+                    Open in New Tab
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      deleteMutation.mutate(selectedImage);
+                      handleImageClose();
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

@@ -1299,8 +1299,21 @@ export class SupabaseStore implements DataStore {
       `
           : `*, tour_allowances(price, quantity)`,
         { count: 'exact' }
-      )
-      .order('start_date', { ascending: false });
+      );
+
+    // Apply sorting based on query parameters
+    const sortBy = query?.sortBy || 'startDate';
+    const sortOrder = query?.sortOrder || 'desc';
+
+    const sortColumnMap: Record<string, string> = {
+      startDate: 'start_date',
+      endDate: 'end_date',
+      tourCode: 'tour_code',
+      clientName: 'client_name',
+      createdAt: 'created_at',
+    };
+
+    queryBuilder = queryBuilder.order(sortColumnMap[sortBy] || 'start_date', { ascending: sortOrder === 'asc' });
 
     if (includeDetails) {
       // Ensure nested arrays are consistently ordered by date
@@ -1312,7 +1325,36 @@ export class SupabaseStore implements DataStore {
         .order('date', { foreignTable: 'tour_shoppings' });
     }
 
-    if (query?.tourCode) queryBuilder = queryBuilder.ilike('tour_code', `%${query.tourCode}%`);
+    // Granular search fields (prefer these for performance)
+    if (query?.tourCodeLike) {
+      const like = `%${query.tourCodeLike.trim()}%`;
+      queryBuilder = queryBuilder.ilike('tour_code', like);
+    } else if (query?.tourCode) {
+      const like = `%${query.tourCode.trim()}%`;
+      queryBuilder = queryBuilder.ilike('tour_code', like);
+    }
+
+    if (query?.companyNameLike) {
+      const like = `%${query.companyNameLike.trim()}%`;
+      queryBuilder = queryBuilder.ilike('company_name_at_booking', like);
+    }
+
+    if (query?.dateLike || query?.dateLike2 || query?.dateRawLike) {
+      const like1 = query?.dateLike ? `%${query.dateLike.trim()}%` : undefined;
+      const like2 = query?.dateLike2 ? `%${query.dateLike2.trim()}%` : undefined;
+      const likeRaw = query?.dateRawLike ? `%${query.dateRawLike.trim()}%` : undefined;
+      const parts: string[] = [];
+      if (like1) parts.push(`start_date.ilike.${like1}`);
+      if (like2) parts.push(`start_date.ilike.${like2}`);
+      if (likeRaw) parts.push(`start_date.ilike.${likeRaw}`);
+      if (parts.length === 1) {
+        // Only one like — apply directly
+        const single = like1 || like2 || likeRaw;
+        queryBuilder = queryBuilder.ilike('start_date', single as string);
+      } else if (parts.length > 1) {
+        queryBuilder = queryBuilder.or(parts.join(','));
+      }
+    }
     if (query?.clientName) queryBuilder = queryBuilder.ilike('client_name', `%${query.clientName}%`);
     if (query?.companyId) queryBuilder = queryBuilder.eq('company_id', query.companyId);
     if (query?.guideId) queryBuilder = queryBuilder.eq('guide_id', query.guideId);
@@ -1664,6 +1706,7 @@ export class SupabaseStore implements DataStore {
       name: row.name,
       price: Number(row.price) || 0,
       date: row.date,
+      guests: typeof row.guests === 'number' ? row.guests : undefined,
     }));
   }
 
@@ -1673,6 +1716,7 @@ export class SupabaseStore implements DataStore {
       name: destination.name,
       price: destination.price,
       date: destination.date,
+      guests: destination.guests ?? null,
     });
     if (error) {
       console.error('Supabase addDestination error:', error);
@@ -1699,6 +1743,7 @@ export class SupabaseStore implements DataStore {
         name: destination.name,
         price: destination.price,
         date: destination.date,
+        guests: destination.guests ?? null,
       }).eq('id', rows[index].id);
       if (error) throw error;
     }
@@ -1771,6 +1816,7 @@ export class SupabaseStore implements DataStore {
       name: row.name,
       price: Number(row.price) || 0,
       date: row.date,
+      guests: row.guests !== null && row.guests !== undefined ? Number(row.guests) : undefined,
     }));
   }
 
@@ -1780,6 +1826,7 @@ export class SupabaseStore implements DataStore {
       name: meal.name,
       price: meal.price,
       date: meal.date,
+      guests: meal.guests ?? null,
     });
     if (error) throw error;
   }
@@ -1791,6 +1838,7 @@ export class SupabaseStore implements DataStore {
         name: meal.name,
         price: meal.price,
         date: meal.date,
+        guests: meal.guests ?? null,
       }).eq('id', rows[index].id);
       if (error) throw error;
     }

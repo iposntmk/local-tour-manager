@@ -19,6 +19,7 @@ import { SummaryTab } from '@/components/tours/SummaryTab';
 import { TourImagesTab } from '@/components/tours/TourImagesTab';
 import { toast } from 'sonner';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { formatCurrency } from '@/lib/currency-utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary } from '@/types/tour';
 import { formatDateDMY } from '@/lib/date-utils';
+import { formatDate } from '@/lib/utils';
 
 const TourDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -223,8 +225,8 @@ const TourDetail = () => {
             {/* Header with tabs inside Tabs context */}
             <div className={`${headerClasses} border-b pb-4 pt-4 bg-blue-100 dark:bg-blue-900 sticky top-[57px] z-40`}>
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between gap-2 sm:gap-4">
-                  <div className="flex items-center gap-2 flex-shrink min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -234,43 +236,9 @@ const TourDetail = () => {
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-2 sm:gap-4">
-                        <h1 className="text-base sm:text-2xl md:text-3xl font-bold">
-                          {isNewTour ? 'New Tour' : (tour?.tourCode || 'Tour Details')}
-                        </h1>
-                        {/* Tour Info Summary - Same line as header */}
-                        {displayTour && (
-                          <div className="flex items-baseline gap-2 sm:gap-4 text-xs sm:text-sm">
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-muted-foreground">Start</span>
-                              <span className="font-semibold">{displayTour.startDate ? new Date(displayTour.startDate).toLocaleDateString('en-GB') : '-'}</span>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-muted-foreground">End</span>
-                              <span className="font-semibold">{displayTour.endDate ? new Date(displayTour.endDate).toLocaleDateString('en-GB') : '-'}</span>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-muted-foreground">Days</span>
-                              <span className="font-semibold">{displayTour.totalDays || 0}</span>
-                            </div>
-                            <span className="text-muted-foreground">|</span>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-muted-foreground">Adults</span>
-                              <span className="font-semibold">{displayTour.adults || 0}</span>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-muted-foreground">Children</span>
-                              <span className="font-semibold">{displayTour.children || 0}</span>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-muted-foreground">Guests</span>
-                              <span className="font-semibold">{totalGuests}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold truncate">
+                      {isNewTour ? 'New Tour' : (tour?.tourCode || 'Tour Details')}
+                    </h1>
                   </div>
 
                   <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
@@ -312,6 +280,37 @@ const TourDetail = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Tour Info Summary - Separate row for mobile responsiveness */}
+                {displayTour && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm px-10 sm:px-0">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-muted-foreground">Start:</span>
+                      <span className="font-semibold">{displayTour.startDate ? formatDate(displayTour.startDate) : '-'}</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-muted-foreground">End:</span>
+                      <span className="font-semibold">{displayTour.endDate ? formatDate(displayTour.endDate) : '-'}</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-muted-foreground">Days:</span>
+                      <span className="font-semibold">{displayTour.totalDays || 0}</span>
+                    </div>
+                    <span className="text-muted-foreground hidden sm:inline">|</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-muted-foreground">Adults:</span>
+                      <span className="font-semibold">{displayTour.adults || 0}</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-muted-foreground">Children:</span>
+                      <span className="font-semibold">{displayTour.children || 0}</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-muted-foreground">Guests:</span>
+                      <span className="font-semibold">{totalGuests}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-4">
@@ -321,7 +320,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Destinations</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.destinations?.length || 0} | {((displayTour?.destinations || []).reduce((sum, d) => sum + (d.price * totalGuests), 0) / 1000).toFixed(0)}k
+                        {displayTour?.destinations?.length || 0} | {formatCurrency((displayTour?.destinations || []).reduce((sum, d) => sum + (d.price * totalGuests), 0))}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -329,7 +328,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Expenses</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.expenses?.length || 0} | {((displayTour?.expenses || []).reduce((sum, e) => sum + (e.price * totalGuests), 0) / 1000).toFixed(0)}k
+                        {displayTour?.expenses?.length || 0} | {formatCurrency((displayTour?.expenses || []).reduce((sum, e) => sum + (e.price * totalGuests), 0))}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -337,7 +336,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Meals</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.meals?.length || 0} | {((displayTour?.meals || []).reduce((sum, m) => sum + (m.price * totalGuests), 0) / 1000).toFixed(0)}k
+                        {displayTour?.meals?.length || 0} | {formatCurrency((displayTour?.meals || []).reduce((sum, m) => sum + (m.price * totalGuests), 0))}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -345,7 +344,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Shopping</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.shoppings?.length || 0} | {((displayTour?.shoppings || []).reduce((sum, s) => sum + s.price, 0) / 1000).toFixed(0)}k
+                        {displayTour?.shoppings?.length || 0} | {formatCurrency((displayTour?.shoppings || []).reduce((sum, s) => sum + s.price, 0))}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -353,7 +352,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Allowances</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.allowances?.length || 0} | {((displayTour?.allowances || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0) / 1000).toFixed(0)}k
+                        {displayTour?.allowances?.length || 0} | {formatCurrency((displayTour?.allowances || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0))}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -368,12 +367,12 @@ const TourDetail = () => {
                            (displayTour?.shoppings?.length || 0) +
                            (displayTour?.allowances?.length || 0))
                         } | {
-                          (((displayTour?.destinations || []).reduce((sum, d) => sum + (d.price * totalGuests), 0) +
+                          formatCurrency((displayTour?.destinations || []).reduce((sum, d) => sum + (d.price * totalGuests), 0) +
                             (displayTour?.expenses || []).reduce((sum, e) => sum + (e.price * totalGuests), 0) +
                             (displayTour?.meals || []).reduce((sum, m) => sum + (m.price * totalGuests), 0) +
                             (displayTour?.shoppings || []).reduce((sum, s) => sum + s.price, 0) +
-                            (displayTour?.allowances || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0)) / 1000).toFixed(0)
-                        }k
+                            (displayTour?.allowances || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0))
+                        }
                       </span>
                     </div>
                   </TabsTrigger>

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -357,7 +358,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
               shoppings.map((shopping, index) => (
                 <TableRow key={index}>
                   <TableCell className="font-medium">{shopping.name}</TableCell>
-                  <TableCell>{shopping.price.toLocaleString()} ₫</TableCell>
+                  <TableCell>{formatCurrency(shopping.price)}</TableCell>
                   <TableCell>{formatDate(shopping.date)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -386,11 +387,11 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
           <div className="border-t p-4 bg-muted/50 space-y-2">
             <div className="flex justify-between items-center font-semibold">
               <span>Total Shopping Amount:</span>
-              <span className="text-lg">{totalAmount.toLocaleString()} ₫</span>
+              <span className="text-lg">{formatCurrency(totalAmount)}</span>
             </div>
             <div className="flex justify-between items-center font-semibold text-primary">
               <span>Total Tip:</span>
-              <span className="text-lg">{totalTip.toLocaleString()} ₫</span>
+              <span className="text-lg">{formatCurrency(totalTip)}</span>
             </div>
           </div>
         )}

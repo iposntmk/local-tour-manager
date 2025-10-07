@@ -12,6 +12,7 @@ import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { TouristDestination, TouristDestinationInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 
 const Destinations = () => {
@@ -275,7 +276,7 @@ const Destinations = () => {
                       <td className="p-4 font-medium">{destination.name}</td>
                       <td className="p-4 text-muted-foreground">{destination.provinceRef.nameAtBooking}</td>
                       <td className="p-4 text-muted-foreground">
-                        {destination.price.toLocaleString()} ₫
+                        {formatCurrency(destination.price)}
                       </td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(destination.updatedAt.split("T")[0])}
@@ -330,7 +331,7 @@ const Destinations = () => {
                     <div className="flex-1">
                       <h3 className="font-medium">{destination.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {destination.provinceRef.nameAtBooking} • {destination.price.toLocaleString()} ₫
+                        {destination.provinceRef.nameAtBooking} • {formatCurrency(destination.price)}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
                         Updated {formatDate(destination.updatedAt.split("T")[0])}

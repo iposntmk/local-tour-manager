@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -252,7 +253,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                                 formData.name === dest.name ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {dest.name} ({dest.price.toLocaleString()} ₫)
+                            {dest.name} ({formatCurrency(dest.price)})
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -275,6 +276,27 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={tour?.totalGuests || 0}
+                placeholder={`Guests (max ${tour?.totalGuests || 0})`}
+                value={formData.guests ?? ''}
+                onChange={(e) => {
+                  const max = tour?.totalGuests || 0;
+                  let val = e.target.value === '' ? undefined : Number(e.target.value);
+                  if (typeof val === 'number' && !Number.isNaN(val)) {
+                    if (val < 0) val = 0;
+                    if (max && val > max) {
+                      toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                      val = max;
+                    }
+                  }
+                  setFormData({ ...formData, guests: val as any });
+                }}
+              />
+            </div>
             <DateInput
               value={formData.date}
               onChange={(date) => setFormData({ ...formData, date })}
@@ -319,15 +341,42 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               </TableHeader>
               <TableBody>
                 {destinations.map((destination, index) => {
-                  const totalGuests = tour?.totalGuests || 0;
-                  const totalAmount = destination.price * totalGuests;
+                  const tourGuests = tour?.totalGuests || 0;
+                  const rowGuests = typeof destination.guests === 'number' ? Math.min(destination.guests, tourGuests) : tourGuests;
+                  const totalAmount = destination.price * rowGuests;
                   return (
                     <TableRow key={index} className="animate-fade-in">
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="font-medium">{destination.name}</TableCell>
-                      <TableCell>{destination.price.toLocaleString()} ₫</TableCell>
-                      <TableCell>{totalGuests}</TableCell>
-                      <TableCell className="font-semibold">{totalAmount.toLocaleString()} ₫</TableCell>
+                      <TableCell>{formatCurrency(destination.price)}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          className="w-24"
+                          min={0}
+                          max={tourGuests}
+                          value={destination.guests ?? ''}
+                          onChange={(e) => {
+                            let val = e.target.value === '' ? undefined : Number(e.target.value);
+                            if (typeof val === 'number' && !Number.isNaN(val)) {
+                              if (val < 0) val = 0;
+                              if (tourGuests && val > tourGuests) {
+                                toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
+                                val = tourGuests;
+                              }
+                            }
+                            const updated: Destination = { ...destination, guests: val as any };
+                            if (tourId) {
+                              updateMutation.mutate({ index, destination: updated });
+                            } else {
+                              const newDests = [...destinations];
+                              newDests[index] = updated;
+                              onChange?.(newDests);
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
                       <TableCell>{formatDate(destination.date)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
@@ -356,7 +405,11 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
             </Table>
             <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
               <div className="text-lg font-semibold">
-                Total: {destinations.reduce((sum, dest) => sum + (dest.price * (tour?.totalGuests || 0)), 0).toLocaleString()} ₫
+                Total: {formatCurrency(destinations.reduce((sum, dest) => {
+                  const tg = tour?.totalGuests || 0;
+                  const g = typeof dest.guests === 'number' ? Math.min(dest.guests, tg) : tg;
+                  return sum + (dest.price * g);
+                }, 0))}
               </div>
             </div>
           </div>

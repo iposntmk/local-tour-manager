@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import type { Allowance } from '@/types/tour';
@@ -205,7 +206,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                               formData.name === exp.name ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {exp.name} ({exp.price.toLocaleString()} ₫)
+                          {exp.name} ({formatCurrency(exp.price)})
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -275,9 +276,9 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                   <TableRow key={allowance.key} className="animate-fade-in">
                     <TableCell className="font-medium">{displayIndex + 1}</TableCell>
                     <TableCell className="font-medium">{allowance.name}</TableCell>
-                    <TableCell>{allowance.price.toLocaleString()} ₫</TableCell>
+                    <TableCell>{formatCurrency(allowance.price)}</TableCell>
                     <TableCell>{quantity}</TableCell>
-                    <TableCell className="font-semibold">{total.toLocaleString()} ₫</TableCell>
+                    <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
                     <TableCell>{formatDate(allowance.date)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
@@ -317,7 +318,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                   {allowances.reduce((sum, a) => sum + (a.quantity || 1), 0)} days
                 </TableCell>
                 <TableCell className="font-bold">
-                  {allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0).toLocaleString()} ₫
+                  {formatCurrency(allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)),0))}
                 </TableCell>
                 <TableCell colSpan={2}></TableCell>
               </TableRow>

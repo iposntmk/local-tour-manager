@@ -2,6 +2,7 @@ import { Layout } from '@/components/Layout';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
+import { formatCurrency } from '@/lib/currency-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
@@ -11,6 +12,7 @@ import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { Shopping, ShoppingInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 
 const ShoppingPage = () => {
