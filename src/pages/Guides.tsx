@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
@@ -127,6 +127,33 @@ const Guides = () => {
     await bulkImportMutation.mutateAsync(items);
   };
 
+  const handleExportTxt = () => {
+    if (filteredGuides.length === 0) {
+      toast.error('No guides to export');
+      return;
+    }
+
+    const txtContent = filteredGuides
+      .map(guide => {
+        const parts = [guide.name];
+        if (guide.phone) parts.push(guide.phone);
+        if (guide.note) parts.push(guide.note);
+        return parts.join(',');
+      })
+      .join('\n');
+
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `guides-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredGuides.length} guides`);
+  };
+
   const filteredGuides = useMemo(() => {
     return guides.filter(guide => {
       const matchesName = !nameFilter || guide.name.toLowerCase().includes(nameFilter.toLowerCase());
@@ -147,6 +174,14 @@ const Guides = () => {
               <p className="text-muted-foreground">Manage your tour guides</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
+              <Button
+                onClick={handleExportTxt}
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export TXT
+              </Button>
               <Button
                 onClick={() => setImportDialogOpen(true)}
                 variant="outline"

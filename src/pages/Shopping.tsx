@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
@@ -124,6 +124,28 @@ const ShoppingPage = () => {
     await bulkImportMutation.mutateAsync(items);
   };
 
+  const handleExportTxt = () => {
+    if (filteredShoppings.length === 0) {
+      toast.error('No shopping places to export');
+      return;
+    }
+
+    const txtContent = filteredShoppings
+      .map(shopping => shopping.name)
+      .join('\n');
+
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shopping-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredShoppings.length} shopping places`);
+  };
+
   const filteredShoppings = useMemo(() => {
     return shoppings.filter((shopping) => {
       const matchesName = nameFilter === '' ||
@@ -144,6 +166,14 @@ const ShoppingPage = () => {
               <p className="text-muted-foreground">Manage shopping locations</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
+              <Button
+                onClick={handleExportTxt}
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export TXT
+              </Button>
               <Button
                 onClick={() => setImportDialogOpen(true)}
                 variant="outline"

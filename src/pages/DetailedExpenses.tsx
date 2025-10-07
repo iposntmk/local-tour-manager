@@ -5,7 +5,7 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
@@ -136,6 +136,28 @@ const DetailedExpenses = () => {
     await bulkImportMutation.mutateAsync(items);
   };
 
+  const handleExportTxt = () => {
+    if (filteredExpenses.length === 0) {
+      toast.error('No detailed expenses to export');
+      return;
+    }
+
+    const txtContent = filteredExpenses
+      .map(expense => `${expense.name},${expense.price}`)
+      .join('\n');
+
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `detailed-expenses-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredExpenses.length} detailed expenses`);
+  };
+
   // Filter expenses based on column filters
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
@@ -158,6 +180,10 @@ const DetailedExpenses = () => {
               <p className="text-muted-foreground">Manage detailed expenses</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
+              <Button variant="outline" onClick={handleExportTxt}>
+                <Download className="h-4 w-4 mr-2" />
+                Export TXT
+              </Button>
               <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Import
