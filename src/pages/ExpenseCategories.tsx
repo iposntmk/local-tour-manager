@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { ExpenseCategoryDialog } from '@/components/expense-categories/ExpenseCategoryDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
@@ -123,6 +123,28 @@ const ExpenseCategories = () => {
     await bulkImportMutation.mutateAsync(items);
   };
 
+  const handleExportTxt = () => {
+    if (filteredCategories.length === 0) {
+      toast.error('No expense categories to export');
+      return;
+    }
+
+    const txtContent = filteredCategories
+      .map(category => category.name)
+      .join('\n');
+
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expense-categories-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredCategories.length} expense categories`);
+  };
+
   const filteredCategories = useMemo(() => {
     return categories.filter(category => {
       const matchesName = !nameFilter || category.name.toLowerCase().includes(nameFilter.toLowerCase());
@@ -142,6 +164,10 @@ const ExpenseCategories = () => {
               <p className="text-muted-foreground">Manage expense categories</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
+              <Button variant="outline" onClick={handleExportTxt}>
+                <Download className="h-4 w-4 mr-2" />
+                Export TXT
+              </Button>
               <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Import

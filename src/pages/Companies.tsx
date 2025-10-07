@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Copy, Trash2, Upload, Trash } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
@@ -141,6 +141,34 @@ const Companies = () => {
     return null;
   };
 
+  const handleExportTxt = () => {
+    if (filteredCompanies.length === 0) {
+      toast.error('No companies to export');
+      return;
+    }
+
+    const txtContent = filteredCompanies
+      .map(company => {
+        const parts = [company.name];
+        if (company.contactName) parts.push(company.contactName);
+        if (company.phone) parts.push(company.phone);
+        if (company.email) parts.push(company.email);
+        return parts.join(',');
+      })
+      .join('\n');
+
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `companies-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredCompanies.length} companies`);
+  };
+
   const filteredCompanies = useMemo(() => {
     return companies.filter(company => {
       const matchesName = !nameFilter || company.name.toLowerCase().includes(nameFilter.toLowerCase());
@@ -162,6 +190,10 @@ const Companies = () => {
               <p className="text-muted-foreground">Manage partner travel companies</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
+              <Button onClick={handleExportTxt} variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Export TXT
+              </Button>
               <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
                 <Upload className="h-4 w-4" />
                 Import
