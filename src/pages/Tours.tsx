@@ -17,8 +17,6 @@ import {
   Trash,
   ArrowUpDown,
   Upload,
-  PlusCircle,
-  Save,
 } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import {
@@ -41,44 +39,31 @@ type ProcessResult =
   | { success: false; skipped?: false; error: string };
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { exportTourToExcel, exportAllToursToExcel } from '@/lib/excel-utils';
+import { exportTourToExcel, exportAllToursToMonthlyZip, exportAllToursToExcel } from '@/lib/excel-utils';
 import { ImportTourDialogEnhanced } from '@/components/tours/ImportTourDialogEnhanced';
 import { handleImportError, validateTourData, createImportError } from '@/lib/error-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
-import { formatDateDMY } from '@/lib/date-utils';
+import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour, TourListResult, TourQuery } from '@/types/tour';
 import Fuse from 'fuse.js';
 
-// Helper function to format date range
-const formatDateRange = (startDate: string, endDate: string): string => {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
 
-  const startDay = start.getDate();
-  const startMonth = start.getMonth();
-  const startYear = start.getFullYear();
-
-  const endDay = end.getDate();
-  const endMonth = end.getMonth();
-  const endYear = end.getFullYear();
-
-  // If same month and year, show: dd - dd/mm/yyyy
-  if (startMonth === endMonth && startYear === endYear) {
-    return `${startDay} - ${endDay}/${String(endMonth + 1).padStart(2, '0')}/${startYear}`;
-  }
-
-  // Otherwise show full dates
-  return `${formatDateDMY(startDate)} → ${formatDateDMY(endDate)}`;
+// Truncate helper with ellipsis included in `max` length
+const truncateText = (text: string | undefined | null, max = 15): string => {
+  if (!text) return '';
+  if (text.length <= max) return text;
+  if (max <= 3) return text.slice(0, max);
+  return text.slice(0, max - 3) + '...';
 };
 
 const Tours = () => {
-  const [search, setSearch] = useState(() => {
-    const saved = localStorage.getItem('tours.search');
-    return saved || '';
-  });
+  // Separate search inputs for code, date (dd-mm), and company
+  const [searchCode, setSearchCode] = useState(() => localStorage.getItem('tours.search.code') || '');
+  const [searchDate, setSearchDate] = useState(() => localStorage.getItem('tours.search.date') || '');
+  const [searchCompany, setSearchCompany] = useState(() => localStorage.getItem('tours.search.company') || '');
   const [nationalityFilter, setNationalityFilter] = useState<string>(() => {
     const saved = localStorage.getItem('tours.nationalityFilter');
     return saved || 'all';
@@ -91,7 +76,6 @@ const Tours = () => {
     const saved = localStorage.getItem('tours.sortBy');
     return saved || 'startDate-asc';
   });
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [filtersExpanded, setFiltersExpanded] = useState(() => {
     const saved = localStorage.getItem('tours.filtersExpanded');
     return saved !== null ? JSON.parse(saved) : true;
@@ -102,9 +86,9 @@ const Tours = () => {
   const queryClient = useQueryClient();
 
   // Save filter states to localStorage
-  useEffect(() => {
-    localStorage.setItem('tours.search', search);
-  }, [search]);
+  useEffect(() => { localStorage.setItem('tours.search.code', searchCode); }, [searchCode]);
+  useEffect(() => { localStorage.setItem('tours.search.date', searchDate); }, [searchDate]);
+  useEffect(() => { localStorage.setItem('tours.search.company', searchCompany); }, [searchCompany]);
 
   useEffect(() => {
     localStorage.setItem('tours.nationalityFilter', nationalityFilter);
@@ -124,10 +108,32 @@ const Tours = () => {
 
   const baseTourQuery = useMemo((): TourQuery => {
     const query: TourQuery = {};
-    const trimmedSearch = search.trim();
+    const code = searchCode.trim();
+    const date = searchDate.trim();
+    const company = searchCompany.trim();
 
-    if (trimmedSearch) {
-      query.tourCode = trimmedSearch;
+    if (code) {
+      query.tourCodeLike = code;
+    }
+    if (date) {
+      const m = date.match(/^(\d{1,2})[\/-](\d{1,2})$/);
+      if (m) {
+        const dd = m[1].padStart(2, '0');
+        const mm = m[2].padStart(2, '0');
+        // Primary: interpret as dd-mm -> -MM-DD
+        query.dateLike = `-${mm}-${dd}`;
+        // Alternate fallback: if user expectation was mm-dd
+        query.dateLike2 = `-${dd}-${mm}`;
+        // Also include raw user's input to honor %string% contains semantics
+        query.dateRawLike = date;
+      } else {
+        // Fallback: accept raw substring
+        query.dateLike = date;
+        query.dateRawLike = date;
+      }
+    }
+    if (company) {
+      query.companyNameLike = company;
     }
 
     if (nationalityFilter !== 'all') {
@@ -147,8 +153,13 @@ const Tours = () => {
       }
     }
 
+    // Add sorting to query
+    const [field, order] = sortBy.split('-');
+    query.sortBy = field as any;
+    query.sortOrder = order as 'asc' | 'desc';
+
     return query;
-  }, [search, nationalityFilter, monthFilter]);
+  }, [searchCode, searchDate, searchCompany, nationalityFilter, monthFilter, sortBy]);
 
   const {
     data: toursResult,
@@ -168,39 +179,8 @@ const Tours = () => {
     gcTime: 300000, // Keep in cache for 5 minutes
   });
 
-  const tours = useMemo(() => {
-    const tourList = (toursResult as TourListResult | undefined)?.tours ?? [];
-
-    // Sort tours based on selected sort option
-    const [field, order] = sortBy.split('-');
-    const sorted = [...tourList].sort((a, b) => {
-      let comparison = 0;
-
-      switch (field) {
-        case 'startDate':
-          comparison = a.startDate.localeCompare(b.startDate);
-          break;
-        case 'endDate':
-          comparison = a.endDate.localeCompare(b.endDate);
-          break;
-        case 'tourCode':
-          comparison = a.tourCode.localeCompare(b.tourCode);
-          break;
-        case 'clientName':
-          comparison = a.clientName.localeCompare(b.clientName);
-          break;
-        case 'createdAt':
-          comparison = a.createdAt.localeCompare(b.createdAt);
-          break;
-        default:
-          comparison = a.startDate.localeCompare(b.startDate);
-      }
-
-      return order === 'asc' ? comparison : -comparison;
-    });
-
-    return sorted;
-  }, [(toursResult as TourListResult | undefined)?.tours, sortBy]);
+  // No need for client-side sorting anymore - database handles it
+  const tours = (toursResult as TourListResult | undefined)?.tours ?? [];
 
   const totalTours = (toursResult as TourListResult | undefined)?.total ?? 0;
   const totalPages = totalTours > 0 ? Math.ceil(totalTours / pageSize) : 1;
@@ -210,16 +190,12 @@ const Tours = () => {
     queryFn: () => store.listNationalities({}),
   });
 
-  // Fetch the specific detailed expense for the tooltip
-  const { data: bulkExpense } = useQuery({
-    queryKey: ['detailedExpense', '4a17d85e-7072-4863-839e-2377618095fe'],
-    queryFn: () => store.getDetailedExpense('4a17d85e-7072-4863-839e-2377618095fe'),
-  });
+  // Removed bulk expense query (feature removed)
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [nationalityFilter, monthFilter, search]);
+  }, [nationalityFilter, monthFilter, searchCode, searchDate, searchCompany]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -237,18 +213,6 @@ const Tours = () => {
     return Array.from(months).sort().reverse();
   }, [tours]);
 
-  const toggleCardExpansion = (tourId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedCards(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(tourId)) {
-        newSet.delete(tourId);
-      } else {
-        newSet.add(tourId);
-      }
-      return newSet;
-    });
-  };
 
   const clearFilters = () => {
     setNationalityFilter('all');
@@ -295,188 +259,9 @@ const Tours = () => {
     toast.warning('Bulk delete not available. Please delete tours individually.');
   };
 
-  const saveAllTourInfoMutation = useMutation({
-    mutationFn: async () => {
-      const loadingToast = toast.loading('Recalculating and saving all tour info and summaries...');
+  // Removed saveAllTourInfoMutation (feature removed)
 
-      try {
-        // Get all tours with details
-        const { tours: allTours } = await store.listTours({}, { includeDetails: true });
-
-        let updatedCount = 0;
-        const errors: string[] = [];
-
-        // For each tour, recalculate totalDays, totalGuests, and summary
-        for (const tour of allTours) {
-          try {
-            const totalGuests = (tour.adults || 0) + (tour.children || 0);
-            let totalDays = 0;
-
-            if (tour.startDate && tour.endDate) {
-              // Calculate totalDays (inclusive difference)
-              totalDays = Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1);
-            }
-
-            // Calculate summary
-            const totalDestinations = (tour.destinations || []).reduce((sum, d) => sum + (d.price * totalGuests), 0);
-            const totalExpenses = (tour.expenses || []).reduce((sum, e) => sum + (e.price * totalGuests), 0);
-            const totalMeals = (tour.meals || []).reduce((sum, m) => sum + (m.price * totalGuests), 0);
-            const totalAllowances = (tour.allowances || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0);
-
-            const totalTabs = totalDestinations + totalExpenses + totalMeals + totalAllowances;
-            const advancePayment = tour.summary?.advancePayment || 0;
-            const collectionsForCompany = tour.summary?.collectionsForCompany || 0;
-            const companyTip = tour.summary?.companyTip || 0;
-
-            const totalAfterAdvance = totalTabs - advancePayment;
-            const totalAfterCollections = totalAfterAdvance + collectionsForCompany;
-            const totalAfterTip = totalAfterCollections + companyTip;
-            const finalTotal = totalAfterTip;
-
-            const summary = {
-              totalTabs,
-              advancePayment,
-              totalAfterAdvance,
-              companyTip,
-              totalAfterTip,
-              collectionsForCompany,
-              totalAfterCollections,
-              finalTotal,
-            };
-
-            // Update the tour with recalculated values
-            await store.updateTour(tour.id, { totalGuests, totalDays, summary });
-            updatedCount++;
-          } catch (error) {
-            errors.push(`${tour.tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-
-        toast.dismiss(loadingToast);
-        return { updatedCount, errors, totalTours: allTours.length };
-      } catch (error) {
-        toast.dismiss(loadingToast);
-        throw error;
-      }
-    },
-    onSuccess: ({ updatedCount, errors, totalTours }) => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
-
-      if (errors.length > 0) {
-        toast.error(`Updated ${updatedCount} of ${totalTours} tours. ${errors.length} failed: ${errors.join(', ')}`, {
-          duration: 10000,
-        });
-      } else {
-        toast.success(`✅ Successfully updated ${updatedCount} tour(s) with info and summaries!`, {
-          duration: 5000,
-        });
-      }
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to update tours: ${error.message}`);
-    },
-  });
-
-  const addExpensesToAllMutation = useMutation({
-    mutationFn: async () => {
-      // Show initial toast
-      const loadingToast = toast.loading('Syncing expenses to all tours...');
-
-      try {
-        // Get the specific detailed expense
-        const detailedExpense = await store.getDetailedExpense('4a17d85e-7072-4863-839e-2377618095fe');
-        if (!detailedExpense) {
-          throw new Error('Expense not found');
-        }
-
-        // Get all tours with details
-        const { tours: allTours } = await store.listTours({}, { includeDetails: true });
-
-        let addedCount = 0;
-        let removedCount = 0;
-        const errors: string[] = [];
-
-        // For each tour, sync expenses to match totalDays
-        for (const tour of allTours) {
-          try {
-            const totalDays = tour.totalDays || 0;
-            const expenseName = detailedExpense.name;
-
-            // Count existing rows of this expense
-            const existingExpenses = tour.expenses?.filter(exp => exp.name === expenseName) || [];
-            const currentCount = existingExpenses.length;
-
-            // If counts match, skip this tour
-            if (currentCount === totalDays) {
-              continue;
-            }
-
-            // Need to add more rows
-            if (currentCount < totalDays) {
-              const rowsToAdd = totalDays - currentCount;
-              for (let i = 0; i < rowsToAdd; i++) {
-                const dayOffset = currentCount + i;
-                const expenseDate = new Date(tour.startDate);
-                expenseDate.setDate(expenseDate.getDate() + dayOffset);
-                const dateStr = expenseDate.toISOString().split('T')[0];
-
-                await store.addExpense(tour.id, {
-                  name: expenseName,
-                  price: detailedExpense.price,
-                  date: dateStr,
-                });
-                addedCount++;
-              }
-            }
-            // Need to remove excess rows
-            else if (currentCount > totalDays) {
-              const rowsToRemove = currentCount - totalDays;
-
-              // Find indices of this expense and remove the last ones
-              const allExpenses = tour.expenses || [];
-              const indicesToRemove: number[] = [];
-
-              for (let i = allExpenses.length - 1; i >= 0 && indicesToRemove.length < rowsToRemove; i--) {
-                if (allExpenses[i].name === expenseName) {
-                  indicesToRemove.push(i);
-                }
-              }
-
-              // Remove in reverse order to maintain indices
-              for (const index of indicesToRemove) {
-                await store.removeExpense(tour.id, index);
-                removedCount++;
-              }
-            }
-          } catch (error) {
-            errors.push(`${tour.tourCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-
-        toast.dismiss(loadingToast);
-        return { addedCount, removedCount, errors, totalTours: allTours.length, expenseName: detailedExpense.name };
-      } catch (error) {
-        toast.dismiss(loadingToast);
-        throw error;
-      }
-    },
-    onSuccess: ({ addedCount, removedCount, errors, totalTours, expenseName }) => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
-
-      if (errors.length > 0) {
-        toast.error(`Synced "${expenseName}" expenses (added ${addedCount}, removed ${removedCount}) to ${totalTours} tours, but ${errors.length} failed: ${errors.join(', ')}`, {
-          duration: 10000,
-        });
-      } else {
-        toast.success(`✅ Successfully synced "${expenseName}" expenses to ${totalTours} tours! (Added ${addedCount}, Removed ${removedCount})`, {
-          duration: 5000,
-        });
-      }
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to sync expenses: ${error.message}`);
-    },
-  });
+  // Removed addExpensesToAllMutation (feature removed)
 
   const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
     const detailedTour = await store.getTour(tour.id);
@@ -500,11 +285,33 @@ const Tours = () => {
         return;
       }
 
-      await exportAllToursToExcel(toursWithDetails);
-      toast.success('All tours exported to Excel');
+      await exportAllToursToMonthlyZip(toursWithDetails);
+      toast.success('All tours exported by month (ZIP)');
     } catch (error) {
       console.error('Failed to export tours to Excel', error);
-      toast.error('Failed to export tours to Excel. Please try again.');
+      toast.error('Failed to export tours ZIP. Please try again.');
+    }
+  };
+
+  const handleExportAllSingle = async () => {
+    if (totalTours === 0) {
+      toast.error('No tours to export');
+      return;
+    }
+
+    try {
+      const { tours: toursWithDetails } = await store.listTours({ ...baseTourQuery }, { includeDetails: true });
+
+      if (toursWithDetails.length === 0) {
+        toast.error('No tours to export');
+        return;
+      }
+
+      await exportAllToursToExcel(toursWithDetails);
+      toast.success('All tours exported to a single Excel sheet');
+    } catch (error) {
+      console.error('Failed to export all tours to single Excel', error);
+      toast.error('Failed to export single Excel. Please try again.');
     }
   };
 
@@ -905,11 +712,22 @@ const Tours = () => {
                 variant="outline"
                 size="sm"
                 className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                title="Export all tours into folders by month (ZIP)"
               >
                 <FileDown className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Export All</span>
+                <span className="hidden sm:inline">Export All Tours → Folders</span>
               </Button>
-              <AlertDialog>
+              <Button
+                onClick={handleExportAllSingle}
+                variant="outline"
+                size="sm"
+                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                title="Export all tours to 1 Excel file (single sheet with grand total)"
+              >
+                <FileDown className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Export All Tours → Single Sheet</span>
+              </Button>
+              {/* <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
@@ -943,8 +761,8 @@ const Tours = () => {
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
-              </AlertDialog>
-              <AlertDialog>
+              </AlertDialog> */}
+              {/* <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
@@ -984,7 +802,7 @@ const Tours = () => {
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
-              </AlertDialog>
+              </AlertDialog> */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -1025,11 +843,23 @@ const Tours = () => {
             </div>
           </div>
 
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search by tour code or client name..."
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+            <SearchInput
+              value={searchCode}
+              onChange={setSearchCode}
+              placeholder="Search tour code..."
+            />
+            <SearchInput
+              value={searchDate}
+              onChange={setSearchDate}
+              placeholder="Search start date (dd-mm)"
+            />
+            <SearchInput
+              value={searchCompany}
+              onChange={setSearchCompany}
+              placeholder="Search company..."
+            />
+          </div>
 
           {/* Filters */}
           <div className="space-y-2 sm:space-y-3">
@@ -1154,14 +984,13 @@ const Tours = () => {
           </div>
         ) : totalTours === 0 ? (
           <div className="text-center py-12 text-muted-foreground mt-6">
-            {!hasActiveFilters && !search.trim()
+            {!hasActiveFilters && !(searchCode.trim() || searchDate.trim() || searchCompany.trim())
               ? 'No tours found. Create your first tour to get started.'
               : 'No tours match your current filters.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {tours.map((tour, index) => {
-              const isExpanded = expandedCards.has(tour.id);
               return (
                 <div
                   key={tour.id}
@@ -1170,88 +999,67 @@ const Tours = () => {
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-base sm:text-lg">{tour.tourCode}</h3>
-                          <Badge variant="outline" className="text-xs">
-                            {formatDateRange(tour.startDate, tour.endDate)}
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
+                        <div className="flex items-center gap-2 overflow-hidden flex-nowrap">
+                          <h3 className="font-bold text-sm sm:text-base truncate" title={tour.tourCode}>{truncateText(tour.tourCode, 15)}</h3>
+                          <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
+                            {formatDateRangeDisplay(tour.startDate, tour.endDate)}
                           </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <Badge variant="outline" className="text-xs">
-                            {tour.clientNationalityRef.nameAtBooking}
+                          <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
+                            {tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0)}d
                           </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0)} {(tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0)) === 1 ? 'day' : 'days'}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {tour.totalGuests || ((tour.adults || 0) + (tour.children || 0))} guest{(tour.totalGuests || ((tour.adults || 0) + (tour.children || 0))) !== 1 ? 's' : ''}
+                          <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
+                            {tour.totalGuests || ((tour.adults || 0) + (tour.children || 0))}p
                           </Badge>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => toggleCardExpansion(tour.id, e)}
-                        className="h-8 w-8 p-0"
-                      >
-                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
                     </div>
 
-                    <div className="space-y-2 text-sm cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
-                      <div className="flex items-center justify-between pt-1 border-t">
-                        <span className="text-muted-foreground text-xs">Total Allowance</span>
-                        <span className="font-semibold">
-                          {tour.allowances?.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0).toLocaleString('en-US')} VND
-                        </span>
-                      </div>
-
-                      {(tour.summary?.finalTotal !== undefined && tour.summary.finalTotal !== null && tour.summary.finalTotal !== 0) && (
-                        <div className="flex items-center justify-between pt-1 border-t">
-                          <span className="text-muted-foreground text-xs">Final Total</span>
-                          <span className="font-semibold text-primary">
-                            {tour.summary.finalTotal.toLocaleString('en-US')} VND
+                    <div className="pt-3 border-t cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
+                      <div className="flex items-center gap-2 text-xs sm:text-sm flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Allowance:</span>
+                          <span className="font-semibold">
+                            {Math.round((tour.allowances?.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0) || 0) / 1000)}k
                           </span>
                         </div>
-                      )}
+                        {(tour.summary?.finalTotal !== undefined && tour.summary.finalTotal !== null && tour.summary.finalTotal !== 0) && (
+                          <>
+                            <span className="text-muted-foreground">|</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground">Final:</span>
+                              <span className="font-semibold text-primary">
+                                {Math.round(tour.summary.finalTotal / 1000)}k
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    {isExpanded && (
-                      <div className="space-y-2 text-sm pt-2 border-t cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <span className="text-muted-foreground text-xs">Company</span>
-                            <p className="font-medium truncate">{tour.companyRef.nameAtBooking}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground text-xs">Guide</span>
-                            <p className="font-medium truncate">{tour.guideRef.nameAtBooking}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground text-xs">Adults</span>
-                            <p className="font-medium">{tour.adults}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground text-xs">Children</span>
-                            <p className="font-medium">{tour.children}</p>
-                          </div>
-                          {tour.driverName && (
-                            <div className="col-span-2">
-                              <span className="text-muted-foreground text-xs">Driver</span>
-                              <p className="font-medium truncate">{tour.driverName}</p>
-                            </div>
-                          )}
+                    <div className="pt-3 border-t">
+                      <div
+                        className="grid grid-cols-2 gap-2 text-xs sm:text-sm cursor-pointer"
+                        onClick={() => navigate(`/tours/${tour.id}`)}
+                      >
+                        <div className="min-w-0 overflow-hidden">
+                          <p className="truncate" title={tour.companyRef.nameAtBooking}>
+                            <span className="text-muted-foreground">Company: </span>
+                            <span className="font-medium">
+                              {truncateText(tour.companyRef.nameAtBooking, 15)}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="min-w-0 overflow-hidden">
+                          <p className="truncate" title={tour.clientNationalityRef.nameAtBooking}>
+                            <span className="text-muted-foreground">Nationality: </span>
+                            <span className="font-medium">
+                              {truncateText(tour.clientNationalityRef.nameAtBooking, 15)}
+                            </span>
+                          </p>
                         </div>
                       </div>
-                    )}
-
-                    {!isExpanded && (
-                      <div className="pt-3 border-t flex items-center justify-between text-sm cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>
-                        <span className="text-muted-foreground truncate flex-1">{tour.companyRef.nameAtBooking}</span>
-                        <span className="font-medium truncate ml-2">{tour.guideRef.nameAtBooking}</span>
-                      </div>
-                    )}
+                    </div>
 
                     <div className="flex gap-2 pt-2 border-t justify-end">
                       <Button

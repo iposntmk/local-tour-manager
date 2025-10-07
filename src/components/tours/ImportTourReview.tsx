@@ -4,6 +4,7 @@ import type { Tour, EntityRef } from '@/types/tour';
 import type { Company, Guide, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
+import { formatDateRangeDisplay } from '@/lib/date-utils';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -364,7 +365,11 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-base font-medium">{item.tour.tourCode}</div>
-                <div className="text-xs text-muted-foreground">{item.tour.startDate} → {item.tour.endDate}</div>
+                <div className="text-xs text-muted-foreground">
+                  {item.tour.startDate && item.tour.endDate
+                    ? formatDateRangeDisplay(item.tour.startDate, item.tour.endDate)
+                    : `${item.tour.startDate || ''} → ${item.tour.endDate || ''}`}
+                </div>
               </div>
               <Separator />
 

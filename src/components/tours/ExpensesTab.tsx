@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -255,7 +256,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                                 formData.name === exp.name ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {exp.name} ({exp.price.toLocaleString()} ₫)
+                            {exp.name} ({formatCurrency(exp.price)})
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -277,6 +278,25 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
               placeholder="Price (VND)"
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
+            />
+            <Input
+              type="number"
+              min={0}
+              max={tour?.totalGuests || 0}
+              placeholder={`Guests (max ${tour?.totalGuests || 0})`}
+              value={formData.guests ?? ''}
+              onChange={(e) => {
+                const max = tour?.totalGuests || 0;
+                let val = e.target.value === '' ? undefined : Number(e.target.value);
+                if (typeof val === 'number' && !Number.isNaN(val)) {
+                  if (val < 0) val = 0;
+                  if (max && val > max) {
+                    toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                    val = max;
+                  }
+                }
+                setFormData({ ...formData, guests: val as any });
+              }}
             />
             <DateInput
               value={formData.date}
@@ -308,121 +328,108 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
           </div>
         ) : (
           <div>
-            {(() => {
-              // Group expenses by name
-              const groupedExpenses = expenses.reduce((groups, expense, index) => {
-                const name = expense.name;
-                if (!groups[name]) {
-                  groups[name] = [];
-                }
-                groups[name].push({ ...expense, originalIndex: index });
-                return groups;
-              }, {} as Record<string, Array<Expense & { originalIndex: number }>>);
-
-              return Object.entries(groupedExpenses).map(([name, expenseGroup]) => (
-                <div key={name} className="border-b last:border-b-0">
-                  <div className="p-3 bg-muted/30 font-semibold text-sm sticky top-0">
-                    {name} ({expenseGroup.length} {expenseGroup.length === 1 ? 'item' : 'items'})
-                  </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[50px]">#</TableHead>
-                        <TableHead>Expense</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Total Guests</TableHead>
-                        <TableHead>Total Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">#</TableHead>
+                  <TableHead>Expense</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Total Guests</TableHead>
+                  <TableHead>Total Amount</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expenses
+                  .map((e, i) => ({ ...e, originalIndex: i }))
+                  .sort((a, b) => {
+                    const da = a.date ? new Date(a.date).getTime() : Infinity;
+                    const db = b.date ? new Date(b.date).getTime() : Infinity;
+                    return da - db;
+                  })
+                  .map((expense, rowIndex) => {
+                    const totalGuests = tour?.totalGuests || 0;
+                    const expenseGuests = expense.guests ?? totalGuests;
+                    const totalAmount = expense.price * expenseGuests;
+                    return (
+                      <TableRow key={`${expense.originalIndex}-${expense.date}`} className="animate-fade-in">
+                        <TableCell className="font-medium">{rowIndex + 1}</TableCell>
+                        <TableCell className="font-medium">{expense.name}</TableCell>
+                        <TableCell>{formatCurrency(expense.price)}</TableCell>
+                        <TableCell>
+                          {editingGuestsIndex === expense.originalIndex ? (
+                            <Input
+                              type="number"
+                              min={0}
+                              max={totalGuests}
+                              defaultValue={expenseGuests}
+                              className="w-20 h-8"
+                              autoFocus
+                              onBlur={(e) => handleGuestsUpdate(expense.originalIndex, parseInt(e.target.value) || 0)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleGuestsUpdate(expense.originalIndex, parseInt(e.currentTarget.value) || 0);
+                                } else if (e.key === 'Escape') {
+                                  setEditingGuestsIndex(null);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="cursor-pointer hover:bg-muted px-2 py-1 rounded"
+                              onClick={() => setEditingGuestsIndex(expense.originalIndex)}
+                              title="Click to edit guests count"
+                            >
+                              {expenseGuests}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
+                        <TableCell>{formatDate(expense.date)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(expense.originalIndex)}
+                              className="hover-scale"
+                              title="Edit"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDuplicate(expense.originalIndex)}
+                              className="hover-scale"
+                              title="Duplicate"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteMutation.mutate(expense.originalIndex)}
+                              className="hover-scale text-destructive hover:text-destructive"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {expenseGroup.map((expense, groupIndex) => {
-                        const totalGuests = tour?.totalGuests || 0;
-                        const expenseGuests = expense.guests ?? totalGuests;
-                        const totalAmount = expense.price * expenseGuests;
-                        return (
-                          <TableRow key={expense.originalIndex} className="animate-fade-in">
-                            <TableCell className="font-medium">{expense.originalIndex + 1}</TableCell>
-                            <TableCell className="font-medium">{expense.name}</TableCell>
-                            <TableCell>{expense.price.toLocaleString()} ₫</TableCell>
-                            <TableCell>
-                              {editingGuestsIndex === expense.originalIndex ? (
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={totalGuests}
-                                  defaultValue={expenseGuests}
-                                  className="w-20 h-8"
-                                  autoFocus
-                                  onBlur={(e) => handleGuestsUpdate(expense.originalIndex, parseInt(e.target.value) || 0)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      handleGuestsUpdate(expense.originalIndex, parseInt(e.currentTarget.value) || 0);
-                                    } else if (e.key === 'Escape') {
-                                      setEditingGuestsIndex(null);
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <div
-                                  className="cursor-pointer hover:bg-muted px-2 py-1 rounded"
-                                  onClick={() => setEditingGuestsIndex(expense.originalIndex)}
-                                  title="Click to edit guests count"
-                                >
-                                  {expenseGuests}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="font-semibold">{totalAmount.toLocaleString()} ₫</TableCell>
-                            <TableCell>{formatDate(expense.date)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex gap-2 justify-end">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEdit(expense.originalIndex)}
-                                  className="hover-scale"
-                                  title="Edit"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDuplicate(expense.originalIndex)}
-                                  className="hover-scale"
-                                  title="Duplicate"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => deleteMutation.mutate(expense.originalIndex)}
-                                  className="hover-scale text-destructive hover:text-destructive"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                  <div className="p-3 bg-muted/20 text-sm flex justify-end">
-                    <div className="font-semibold">
-                      {name} Subtotal: {expenseGroup.reduce((sum, exp) => sum + (exp.price * (exp.guests ?? tour?.totalGuests ?? 0)), 0).toLocaleString()} ₫
-                    </div>
-                  </div>
-                </div>
-              ));
-            })()}
+                    );
+                  })}
+              </TableBody>
+            </Table>
             <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
               <div className="text-lg font-semibold">
-                Total: {expenses.reduce((sum, exp) => sum + (exp.price * (exp.guests ?? tour?.totalGuests ?? 0)), 0).toLocaleString()} ₫
+                Total: {formatCurrency(expenses.reduce((sum, exp) => {
+                  const tg = tour?.totalGuests || 0;
+                  const g = typeof exp.guests === 'number' ? Math.min(exp.guests, tg) : tg;
+                  return sum + (exp.price * g);
+                },0))}
               </div>
             </div>
           </div>

@@ -7,6 +7,7 @@ export interface Destination {
   name: string;
   price: number;
   date: string;
+  guests?: number;
   matchedId?: string;
   matchedPrice?: number;
 }
@@ -24,6 +25,7 @@ export interface Meal {
   name: string;
   price: number;
   date: string;
+  guests?: number;
   matchedId?: string;
   matchedPrice?: number;
 }
@@ -98,6 +100,12 @@ export interface TourInput {
 
 export interface TourQuery {
   tourCode?: string;
+  // Optional granular search fields for better performance
+  tourCodeLike?: string;
+  dateLike?: string; // search substring for YYYY-MM-DD, e.g. "-10-05" for dd-mm
+  dateLike2?: string; // optional alternate order fallback (e.g. "-05-10")
+  dateRawLike?: string; // raw user input substring for contains matching
+  companyNameLike?: string;
   clientName?: string;
   companyId?: string;
   guideId?: string;
@@ -106,6 +114,8 @@ export interface TourQuery {
   nationalityId?: string;
   limit?: number;
   offset?: number;
+  sortBy?: 'startDate' | 'endDate' | 'tourCode' | 'clientName' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface TourListResult {
