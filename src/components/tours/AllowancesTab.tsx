@@ -265,11 +265,17 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                 .map((allowance: any, rowIndex: number) => {
                   const qty = allowance.quantity || 1;
                   const total = allowance.price * qty;
+                  const isZeroPrice = (allowance.price ?? 0) === 0;
                   return (
-                    <TableRow key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`} className="animate-fade-in">
+                    <TableRow key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
                       <TableCell className="font-medium">{rowIndex + 1}</TableCell>
                       <TableCell className="font-medium">{allowance.name}</TableCell>
-                      <TableCell>{formatCurrency(allowance.price)}</TableCell>
+                      <TableCell className={allowance.price === 0 ? 'text-destructive font-semibold' : ''}>
+                        {formatCurrency(allowance.price)}
+                        {allowance.price === 0 && (
+                          <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                        )}
+                      </TableCell>
                       <TableCell>{qty}</TableCell>
                       <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
                       <TableCell>{formatDate(allowance.date)}</TableCell>

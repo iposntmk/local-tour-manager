@@ -335,11 +335,17 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                   const tourGuests = tour?.totalGuests || 0;
                   const rowGuests = typeof meal.guests === 'number' ? meal.guests : 0;
                   const totalAmount = meal.price * rowGuests;
+                  const isZeroPrice = (meal.price ?? 0) === 0;
                   return (
-                    <TableRow key={`${meal.originalIndex}-${meal.date}`} className="animate-fade-in">
+                    <TableRow key={`${meal.originalIndex}-${meal.date}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
                       <TableCell className="font-medium">{rowIndex + 1}</TableCell>
                       <TableCell className="font-medium">{meal.name}</TableCell>
-                      <TableCell>{formatCurrency(meal.price)}</TableCell>
+                      <TableCell className={meal.price === 0 ? 'text-destructive font-semibold' : ''}>
+                        {formatCurrency(meal.price)}
+                        {meal.price === 0 && (
+                          <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Input
