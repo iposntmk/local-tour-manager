@@ -35,6 +35,7 @@ import type {
 } from '@/types/tour';
 import { generateSearchKeywords } from '@/lib/string-utils';
 import { differenceInDays } from 'date-fns';
+import { enrichTourWithSummary, enrichToursWithSummaries } from '@/lib/tour-utils';
 
 export class SupabaseStore implements DataStore {
   private readonly supabase: SupabaseClient<Database>;
@@ -1385,16 +1386,19 @@ export class SupabaseStore implements DataStore {
           name: d.name,
           price: Number(d.price) || 0,
           date: d.date,
+          guests: d.guests !== null && d.guests !== undefined ? Number(d.guests) : undefined,
         }));
         tour.expenses = (row.tour_expenses || []).map((e: any) => ({
           name: e.name,
           price: Number(e.price) || 0,
           date: e.date,
+          guests: e.guests !== null && e.guests !== undefined ? Number(e.guests) : undefined,
         }));
         tour.meals = (row.tour_meals || []).map((m: any) => ({
           name: m.name,
           price: Number(m.price) || 0,
           date: m.date,
+          guests: m.guests !== null && m.guests !== undefined ? Number(m.guests) : undefined,
         }));
         tour.allowances = (row.tour_allowances || []).map((a: any) => ({
           date: a.date,
@@ -1419,8 +1423,11 @@ export class SupabaseStore implements DataStore {
       return tour;
     });
 
+    // Enrich tours with calculated summaries ONLY if includeDetails is true
+    const enrichedTours = includeDetails ? enrichToursWithSummaries(tours) : tours;
+
     return {
-      tours,
+      tours: enrichedTours,
       total: typeof count === 'number' ? count : tours.length,
     };
   }
@@ -1454,6 +1461,7 @@ export class SupabaseStore implements DataStore {
       name: d.name,
       price: Number(d.price) || 0,
       date: d.date,
+      guests: d.guests !== null && d.guests !== undefined ? Number(d.guests) : undefined,
     }));
     tour.expenses = (row.tour_expenses || []).map((e: any) => ({
       name: e.name,
@@ -1465,6 +1473,7 @@ export class SupabaseStore implements DataStore {
       name: m.name,
       price: Number(m.price) || 0,
       date: m.date,
+      guests: m.guests !== null && m.guests !== undefined ? Number(m.guests) : undefined,
     }));
     tour.allowances = (row.tour_allowances || []).map((a: any) => ({
       date: a.date,
@@ -1478,7 +1487,8 @@ export class SupabaseStore implements DataStore {
       date: s.date,
     }));
 
-    return tour;
+    // Enrich tour with calculated summary
+    return enrichTourWithSummary(tour);
   }
 
   async createTour(tour: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; shoppings?: TourShopping[]; summary?: TourSummary }): Promise<Tour> {
@@ -1698,6 +1708,28 @@ export class SupabaseStore implements DataStore {
     });
   }
 
+  // Helper to recalculate and save tour summary
+  private async recalculateTourSummary(tourId: string): Promise<void> {
+    // Fetch the full tour with all details
+    const tour = await this.getTour(tourId);
+    if (!tour) return;
+
+    // Calculate summary using the utility function (already enriched by getTour)
+    const summary = tour.summary;
+
+    // Save to database
+    await this.supabase.from('tours').update({
+      total_tabs: summary.totalTabs,
+      advance_payment: summary.advancePayment,
+      total_after_advance: summary.totalAfterAdvance,
+      company_tip: summary.companyTip,
+      total_after_tip: summary.totalAfterTip,
+      collections_for_company: summary.collectionsForCompany,
+      total_after_collections: summary.totalAfterCollections,
+      final_total: summary.finalTotal,
+    }).eq('id', tourId);
+  }
+
   // Tour Destinations
   async getDestinations(tourId: string): Promise<Destination[]> {
     const { data, error } = await this.supabase.from('tour_destinations').select('*').eq('tour_id', tourId).order('date');
@@ -1734,6 +1766,8 @@ export class SupabaseStore implements DataStore {
         throw new Error(`Failed to add destination: ${error.message}`);
       }
     }
+    // Recalculate and save summary
+    await this.recalculateTourSummary(tourId);
   }
 
   async updateDestination(tourId: string, index: number, destination: Destination): Promise<void> {
@@ -1746,6 +1780,8 @@ export class SupabaseStore implements DataStore {
         guests: destination.guests ?? null,
       }).eq('id', rows[index].id);
       if (error) throw error;
+      // Recalculate and save summary
+      await this.recalculateTourSummary(tourId);
     }
   }
 
@@ -1754,6 +1790,8 @@ export class SupabaseStore implements DataStore {
     if (rows && rows[index]) {
       const { error } = await this.supabase.from('tour_destinations').delete().eq('id', rows[index].id);
       if (error) throw error;
+      // Recalculate and save summary
+      await this.recalculateTourSummary(tourId);
     }
   }
 
@@ -1778,6 +1816,8 @@ export class SupabaseStore implements DataStore {
       guests: expense.guests,
     });
     if (error) throw error;
+    // Recalculate and save summary
+    await this.recalculateTourSummary(tourId);
   }
 
   async updateExpense(tourId: string, index: number, expense: Expense): Promise<void> {
@@ -1797,6 +1837,8 @@ export class SupabaseStore implements DataStore {
         throw error;
       }
       console.log('Expense updated successfully in DB');
+      // Recalculate and save summary
+      await this.recalculateTourSummary(tourId);
     }
   }
 
@@ -1805,6 +1847,8 @@ export class SupabaseStore implements DataStore {
     if (rows && rows[index]) {
       const { error } = await this.supabase.from('tour_expenses').delete().eq('id', rows[index].id);
       if (error) throw error;
+      // Recalculate and save summary
+      await this.recalculateTourSummary(tourId);
     }
   }
 
@@ -1829,6 +1873,8 @@ export class SupabaseStore implements DataStore {
       guests: meal.guests ?? null,
     });
     if (error) throw error;
+    // Recalculate and save summary
+    await this.recalculateTourSummary(tourId);
   }
 
   async updateMeal(tourId: string, index: number, meal: Meal): Promise<void> {
@@ -1841,6 +1887,8 @@ export class SupabaseStore implements DataStore {
         guests: meal.guests ?? null,
       }).eq('id', rows[index].id);
       if (error) throw error;
+      // Recalculate and save summary
+      await this.recalculateTourSummary(tourId);
     }
   }
 
@@ -1849,6 +1897,8 @@ export class SupabaseStore implements DataStore {
     if (rows && rows[index]) {
       const { error } = await this.supabase.from('tour_meals').delete().eq('id', rows[index].id);
       if (error) throw error;
+      // Recalculate and save summary
+      await this.recalculateTourSummary(tourId);
     }
   }
 
@@ -1873,6 +1923,8 @@ export class SupabaseStore implements DataStore {
       quantity: allowance.quantity || 1,
     });
     if (error) throw error;
+    // Recalculate and save summary
+    await this.recalculateTourSummary(tourId);
   }
 
   async updateAllowance(tourId: string, index: number, allowance: Allowance): Promise<void> {
@@ -1885,6 +1937,8 @@ export class SupabaseStore implements DataStore {
         quantity: allowance.quantity || 1,
       }).eq('id', rows[index].id);
       if (error) throw error;
+      // Recalculate and save summary
+      await this.recalculateTourSummary(tourId);
     }
   }
 
@@ -1893,6 +1947,8 @@ export class SupabaseStore implements DataStore {
     if (rows && rows[index]) {
       const { error } = await this.supabase.from('tour_allowances').delete().eq('id', rows[index].id);
       if (error) throw error;
+      // Recalculate and save summary
+      await this.recalculateTourSummary(tourId);
     }
   }
 

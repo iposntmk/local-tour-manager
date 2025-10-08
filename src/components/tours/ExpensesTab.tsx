@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy, ArrowUp, ArrowDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -61,6 +61,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Expense added');
       setFormData({ name: '', price: 0, date: '' });
@@ -82,6 +83,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
       if (tourId) {
         console.log('Expense updated successfully, guests:', expense.guests);
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Expense updated');
       setEditingIndex(null);
@@ -98,6 +100,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
     onSuccess: (_, index) => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       } else {
         onChange?.(expenses.filter((_, i) => i !== index));
       }
@@ -212,6 +215,11 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
       categoryId: newExpenseCategoryId
     });
   };
+
+  // Default guests for new rows = tour totalGuests (only when not editing)
+  if (editingIndex === null && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {
+    formData.guests = tour!.totalGuests;
+  }
 
   return (
     <div className="space-y-6">
@@ -341,49 +349,122 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {expenses
-                  .map((e, i) => ({ ...e, originalIndex: i }))
-                  .sort((a, b) => {
-                    const da = a.date ? new Date(a.date).getTime() : Infinity;
-                    const db = b.date ? new Date(b.date).getTime() : Infinity;
-                    return da - db;
-                  })
-                  .map((expense, rowIndex) => {
+                {(() => {
+                  const MERGE_NAMES = [
+                    'Nước uống cho khách 15k/1 khách / 1 ngày',
+                    'Nước uống cho khách 10k/1 khách / 1 ngày',
+                  ];
+                  const withIndex = expenses.map((e, i) => ({ ...e, originalIndex: i }));
+                  const toMergeByName = MERGE_NAMES.map(name => ({
+                    name,
+                    rows: withIndex.filter(e => (e.name || '') === name),
+                  }));
+                  const others = withIndex.filter(e => !MERGE_NAMES.includes(e.name || ''));
+
+                  const mergedBlock: any[] = [];
+                  for (const group of toMergeByName) {
+                    if (group.rows.length > 0) {
+                      const totalGuests = group.rows.reduce((sum, e) => sum + (typeof e.guests === 'number' ? e.guests : 0), 0);
+                      const unitPrice = group.rows[0].price || 0;
+                      const earliestDate = group.rows.reduce((min: string | undefined, e) => {
+                        if (!e.date) return min;
+                        if (!min) return e.date;
+                        return e.date < min ? e.date : min;
+                      }, undefined as string | undefined);
+                      mergedBlock.push({
+                        name: group.name,
+                        price: unitPrice,
+                        guests: totalGuests,
+                        date: earliestDate,
+                        originalIndex: group.rows[0].originalIndex,
+                        originalIndices: group.rows.map(e => e.originalIndex),
+                        merged: true,
+                      });
+                    }
+                  }
+
+                  const displayList = [...others, ...mergedBlock]
+                    .sort((a, b) => {
+                      const da = a.date ? new Date(a.date).getTime() : Infinity;
+                      const db = b.date ? new Date(b.date).getTime() : Infinity;
+                      return da - db;
+                    });
+
+                  return displayList.map((expense: any, rowIndex: number) => {
                     const totalGuests = tour?.totalGuests || 0;
-                    const expenseGuests = expense.guests ?? totalGuests;
+                    const expenseGuests = typeof expense.guests === 'number' ? expense.guests : 0;
                     const totalAmount = expense.price * expenseGuests;
                     return (
-                      <TableRow key={`${expense.originalIndex}-${expense.date}`} className="animate-fade-in">
+                      <TableRow key={`${expense.originalIndex}-${expense.date}-${expense.merged ? 'merged' : 'row'}`} className="animate-fade-in">
                         <TableCell className="font-medium">{rowIndex + 1}</TableCell>
                         <TableCell className="font-medium">{expense.name}</TableCell>
                         <TableCell>{formatCurrency(expense.price)}</TableCell>
                         <TableCell>
-                          {editingGuestsIndex === expense.originalIndex ? (
+                          <div className="flex items-center gap-1">
                             <Input
                               type="number"
+                              className="w-24 h-8"
                               min={0}
                               max={totalGuests}
-                              defaultValue={expenseGuests}
-                              className="w-20 h-8"
-                              autoFocus
-                              onBlur={(e) => handleGuestsUpdate(expense.originalIndex, parseInt(e.target.value) || 0)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleGuestsUpdate(expense.originalIndex, parseInt(e.currentTarget.value) || 0);
-                                } else if (e.key === 'Escape') {
-                                  setEditingGuestsIndex(null);
+                              value={expense.guests ?? ''}
+                              disabled={!!expense.merged}
+                              title={expense.merged ? 'Merged row' : 'Edit guests'}
+                              onChange={(e) => {
+                                if (expense.merged) return;
+                                let val = e.target.value === '' ? undefined : Number(e.target.value);
+                                if (typeof val === 'number' && !Number.isNaN(val)) {
+                                  if (val < 0) val = 0;
+                                  if (totalGuests && val > totalGuests) {
+                                    toast.warning(`Guests cannot exceed total tour guests (${totalGuests}).`);
+                                    val = totalGuests;
+                                  }
                                 }
+                                const updated = { ...expense, guests: val as any } as Expense;
+                                // Remove helper field before saving
+                                const { originalIndex, ...clean } = updated as any;
+                                updateMutation.mutate({ index: expense.originalIndex, expense: clean as Expense });
                               }}
                             />
-                          ) : (
-                            <div
-                              className="cursor-pointer hover:bg-muted px-2 py-1 rounded"
-                              onClick={() => setEditingGuestsIndex(expense.originalIndex)}
-                              title="Click to edit guests count"
-                            >
-                              {expenseGuests}
-                            </div>
-                          )}
+                            {/* Copy guests from previous row (in sorted view) */}
+                            {rowIndex > 0 && !expense.merged && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                title="Copy guests from previous row"
+                                onClick={() => {
+                                  const sorted = expenses
+                                    .map((e, i) => ({ ...e, originalIndex: i }))
+                                    .sort((a, b) => {
+                                      const da = a.date ? new Date(a.date).getTime() : Infinity;
+                                      const db = b.date ? new Date(b.date).getTime() : Infinity;
+                                      return da - db;
+                                    });
+                                  const prev = sorted[rowIndex - 1];
+                                  const g = Math.min(prev.guests ?? totalGuests, totalGuests);
+                                  handleGuestsUpdate(expense.originalIndex, g);
+                                }}
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {/* Copy guests to next row */}
+                            {rowIndex < displayList.length - 1 && !expense.merged && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                title="Copy guests to next row"
+                                onClick={() => {
+                                  const g = Math.min((expense.guests ?? totalGuests), totalGuests);
+                                  const nxt = displayList[rowIndex + 1];
+                                  handleGuestsUpdate(nxt.originalIndex, g);
+                                }}
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>{formatDate(expense.date)}</TableCell>
@@ -395,7 +476,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                               onClick={() => handleEdit(expense.originalIndex)}
                               className="hover-scale"
                               title="Edit"
-                            >
+                              >
                               <Edit2 className="h-4 w-4" />
                             </Button>
                             <Button
@@ -420,14 +501,14 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                         </TableCell>
                       </TableRow>
                     );
-                  })}
+                  });
+                })()}
               </TableBody>
             </Table>
             <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
               <div className="text-lg font-semibold">
                 Total: {formatCurrency(expenses.reduce((sum, exp) => {
-                  const tg = tour?.totalGuests || 0;
-                  const g = typeof exp.guests === 'number' ? Math.min(exp.guests, tg) : tg;
+                  const g = typeof exp.guests === 'number' ? exp.guests : 0;
                   return sum + (exp.price * g);
                 },0))}
               </div>

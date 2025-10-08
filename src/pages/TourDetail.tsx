@@ -34,6 +34,51 @@ import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, 
 import { formatDateDMY } from '@/lib/date-utils';
 import { formatDate } from '@/lib/utils';
 
+// Helper function to clamp guests (same logic as SummaryTab)
+const clampGuests = (guestValue: number | undefined, tourGuests: number): number => {
+  if (typeof guestValue !== 'number') return tourGuests;
+  if (!tourGuests) return guestValue;
+  return Math.min(Math.max(guestValue, 0), tourGuests);
+};
+
+// Calculate totals using per-row guests (matching SummaryTab logic)
+const calculateTabTotals = (tour: Tour | null | undefined) => {
+  if (!tour) return { destinations: 0, expenses: 0, meals: 0, allowances: 0, shoppings: 0 };
+
+  const tourGuests = tour.totalGuests || 0;
+
+  const totalDestinations = (tour.destinations || []).reduce((sum, d) => {
+    const g = clampGuests(d.guests as any, tourGuests);
+    return sum + (d.price * g);
+  }, 0);
+
+  const totalExpenses = (tour.expenses || []).reduce((sum, e) => {
+    const g = clampGuests(e.guests as any, tourGuests);
+    return sum + (e.price * g);
+  }, 0);
+
+  const totalMeals = (tour.meals || []).reduce((sum, m) => {
+    const g = clampGuests(m.guests as any, tourGuests);
+    return sum + (m.price * g);
+  }, 0);
+
+  const totalAllowances = (tour.allowances || []).reduce((sum, a) => {
+    return sum + (a.price * (a.quantity || 1));
+  }, 0);
+
+  const totalShoppings = (tour.shoppings || []).reduce((sum, s) => {
+    return sum + s.price;
+  }, 0);
+
+  return {
+    destinations: totalDestinations,
+    expenses: totalExpenses,
+    meals: totalMeals,
+    allowances: totalAllowances,
+    shoppings: totalShoppings,
+  };
+};
+
 const TourDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -320,7 +365,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Destinations</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.destinations?.length || 0} | {formatCurrency((displayTour?.destinations || []).reduce((sum, d) => sum + (d.price * totalGuests), 0))}
+                        {displayTour?.destinations?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).destinations)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -328,7 +373,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Expenses</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.expenses?.length || 0} | {formatCurrency((displayTour?.expenses || []).reduce((sum, e) => sum + (e.price * totalGuests), 0))}
+                        {displayTour?.expenses?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).expenses)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -336,7 +381,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Meals</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.meals?.length || 0} | {formatCurrency((displayTour?.meals || []).reduce((sum, m) => sum + (m.price * totalGuests), 0))}
+                        {displayTour?.meals?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).meals)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -344,7 +389,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Shopping</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.shoppings?.length || 0} | {formatCurrency((displayTour?.shoppings || []).reduce((sum, s) => sum + s.price, 0))}
+                        {displayTour?.shoppings?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).shoppings)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -352,7 +397,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Allowances</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.allowances?.length || 0} | {formatCurrency((displayTour?.allowances || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0))}
+                        {displayTour?.allowances?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).allowances)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -360,19 +405,7 @@ const TourDetail = () => {
                     <div className="flex flex-col items-center">
                       <span>Summary</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {
-                          ((displayTour?.destinations?.length || 0) +
-                           (displayTour?.expenses?.length || 0) +
-                           (displayTour?.meals?.length || 0) +
-                           (displayTour?.shoppings?.length || 0) +
-                           (displayTour?.allowances?.length || 0))
-                        } | {
-                          formatCurrency((displayTour?.destinations || []).reduce((sum, d) => sum + (d.price * totalGuests), 0) +
-                            (displayTour?.expenses || []).reduce((sum, e) => sum + (e.price * totalGuests), 0) +
-                            (displayTour?.meals || []).reduce((sum, m) => sum + (m.price * totalGuests), 0) +
-                            (displayTour?.shoppings || []).reduce((sum, s) => sum + s.price, 0) +
-                            (displayTour?.allowances || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0))
-                        }
+                        {formatCurrency(displayTour?.summary?.finalTotal ?? 0)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -464,6 +497,8 @@ const TourDetail = () => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, summary });
                   } else {
+                    // Save to DB only when user edits input fields
+                    // (advancePayment, collectionsForCompany, companyTip)
                     handleSummaryUpdate(summary);
                   }
                 }}

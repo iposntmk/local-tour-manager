@@ -205,46 +205,58 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
 
   const allowances = tour.allowances || [];
 
-  const serviceItems: { name: string; date?: string; price: number; guests?: number }[] = [];
-  if (tour.destinations && tour.destinations.length > 0) {
-    tour.destinations.forEach(d => {
-      serviceItems.push({ name: `vé ${d.name || ''}`, date: d.date, price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined });
-    });
-  }
-  if (tour.expenses && tour.expenses.length > 0) {
-    // Group expenses by ID (from detailed_expenses table) and merge duplicates
-    const expenseMap = new Map<string, { name: string; date?: string; price: number; guests: number; count: number }>();
-    tour.expenses.forEach(e => {
-      const key = e.name || ''; // Using name as key since we want to merge by detailed_expenses ID
-      if (!expenseMap.has(key)) {
-        expenseMap.set(key, {
-          name: e.name || '',
-          date: e.date,
-          price: e.price || 0,
-          guests: e.guests ?? totalGuests,
-          count: 1
-        });
-      } else {
-        // Merge: sum the guests count
-        const existing = expenseMap.get(key)!;
-        existing.guests += (e.guests ?? totalGuests);
-        existing.count += 1;
-      }
+  const serviceItems: { name: string; date?: string; price: number; guests?: number; kind: 'dest'|'exp' }[] = [];
+    if (tour.destinations && tour.destinations.length > 0) {
+      tour.destinations.forEach(d => {
+        serviceItems.push({ kind: 'dest', name: `vé ${d.name || ''}`, date: d.date, price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined });
+      });
+    }
+    if (tour.expenses && tour.expenses.length > 0) {
+      const MERGE_NAMES = [
+        'Nước uống cho khách 15k/1 khách / 1 ngày',
+        'Nước uống cho khách 10k/1 khách / 1 ngày',
+      ];
+      const otherList = tour.expenses.filter(e => !MERGE_NAMES.includes(e.name || ''));
+      otherList.forEach(e => {
+        serviceItems.push({ kind: 'exp', name: e.name || '', date: e.date, price: e.price || 0, guests: e.guests });
+      });
+      MERGE_NAMES.forEach(NAME => {
+        const mergeList = tour.expenses.filter(e => (e.name || '') === NAME);
+        if (mergeList.length > 0) {
+          const sumGuests = mergeList.reduce((sum, e) => sum + (typeof e.guests === 'number' ? e.guests : 0), 0);
+          const unitPrice = mergeList[0].price || 0;
+          const earliestDate = mergeList.reduce<string | undefined>((min, e) => {
+            if (!e.date) return min;
+            if (!min) return e.date;
+            return e.date < min ? e.date : min;
+          }, undefined);
+          serviceItems.push({ kind: 'exp', name: NAME, date: earliestDate, price: unitPrice, guests: sumGuests });
+        }
+      });
+    }
+    if (tour.meals && tour.meals.length > 0) {
+      tour.meals.forEach(m => {
+        // treat meals as expenses group for ordering
+        serviceItems.push({ kind: 'exp', name: m.name || '', date: m.date, price: m.price || 0, guests: typeof m.guests === 'number' ? m.guests : undefined });
+      });
+    }
+    // Sort services: destinations first, then expenses; within group by name
+    serviceItems.sort((a, b) => {
+      const ra = a.kind === 'dest' ? 0 : 1;
+      const rb = b.kind === 'dest' ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      const na = (a.name || '').localeCompare(b.name || '');
+      return na;
     });
 
-    // Add merged expenses to serviceItems
-    expenseMap.forEach(({ name, date, price, guests }) => {
-      serviceItems.push({ name, date, price, guests });
-    });
-  }
-  if (tour.meals && tour.meals.length > 0) {
-    tour.meals.forEach(m => {
-      serviceItems.push({ name: m.name || '', date: m.date, price: m.price || 0, guests: typeof m.guests === 'number' ? m.guests : undefined });
-    });
-  }
-
-  // Do not group allowances — list each entry
-  const allowanceItems = allowances.map(a => ({ name: a.name || '', date: a.date || '', price: a.price || 0 }));
+  // Do not group allowances — list each entry, sort by name
+  const allowanceItems = allowances
+    .slice()
+    .sort((a, b) => {
+      const n = (a.name || '').localeCompare(b.name || '');
+      return n;
+    })
+    .map(a => ({ name: a.name || '', date: a.date || '', price: a.price || 0 }));
   const dataRowCount = Math.max(serviceItems.length, allowanceItems.length);
   let lastDataRow = dataStartRow - 1;
 
@@ -266,8 +278,8 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
       row.getCell(5).value = service.price;
       row.getCell(5).numFmt = currencyFormat;
 
-      const serviceGuests = service.guests ?? totalGuests;
-      row.getCell(6).value = serviceGuests;
+      // Follow single-tour logic: only take guests from row field; leave blank if not provided
+      row.getCell(6).value = (service.guests !== undefined ? service.guests : '');
       row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
 
       row.getCell(7).value = { formula: `E${rowNumber}*F${rowNumber}` };
@@ -389,13 +401,17 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     const summaryValueColumn = 13; // Column M
     const summaryValueColumnLetter = 'M';
 
-    const addSummaryRow = (label: string, formula?: string, value?: number) => {
+    const addSummaryRow = (label: string, formula?: string, value?: number, labelColor?: string) => {
       const row = worksheet.getRow(currentRow);
       currentRow++;
 
       // J: Label (right aligned)
       row.getCell(summaryLabelColumn).value = label;
-      row.getCell(summaryLabelColumn).font = { bold: true };
+      const labelFont: any = { bold: true };
+      if (labelColor) {
+        labelFont.color = { argb: labelColor };
+      }
+      row.getCell(summaryLabelColumn).font = labelFont;
       row.getCell(summaryLabelColumn).alignment = { horizontal: 'right', vertical: 'middle' };
 
       // K: Value/formula (right aligned)
@@ -417,8 +433,8 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     // Row: Tổng chi phí + công tác phí
     const totalTabsRow = addSummaryRow('Tổng chi phí + công tác phí', `M${totalsRow.number}`);
 
-    // Row: Tạm ứng
-    const advanceRow = addSummaryRow('Tạm ứng', undefined, advancePayment);
+    // Row: Tạm ứng (red color with - sign)
+    const advanceRow = addSummaryRow('- Tạm ứng', undefined, advancePayment, 'FFFF0000');
 
     // Row: Sau tạm ứng
     const afterAdvanceRow = addSummaryRow(
@@ -426,8 +442,8 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
       `${summaryValueColumnLetter}${totalTabsRow.number}-${summaryValueColumnLetter}${advanceRow.number}`,
     );
 
-    // Row: Thu của khách
-    const collectionsRow = addSummaryRow('Thu của khách', undefined, collectionsForCompany);
+    // Row: Thu của khách (red color with - sign)
+    const collectionsRow = addSummaryRow('- Thu của khách', undefined, collectionsForCompany, 'FFFF0000');
 
     // Row: Sau thu khách
     const afterCollectionsRow = addSummaryRow(
@@ -435,8 +451,8 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
       `${summaryValueColumnLetter}${afterAdvanceRow.number}-${summaryValueColumnLetter}${collectionsRow.number}`,
     );
 
-    // Row: Tip HDV nhận từ công ty
-    const tipRow = addSummaryRow('Tip HDV nhận từ công ty', undefined, companyTip);
+    // Row: Tip HDV nhận từ công ty (blue color with + sign)
+    const tipRow = addSummaryRow('+ Tip HDV nhận từ công ty', undefined, companyTip, 'FF0000FF');
 
     // Row: Sau tip HDV
     const afterTipRow = addSummaryRow(
@@ -646,7 +662,30 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   let currentRow = 3; // Start data from row 3
   const allTourTotalCells: string[] = [];
 
+  let lastMonth: string | undefined;
   tours.forEach((tour, tourIndex) => {
+    // Insert month heading line only when month changes from previous tour
+    if (tour.startDate) {
+      const s = tour.startDate;
+      const monthKey = s.length >= 7 ? s.slice(0, 7) : undefined; // YYYY-MM
+      if (monthKey && lastMonth && monthKey !== lastMonth) {
+        const mm = monthKey.slice(5, 7);
+        const yy = monthKey.slice(2, 4);
+        const headingRow = worksheet.getRow(currentRow);
+        worksheet.mergeCells(`A${currentRow}:M${currentRow}`);
+        const title = ` Tour thang ${mm}/${yy} `;
+        const totalLen = 120; // approximate target to span merged width
+        const side = Math.max(3, Math.floor((totalLen - title.length) / 2));
+        const dashLine = `${'-'.repeat(side)}${title}${'-'.repeat(side)}`;
+        headingRow.getCell(1).value = dashLine;
+        headingRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        for (let col = 1; col <= 13; col += 1) {
+          headingRow.getCell(col).border = thinBorder;
+        }
+        currentRow++;
+      }
+      lastMonth = monthKey || lastMonth;
+    }
 
     const totalGuests = tour.totalGuests || tour.adults + tour.children;
     const dataStartRow = currentRow;
@@ -666,63 +705,58 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
     };
 
     const allowances = tour.allowances || [];
-    const serviceItems: { name: string; date?: string; price: number; guests?: number }[] = [];
+    const serviceItems: { name: string; date?: string; price: number; guests?: number; kind: 'dest'|'exp' }[] = [];
 
     if (tour.destinations && tour.destinations.length > 0) {
       tour.destinations.forEach(d => {
-        serviceItems.push({ name: `vé ${d.name || ''}`, date: d.date, price: d.price || 0 });
+        serviceItems.push({ kind: 'dest', name: `vé ${d.name || ''}`, date: d.date, price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined });
       });
     }
     if (tour.expenses && tour.expenses.length > 0) {
-      // Group expenses by ID (from detailed_expenses table) and merge duplicates
-      const expenseMap = new Map<string, { name: string; date?: string; price: number; guests: number; count: number }>();
-      tour.expenses.forEach(e => {
-        const key = e.name || ''; // Using name as key since we want to merge by detailed_expenses ID
-        if (!expenseMap.has(key)) {
-          expenseMap.set(key, {
-            name: e.name || '',
-            date: e.date,
-            price: e.price || 0,
-            guests: e.guests ?? totalGuests,
-            count: 1
-          });
-        } else {
-          // Merge: sum the guests count
-          const existing = expenseMap.get(key)!;
-          existing.guests += (e.guests ?? totalGuests);
-          existing.count += 1;
-        }
+      const MERGE_NAMES = [
+        'Nước uống cho khách 15k/1 khách / 1 ngày',
+        'Nước uống cho khách 10k/1 khách / 1 ngày',
+      ];
+      const otherList = tour.expenses.filter(e => !MERGE_NAMES.includes(e.name || ''));
+      otherList.forEach(e => {
+        serviceItems.push({ kind: 'exp', name: e.name || '', date: e.date, price: e.price || 0, guests: e.guests });
       });
-
-      // Add merged expenses to serviceItems
-      expenseMap.forEach(({ name, date, price, guests }) => {
-        serviceItems.push({ name, date, price, guests });
+      MERGE_NAMES.forEach(NAME => {
+        const mergeList = tour.expenses.filter(e => (e.name || '') === NAME);
+        if (mergeList.length > 0) {
+          const sumGuests = mergeList.reduce((sum, e) => sum + (typeof e.guests === 'number' ? e.guests : 0), 0);
+          const unitPrice = mergeList[0].price || 0;
+          const earliestDate = mergeList.reduce<string | undefined>((min, e) => {
+            if (!e.date) return min;
+            if (!min) return e.date;
+            return e.date < min ? e.date : min;
+          }, undefined);
+          serviceItems.push({ kind: 'exp', name: NAME, date: earliestDate, price: unitPrice, guests: sumGuests });
+        }
       });
     }
     if (tour.meals && tour.meals.length > 0) {
       tour.meals.forEach(m => {
-        serviceItems.push({ name: m.name || '', date: m.date, price: m.price || 0 });
+        serviceItems.push({ kind: 'exp', name: m.name || '', date: m.date, price: m.price || 0, guests: typeof m.guests === 'number' ? m.guests : undefined });
       });
     }
 
-    const allowancesByName = new Map<string, { name: string; totalPrice: number; days: number; firstDate?: string }>();
-    allowances.forEach(allowance => {
-      const name = allowance.name || '';
-      if (!allowancesByName.has(name)) {
-        allowancesByName.set(name, { name, totalPrice: 0, days: 0, firstDate: allowance.date });
-      }
-      const group = allowancesByName.get(name)!;
-      group.totalPrice += allowance.price || 0;
-      group.days += 1;
-      if (allowance.date) {
-        if (!group.firstDate || allowance.date < group.firstDate) {
-          group.firstDate = allowance.date;
-        }
-      }
+    // Sort services: destinations first, then expenses; within group by name
+    (serviceItems as any[]).sort((a, b) => {
+      const ra = a.kind === 'dest' ? 0 : 1;
+      const rb = b.kind === 'dest' ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      const na = (a.name || '').localeCompare(b.name || '');
+      return na;
     });
 
-    const mergedAllowances = Array.from(allowancesByName.values());
-    const dataRowCount = Math.max(serviceItems.length, mergedAllowances.length);
+    // Do NOT merge allowance rows — list each row individually, sort by name only
+    const allowanceRows = (allowances || []).slice().sort((a, b) => {
+      const n = (a.name || '').localeCompare(b.name || '');
+      return n;
+    });
+
+    const dataRowCount = Math.max(serviceItems.length, allowanceRows.length);
 
     for (let index = 0; index < dataRowCount; index += 1) {
       const rowNumber = currentRow;
@@ -731,7 +765,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
       setCodeAndDateCells(row);
 
       const service = serviceItems[index];
-      const allowance = mergedAllowances[index];
+      const allowance = allowanceRows[index];
 
       if (service) {
         row.getCell(3).value = service.name;
@@ -739,20 +773,23 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
         row.getCell(4).value = service.date ? formatDateDisplay(service.date) : '';
         row.getCell(5).value = service.price;
         row.getCell(5).numFmt = currencyFormat;
-        const serviceGuests = service.guests ?? totalGuests;
-        row.getCell(6).value = serviceGuests;
-        row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+      // Only take guests from the field on the row; if not set, leave blank
+      row.getCell(6).value = (service.guests !== undefined ? service.guests : '');
+      row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(7).value = { formula: `E${rowNumber}*F${rowNumber}` };
         row.getCell(7).numFmt = currencyFormat;
       }
 
       if (allowance) {
-        row.getCell(8).value = allowance.name;
+        row.getCell(8).value = allowance.name || '';
         row.getCell(8).alignment = { vertical: 'middle', horizontal: 'left' };
-        row.getCell(9).value = allowance.firstDate ? formatDateDisplay(allowance.firstDate) : '';
-        row.getCell(10).value = allowance.days;
+        row.getCell(9).value = allowance.date ? formatDateDisplay(allowance.date) : '';
+        // Days = quantity or 1 when not provided
+        const days = allowance.quantity && allowance.quantity > 0 ? allowance.quantity : 1;
+        row.getCell(10).value = days;
         row.getCell(10).alignment = { horizontal: 'center', vertical: 'middle' };
-        row.getCell(11).value = allowance.totalPrice / allowance.days;
+        // Price per unit
+        row.getCell(11).value = allowance.price || 0;
         row.getCell(11).numFmt = currencyFormat;
         row.getCell(12).value = { formula: `J${rowNumber}*K${rowNumber}` };
         row.getCell(12).numFmt = currencyFormat;
@@ -809,7 +846,95 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
 
     applyRowBorderLocal(totalsRow);
 
-    allTourTotalCells.push(`M${currentRow}`);
+    const totalsRowNumber = currentRow;
+
+    // Check if TỔNG KẾT section should be displayed
+    const advancePayment = tour.summary?.advancePayment ?? 0;
+    const collectionsForCompany = tour.summary?.collectionsForCompany ?? 0;
+    const companyTip = tour.summary?.companyTip ?? 0;
+    const showSummary = advancePayment !== 0 || collectionsForCompany !== 0 || companyTip !== 0;
+
+    let finalTotalRowNumber = totalsRowNumber;
+
+    if (showSummary) {
+      currentRow++; // Empty row
+
+      // Row: TỔNG KẾT title
+      const summaryTitleRowNum = currentRow;
+      const summaryTitleRow = worksheet.getRow(summaryTitleRowNum);
+      currentRow++;
+
+      worksheet.mergeCells(`L${summaryTitleRowNum}:M${summaryTitleRowNum}`);
+      summaryTitleRow.getCell(12).value = 'TỔNG KẾT';
+      summaryTitleRow.getCell(12).font = { bold: true };
+      summaryTitleRow.getCell(12).alignment = { horizontal: 'center', vertical: 'middle' };
+      summaryTitleRow.getCell(12).fill = summaryTitleFill;
+      applyRowBorderLocal(summaryTitleRow);
+
+      // Helper function for summary rows
+      const addSummaryRow = (label: string, formula?: string, value?: number, labelColor?: string): number => {
+        const rowNum = currentRow;
+        const row = worksheet.getRow(rowNum);
+        currentRow++;
+
+        // L: Label (right aligned)
+        row.getCell(12).value = label;
+        const labelFont: any = { bold: true };
+        if (labelColor) {
+          labelFont.color = { argb: labelColor };
+        }
+        row.getCell(12).font = labelFont;
+        row.getCell(12).alignment = { horizontal: 'right', vertical: 'middle' };
+
+        // M: Value/formula (right aligned)
+        if (formula) {
+          row.getCell(13).value = { formula };
+        } else if (value !== undefined) {
+          row.getCell(13).value = value;
+        }
+        row.getCell(13).numFmt = currencyFormat;
+        row.getCell(13).font = { bold: true, size: 12 };
+        row.getCell(13).alignment = { horizontal: 'right', vertical: 'middle' };
+
+        applyRowBorderLocal(row);
+        return rowNum;
+      };
+
+      // Row: Tổng chi phí + công tác phí
+      const totalTabsRowNum = addSummaryRow('Tổng chi phí + công tác phí', `M${totalsRowNumber}`);
+
+      // Row: Tạm ứng (red color with - sign)
+      const advanceRowNum = addSummaryRow('- Tạm ứng', undefined, advancePayment, 'FFFF0000');
+
+      // Row: Sau tạm ứng
+      const afterAdvanceRowNum = addSummaryRow(
+        'Sau tạm ứng',
+        `M${totalTabsRowNum}-M${advanceRowNum}`,
+      );
+
+      // Row: Thu của khách (red color with - sign)
+      const collectionsRowNum = addSummaryRow('- Thu của khách', undefined, collectionsForCompany, 'FFFF0000');
+
+      // Row: Sau thu khách
+      const afterCollectionsRowNum = addSummaryRow(
+        'Sau thu khách',
+        `M${afterAdvanceRowNum}-M${collectionsRowNum}`,
+      );
+
+      // Row: Tip HDV nhận từ công ty (blue color with + sign)
+      const tipRowNum = addSummaryRow('+ Tip HDV nhận từ công ty', undefined, companyTip, 'FF0000FF');
+
+      // Row: Sau tip HDV
+      const afterTipRowNum = addSummaryRow(
+        'Sau tip HDV',
+        `M${afterCollectionsRowNum}+M${tipRowNum}`,
+      );
+
+      // Row: TỔNG CỘNG
+      finalTotalRowNumber = addSummaryRow('TỔNG CỘNG', `M${afterTipRowNum}`);
+    }
+
+    allTourTotalCells.push(`M${finalTotalRowNumber}`);
 
     // Optional notes row for each tour
     if (tour.notes && String(tour.notes).trim().length > 0) {

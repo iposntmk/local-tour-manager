@@ -256,7 +256,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
 
     const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalShoppings + totalAllowances;
     const totalAfterAdvance = calculatedTotal - (summary.advancePayment || 0);
-    const totalAfterCollections = totalAfterAdvance + (summary.collectionsForCompany || 0);
+    const totalAfterCollections = totalAfterAdvance - (summary.collectionsForCompany || 0);
     const totalAfterTip = totalAfterCollections + (summary.companyTip || 0);
     const finalTotal = totalAfterTip;
 
@@ -1040,7 +1040,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 <div className="h-px bg-border" />
 
                 <div className="space-y-2">
-                  <Label htmlFor="advancePayment">Advance Payment (Input)</Label>
+                  <Label htmlFor="advancePayment" className="text-red-600 font-semibold">- Advance Payment (Input)</Label>
                   <CurrencyInput
                     id="advancePayment"
                     value={summary.advancePayment || 0}
@@ -1056,7 +1056,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 <div className="h-px bg-border" />
 
                 <div className="space-y-2">
-                  <Label htmlFor="collectionsForCompany">Collections for Company (Input)</Label>
+                  <Label htmlFor="collectionsForCompany" className="text-red-600 font-semibold">- Collections for Company (Input)</Label>
                   <CurrencyInput
                     id="collectionsForCompany"
                     value={summary.collectionsForCompany || 0}
@@ -1072,7 +1072,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
                 <div className="h-px bg-border" />
 
                 <div className="space-y-2">
-                  <Label htmlFor="companyTip">Company Tip (Input)</Label>
+                  <Label htmlFor="companyTip" className="text-blue-600 font-semibold">+ Company Tip (Input)</Label>
                   <CurrencyInput
                     id="companyTip"
                     value={summary.companyTip || 0}

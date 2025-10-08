@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -39,6 +39,12 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     enabled: !!tourId,
   });
 
+  // Default guests for new rows = tour totalGuests
+  if (!tourId && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {
+    // create mode: avoid useEffect to keep it simple and synchronous
+    formData.guests = tour!.totalGuests;
+  }
+
   const { data: touristDestinations = [] } = useQuery({
     queryKey: ['touristDestinations'],
     queryFn: () => store.listTouristDestinations({ status: 'active' }),
@@ -60,6 +66,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Destination added');
       setFormData({ name: '', price: 0, date: '' });
@@ -79,6 +86,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Destination updated');
       setEditingIndex(null);
@@ -95,6 +103,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     onSuccess: (_, index) => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       } else {
         // Create mode: call onChange with updated list
         onChange?.(destinations.filter((_, i) => i !== index));
@@ -242,7 +251,8 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                                 ...formData,
                                 name: dest.name,
                                 price: dest.price,
-                                date: formData.date || today // Keep existing date or use today
+                                date: formData.date || today, // Keep existing date or use today
+                                guests: formData.guests ?? (tour?.totalGuests || undefined)
                               });
                               setOpenDestination(false);
                             }}
@@ -340,41 +350,108 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {destinations.map((destination, index) => {
-                  const tourGuests = tour?.totalGuests || 0;
-                  const rowGuests = typeof destination.guests === 'number' ? Math.min(destination.guests, tourGuests) : tourGuests;
-                  const totalAmount = destination.price * rowGuests;
-                  return (
-                    <TableRow key={index} className="animate-fade-in">
-                      <TableCell className="font-medium">{index + 1}</TableCell>
+                {destinations
+                  .map((d, i) => ({ ...d, originalIndex: i }))
+                  .sort((a, b) => {
+                    const da = a.date ? new Date(a.date).getTime() : Infinity;
+                    const db = b.date ? new Date(b.date).getTime() : Infinity;
+                    return da - db;
+                  })
+                  .map((destination: any, rowIndex: number) => {
+                    const tourGuests = tour?.totalGuests || 0;
+                    const rowGuests = typeof destination.guests === 'number' ? destination.guests : 0; // use per-row guests only
+                    const totalAmount = destination.price * rowGuests;
+                    return (
+                    <TableRow key={`${destination.originalIndex}-${destination.date}`} className="animate-fade-in">
+                      <TableCell className="font-medium">{rowIndex + 1}</TableCell>
                       <TableCell className="font-medium">{destination.name}</TableCell>
                       <TableCell>{formatCurrency(destination.price)}</TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          className="w-24"
-                          min={0}
-                          max={tourGuests}
-                          value={destination.guests ?? ''}
-                          onChange={(e) => {
-                            let val = e.target.value === '' ? undefined : Number(e.target.value);
-                            if (typeof val === 'number' && !Number.isNaN(val)) {
-                              if (val < 0) val = 0;
-                              if (tourGuests && val > tourGuests) {
-                                toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
-                                val = tourGuests;
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            className="w-24"
+                            min={0}
+                            max={tourGuests}
+                            value={destination.guests ?? ''}
+                            onChange={(e) => {
+                              let val = e.target.value === '' ? undefined : Number(e.target.value);
+                              if (typeof val === 'number' && !Number.isNaN(val)) {
+                                if (val < 0) val = 0;
+                                if (tourGuests && val > tourGuests) {
+                                  toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
+                                  val = tourGuests;
+                                }
                               }
-                            }
-                            const updated: Destination = { ...destination, guests: val as any };
-                            if (tourId) {
-                              updateMutation.mutate({ index, destination: updated });
-                            } else {
-                              const newDests = [...destinations];
-                              newDests[index] = updated;
-                              onChange?.(newDests);
-                            }
-                          }}
-                        />
+                              const updated: Destination = { ...destination, guests: val as any } as any;
+                              if (tourId) {
+                                updateMutation.mutate({ index: destination.originalIndex, destination: updated });
+                              } else {
+                                const newDests = [...destinations];
+                                newDests[destination.originalIndex] = updated as any;
+                                onChange?.(newDests);
+                              }
+                            }}
+                          />
+                          {/* Copy guests from previous row */}
+                          {rowIndex > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              title="Copy guests from previous row"
+                              onClick={() => {
+                                const sorted = destinations
+                                  .map((d, i) => ({ ...d, originalIndex: i }))
+                                  .sort((a, b) => {
+                                    const da = a.date ? new Date(a.date).getTime() : Infinity;
+                                    const db = b.date ? new Date(b.date).getTime() : Infinity;
+                                    return da - db;
+                                  });
+                                const prev = sorted[rowIndex - 1];
+                                const g = Math.min(prev.guests ?? tourGuests, tourGuests);
+                                const updated: Destination = { ...destination, guests: g } as any;
+                                if (tourId) updateMutation.mutate({ index: destination.originalIndex, destination: updated });
+                                else {
+                                  const newDests = [...destinations];
+                                  newDests[destination.originalIndex] = updated as any;
+                                  onChange?.(newDests);
+                                }
+                              }}
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {/* Copy guests to next row */}
+                          {rowIndex < destinations.length - 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              title="Copy guests to next row"
+                              onClick={() => {
+                                const sorted = destinations
+                                  .map((d, i) => ({ ...d, originalIndex: i }))
+                                  .sort((a, b) => {
+                                    const da = a.date ? new Date(a.date).getTime() : Infinity;
+                                    const db = b.date ? new Date(b.date).getTime() : Infinity;
+                                    return da - db;
+                                  });
+                                const g = Math.min(destination.guests ?? tourGuests, tourGuests);
+                                const nxt = sorted[rowIndex + 1];
+                                const updatedNext: Destination = { ...nxt, guests: g } as any;
+                                if (tourId) updateMutation.mutate({ index: nxt.originalIndex, destination: updatedNext });
+                                else {
+                                  const newDests = [...destinations];
+                                  newDests[nxt.originalIndex] = updatedNext as any;
+                                  onChange?.(newDests);
+                                }
+                              }}
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
                       <TableCell>{formatDate(destination.date)}</TableCell>
@@ -406,8 +483,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
             <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
               <div className="text-lg font-semibold">
                 Total: {formatCurrency(destinations.reduce((sum, dest) => {
-                  const tg = tour?.totalGuests || 0;
-                  const g = typeof dest.guests === 'number' ? Math.min(dest.guests, tg) : tg;
+                  const g = typeof (dest as any).guests === 'number' ? (dest as any).guests : 0;
                   return sum + (dest.price * g);
                 }, 0))}
               </div>

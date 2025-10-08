@@ -17,7 +17,9 @@ import {
   Trash,
   ArrowUpDown,
   Upload,
+  RefreshCw,
 } from 'lucide-react';
+import { recalculateAllTourSummaries } from '@/lib/recalculate-all-summaries';
 import { differenceInDays } from 'date-fns';
 import {
   AlertDialog,
@@ -45,6 +47,7 @@ import { handleImportError, validateTourData, createImportError } from '@/lib/er
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour, TourListResult, TourQuery } from '@/types/tour';
@@ -173,7 +176,7 @@ const Tours = () => {
           limit: pageSize,
           offset: (currentPage - 1) * pageSize,
         },
-        { includeDetails: false }
+        { includeDetails: true }
       ),
     staleTime: 30000, // Consider data fresh for 30 seconds
     gcTime: 300000, // Keep in cache for 5 minutes
@@ -184,6 +187,29 @@ const Tours = () => {
 
   const totalTours = (toursResult as TourListResult | undefined)?.total ?? 0;
   const totalPages = totalTours > 0 ? Math.ceil(totalTours / pageSize) : 1;
+
+  // Calculate total final amount for filtered tours (current page)
+  const filteredToursTotal = useMemo(() => {
+    return tours.reduce((sum, tour) => {
+      const finalTotal = tour.summary?.finalTotal ?? 0;
+      return sum + finalTotal;
+    }, 0);
+  }, [tours]);
+
+  // Fetch grand total of ALL tours in database
+  const { data: allToursData } = useQuery({
+    queryKey: ['tours-grand-total'],
+    queryFn: async () => {
+      const { tours: allTours } = await store.listTours({}, { includeDetails: true });
+      const grandTotal = allTours.reduce((sum, tour) => {
+        const finalTotal = tour.summary?.finalTotal ?? 0;
+        return sum + finalTotal;
+      }, 0);
+      return { count: allTours.length, grandTotal };
+    },
+    staleTime: 30000,
+    gcTime: 300000,
+  });
 
   const { data: nationalities = [] } = useQuery({
     queryKey: ['nationalities'],
@@ -259,9 +285,24 @@ const Tours = () => {
     toast.warning('Bulk delete not available. Please delete tours individually.');
   };
 
-  // Removed saveAllTourInfoMutation (feature removed)
-
-  // Removed addExpensesToAllMutation (feature removed)
+  // Mutation to recalculate all tour summaries (one-time fix for stale data)
+  const recalculateSummariesMutation = useMutation({
+    mutationFn: recalculateAllTourSummaries,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      toast.success(
+        `Recalculated ${result.updated} of ${result.total} tours. ${
+          result.errors.length > 0 ? `${result.errors.length} errors.` : ''
+        }`
+      );
+      if (result.errors.length > 0) {
+        console.error('Recalculation errors:', result.errors);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to recalculate summaries: ${error.message}`);
+    },
+  });
 
   const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
     const detailedTour = await store.getTour(tour.id);
@@ -832,6 +873,49 @@ const Tours = () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                    title="Recalculate summaries for all tours (fixes stale data)"
+                  >
+                    <RefreshCw className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Recalculate Summaries</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Recalculate All Tour Summaries?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will recalculate and update summary fields (total_tabs, final_total, etc.) for all tours based on their current destinations, expenses, meals, and allowances.
+                      <div className="mt-2">
+                        <strong>Use this if:</strong>
+                        <ul className="list-disc ml-4 mt-1">
+                          <li>Tour cards show different final totals than the Summary tab</li>
+                          <li>Final Total on page differs from Excel export totals</li>
+                          <li>You've imported old data and need to fix summary values</li>
+                          <li>You changed the calculation formula (advance payment, collections, tip)</li>
+                        </ul>
+                      </div>
+                      <div className="mt-2 text-muted-foreground text-sm">
+                        Note: This may take a few moments for large numbers of tours.
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => recalculateSummariesMutation.mutate()}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      disabled={recalculateSummariesMutation.isPending}
+                    >
+                      {recalculateSummariesMutation.isPending ? 'Recalculating...' : 'Recalculate All'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button
                 onClick={() => navigate('/tours/new')}
                 size="sm"
@@ -974,6 +1058,22 @@ const Tours = () => {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Totals - Always Visible (Outside Filters Section) */}
+        <div className="flex flex-wrap items-center justify-between gap-4 text-sm sm:text-base border-y py-3 bg-muted/30">
+          {filteredToursTotal !== 0 && (
+            <div>
+              <span className="text-muted-foreground">Final Total ({tours.length} tours): </span>
+              <span className="font-bold text-primary">{formatCurrency(filteredToursTotal)}</span>
+            </div>
+          )}
+          {allToursData && allToursData.grandTotal !== 0 && (
+            <div>
+              <span className="text-muted-foreground">Grand Total (All {allToursData.count} tours in database): </span>
+              <span className="font-bold text-green-600">{formatCurrency(allToursData.grandTotal)}</span>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
