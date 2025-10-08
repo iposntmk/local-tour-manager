@@ -1359,7 +1359,7 @@ export class SupabaseStore implements DataStore {
     if (query?.clientName) queryBuilder = queryBuilder.ilike('client_name', `%${query.clientName}%`);
     if (query?.companyId) queryBuilder = queryBuilder.eq('company_id', query.companyId);
     if (query?.guideId) queryBuilder = queryBuilder.eq('guide_id', query.guideId);
-    if (query?.startDate) queryBuilder = queryBuilder.gte('start_date', query.startDate);
+    if (query?.startDate) queryBuilder = queryBuilder.gte('end_date', query.startDate);
     if (query?.endDate) queryBuilder = queryBuilder.lte('start_date', query.endDate);
     if (query?.nationalityId) queryBuilder = queryBuilder.eq('nationality_id', query.nationalityId);
 

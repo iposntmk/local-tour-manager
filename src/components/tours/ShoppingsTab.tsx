@@ -356,9 +356,14 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
               </TableRow>
             ) : (
               shoppings.map((shopping, index) => (
-                <TableRow key={index}>
+                <TableRow key={index} className={`${(shopping.price ?? 0) === 0 ? 'bg-red-50 dark:bg-red-950' : ''}`}>
                   <TableCell className="font-medium">{shopping.name}</TableCell>
-                  <TableCell>{formatCurrency(shopping.price)}</TableCell>
+                  <TableCell className={shopping.price === 0 ? 'text-destructive font-semibold' : ''}>
+                    {formatCurrency(shopping.price)}
+                    {shopping.price === 0 && (
+                      <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                    )}
+                  </TableCell>
                   <TableCell>{formatDate(shopping.date)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">

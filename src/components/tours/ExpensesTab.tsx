@@ -394,11 +394,17 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                     const totalGuests = tour?.totalGuests || 0;
                     const expenseGuests = typeof expense.guests === 'number' ? expense.guests : 0;
                     const totalAmount = expense.price * expenseGuests;
+                    const isZeroPrice = (expense.price ?? 0) === 0;
                     return (
-                      <TableRow key={`${expense.originalIndex}-${expense.date}-${expense.merged ? 'merged' : 'row'}`} className="animate-fade-in">
+                      <TableRow key={`${expense.originalIndex}-${expense.date}-${expense.merged ? 'merged' : 'row'}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
                         <TableCell className="font-medium">{rowIndex + 1}</TableCell>
                         <TableCell className="font-medium">{expense.name}</TableCell>
-                        <TableCell>{formatCurrency(expense.price)}</TableCell>
+                      <TableCell className={expense.price === 0 ? 'text-destructive font-semibold' : ''}>
+                        {formatCurrency(expense.price)}
+                        {expense.price === 0 && (
+                          <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                        )}
+                      </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Input

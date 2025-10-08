@@ -34,6 +34,45 @@ interface TourSheetBuildResult {
   finalTotalCell: string;
 }
 
+// Simple validation to catch invalid numeric inputs that would lead to Excel formula errors
+const validateTourNumbers = (tour: Tour): string[] => {
+  const issues: string[] = [];
+  const isBad = (n: any) => typeof n !== 'number' || Number.isNaN(n) || !Number.isFinite(n);
+
+  (tour.destinations || []).forEach((d, i) => {
+    if (isBad(Number(d.price))) issues.push(`Destination #${i + 1} has invalid price.`);
+    if (d.guests !== undefined && isBad(Number(d.guests))) issues.push(`Destination #${i + 1} has invalid guests.`);
+  });
+  (tour.expenses || []).forEach((e, i) => {
+    if (isBad(Number(e.price))) issues.push(`Expense #${i + 1} has invalid price.`);
+    if (e.guests !== undefined && isBad(Number(e.guests))) issues.push(`Expense #${i + 1} has invalid guests.`);
+  });
+  (tour.meals || []).forEach((m, i) => {
+    if (isBad(Number(m.price))) issues.push(`Meal #${i + 1} has invalid price.`);
+    if (m.guests !== undefined && isBad(Number(m.guests))) issues.push(`Meal #${i + 1} has invalid guests.`);
+  });
+  (tour.allowances || []).forEach((a, i) => {
+    if (isBad(Number(a.price))) issues.push(`Allowance #${i + 1} has invalid price.`);
+    if (a.quantity !== undefined && isBad(Number(a.quantity))) issues.push(`Allowance #${i + 1} has invalid quantity.`);
+  });
+
+  return issues;
+};
+
+const getDuplicateNames = (names: string[]): Set<string> => {
+  const seen = new Map<string, number>();
+  for (const raw of names) {
+    const key = (raw || '').trim().toLowerCase();
+    if (!key) continue;
+    seen.set(key, (seen.get(key) || 0) + 1);
+  }
+  const dups = new Set<string>();
+  for (const [k, count] of seen) {
+    if (count > 1) dups.add(k);
+  }
+  return dups;
+};
+
 // Use shared date display helpers across the app
 
 const sanitizeSheetName = (name: string) => {
@@ -196,19 +235,53 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
 
   let firstDataRow = true;
 
+  // Excel-specific display for column B ("ngày"):
+  // If start and end months differ, show: dd/mm - dd/mm/yyyy
+  // Otherwise, fall back to formatDateRangeDisplay.
+  const formatNgayRangeForExcel = (startDate: string, endDate: string): string => {
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return '';
+    const nowYear = new Date().getFullYear();
+    const sameMonthYear = s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth();
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+    if (!sameMonthYear) {
+      const dd1 = pad2(s.getDate());
+      const mm1 = pad2(s.getMonth() + 1);
+      const dd2 = pad2(e.getDate());
+      const mm2 = pad2(e.getMonth() + 1);
+      const y1 = s.getFullYear();
+      const y2 = e.getFullYear();
+      if (y1 !== y2) {
+        // Cross-year → show both years
+        return `${dd1}/${mm1}/${y1} - ${dd2}/${mm2}/${y2}`;
+      }
+      if (y1 === nowYear && y2 === nowYear) {
+        // Both in current year → no year
+        return `${dd1}/${mm1} - ${dd2}/${mm2}`;
+      }
+      // Same non-current year → show one year on the right (end date)
+      return `${dd1}/${mm1} - ${dd2}/${mm2}/${y2}`;
+    }
+    // Same month/year → delegate to shared helper (already hides year for current year)
+    return formatDateRangeDisplay(startDate, endDate);
+  };
+
   const setCodeAndDateCells = (row: Row) => {
     if (!firstDataRow) return;
     row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
-    row.getCell(2).value = `${formatDateRangeDisplay(tour.startDate, tour.endDate)}`;
+    row.getCell(2).value = `${formatNgayRangeForExcel(tour.startDate, tour.endDate)}`;
     firstDataRow = false;
   };
 
   const allowances = tour.allowances || [];
+  // Duplicate destination names detection (case-insensitive)
+  const duplicateDestNames = getDuplicateNames((tour.destinations || []).map(d => d.name || ''));
 
-  const serviceItems: { name: string; date?: string; price: number; guests?: number; kind: 'dest'|'exp' }[] = [];
+  const serviceItems: { name: string; baseName?: string; date?: string; price: number; guests?: number; kind: 'dest'|'exp' }[] = [];
     if (tour.destinations && tour.destinations.length > 0) {
       tour.destinations.forEach(d => {
-        serviceItems.push({ kind: 'dest', name: `vé ${d.name || ''}`, date: d.date, price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined });
+        serviceItems.push({ kind: 'dest', name: `vé ${d.name || ''}`, baseName: d.name || '', date: d.date, price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined });
       });
     }
     if (tour.expenses && tour.expenses.length > 0) {
@@ -272,14 +345,25 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     if (service) {
       row.getCell(3).value = service.name;
       row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
+      // Highlight duplicate destination names
+      if (service.kind === 'dest' && service.baseName) {
+        const key = service.baseName.trim().toLowerCase();
+        if (duplicateDestNames.has(key)) {
+          row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        }
+      }
 
       row.getCell(4).value = service.date ? formatDateDisplay(service.date) : '';
 
       row.getCell(5).value = service.price;
       row.getCell(5).numFmt = currencyFormat;
+      if (!service.price) {
+        // Highlight zero price
+        row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+      }
 
-      // Follow single-tour logic: only take guests from row field; leave blank if not provided
-      row.getCell(6).value = (service.guests !== undefined ? service.guests : '');
+      // Quantity (guests): default to tour totalGuests when not provided
+      row.getCell(6).value = (service.guests !== undefined ? service.guests : totalGuests);
       row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
 
       row.getCell(7).value = { formula: `E${rowNumber}*F${rowNumber}` };
@@ -299,6 +383,9 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
       // Price per row
       row.getCell(11).value = allowance.price;
       row.getCell(11).numFmt = currencyFormat;
+      if (!allowance.price) {
+        row.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+      }
 
       // Column L: Use formula J * K
       row.getCell(12).value = { formula: `J${rowNumber}*K${rowNumber}` };
@@ -577,6 +664,16 @@ export const exportTourToExcel = async (tour: Tour) => {
   workbook.creator = 'Local Tour Manager';
   workbook.calcProperties.fullCalcOnLoad = true;
 
+  // Validate numeric inputs and duplicate destination names to avoid Excel problems
+  const issues = validateTourNumbers(tour);
+  const dupNames = getDuplicateNames((tour.destinations || []).map(d => d.name || ''));
+  if (dupNames.size > 0) {
+    issues.push('Duplicate destination names: ' + Array.from(dupNames).join(', '));
+  }
+  if (issues.length > 0 && typeof window !== 'undefined') {
+    window.alert(`Excel export warning for ${tour.tourCode}:\n` + issues.join('\n'));
+  }
+
   buildTourWorksheet(workbook, tour);
 
   await downloadWorkbook(workbook, `Tour_${tour.tourCode}_${Date.now()}.xlsx`);
@@ -661,9 +758,15 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
 
   let currentRow = 3; // Start data from row 3
   const allTourTotalCells: string[] = [];
+  const invalidTourCodes: string[] = [];
+  const duplicateNameTourCodes: string[] = [];
 
   let lastMonth: string | undefined;
   tours.forEach((tour, tourIndex) => {
+    const issues = validateTourNumbers(tour);
+    if (issues.length > 0) invalidTourCodes.push(tour.tourCode || tour.id);
+    const dupNames = getDuplicateNames((tour.destinations || []).map(d => d.name || ''));
+    if (dupNames.size > 0) duplicateNameTourCodes.push(tour.tourCode || tour.id);
     // Insert month heading line only when month changes from previous tour
     if (tour.startDate) {
       const s = tour.startDate;
@@ -697,19 +800,47 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   };
 
     let firstDataRow = true;
+    // Excel-specific display for column B ("ngày") in the single-sheet export as well
+    const formatNgayRangeForExcel = (startDate: string, endDate: string): string => {
+      const s = new Date(startDate);
+      const e = new Date(endDate);
+      if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return '';
+      const nowYear = new Date().getFullYear();
+      const sameMonthYear = s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth();
+      const pad2 = (n: number) => String(n).padStart(2, '0');
+      if (!sameMonthYear) {
+        const dd1 = pad2(s.getDate());
+        const mm1 = pad2(s.getMonth() + 1);
+        const dd2 = pad2(e.getDate());
+        const mm2 = pad2(e.getMonth() + 1);
+        const y1 = s.getFullYear();
+        const y2 = e.getFullYear();
+        if (y1 !== y2) {
+          // Cross-year → show both years
+          return `${dd1}/${mm1}/${y1} - ${dd2}/${mm2}/${y2}`;
+        }
+        if (y1 === nowYear && y2 === nowYear) {
+          return `${dd1}/${mm1} - ${dd2}/${mm2}`;
+        }
+        return `${dd1}/${mm1} - ${dd2}/${mm2}/${y2}`;
+      }
+      return formatDateRangeDisplay(startDate, endDate);
+    };
+
     const setCodeAndDateCells = (row: Row) => {
       if (!firstDataRow) return;
       row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
-      row.getCell(2).value = `${formatDateRangeDisplay(tour.startDate, tour.endDate)}`;
+      row.getCell(2).value = `${formatNgayRangeForExcel(tour.startDate, tour.endDate)}`;
       firstDataRow = false;
     };
 
     const allowances = tour.allowances || [];
-    const serviceItems: { name: string; date?: string; price: number; guests?: number; kind: 'dest'|'exp' }[] = [];
+    const duplicateDestNames = getDuplicateNames((tour.destinations || []).map(d => d.name || ''));
+    const serviceItems: { name: string; baseName?: string; date?: string; price: number; guests?: number; kind: 'dest'|'exp' }[] = [];
 
     if (tour.destinations && tour.destinations.length > 0) {
       tour.destinations.forEach(d => {
-        serviceItems.push({ kind: 'dest', name: `vé ${d.name || ''}`, date: d.date, price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined });
+        serviceItems.push({ kind: 'dest', name: `vé ${d.name || ''}`, baseName: d.name || '', date: d.date, price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined });
       });
     }
     if (tour.expenses && tour.expenses.length > 0) {
@@ -770,12 +901,21 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
       if (service) {
         row.getCell(3).value = service.name;
         row.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
+        if (service.kind === 'dest' && service.baseName) {
+          const key = service.baseName.trim().toLowerCase();
+          if (duplicateDestNames.has(key)) {
+            row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+          }
+        }
         row.getCell(4).value = service.date ? formatDateDisplay(service.date) : '';
         row.getCell(5).value = service.price;
         row.getCell(5).numFmt = currencyFormat;
-      // Only take guests from the field on the row; if not set, leave blank
-      row.getCell(6).value = (service.guests !== undefined ? service.guests : '');
-      row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+        if (!service.price) {
+          row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        }
+        // Quantity (guests): default to tour totalGuests when not provided
+        row.getCell(6).value = (service.guests !== undefined ? service.guests : totalGuests);
+        row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(7).value = { formula: `E${rowNumber}*F${rowNumber}` };
         row.getCell(7).numFmt = currencyFormat;
       }
@@ -791,6 +931,9 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
         // Price per unit
         row.getCell(11).value = allowance.price || 0;
         row.getCell(11).numFmt = currencyFormat;
+        if (!allowance.price) {
+          row.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        }
         row.getCell(12).value = { formula: `J${rowNumber}*K${rowNumber}` };
         row.getCell(12).numFmt = currencyFormat;
       }
@@ -996,6 +1139,19 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
     fitToHeight: 1,
     margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 },
   };
+
+  if ((invalidTourCodes.length > 0 || duplicateNameTourCodes.length > 0) && typeof window !== 'undefined') {
+    window.alert(
+      [
+        invalidTourCodes.length
+          ? `Numeric issues that may cause sum errors in: ${invalidTourCodes.join(', ')}`
+          : null,
+        duplicateNameTourCodes.length
+          ? `Duplicate destination names in: ${duplicateNameTourCodes.join(', ')}`
+          : null,
+      ].filter(Boolean).join('\n')
+    );
+  }
 
   await downloadWorkbook(workbook, `All_Tours_${Date.now()}.xlsx`);
 };

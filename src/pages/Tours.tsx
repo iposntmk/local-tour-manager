@@ -5,7 +5,7 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import {
   Plus,
-  Calendar,
+  Calendar as CalendarIcon,
   Users,
   FileDown,
   Copy,
@@ -18,9 +18,13 @@ import {
   ArrowUpDown,
   Upload,
   RefreshCw,
+  Flag,
 } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { recalculateAllTourSummaries } from '@/lib/recalculate-all-summaries';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, format } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,16 +67,30 @@ const truncateText = (text: string | undefined | null, max = 15): string => {
 };
 
 const Tours = () => {
-  // Separate search inputs for code, date (dd-mm), and company
+  // Separate search inputs for code, date range, and company
   const [searchCode, setSearchCode] = useState(() => localStorage.getItem('tours.search.code') || '');
-  const [searchDate, setSearchDate] = useState(() => localStorage.getItem('tours.search.date') || '');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const saved = localStorage.getItem('tours.search.dateRange');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        from: parsed.from ? new Date(parsed.from) : undefined,
+        to: parsed.to ? new Date(parsed.to) : undefined,
+      };
+    }
+    return undefined;
+  });
   const [searchCompany, setSearchCompany] = useState(() => localStorage.getItem('tours.search.company') || '');
   const [nationalityFilter, setNationalityFilter] = useState<string>(() => {
     const saved = localStorage.getItem('tours.nationalityFilter');
     return saved || 'all';
   });
-  const [monthFilter, setMonthFilter] = useState<string>(() => {
-    const saved = localStorage.getItem('tours.monthFilter');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const saved = localStorage.getItem('tours.selectedMonth');
+    return saved || 'all';
+  });
+  const [selectedYear, setSelectedYear] = useState<string>(() => {
+    const saved = localStorage.getItem('tours.selectedYear');
     return saved || 'all';
   });
   const [sortBy, setSortBy] = useState<string>(() => {
@@ -83,14 +101,15 @@ const Tours = () => {
     const saved = localStorage.getItem('tours.filtersExpanded');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20; // Show 20 tours per page
+  // Pagination disabled; show all results
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Save filter states to localStorage
   useEffect(() => { localStorage.setItem('tours.search.code', searchCode); }, [searchCode]);
-  useEffect(() => { localStorage.setItem('tours.search.date', searchDate); }, [searchDate]);
+  useEffect(() => {
+    localStorage.setItem('tours.search.dateRange', JSON.stringify(dateRange || {}));
+  }, [dateRange]);
   useEffect(() => { localStorage.setItem('tours.search.company', searchCompany); }, [searchCompany]);
 
   useEffect(() => {
@@ -98,8 +117,12 @@ const Tours = () => {
   }, [nationalityFilter]);
 
   useEffect(() => {
-    localStorage.setItem('tours.monthFilter', monthFilter);
-  }, [monthFilter]);
+    localStorage.setItem('tours.selectedMonth', selectedMonth);
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    localStorage.setItem('tours.selectedYear', selectedYear);
+  }, [selectedYear]);
 
   useEffect(() => {
     localStorage.setItem('tours.sortBy', sortBy);
@@ -112,29 +135,20 @@ const Tours = () => {
   const baseTourQuery = useMemo((): TourQuery => {
     const query: TourQuery = {};
     const code = searchCode.trim();
-    const date = searchDate.trim();
     const company = searchCompany.trim();
 
     if (code) {
       query.tourCodeLike = code;
     }
-    if (date) {
-      const m = date.match(/^(\d{1,2})[\/-](\d{1,2})$/);
-      if (m) {
-        const dd = m[1].padStart(2, '0');
-        const mm = m[2].padStart(2, '0');
-        // Primary: interpret as dd-mm -> -MM-DD
-        query.dateLike = `-${mm}-${dd}`;
-        // Alternate fallback: if user expectation was mm-dd
-        query.dateLike2 = `-${dd}-${mm}`;
-        // Also include raw user's input to honor %string% contains semantics
-        query.dateRawLike = date;
-      } else {
-        // Fallback: accept raw substring
-        query.dateLike = date;
-        query.dateRawLike = date;
-      }
+
+    // Date range filter
+    if (dateRange?.from) {
+      query.startDate = format(dateRange.from, 'yyyy-MM-dd');
     }
+    if (dateRange?.to) {
+      query.endDate = format(dateRange.to, 'yyyy-MM-dd');
+    }
+
     if (company) {
       query.companyNameLike = company;
     }
@@ -143,16 +157,15 @@ const Tours = () => {
       query.nationalityId = nationalityFilter;
     }
 
-    if (monthFilter !== 'all') {
-      // Filter by start date month only
-      const [yearStr, monthStr] = monthFilter.split('-');
-      const year = Number(yearStr);
-      const month = Number(monthStr);
+    // Month and Year filter (only apply if no date range is selected)
+    if (!dateRange?.from && !dateRange?.to && selectedMonth !== 'all' && selectedYear !== 'all') {
+      const year = Number(selectedYear);
+      const month = Number(selectedMonth);
       if (!Number.isNaN(year) && !Number.isNaN(month)) {
-        // Set both startDate and endDate to cover the entire month for start dates
-        query.startDate = `${monthFilter}-01`;
+        const monthStr = String(month).padStart(2, '0');
+        query.startDate = `${year}-${monthStr}-01`;
         const lastDay = new Date(year, month, 0).getDate();
-        query.endDate = `${monthFilter}-${String(lastDay).padStart(2, '0')}`;
+        query.endDate = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
       }
     }
 
@@ -162,22 +175,16 @@ const Tours = () => {
     query.sortOrder = order as 'asc' | 'desc';
 
     return query;
-  }, [searchCode, searchDate, searchCompany, nationalityFilter, monthFilter, sortBy]);
+  }, [searchCode, dateRange, searchCompany, nationalityFilter, selectedMonth, selectedYear, sortBy]);
+
+  // Disable pagination entirely: always fetch ALL matching tours
 
   const {
     data: toursResult,
     isLoading,
   } = useQuery({
-    queryKey: ['tours', baseTourQuery, currentPage, pageSize],
-    queryFn: () =>
-      store.listTours(
-        {
-          ...baseTourQuery,
-          limit: pageSize,
-          offset: (currentPage - 1) * pageSize,
-        },
-        { includeDetails: true }
-      ),
+    queryKey: ['tours', baseTourQuery],
+    queryFn: () => store.listTours({ ...baseTourQuery }, { includeDetails: true }),
     staleTime: 30000, // Consider data fresh for 30 seconds
     gcTime: 300000, // Keep in cache for 5 minutes
   });
@@ -186,7 +193,6 @@ const Tours = () => {
   const tours = (toursResult as TourListResult | undefined)?.tours ?? [];
 
   const totalTours = (toursResult as TourListResult | undefined)?.total ?? 0;
-  const totalPages = totalTours > 0 ? Math.ceil(totalTours / pageSize) : 1;
 
   // Calculate total final amount for filtered tours (current page)
   const filteredToursTotal = useMemo(() => {
@@ -218,34 +224,42 @@ const Tours = () => {
 
   // Removed bulk expense query (feature removed)
 
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [nationalityFilter, monthFilter, searchCode, searchDate, searchCompany]);
+  // No pagination --> no page state updates needed
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  // Get unique months from tours
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
+  // Get unique years from tours
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
     tours.forEach(tour => {
-      const month = tour.startDate.substring(0, 7);
-      months.add(month);
+      const year = parseInt(tour.startDate.substring(0, 4));
+      years.add(year);
     });
-    return Array.from(months).sort().reverse();
+    return Array.from(years).sort().reverse();
   }, [tours]);
+
+  // Months array (1-12)
+  const months = [
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ];
 
 
   const clearFilters = () => {
     setNationalityFilter('all');
-    setMonthFilter('all');
+    setSelectedMonth('all');
+    setSelectedYear('all');
   };
 
-  const hasActiveFilters = nationalityFilter !== 'all' || monthFilter !== 'all';
+  const hasActiveFilters = nationalityFilter !== 'all' || (selectedMonth !== 'all' && selectedYear !== 'all');
 
   const duplicateMutation = useMutation({
     mutationFn: (id: string) => store.duplicateTour(id),
@@ -257,6 +271,9 @@ const Tours = () => {
       toast.error(error.message || 'Failed to duplicate tour');
     },
   });
+
+  // Controlled confirm dialog for deleting a tour (avoid window.confirm)
+  const [deleteTourId, setDeleteTourId] = useState<string | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => store.deleteTour(id),
@@ -381,13 +398,7 @@ const Tours = () => {
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('Delete button clicked for tour ID:', id);
-    if (confirm('Are you sure you want to delete this tour?')) {
-      console.log('User confirmed deletion for tour ID:', id);
-      deleteMutation.mutate(id);
-    } else {
-      console.log('User cancelled deletion');
-    }
+    setDeleteTourId(id);
   };
 
   // Normalize dates to YYYY-MM-DD for DB
@@ -473,28 +484,14 @@ const Tours = () => {
           if (!matchesQueryFilters(baseQuery, newTour)) {
             return;
           }
-
-          const currentPageKey = queryKey[2] as number | undefined;
-          const pageSizeKey = queryKey[3] as number | undefined;
           const updatedTotal = data.total + 1;
-
-          if (currentPageKey && currentPageKey > 1) {
-            queryClient.setQueryData(queryKey, {
-              tours: data.tours,
-              total: updatedTotal,
-            });
-            return;
-          }
-
           const dedupedTours = data.tours.filter(tourItem => tourItem.id !== newTour.id);
           const orderedTours = [...dedupedTours, newTour].sort((a, b) =>
             (b.startDate ?? '').localeCompare(a.startDate ?? '')
           );
-          const limit = typeof pageSizeKey === 'number' ? pageSizeKey : undefined;
-          const limitedTours = typeof limit === 'number' ? orderedTours.slice(0, limit) : orderedTours;
 
           queryClient.setQueryData(queryKey, {
-            tours: limitedTours,
+            tours: orderedTours,
             total: updatedTotal,
           });
         });
@@ -933,11 +930,50 @@ const Tours = () => {
               onChange={setSearchCode}
               placeholder="Search tour code..."
             />
-            <SearchInput
-              value={searchDate}
-              onChange={setSearchDate}
-              placeholder="Search start date (dd-mm)"
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full justify-start text-left font-normal h-10 ${
+                    !dateRange?.from && !dateRange?.to ? 'text-muted-foreground' : ''
+                  }`}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, 'dd/MM/yyyy')} - {format(dateRange.to, 'dd/MM/yyyy')}
+                      </>
+                    ) : (
+                      format(dateRange.from, 'dd/MM/yyyy')
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                  initialFocus
+                />
+                {(dateRange?.from || dateRange?.to) && (
+                  <div className="border-t p-3">
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => setDateRange(undefined)}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Clear dates
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             <SearchInput
               value={searchCompany}
               onChange={setSearchCompany}
@@ -964,7 +1000,7 @@ const Tours = () => {
 
             <div className={`transition-all duration-200 overflow-hidden ${filtersExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <Filter className="h-3 w-3" />
@@ -987,18 +1023,38 @@ const Tours = () => {
 
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
+                      <CalendarIcon className="h-3 w-3" />
                       Month
                     </label>
-                    <Select value={monthFilter} onValueChange={setMonthFilter}>
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                       <SelectTrigger className="h-8 sm:h-10">
-                        <SelectValue placeholder="All Months" />
+                        <SelectValue placeholder="All" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Months</SelectItem>
-                        {availableMonths.map(month => (
-                          <SelectItem key={month} value={month}>
-                            {new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                        <SelectItem value="all">All</SelectItem>
+                        {months.map(month => (
+                          <SelectItem key={month.value} value={month.value}>
+                            {month.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <CalendarIcon className="h-3 w-3" />
+                      Year
+                    </label>
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                      <SelectTrigger className="h-8 sm:h-10">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        {availableYears.map(year => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1041,17 +1097,17 @@ const Tours = () => {
               {/* Filter Results Info */}
               {hasActiveFilters && (
                 <div className="flex items-center gap-2 mt-3">
-                  <span className="text-base sm:text-lg font-semibold">
-                    Showing {tours.length} of {totalTours} tours
+              <span className="text-base sm:text-lg font-semibold">
+                    Showing {tours.length} tours
                   </span>
                   {nationalityFilter !== 'all' && (
                     <Badge variant="secondary" className="text-sm font-medium">
                       {nationalities.find(n => n.id === nationalityFilter)?.name}
                     </Badge>
                   )}
-                  {monthFilter !== 'all' && (
+                  {selectedMonth !== 'all' && selectedYear !== 'all' && (
                     <Badge variant="default" className="text-sm sm:text-base font-semibold px-3 py-1">
-                      {new Date(monthFilter + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                      {months.find(m => m.value === selectedMonth)?.label} {selectedYear}
                     </Badge>
                   )}
                 </div>
@@ -1084,17 +1140,32 @@ const Tours = () => {
           </div>
         ) : totalTours === 0 ? (
           <div className="text-center py-12 text-muted-foreground mt-6">
-            {!hasActiveFilters && !(searchCode.trim() || searchDate.trim() || searchCompany.trim())
+            {!hasActiveFilters && !(searchCode.trim() || dateRange?.from || dateRange?.to || searchCompany.trim())
               ? 'No tours found. Create your first tour to get started.'
               : 'No tours match your current filters.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {tours.map((tour, index) => {
+              // Compute card-level warnings: zero price or duplicate destination names
+              // Only consider Destinations, Expenses, Meals, Allowances (exclude Shoppings)
+              const hasZeroPrice = !!(
+                (tour.destinations || []).some(d => (d.price ?? 0) === 0) ||
+                (tour.expenses || []).some(e => (e.price ?? 0) === 0) ||
+                (tour.meals || []).some(m => (m.price ?? 0) === 0) ||
+                (tour.allowances || []).some(a => (a.price ?? 0) === 0)
+              );
+
+              const destNames = (tour.destinations || []).map(d => (d.name || '').trim().toLowerCase()).filter(Boolean);
+              const nameCount = new Map<string, number>();
+              for (const n of destNames) nameCount.set(n, (nameCount.get(n) || 0) + 1);
+              const hasDuplicateDestNames = Array.from(nameCount.values()).some(c => c > 1);
+
+              const showRedFlag = hasZeroPrice || hasDuplicateDestNames;
               return (
                 <div
                   key={tour.id}
-                  className="rounded-lg border bg-card p-4 sm:p-6 transition-all hover-scale animate-fade-in"
+                  className={`rounded-lg border bg-card p-4 sm:p-6 transition-all hover-scale animate-fade-in ${showRedFlag ? 'border-red-500 dark:border-red-600' : ''}`}
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <div className="space-y-3">
@@ -1111,6 +1182,12 @@ const Tours = () => {
                           <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
                             {tour.totalGuests || ((tour.adults || 0) + (tour.children || 0))}p
                           </Badge>
+                          {showRedFlag && (
+                            <span className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm" title={hasDuplicateDestNames && hasZeroPrice ? 'Duplicate destination name(s) and zero price item(s) found' : hasDuplicateDestNames ? 'Duplicate destination name(s) found' : 'Zero price item(s) found'}>
+                              <Flag className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="hidden sm:inline">Check</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1161,7 +1238,7 @@ const Tours = () => {
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-2 border-t justify-end">
+                  <div className="flex gap-2 pt-2 border-t justify-end">
                       <Button
                         size="sm"
                         variant="outline"
@@ -1198,62 +1275,33 @@ const Tours = () => {
           </div>
         )}
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                if (pageNum > totalPages) return null;
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className="w-8 h-8 p-0"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-            </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        )}
-
-        {/* Pagination Info */}
-        {totalTours > 0 && tours.length > 0 && (
-          <div className="text-center text-sm text-muted-foreground mt-4">
-            Showing
-            {' '}
-            {((currentPage - 1) * pageSize) + 1}
-            {' '}
-            to
-            {' '}
-            {((currentPage - 1) * pageSize) + tours.length}
-            {' '}
-            of {totalTours} tours
-          </div>
-        )}
+        {/* Pagination Controls (hidden when date range search is active) */}
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteTourId} onOpenChange={(open) => !open && setDeleteTourId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this tour?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The tour will be permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDeleteTourId(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (deleteTourId) {
+                    deleteMutation.mutate(deleteTourId);
+                    setDeleteTourId(null);
+                  }
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Pagination removed */}
       </div>
     </Layout>
   );
