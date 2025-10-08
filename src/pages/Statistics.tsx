@@ -17,6 +17,7 @@ import { store } from '@/lib/datastore';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour } from '@/types/tour';
 import { getSupabaseClient } from '@/lib/datastore/supabase-client';
+import { formatCurrency } from '@/lib/currency-utils';
 
 const UNKNOWN_GUIDE_ID = '__unknown_guide__';
 const UNKNOWN_COMPANY_ID = '__unknown_company__';
@@ -24,13 +25,14 @@ const UNKNOWN_NATIONALITY_ID = '__unknown_nationality__';
 const UNKNOWN_MONTH = 'Unknown';
 const REQUIRED_PIN = '0829101188';
 
-const formatCurrency = (value: number) => `${value.toLocaleString()} ₫`;
 
 const calculateAllowanceTotal = (tour: Tour) =>
   (tour.allowances || []).reduce(
     (sum, allowance) => sum + allowance.price * (allowance.quantity ?? 1),
     0
   );
+
+// (Stats grand totals revert to Shop+Tip+Allow model)
 
 const calculateTipTotal = (tour: Tour) => {
   const tipItems = (tour.shoppings || []).filter(shopping => shopping.name === 'TIP');
@@ -191,24 +193,39 @@ const Statistics = () => {
         const companyTip = calculateCompanyTip(tour);
         const shoppings = calculateShoppingTotal(tour);
         const totalShopTipAllow = allowances + tipFromGuests + companyTip + shoppings;
+        const finalTotal = tour.summary?.finalTotal ?? 0;
 
         acc.allowances += allowances;
         acc.tipFromGuests += tipFromGuests;
         acc.companyTip += companyTip;
         acc.shoppings += shoppings;
         acc.totalShopTipAllow += totalShopTipAllow;
+        acc.finalTotal += finalTotal;
         acc.tours += 1;
         acc.guests += tour.totalGuests ?? 0;
         return acc;
       },
-      { allowances: 0, tipFromGuests: 0, companyTip: 0, shoppings: 0, totalShopTipAllow: 0, tours: 0, guests: 0 }
+      { allowances: 0, tipFromGuests: 0, companyTip: 0, shoppings: 0, totalShopTipAllow: 0, finalTotal: 0, tours: 0, guests: 0 }
     );
   }, [filteredTours]);
+
+  // Grand total of ALL tours in database
+  const grandTotals = useMemo(() => {
+    return tours.reduce(
+      (acc, tour) => {
+        const finalTotal = tour.summary?.finalTotal ?? 0;
+        acc.finalTotal += finalTotal;
+        acc.tours += 1;
+        return acc;
+      },
+      { finalTotal: 0, tours: 0 }
+    );
+  }, [tours]);
 
   const guideStats = useMemo(() => {
     const map = new Map<
       string,
-      { id: string; name: string; totalTours: number; totalAllowances: number; totalTipFromGuests: number; totalCompanyTip: number; totalShoppings: number; totalShopTipAllow: number }
+      { id: string; name: string; totalTours: number; totalAllowances: number; totalTipFromGuests: number; totalCompanyTip: number; totalShoppings: number; totalShopTipAllow: number; finalTotal: number }
     >();
 
     filteredTours.forEach(tour => {
@@ -217,6 +234,7 @@ const Statistics = () => {
       const tipFromGuests = calculateTipTotal(tour);
       const companyTip = calculateCompanyTip(tour);
       const shoppings = calculateShoppingTotal(tour);
+      const finalTotal = tour.summary?.finalTotal ?? 0;
 
       if (!map.has(guide.id)) {
         map.set(guide.id, {
@@ -228,6 +246,7 @@ const Statistics = () => {
           totalCompanyTip: 0,
           totalShoppings: 0,
           totalShopTipAllow: 0,
+          finalTotal: 0,
         });
       }
 
@@ -238,15 +257,16 @@ const Statistics = () => {
       entry.totalCompanyTip += companyTip;
       entry.totalShoppings += shoppings;
       entry.totalShopTipAllow += allowances + tipFromGuests + companyTip + shoppings;
+      entry.finalTotal += finalTotal;
     });
 
-    return Array.from(map.values()).sort((a, b) => b.totalShopTipAllow - a.totalShopTipAllow);
+    return Array.from(map.values()).sort((a, b) => b.finalTotal - a.finalTotal);
   }, [filteredTours]);
 
   const companyStats = useMemo(() => {
     const map = new Map<
       string,
-      { id: string; name: string; totalTours: number; totalAllowances: number; totalTipFromGuests: number; totalCompanyTip: number; totalShoppings: number; totalShopTipAllow: number }
+      { id: string; name: string; totalTours: number; totalAllowances: number; totalTipFromGuests: number; totalCompanyTip: number; totalShoppings: number; totalShopTipAllow: number; finalTotal: number }
     >();
 
     filteredTours.forEach(tour => {
@@ -255,6 +275,7 @@ const Statistics = () => {
       const tipFromGuests = calculateTipTotal(tour);
       const companyTip = calculateCompanyTip(tour);
       const shoppings = calculateShoppingTotal(tour);
+      const finalTotal = tour.summary?.finalTotal ?? 0;
 
       if (!map.has(company.id)) {
         map.set(company.id, {
@@ -266,6 +287,7 @@ const Statistics = () => {
           totalCompanyTip: 0,
           totalShoppings: 0,
           totalShopTipAllow: 0,
+          finalTotal: 0,
         });
       }
 
@@ -276,15 +298,16 @@ const Statistics = () => {
       entry.totalCompanyTip += companyTip;
       entry.totalShoppings += shoppings;
       entry.totalShopTipAllow += allowances + tipFromGuests + companyTip + shoppings;
+      entry.finalTotal += finalTotal;
     });
 
-    return Array.from(map.values()).sort((a, b) => b.totalShopTipAllow - a.totalShopTipAllow);
+    return Array.from(map.values()).sort((a, b) => b.finalTotal - a.finalTotal);
   }, [filteredTours]);
 
   const monthlyStats = useMemo(() => {
     const map = new Map<
       string,
-      { month: string; totalTours: number; totalAllowances: number; totalTipFromGuests: number; totalCompanyTip: number; totalShoppings: number; totalShopTipAllow: number }
+      { month: string; totalTours: number; totalAllowances: number; totalTipFromGuests: number; totalCompanyTip: number; totalShoppings: number; totalShopTipAllow: number; finalTotal: number }
     >();
 
     filteredTours.forEach(tour => {
@@ -293,6 +316,7 @@ const Statistics = () => {
       const tipFromGuests = calculateTipTotal(tour);
       const companyTip = calculateCompanyTip(tour);
       const shoppings = calculateShoppingTotal(tour);
+      const finalTotal = tour.summary?.finalTotal ?? 0;
 
       if (!map.has(month)) {
         map.set(month, {
@@ -303,6 +327,7 @@ const Statistics = () => {
           totalCompanyTip: 0,
           totalShoppings: 0,
           totalShopTipAllow: 0,
+          finalTotal: 0,
         });
       }
 
@@ -313,6 +338,7 @@ const Statistics = () => {
       entry.totalCompanyTip += companyTip;
       entry.totalShoppings += shoppings;
       entry.totalShopTipAllow += allowances + tipFromGuests + companyTip + shoppings;
+      entry.finalTotal += finalTotal;
     });
 
     return Array.from(map.values()).sort((a, b) => {
@@ -325,7 +351,7 @@ const Statistics = () => {
   const nationalityStats = useMemo(() => {
     const map = new Map<
       string,
-      { id: string; name: string; totalTours: number; totalAllowances: number; totalTipFromGuests: number; totalCompanyTip: number; totalShoppings: number; totalShopTipAllow: number }
+      { id: string; name: string; totalTours: number; totalAllowances: number; totalTipFromGuests: number; totalCompanyTip: number; totalShoppings: number; totalShopTipAllow: number; finalTotal: number }
     >();
 
     filteredTours.forEach(tour => {
@@ -334,6 +360,7 @@ const Statistics = () => {
       const tipFromGuests = calculateTipTotal(tour);
       const companyTip = calculateCompanyTip(tour);
       const shoppings = calculateShoppingTotal(tour);
+      const finalTotal = tour.summary?.finalTotal ?? 0;
 
       if (!map.has(nationality.id)) {
         map.set(nationality.id, {
@@ -345,6 +372,7 @@ const Statistics = () => {
           totalCompanyTip: 0,
           totalShoppings: 0,
           totalShopTipAllow: 0,
+          finalTotal: 0,
         });
       }
 
@@ -355,9 +383,10 @@ const Statistics = () => {
       entry.totalCompanyTip += companyTip;
       entry.totalShoppings += shoppings;
       entry.totalShopTipAllow += allowances + tipFromGuests + companyTip + shoppings;
+      entry.finalTotal += finalTotal;
     });
 
-    return Array.from(map.values()).sort((a, b) => b.totalShopTipAllow - a.totalShopTipAllow);
+    return Array.from(map.values()).sort((a, b) => b.finalTotal - a.finalTotal);
   }, [filteredTours]);
 
   const { classes: headerClasses } = useHeaderMode('statistics.headerMode');
@@ -586,11 +615,33 @@ const Statistics = () => {
           </Card>
           <Card className="bg-primary/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-primary">Total (Shop+Tip+Allow)</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium text-primary break-words">Total (S+T+A)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-primary">{formatCurrency(totals.totalShopTipAllow)}</div>
-              <p className="text-xs text-muted-foreground">Grand total</p>
+              <p className="text-xs text-muted-foreground">Shop+Tip+Allow</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Final Total and Grand Total Cards */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="bg-blue-100 dark:bg-blue-900 border-2 border-blue-400">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">Final Total (Filtered Tours)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">{formatCurrency(totals.finalTotal)}</div>
+              <p className="text-xs text-muted-foreground">{totals.tours} tours (current filters)</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-green-100 dark:bg-green-900 border-2 border-green-400">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100">Grand Total (All Tours)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-900 dark:text-green-100">{formatCurrency(grandTotals.finalTotal)}</div>
+              <p className="text-xs text-muted-foreground">{grandTotals.tours} tours in database</p>
             </CardContent>
           </Card>
         </div>
@@ -618,6 +669,7 @@ const Statistics = () => {
                       <TableHead className="text-right">Tips (Company)</TableHead>
                       <TableHead className="text-right">Shoppings</TableHead>
                       <TableHead className="text-right font-semibold">Total (S+T+A)</TableHead>
+                      <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">Final Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -630,6 +682,7 @@ const Statistics = () => {
                         <TableCell className="text-right">{formatCurrency(guide.totalCompanyTip)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(guide.totalShoppings)}</TableCell>
                         <TableCell className="text-right font-semibold text-primary">{formatCurrency(guide.totalShopTipAllow)}</TableCell>
+                        <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(guide.finalTotal)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -662,6 +715,7 @@ const Statistics = () => {
                       <TableHead className="text-right">Tips (Company)</TableHead>
                       <TableHead className="text-right">Shoppings</TableHead>
                       <TableHead className="text-right font-semibold">Total (S+T+A)</TableHead>
+                      <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">Final Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -674,6 +728,7 @@ const Statistics = () => {
                         <TableCell className="text-right">{formatCurrency(company.totalCompanyTip)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(company.totalShoppings)}</TableCell>
                         <TableCell className="text-right font-semibold text-primary">{formatCurrency(company.totalShopTipAllow)}</TableCell>
+                        <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(company.finalTotal)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -706,6 +761,7 @@ const Statistics = () => {
                       <TableHead className="text-right">Tips (Company)</TableHead>
                       <TableHead className="text-right">Shoppings</TableHead>
                       <TableHead className="text-right font-semibold">Total (S+T+A)</TableHead>
+                      <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">Final Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -718,6 +774,7 @@ const Statistics = () => {
                         <TableCell className="text-right">{formatCurrency(month.totalCompanyTip)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(month.totalShoppings)}</TableCell>
                         <TableCell className="text-right font-semibold text-primary">{formatCurrency(month.totalShopTipAllow)}</TableCell>
+                        <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(month.finalTotal)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -750,6 +807,7 @@ const Statistics = () => {
                       <TableHead className="text-right">Tips (Company)</TableHead>
                       <TableHead className="text-right">Shoppings</TableHead>
                       <TableHead className="text-right font-semibold">Total (S+T+A)</TableHead>
+                      <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">Final Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -762,6 +820,7 @@ const Statistics = () => {
                         <TableCell className="text-right">{formatCurrency(nationality.totalCompanyTip)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(nationality.totalShoppings)}</TableCell>
                         <TableCell className="text-right font-semibold text-primary">{formatCurrency(nationality.totalShopTipAllow)}</TableCell>
+                        <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">{formatCurrency(nationality.finalTotal)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

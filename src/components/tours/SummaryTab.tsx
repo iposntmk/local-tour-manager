@@ -13,10 +13,29 @@ interface SummaryTabProps {
 }
 
 export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
-  // Bước 1: Tính 4 tổng cơ bản (nhân với số lượng)
-  const totalDestinations = tour.destinations.reduce((sum, d) => sum + (d.price * tour.totalGuests), 0);
-  const totalExpenses = tour.expenses.reduce((sum, e) => sum + (e.price * tour.totalGuests), 0);
-  const totalMeals = tour.meals.reduce((sum, m) => sum + (m.price * tour.totalGuests), 0);
+  // Tính tổng giống như các cột "Total Amount" của từng tab (không dựa vào totalGuests toàn tour)
+  const tourGuests = tour.totalGuests || 0;
+  const clampGuests = (g: number | undefined) => {
+    if (typeof g !== 'number') return tourGuests;
+    if (!tourGuests) return g; // nếu tourGuests = 0, giữ g
+    return Math.min(Math.max(g, 0), tourGuests);
+  };
+
+  const totalDestinations = tour.destinations.reduce((sum, d) => {
+    const g = clampGuests(d.guests as any);
+    return sum + (d.price * g);
+  }, 0);
+
+  const totalExpenses = tour.expenses.reduce((sum, e) => {
+    const g = clampGuests(e.guests as any);
+    return sum + (e.price * g);
+  }, 0);
+
+  const totalMeals = tour.meals.reduce((sum, m) => {
+    const g = clampGuests(m.guests as any);
+    return sum + (m.price * g);
+  }, 0);
+
   const totalAllowances = tour.allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0);
 
   // Bước 2: Tổng các tabs
@@ -41,10 +60,10 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
     setSummary(prev => ({ ...prev, totalTabs: calculatedTotal }));
   }, [calculatedTotal]);
 
-  // Bước 4: Tính toán tuần tự
+  // Bước 4: Tính toán tuần tự (only recalculate display values, don't save to DB)
   useEffect(() => {
     const totalAfterAdvance = summary.totalTabs - (summary.advancePayment || 0);
-    const totalAfterCollections = totalAfterAdvance + (summary.collectionsForCompany || 0);
+    const totalAfterCollections = totalAfterAdvance - (summary.collectionsForCompany || 0);
     const totalAfterTip = totalAfterCollections + (summary.companyTip || 0);
     const finalTotal = totalAfterTip;
 
@@ -56,7 +75,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
       finalTotal,
     };
 
-    // Only update if calculated values have changed
+    // Only update state if calculated values have changed (don't save to DB)
     if (
       updated.totalAfterAdvance !== summary.totalAfterAdvance ||
       updated.totalAfterTip !== summary.totalAfterTip ||
@@ -64,14 +83,33 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
       updated.finalTotal !== summary.finalTotal
     ) {
       setSummary(updated);
-      if (onSummaryUpdate) {
-        onSummaryUpdate(updated);
-      }
+      // Note: Don't call onSummaryUpdate here - it's only called when user edits inputs
     }
-  }, [summary.totalTabs, summary.advancePayment, summary.companyTip, summary.collectionsForCompany, onSummaryUpdate]);
+  }, [summary.totalTabs, summary.advancePayment, summary.companyTip, summary.collectionsForCompany]);
 
   const handleInputChange = (field: keyof TourSummary, value: number) => {
-    setSummary(prev => ({ ...prev, [field]: value }));
+    const updated = { ...summary, [field]: value };
+
+    // Recalculate dependent values
+    const totalAfterAdvance = updated.totalTabs - (updated.advancePayment || 0);
+    const totalAfterCollections = totalAfterAdvance - (updated.collectionsForCompany || 0);
+    const totalAfterTip = totalAfterCollections + (updated.companyTip || 0);
+    const finalTotal = totalAfterTip;
+
+    const fullUpdate = {
+      ...updated,
+      totalAfterAdvance,
+      totalAfterCollections,
+      totalAfterTip,
+      finalTotal,
+    };
+
+    setSummary(fullUpdate);
+
+    // Immediately save to database when user edits a field
+    if (onSummaryUpdate) {
+      onSummaryUpdate(fullUpdate);
+    }
   };
 
   return (
@@ -149,7 +187,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
           <Separator />
 
           <div className="space-y-2">
-            <Label htmlFor="advancePayment">Advance Payment (Input)</Label>
+            <Label htmlFor="advancePayment" className="text-red-600 font-semibold">- Advance Payment (Input)</Label>
             <CurrencyInput
               id="advancePayment"
               value={summary.advancePayment || 0}
@@ -164,7 +202,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
           <Separator />
 
           <div className="space-y-2">
-            <Label htmlFor="collectionsForCompany">Collections for Company (Input)</Label>
+            <Label htmlFor="collectionsForCompany" className="text-red-600 font-semibold">- Collections for Company (Input)</Label>
             <CurrencyInput
               id="collectionsForCompany"
               value={summary.collectionsForCompany || 0}
@@ -179,7 +217,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
           <Separator />
 
           <div className="space-y-2">
-            <Label htmlFor="companyTip">Company Tip (Input)</Label>
+            <Label htmlFor="companyTip" className="text-blue-600 font-semibold">+ Company Tip (Input)</Label>
             <CurrencyInput
               id="companyTip"
               value={summary.companyTip || 0}

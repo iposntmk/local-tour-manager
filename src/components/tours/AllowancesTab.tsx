@@ -53,6 +53,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Allowance added');
       setFormData({ date: '', name: '', price: 0, quantity: 1 });
@@ -76,6 +77,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Allowance updated');
       setEditingIndex(null);
@@ -92,6 +94,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
     onSuccess: (_, index) => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tours'] });
       } else {
         onChange?.(allowances.filter((_, i) => i !== index));
       }
@@ -138,25 +141,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
     addMutation.mutate({ ...allowanceToCopy });
   };
 
-  // Merge rows with same name, date, and price
-  const mergedAllowances = allowances.reduce((acc, allowance, originalIndex) => {
-    const key = `${allowance.name}-${allowance.date}-${allowance.price}`;
-    const existing = acc.find(item => item.key === key);
-
-    if (existing) {
-      existing.quantity += (allowance.quantity || 1);
-      existing.indices.push(originalIndex);
-    } else {
-      acc.push({
-        key,
-        ...allowance,
-        quantity: allowance.quantity || 1,
-        indices: [originalIndex]
-      });
-    }
-
-    return acc;
-  }, [] as Array<Allowance & { key: string; indices: number[] }>);
+  // Do not merge allowance rows; render each as-is
 
   return (
     <div className="space-y-6">
@@ -268,50 +253,60 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mergedAllowances.map((allowance, displayIndex) => {
-                const quantity = allowance.quantity;
-                const total = allowance.price * quantity;
-                const firstIndex = allowance.indices[0];
-                return (
-                  <TableRow key={allowance.key} className="animate-fade-in">
-                    <TableCell className="font-medium">{displayIndex + 1}</TableCell>
-                    <TableCell className="font-medium">{allowance.name}</TableCell>
-                    <TableCell>{formatCurrency(allowance.price)}</TableCell>
-                    <TableCell>{quantity}</TableCell>
-                    <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
-                    <TableCell>{formatDate(allowance.date)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopy(firstIndex)}
-                          className="hover-scale"
-                          title="Copy row"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(firstIndex)}
-                          className="hover-scale"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteMutation.mutate(firstIndex)}
-                          className="hover-scale text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {allowances
+                .map((a, i) => ({ ...a, originalIndex: i }))
+                .sort((a, b) => {
+                  const n = (a.name || '').localeCompare(b.name || '');
+                  if (n !== 0) return n;
+                  const da = a.date ? new Date(a.date).getTime() : Infinity;
+                  const db = b.date ? new Date(b.date).getTime() : Infinity;
+                  return da - db;
+                })
+                .map((allowance: any, rowIndex: number) => {
+                  const qty = allowance.quantity || 1;
+                  const total = allowance.price * qty;
+                  return (
+                    <TableRow key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`} className="animate-fade-in">
+                      <TableCell className="font-medium">{rowIndex + 1}</TableCell>
+                      <TableCell className="font-medium">{allowance.name}</TableCell>
+                      <TableCell>{formatCurrency(allowance.price)}</TableCell>
+                      <TableCell>{qty}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
+                      <TableCell>{formatDate(allowance.date)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopy(allowance.originalIndex)}
+                            className="hover-scale"
+                            title="Copy row"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(allowance.originalIndex)}
+                            className="hover-scale"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMutation.mutate(allowance.originalIndex)}
+                            className="hover-scale text-destructive hover:text-destructive"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               <TableRow className="bg-muted/50 font-semibold">
                 <TableCell colSpan={3} className="text-right">Total:</TableCell>
                 <TableCell>
