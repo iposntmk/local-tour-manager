@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "vitest",
     "preview": "vite preview",
-    "backfill:total-days": "node scripts/backfill-total-days.mjs"
+    "backfill:total-days": "node scripts/backfill-total-days.mjs",
+    "deploy": "scripts/deploy-gh-pages.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -51,8 +52,8 @@
     "embla-carousel-react": "^8.6.0",
     "exceljs": "^4.4.0",
     "fuse.js": "^7.1.0",
-    "jszip": "^3.10.1",
     "input-otp": "^1.4.2",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
@@ -83,6 +84,7 @@
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "gh-pages": "^6.3.0",
     "globals": "^15.15.0",
     "jsdom": "^25.0.1",
     "lovable-tagger": "^1.1.10",
