@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy, ArrowUp, ArrowDown, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   DropdownMenu,
@@ -234,7 +234,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
           {editingIndex !== null ? 'Edit Expense' : 'Add Expense'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex gap-2">
               <Popover open={openExpense} onOpenChange={setOpenExpense}>
                 <PopoverTrigger asChild>
@@ -293,30 +293,33 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
-            <Input
-              type="number"
-              min={0}
-              max={tour?.totalGuests || 0}
-              placeholder={`Guests (max ${tour?.totalGuests || 0})`}
-              value={formData.guests ?? ''}
-              onChange={(e) => {
-                const max = tour?.totalGuests || 0;
-                let val = e.target.value === '' ? undefined : Number(e.target.value);
-                if (typeof val === 'number' && !Number.isNaN(val)) {
-                  if (val < 0) val = 0;
-                  if (max && val > max) {
-                    toast.warning(`Guests cannot exceed total tour guests (${max}).`);
-                    val = max;
+            <div className="flex items-center gap-2">
+              <DateInput
+                value={formData.date}
+                onChange={(date) => setFormData({ ...formData, date })}
+                required
+              />
+              <Input
+                type="number"
+                min={0}
+                max={tour?.totalGuests || 0}
+                placeholder={`Guests`}
+                className="w-20"
+                value={formData.guests ?? ''}
+                onChange={(e) => {
+                  const max = tour?.totalGuests || 0;
+                  let val = e.target.value === '' ? undefined : Number(e.target.value);
+                  if (typeof val === 'number' && !Number.isNaN(val)) {
+                    if (val < 0) val = 0;
+                    if (max && val > max) {
+                      toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                      val = max;
+                    }
                   }
-                }
-                setFormData({ ...formData, guests: val as any });
-              }}
-            />
-            <DateInput
-              value={formData.date}
-              onChange={(date) => setFormData({ ...formData, date })}
-              required
-            />
+                  setFormData({ ...formData, guests: val as any });
+                }}
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <Button type="submit" className="hover-scale">
@@ -424,71 +427,30 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                         )}
                       </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              className="w-24 h-8"
-                              min={0}
-                              max={totalGuests}
-                              value={expense.guests ?? ''}
-                              disabled={!!expense.merged}
-                              title={expense.merged ? 'Merged row' : 'Edit guests'}
-                              onChange={(e) => {
-                                if (expense.merged) return;
-                                let val = e.target.value === '' ? undefined : Number(e.target.value);
-                                if (typeof val === 'number' && !Number.isNaN(val)) {
-                                  if (val < 0) val = 0;
-                                  if (totalGuests && val > totalGuests) {
-                                    toast.warning(`Guests cannot exceed total tour guests (${totalGuests}).`);
-                                    val = totalGuests;
-                                  }
+                          <Input
+                            type="number"
+                            className="w-16 sm:w-24 h-8"
+                            min={0}
+                            max={totalGuests}
+                            value={expense.guests ?? ''}
+                            disabled={!!expense.merged}
+                            title={expense.merged ? 'Merged row' : 'Edit guests'}
+                            onChange={(e) => {
+                              if (expense.merged) return;
+                              let val = e.target.value === '' ? undefined : Number(e.target.value);
+                              if (typeof val === 'number' && !Number.isNaN(val)) {
+                                if (val < 0) val = 0;
+                                if (totalGuests && val > totalGuests) {
+                                  toast.warning(`Guests cannot exceed total tour guests (${totalGuests}).`);
+                                  val = totalGuests;
                                 }
-                                const updated = { ...expense, guests: val as any } as Expense;
-                                // Remove helper field before saving
-                                const { originalIndex, ...clean } = updated as any;
-                                updateMutation.mutate({ index: expense.originalIndex, expense: clean as Expense });
-                              }}
-                            />
-                            {/* Copy guests from previous row (in sorted view) */}
-                            {rowIndex > 0 && !expense.merged && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                title="Copy guests from previous row"
-                                onClick={() => {
-                                  const sorted = expenses
-                                    .map((e, i) => ({ ...e, originalIndex: i }))
-                                    .sort((a, b) => {
-                                      const da = a.date ? new Date(a.date).getTime() : Infinity;
-                                      const db = b.date ? new Date(b.date).getTime() : Infinity;
-                                      return da - db;
-                                    });
-                                  const prev = sorted[rowIndex - 1];
-                                  const g = Math.min(prev.guests ?? totalGuests, totalGuests);
-                                  handleGuestsUpdate(expense.originalIndex, g);
-                                }}
-                              >
-                                <ArrowUp className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {/* Copy guests to next row */}
-                            {rowIndex < displayList.length - 1 && !expense.merged && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                title="Copy guests to next row"
-                                onClick={() => {
-                                  const g = Math.min((expense.guests ?? totalGuests), totalGuests);
-                                  const nxt = displayList[rowIndex + 1];
-                                  handleGuestsUpdate(nxt.originalIndex, g);
-                                }}
-                              >
-                                <ArrowDown className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                              }
+                              const updated = { ...expense, guests: val as any } as Expense;
+                              // Remove helper field before saving
+                              const { originalIndex, ...clean } = updated as any;
+                              updateMutation.mutate({ index: expense.originalIndex, expense: clean as Expense });
+                            }}
+                          />
                         </TableCell>
                         <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>{formatDate(expense.date)}</TableCell>

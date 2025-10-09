@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown, ArrowUp, ArrowDown, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   DropdownMenu,
@@ -209,77 +209,31 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               )}
             </TableCell>
             <TableCell>
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  className="w-24"
-                  min={0}
-                  max={tourGuests}
-                  value={destination.guests ?? ''}
-                  onChange={(e) => {
-                    let val = e.target.value === '' ? undefined : Number(e.target.value);
-                    if (typeof val === 'number' && !Number.isNaN(val)) {
-                      if (val < 0) val = 0;
-                      if (tourGuests && val > tourGuests) {
-                        toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
-                        val = tourGuests;
-                      }
+              <Input
+                type="number"
+                className="w-16 sm:w-24"
+                min={0}
+                max={tourGuests}
+                value={destination.guests ?? ''}
+                onChange={(e) => {
+                  let val = e.target.value === '' ? undefined : Number(e.target.value);
+                  if (typeof val === 'number' && !Number.isNaN(val)) {
+                    if (val < 0) val = 0;
+                    if (tourGuests && val > tourGuests) {
+                      toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
+                      val = tourGuests;
                     }
-                    const updated: Destination = { ...destination, guests: val as any } as any;
-                    if (tourId) {
-                      updateMutation.mutate({ index: destination.originalIndex, destination: updated });
-                    } else {
-                      const newDests = [...destinations];
-                      newDests[destination.originalIndex] = updated as any;
-                      onChange?.(newDests);
-                    }
-                  }}
-                />
-                {/* Copy guests from previous row */}
-                {idx > 0 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    title="Copy guests from previous row"
-                    onClick={() => {
-                      const prev = groupItems[idx - 1];
-                      const g = Math.min(prev.guests ?? tourGuests, tourGuests);
-                      const updated: Destination = { ...destination, guests: g } as any;
-                      if (tourId) updateMutation.mutate({ index: destination.originalIndex, destination: updated });
-                      else {
-                        const newDests = [...destinations];
-                        newDests[destination.originalIndex] = updated as any;
-                        onChange?.(newDests);
-                      }
-                    }}
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                )}
-                {/* Copy guests to next row */}
-                {idx < groupItems.length - 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    title="Copy guests to next row"
-                    onClick={() => {
-                      const g = Math.min(destination.guests ?? tourGuests, tourGuests);
-                      const nxt = groupItems[idx + 1];
-                      const updatedNext: Destination = { ...nxt, guests: g } as any;
-                      if (tourId) updateMutation.mutate({ index: nxt.originalIndex, destination: updatedNext });
-                      else {
-                        const newDests = [...destinations];
-                        newDests[nxt.originalIndex] = updatedNext as any;
-                        onChange?.(newDests);
-                      }
-                    }}
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+                  }
+                  const updated: Destination = { ...destination, guests: val as any } as any;
+                  if (tourId) {
+                    updateMutation.mutate({ index: destination.originalIndex, destination: updated });
+                  } else {
+                    const newDests = [...destinations];
+                    newDests[destination.originalIndex] = updated as any;
+                    onChange?.(newDests);
+                  }
+                }}
+              />
             </TableCell>
             <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
             <TableCell>{formatDate(destination.date)}</TableCell>
@@ -445,7 +399,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
           {editingIndex !== null ? 'Edit Destination' : 'Add Destination'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex gap-2">
               <Popover open={openDestination} onOpenChange={setOpenDestination}>
                 <PopoverTrigger asChild>
@@ -512,11 +466,17 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               onChange={(price) => setFormData({ ...formData, price })}
             />
             <div className="flex items-center gap-2">
+              <DateInput
+                value={formData.date}
+                onChange={(date) => setFormData({ ...formData, date })}
+                required
+              />
               <Input
                 type="number"
                 min={0}
                 max={tour?.totalGuests || 0}
-                placeholder={`Guests (max ${tour?.totalGuests || 0})`}
+                placeholder={`Guests`}
+                className="w-20"
                 value={formData.guests ?? ''}
                 onChange={(e) => {
                   const max = tour?.totalGuests || 0;
@@ -532,11 +492,6 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                 }}
               />
             </div>
-            <DateInput
-              value={formData.date}
-              onChange={(date) => setFormData({ ...formData, date })}
-              required
-            />
           </div>
           <div className="flex gap-2">
             <Button type="submit" className="hover-scale">

@@ -114,67 +114,6 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="animate-scale-in">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Destinations
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalDestinations)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {tour.destinations.length} item(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="animate-scale-in" style={{ animationDelay: '0.1s' }}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Expenses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {tour.expenses.length} item(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="animate-scale-in" style={{ animationDelay: '0.2s' }}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Meals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalMeals)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {tour.meals.length} item(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="animate-scale-in" style={{ animationDelay: '0.3s' }}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Allowances
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalAllowances)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {tour.allowances.length} item(s)
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Calculation: price × quantity
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card className="animate-fade-in">
         <CardHeader>
           <CardTitle>Financial Summary</CardTitle>
