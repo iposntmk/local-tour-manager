@@ -268,7 +268,7 @@ const TourDetail = () => {
         {(isNewTour || tour) ? (
           <Tabs defaultValue="info" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             {/* Header with tabs inside Tabs context */}
-            <div className={`${headerClasses} border-b py-2 sm:py-4 bg-blue-100 dark:bg-blue-900 sticky top-[57px] z-40`}>
+            <div className={`${headerClasses} border-b py-2 sm:py-4 bg-blue-100 dark:bg-blue-900 z-40`}>
               <div className="flex flex-col gap-3 sm:gap-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
