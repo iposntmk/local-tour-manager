@@ -3,8 +3,14 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy, ArrowUp, ArrowDown, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -335,8 +341,8 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
             No expenses added yet
           </div>
         ) : (
-          <div>
-            <Table className="min-w-[680px] sm:min-w-0">
+          <div className="overflow-x-auto">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">#</TableHead>
@@ -354,8 +360,8 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                     <span className="hidden sm:inline">Total Amount</span>
                   </TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right w-[80px] sm:w-auto">
-                    <span className="sm:hidden">Act</span>
+                  <TableHead className="text-right w-[50px]">
+                    <span className="sm:hidden">...</span>
                     <span className="hidden sm:inline">Actions</span>
                   </TableHead>
                 </TableRow>
@@ -487,14 +493,41 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                         <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>{formatDate(expense.date)}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
+                          <div className="sm:hidden">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEdit(expense.originalIndex)}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(expense.originalIndex)}>
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => deleteMutation.mutate(expense.originalIndex)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(expense.originalIndex)}
                               className="hover-scale"
                               title="Edit"
-                              >
+                            >
                               <Edit2 className="h-4 w-4" />
                             </Button>
                             <Button
