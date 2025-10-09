@@ -68,7 +68,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Meal added');
-      setFormData({ name: '', price: 0, date: '' });
+      setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
 
@@ -168,7 +168,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ name: '', price: 0, date: '' });
+    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
   };
 
   const handleDuplicate = (index: number) => {
@@ -311,16 +311,28 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
           </div>
         ) : (
           <div>
-            <Table>
+            <Table className="min-w-[680px] sm:min-w-0">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Meal</TableHead>
+                  <TableHead>
+                    <span className="sm:hidden">Meal</span>
+                    <span className="hidden sm:inline">Meal</span>
+                  </TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Total Guests</TableHead>
-                  <TableHead>Total Amount</TableHead>
+                  <TableHead className="w-[80px]">
+                    <span className="sm:hidden">Guests</span>
+                    <span className="hidden sm:inline">Total Guests</span>
+                  </TableHead>
+                  <TableHead>
+                    <span className="sm:hidden">Total</span>
+                    <span className="hidden sm:inline">Total Amount</span>
+                  </TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right w-[80px] sm:w-auto">
+                    <span className="sm:hidden">Act</span>
+                    <span className="hidden sm:inline">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

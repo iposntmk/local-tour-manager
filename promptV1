@@ -60,8 +60,9 @@ Nhiệm vụ: Đọc ảnh/file **“chương trình tour”** và **trả về 
 
 **a) destinations**
 
-* Quét cột **Tham quan**, tách theo dấu phẩy.
-* Bỏ qua điểm có từ: `chợ, chùa, nhà thờ, đèo hải vân, lăng cô, cầu rồng, an bằng, biển, làng hương, làng nón, la vang, cửa đại, lang co, thiên mụ, hải vọng đài, đỗ quyên, ngũ hồ, thác đỗ quyên, vọng hải đài, cam thanh, Cẩm thanh, câm thanh`.
+* Quét cột **Tham quan**, tách theo dấu phẩy (1 điểm tham quan là 1 object) của destinations array.
+* Bỏ qua điểm có trong danh sách: `chợ, chùa, nhà thờ, đèo hải vân, hải vân, lăng cô, cầu rồng, an bằng, biển, làng hương, làng nón, la vang, cửa đại, lang co, thiên mụ, hải vọng đài, đỗ quyên, ngũ hồ, thác đỗ quyên, vọng hải đài, cam thanh, Cẩm thanh,Cẩm Thanh, câm thanh`.
+
 * nếu chỉ đón sân bay / don sb no guide và không có điểm tham quan thì không đưa vào.
 * `name`: chuẩn hóa ngắn gọn, chính tả đúng, không thêm tỉnh.
 * `date`: ngày của dòng.
@@ -74,10 +75,7 @@ Nhiệm vụ: Đọc ảnh/file **“chương trình tour”** và **trả về 
 
 **c) meals**
 
-* Quét cột Ăn trưa / Ăn tối.
-* Chỉ lấy ô chứa `hdv book`, `hdv đặt`, `book`, `đặt`.
-* `name`: “Ăn trưa HDV book” hoặc “Ăn tối HDV book”.
-* `price`: số tiền chuẩn hóa.
+* Quét cột Ăn trưa và Ăn tối. nếu nội dung của ô/cell có chứa cụm 'hdv book' or ' hdv đặt' thì tạo 1 object trong sub collections meals với:  name = 'tên header_hdvbook'* `price`: số tiền chuẩn hóa.
 
 **d) allowances**
 
@@ -94,6 +92,12 @@ Nhiệm vụ: Đọc ảnh/file **“chương trình tour”** và **trả về 
 **e) summary**
 
 * Nếu không có dữ liệu → tất cả = `0`.
+tên tỉnh lấy trong danh sách này:
+Đà Nẵng
+Huế
+Quảng Bình
+Quảng Nam
+Quảng Trị
 
 ---
 

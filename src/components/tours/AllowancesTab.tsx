@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Allowance added');
-      setFormData({ date: '', name: '', price: 0, quantity: 1 });
+      setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
     },
     onError: (error) => {
       console.error('Error adding allowance:', error);
@@ -133,8 +133,20 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ date: '', name: '', price: 0, quantity: 1 });
+    setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
   };
+  // Default date to tour start date when available
+  const { data: tour } = useQuery({
+    queryKey: ['tour', tourId],
+    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
+    enabled: !!tourId,
+  });
+
+  useEffect(() => {
+    if (!formData.date && tour?.startDate) {
+      setFormData(prev => ({ ...prev, date: tour.startDate! }));
+    }
+  }, [tour?.startDate]);
 
   const handleCopy = (index: number) => {
     const allowanceToCopy = allowances[index];
@@ -175,11 +187,12 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                           value={exp.name}
                           onSelect={() => {
                             const today = new Date().toISOString().split('T')[0];
+                            const defaultDate = tour?.startDate || today;
                             setFormData({
                               ...formData,
                               name: exp.name,
                               price: exp.price,
-                              date: formData.date || today,
+                              date: formData.date || defaultDate,
                               quantity: formData.quantity || 1
                             });
                             setOpenExpense(false);
@@ -240,16 +253,25 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
             No allowances added yet
           </div>
         ) : (
-          <Table>
+          <Table className="min-w-[680px] sm:min-w-0">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]">#</TableHead>
-                <TableHead>Name</TableHead>
+                <TableHead>
+                  <span className="sm:hidden">Name</span>
+                  <span className="hidden sm:inline">Name</span>
+                </TableHead>
                 <TableHead>Price</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Total Amount</TableHead>
+                <TableHead className="w-[80px]">Qty</TableHead>
+                <TableHead>
+                  <span className="sm:hidden">Total</span>
+                  <span className="hidden sm:inline">Total Amount</span>
+                </TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right w-[80px] sm:w-auto">
+                  <span className="sm:hidden">Act</span>
+                  <span className="hidden sm:inline">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
@@ -92,7 +92,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Destination added');
-      setFormData({ name: '', price: 0, date: '' });
+      setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
 
@@ -376,7 +376,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ name: '', price: 0, date: '' });
+    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
   };
 
   const handleCreateNewDestination = () => {
@@ -398,6 +398,13 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
       provinceId: newDestinationProvinceId
     });
   };
+
+  // Default date to tour start date when available
+  useEffect(() => {
+    if (!formData.date && tour?.startDate) {
+      setFormData(prev => ({ ...prev, date: tour.startDate! }));
+    }
+  }, [tour?.startDate]);
 
   return (
     <div className="space-y-6">
@@ -432,11 +439,12 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                             value={dest.name}
                             onSelect={() => {
                               const today = new Date().toISOString().split('T')[0];
+                              const defaultDate = tour?.startDate || today;
                               setFormData({
                                 ...formData,
                                 name: dest.name,
                                 price: dest.price,
-                                date: formData.date || today, // Keep existing date or use today
+                                date: formData.date || defaultDate, // Keep existing date or use start date (fallback today)
                                 guests: formData.guests ?? (tour?.totalGuests || undefined)
                               });
                               setOpenDestination(false);
@@ -522,16 +530,28 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
           </div>
         ) : (
           <div>
-            <Table>
+            <Table className="min-w-[680px] sm:min-w-0">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Destination</TableHead>
+                  <TableHead>
+                    <span className="sm:hidden">Dest</span>
+                    <span className="hidden sm:inline">Destination</span>
+                  </TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Total Guests</TableHead>
-                  <TableHead>Total Amount</TableHead>
+                  <TableHead className="w-[80px]">
+                    <span className="sm:hidden">Guests</span>
+                    <span className="hidden sm:inline">Total Guests</span>
+                  </TableHead>
+                  <TableHead>
+                    <span className="sm:hidden">Total</span>
+                    <span className="hidden sm:inline">Total Amount</span>
+                  </TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right w-[80px] sm:w-auto">
+                    <span className="sm:hidden">Act</span>
+                    <span className="hidden sm:inline">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>{destinationGroupRows}</TableBody>

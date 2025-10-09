@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary } from '@/types/tour';
-import { formatDateDMY } from '@/lib/date-utils';
+import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { formatDate } from '@/lib/utils';
 
 // Helper function to clamp guests (same logic as SummaryTab)
@@ -268,8 +268,8 @@ const TourDetail = () => {
         {(isNewTour || tour) ? (
           <Tabs defaultValue="info" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             {/* Header with tabs inside Tabs context */}
-            <div className={`${headerClasses} border-b pb-4 pt-4 bg-blue-100 dark:bg-blue-900 sticky top-[57px] z-40`}>
-              <div className="flex flex-col gap-4">
+            <div className={`${headerClasses} border-b py-2 sm:py-4 bg-blue-100 dark:bg-blue-900 sticky top-[57px] z-40`}>
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <Button
@@ -328,14 +328,10 @@ const TourDetail = () => {
 
                 {/* Tour Info Summary - Separate row for mobile responsiveness */}
                 {displayTour && (
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm px-10 sm:px-0">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm px-2 sm:px-0">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-muted-foreground">Start:</span>
-                      <span className="font-semibold">{displayTour.startDate ? formatDate(displayTour.startDate) : '-'}</span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-muted-foreground">End:</span>
-                      <span className="font-semibold">{displayTour.endDate ? formatDate(displayTour.endDate) : '-'}</span>
+                      <span className="text-muted-foreground">Date:</span>
+                      <span className="font-semibold">{displayTour.startDate && displayTour.endDate ? formatDateRangeDisplay(displayTour.startDate, displayTour.endDate) : '-'}</span>
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-muted-foreground">Days:</span>
@@ -358,12 +354,13 @@ const TourDetail = () => {
                 )}
               </div>
 
-              <div className="pt-4">
-                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 gap-1 rounded-xl bg-background shadow-sm border p-1 h-auto">
+              <div className="pt-2 sm:pt-4">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 gap-1 rounded-xl bg-background shadow-sm border p-0.5 sm:p-1 h-auto">
                   <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
                   <TabsTrigger value="destinations" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span>Destinations</span>
+                      <span className="sm:hidden">Dest</span>
+                      <span className="hidden sm:inline">Destinations</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.destinations?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).destinations)}
                       </span>
@@ -371,7 +368,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="expenses" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span>Expenses</span>
+                      <span className="sm:hidden">Exp</span>
+                      <span className="hidden sm:inline">Expenses</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.expenses?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).expenses)}
                       </span>
@@ -387,7 +385,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="shoppings" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span>Shopping</span>
+                      <span className="sm:hidden">Shop</span>
+                      <span className="hidden sm:inline">Shopping</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.shoppings?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).shoppings)}
                       </span>
@@ -395,7 +394,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="allowances" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span>Allowances</span>
+                      <span className="sm:hidden">Allow</span>
+                      <span className="hidden sm:inline">Allowances</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.allowances?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).allowances)}
                       </span>
@@ -403,7 +403,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="summary" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span>Summary</span>
+                      <span className="sm:hidden">Sum</span>
+                      <span className="hidden sm:inline">Summary</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {formatCurrency(displayTour?.summary?.finalTotal ?? 0)}
                       </span>
@@ -412,7 +413,8 @@ const TourDetail = () => {
                   {!isNewTour && (
                     <TabsTrigger value="images" className="text-xs sm:text-sm">
                       <div className="flex flex-col items-center">
-                        <span>Images</span>
+                        <span className="sm:hidden">Img</span>
+                        <span className="hidden sm:inline">Images</span>
                         <span className="text-xs sm:text-sm font-bold">
                           {tourImages.length}
                         </span>

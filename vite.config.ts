@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "fuse.js"],
+    include: ["react", "react-dom", "fuse.js", "exceljs"],
     force: true,
   },
 }));

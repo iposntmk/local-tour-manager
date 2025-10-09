@@ -64,7 +64,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Expense added');
-      setFormData({ name: '', price: 0, date: '' });
+      setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
 
@@ -166,7 +166,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ name: '', price: 0, date: '' });
+    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
   };
 
   const handleDuplicate = (index: number) => {
@@ -272,7 +272,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                   </Command>
                 </PopoverContent>
               </Popover>
-              <Button
+                  <Button
                 type="button"
                 variant="outline"
                 size="icon"
@@ -336,16 +336,28 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
           </div>
         ) : (
           <div>
-            <Table>
+            <Table className="min-w-[680px] sm:min-w-0">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Expense</TableHead>
+                  <TableHead>
+                    <span className="sm:hidden">Exp</span>
+                    <span className="hidden sm:inline">Expense</span>
+                  </TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Total Guests</TableHead>
-                  <TableHead>Total Amount</TableHead>
+                  <TableHead className="w-[80px]">
+                    <span className="sm:hidden">Guests</span>
+                    <span className="hidden sm:inline">Total Guests</span>
+                  </TableHead>
+                  <TableHead>
+                    <span className="sm:hidden">Total</span>
+                    <span className="hidden sm:inline">Total Amount</span>
+                  </TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right w-[80px] sm:w-auto">
+                    <span className="sm:hidden">Act</span>
+                    <span className="hidden sm:inline">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
