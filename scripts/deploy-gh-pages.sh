@@ -8,7 +8,7 @@ VITE_APP_BASE_PATH="$BASE_PATH" npm run build -- --emptyOutDir
 
 if git remote get-url origin >/dev/null 2>&1; then
   echo "Publishing dist/ to gh-pages." >&2
-  gh-pages -d dist
+  npx gh-pages -d dist
 else
   echo "No origin remote configured; skipping gh-pages deployment." >&2
 fi
