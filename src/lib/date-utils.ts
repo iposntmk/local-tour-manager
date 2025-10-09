@@ -62,7 +62,9 @@ export function formatDateDisplay(date: string | Date): string {
 /**
  * Date range display rules:
  * - Same month/year: dd - dd/mm (current year) or dd - dd/mm/yyyy (other year)
- * - Cross-month: mm/yy (or yyyy) → mm/yy (or yyyy) per side
+ * - Different months, same year (current): dd/mm - dd/mm
+ * - Different months, same year (not current): dd/mm - dd/mm/yyyy
+ * - Different years: dd/mm/yyyy - dd/mm/yyyy
  */
 export function formatDateRangeDisplay(startDate: string, endDate: string): string {
   const start = new Date(startDate);
@@ -74,6 +76,7 @@ export function formatDateRangeDisplay(startDate: string, endDate: string): stri
   const sameMonthYear = start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth();
 
   if (sameMonthYear) {
+    // Same month and year: dd-dd/mm or dd-dd/mm/yyyy
     const dd1 = pad2(start.getDate());
     const dd2 = pad2(end.getDate());
     const mm = pad2(start.getMonth() + 1);
@@ -81,11 +84,24 @@ export function formatDateRangeDisplay(startDate: string, endDate: string): stri
     return y === nowYear ? `${dd1}-${dd2}/${mm}` : `${dd1}-${dd2}/${mm}/${y}`;
   }
 
-  const fmtMonthYear = (d: Date) => {
-    const mm = pad2(d.getMonth() + 1);
-    const y = d.getFullYear();
-    return y === nowYear ? `${mm}/${String(y).slice(2)}` : `${mm}/${y}`;
-  };
+  // Different months
+  const dd1 = pad2(start.getDate());
+  const mm1 = pad2(start.getMonth() + 1);
+  const dd2 = pad2(end.getDate());
+  const mm2 = pad2(end.getMonth() + 1);
+  const y1 = start.getFullYear();
+  const y2 = end.getFullYear();
 
-  return `${fmtMonthYear(start)} → ${fmtMonthYear(end)}`;
+  if (y1 !== y2) {
+    // Different years: show both years
+    return `${dd1}/${mm1}/${y1} - ${dd2}/${mm2}/${y2}`;
+  }
+
+  if (y1 === nowYear && y2 === nowYear) {
+    // Same year (current): no year shown
+    return `${dd1}/${mm1} - ${dd2}/${mm2}`;
+  }
+
+  // Same year (not current): show year on end date only
+  return `${dd1}/${mm1} - ${dd2}/${mm2}/${y2}`;
 }

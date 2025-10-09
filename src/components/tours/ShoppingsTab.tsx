@@ -44,11 +44,11 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
     enabled: !!tourId,
   });
 
-  // Initialize formData with tour's end date
+  // Initialize formData with tour's start date
   const [formData, setFormData] = useState<Shopping>(() => ({
     name: '',
     price: 0,
-    date: tour?.endDate || ''
+    date: tour?.startDate || ''
   }));
 
   const { data: shoppingItems = [] } = useQuery({
@@ -58,10 +58,10 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
 
   // Update formData date when tour data loads
   useEffect(() => {
-    if (tour?.endDate && !formData.date) {
-      setFormData(prev => ({ ...prev, date: tour.endDate }));
+    if (tour?.startDate && !formData.date) {
+      setFormData(prev => ({ ...prev, date: tour.startDate }));
     }
-  }, [tour?.endDate]);
+  }, [tour?.startDate]);
 
   const addMutation = useMutation({
     mutationFn: async (shopping: Shopping) => {
@@ -76,7 +76,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       }
       toast.success('Shopping added');
-      setFormData({ name: '', price: 0, date: tour?.endDate || '' });
+      setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
 
@@ -165,7 +165,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ name: '', price: 0, date: tour?.endDate || '' });
+    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
   };
 
   const handleCreateNewShopping = () => {
@@ -338,13 +338,19 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
 
       {/* Shoppings List */}
       <div className="rounded-lg border">
-        <Table>
+        <Table className="min-w-[520px] sm:min-w-0">
           <TableHeader>
             <TableRow>
-              <TableHead>Shopping Item</TableHead>
+              <TableHead>
+                <span className="sm:hidden">Item</span>
+                <span className="hidden sm:inline">Shopping Item</span>
+              </TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="w-[80px] sm:w-[100px]">
+                <span className="sm:hidden">Act</span>
+                <span className="hidden sm:inline">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

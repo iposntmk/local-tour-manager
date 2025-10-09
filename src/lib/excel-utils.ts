@@ -270,7 +270,9 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
   const setCodeAndDateCells = (row: Row) => {
     if (!firstDataRow) return;
     row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
-    row.getCell(2).value = `${formatNgayRangeForExcel(tour.startDate, tour.endDate)}`;
+    const cell2 = row.getCell(2);
+    cell2.value = `${formatNgayRangeForExcel(tour.startDate, tour.endDate)}`;
+    cell2.numFmt = '@'; // Text format to preserve the formatted date string
     firstDataRow = false;
   };
 
@@ -830,7 +832,9 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
     const setCodeAndDateCells = (row: Row) => {
       if (!firstDataRow) return;
       row.getCell(1).value = `${tour.tourCode} x ${totalGuests} pax`;
-      row.getCell(2).value = `${formatNgayRangeForExcel(tour.startDate, tour.endDate)}`;
+      const cell2 = row.getCell(2);
+      cell2.value = `${formatNgayRangeForExcel(tour.startDate, tour.endDate)}`;
+      cell2.numFmt = '@'; // Text format to preserve the formatted date string
       firstDataRow = false;
     };
 

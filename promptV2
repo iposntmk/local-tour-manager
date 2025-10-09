@@ -1,0 +1,146 @@
+
+**Nhiệm vụ:**
+Đọc ảnh hoặc file **“chương trình tour”** (tour itinerary) và **trả về nhiều đối tượng JSON hợp lệ** theo **schema ở cuối**.
+
+**Yêu cầu output:**
+
+* Bắt đầu bằng `[` và kết thúc bằng `]`.
+* Giữa các tour có dấu phẩy `,`.
+* **CHỈ** trả về JSON (không thêm chữ, markdown, giải thích, hoặc nhận xét).
+
+---
+
+### 🔧 Quy tắc chung
+
+* Nếu thiếu dữ liệu:
+
+  * string → `""`
+  * number → `0`
+  * boolean → `false`
+  * array → `[]`
+* Ngày (`date`): định dạng `"yyyy-mm-dd"`.
+
+  * Nếu thiếu → `""`.
+  * Nếu không có năm → mặc định **2025**.
+* Tiền tệ: chỉ lấy **số**.
+
+  * Bỏ ký tự, chấm, phẩy, đơn vị (`đ`, `k`, `vnd`).
+  * Ví dụ: `150k` → `150000`, `200.000đ` → `200000`.
+* **Không bịa hoặc suy diễn thêm dữ liệu.**
+
+---
+
+### 🧭 Nguồn dữ liệu ưu tiên
+
+1. **Header:** Mã đoàn, HDV, Lái xe, Số khách.
+2. **Bảng khách:** Tên & Quốc tịch → xác định `clientNationality`.
+3. **Bảng lịch ngày:** Ngày, Tham quan, Ăn trưa, Ăn tối, Khách sạn.
+4. **Ghi chú cuối trang:** NOTE, điện thoại, công ty đặt khách sạn.
+
+---
+
+### 🧩 Trường chính `tour`
+
+| Trường                              | Nguồn / Quy tắc                                                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `tourCode`                          | Từ “Code đoàn” hoặc “Mã tour”                                                                                       |
+| `adults`, `children`, `totalGuests` | Từ “Số khách”                                                                                                       |
+| `tourGuide`                         | Luôn = `"Cao Hữu Tú"`                                                                                               |
+| `driverName`                        | Từ “Lái xe”, nếu không có → `""`                                                                                    |
+| `company`                           | Cụm “Khách sạn: … book” hoặc “đặt”                                                                                  |
+| `clientPhone`                       | Từ phần ghi chú                                                                                                     |
+| `clientNationality`                 | Nếu có bảng khách → quốc tịch phổ biến nhất. Nếu không → suy luận từ mã vùng hoặc tên khách. Không xác định → `""`. |
+| `startDate`, `endDate`              | Từ cột “Ngày” (min & max)                                                                                           |
+| `totalDays`                         | `(endDate - startDate) + 1`, nếu thiếu → `0`                                                                        |
+
+---
+
+### 🧱 Subcollections
+
+#### a) `destinations`
+
+* Tách từ cột **Tham quan**, chia theo dấu phẩy.
+* Mỗi điểm là 1 object.
+
+
+nếu destinations.name có chứa 1 từ hoặc cụm (viết hoá or viết thường có dấu or không có dấu) trong danh sách: 'Chùa Thiên mụ or Thiên mụ or Cẩm Thanh, Cam Thanh, chợ, chùa, nhà thờ, đèo hải vân, hải vân, lăng cô, cầu rồng, an bằng, biển, làng hương, làng nón, la vang, cửa đại, lang co, thiên mụ, hải vọng đài, đỗ quyên, ngũ hồ, thác đỗ quyên, vọng hải đài, cam thanh, Cẩm thanh, Cẩm Thanh, câm thanh, Sông Thu Bồn' thì ko tạo object cho destination
+* Nếu chỉ “đón sân bay / don sb no guide” và không có điểm tham quan → bỏ qua.
+* Mỗi record: `{ "name", "price", "province", "date", "orderIndex" }`
+  (province có thể suy luận theo vùng chính của tour)
+
+#### b) `expenses`
+
+* Từ cột **Ăn trưa / Ăn tối** hoặc ghi chú có chi phí nhưng không gắn điểm tham quan.
+* Record: `{ "name","price","date","orderIndex" }`.
+
+#### c) `meals`
+
+* Từ cột Ăn trưa / Ăn tối nếu giá trị của ô/cell  chứa từ book/ đặt. thì tạo 1 record cho meals array theo cấu trúc: Record: `{ "name","price","date","orderIndex" }`.
+
+#### d) `allowances`
+
+* Suy luận tỉnh từ điểm chính trong ngày.
+* Nếu chỉ “đón sân bay” hoặc “don sb no guide” → bỏ qua.
+* Giá trị mặc định:
+
+  * Quảng Bình / Quảng Trị → `800000`
+  * Huế / Đà Nẵng / Quảng Nam → `600000`
+  * Bạch Mã (Huế) → `900000`
+  * Khác → `600000`
+* Record: `{ "name","price","date","orderIndex" }`.
+
+#### e) `summary`
+
+* Nếu không có dữ liệu → tất cả = `0`.
+* Các tỉnh hợp lệ: `Đà Nẵng`, `Huế`, `Quảng Bình`, `Quảng Nam`, `Quảng Trị`.
+
+---
+
+### 🧾 SCHEMA JSON (bắt buộc xuất ra)
+
+```json
+[
+  {
+    "tour": {
+      "tourCode": "",
+      "company": "",
+      "tourGuide": "Cao Hữu Tú",
+      "clientName": "",
+      "clientNationality": "",
+      "adults": 0,
+      "children": 0,
+      "totalGuests": 0,
+      "driverName": "",
+      "clientPhone": "",
+      "startDate": "",
+      "endDate": "",
+      "totalDays": 0
+    },
+    "subcollections": {
+      "destinations": [
+        { "name": "", "price": 0, "province": "", "date": "", "orderIndex": 0 }
+      ],
+      "expenses": [
+        { "name": "", "price": 0, "date": "", "orderIndex": 0 }
+      ],
+      "meals": [
+        { "name": "", "price": 0, "date": "", "orderIndex": 0 }
+      ],
+      "allowances": [
+        { "name": "", "price": 0, "date": "", "orderIndex": 0 }
+      ],
+      "summary": {
+        "totalTabs": 0,
+        "advancePayment": 0,
+        "totalAfterAdvance": 0,
+        "companyTip": 0,
+        "totalAfterTip": 0,
+        "collectionsForCompany": 0,
+        "totalAfterCollections": 0,
+        "finalTotal": 0
+      }
+    }
+  }
+]
+```
+

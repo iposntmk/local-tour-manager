@@ -19,6 +19,7 @@ import {
   Upload,
   RefreshCw,
   Flag,
+  Baby,
 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -91,7 +92,13 @@ const Tours = () => {
   });
   const [selectedYear, setSelectedYear] = useState<string>(() => {
     const saved = localStorage.getItem('tours.selectedYear');
-    return saved || 'all';
+    // Default to current year if no saved value or if saved value is 'all'
+    if (!saved || saved === 'all') {
+      const currentYear = new Date().getFullYear().toString();
+      localStorage.setItem('tours.selectedYear', currentYear);
+      return currentYear;
+    }
+    return saved;
   });
   const [sortBy, setSortBy] = useState<string>(() => {
     const saved = localStorage.getItem('tours.sortBy');
@@ -1162,12 +1169,18 @@ const Tours = () => {
               const hasDuplicateDestNames = Array.from(nameCount.values()).some(c => c > 1);
 
               const showRedFlag = hasZeroPrice || hasDuplicateDestNames;
+              const hasChildren = (tour.children || 0) > 0;
               return (
                 <div
                   key={tour.id}
-                  className={`rounded-lg border bg-card p-4 sm:p-6 transition-all hover-scale animate-fade-in ${showRedFlag ? 'border-red-500 dark:border-red-600' : ''}`}
+                  className={`rounded-lg border bg-card p-4 sm:p-6 transition-all hover-scale animate-fade-in relative ${showRedFlag ? 'border-red-500 dark:border-red-600' : ''}`}
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
+                  {hasChildren && (
+                    <div className="absolute top-2 right-2 bg-blue-500 dark:bg-blue-600 text-white rounded-full p-1.5 shadow-lg" title={`${tour.children} child${tour.children > 1 ? 'ren' : ''}`}>
+                      <Baby className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </div>
+                  )}
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/tours/${tour.id}`)}>

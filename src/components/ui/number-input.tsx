@@ -44,7 +44,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           size="icon"
           onClick={handleDecrement}
           disabled={value <= min}
-          className="h-10 w-10 shrink-0"
+          className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
         >
           <Minus className="h-4 w-4" />
         </Button>
@@ -65,7 +65,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           size="icon"
           onClick={handleIncrement}
           disabled={max !== undefined && value >= max}
-          className="h-10 w-10 shrink-0"
+          className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
         >
           <Plus className="h-4 w-4" />
         </Button>

@@ -12,7 +12,6 @@ import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { Shopping, ShoppingInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
-import { formatCurrency } from '@/lib/currency-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 
 const ShoppingPage = () => {
