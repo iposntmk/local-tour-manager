@@ -229,6 +229,10 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
+## Contributing
+
+We welcome improvements and fixes. Start with `npm ci` and `npm run dev`. Before opening a PR, run `npm run lint` and `npm test`. See CONTRIBUTING.md for workflows and the PR template, and AGENTS.md for repository conventions (structure, scripts, linting, testing, and migrations).
+
 ## License
 
 This project is private and proprietary.
