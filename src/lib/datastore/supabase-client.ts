@@ -16,8 +16,8 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
     throw new Error("Supabase credentials are not configured.");
   }
 
-  const url = import.meta.env.VITE_SUPABASE_URL as string;
-  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+  const url = (import.meta.env.VITE_SUPABASE_URL as string).trim();
+  const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string).trim();
 
   const authOptions = {
     persistSession: true,

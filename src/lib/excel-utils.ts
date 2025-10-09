@@ -565,7 +565,7 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
     const range = `A${currentRow}:M${currentRow}`;
     styleMergedRange(worksheet, range, noteText, {
       bold: false,
-      alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+      alignment: { horizontal: 'left', vertical: 'top', wrapText: true, shrinkToFit: false, indent: 0, readingOrder: 'ltr', textRotation: 0 },
     });
     const row = worksheet.getRow(currentRow);
     row.height = 30; // give a bit more space for wrap
@@ -1180,7 +1180,7 @@ export const exportAllToursToMonthlyZip = async (tours: Tour[]) => {
   const ensureMonthFolder = (startDate?: string) => {
     if (!startDate) return zip.folder('unknown');
     const ym = startDate.slice(0, 7); // YYYY-MM
-    return zip.folder(ym) as import('jszip').JSZip;
+    return zip.folder(ym);
   };
 
   for (const tour of sorted) {
