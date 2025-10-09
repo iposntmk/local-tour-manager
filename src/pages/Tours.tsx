@@ -732,7 +732,7 @@ const Tours = () => {
     <Layout>
       <div className="animate-fade-in">
         {/* Sticky Header - Always pinned to top */}
-        <div className={`${headerClasses} border-b pb-4 pt-4 bg-gray-100 dark:bg-gray-900 sticky top-[57px] z-40 space-y-4`}>
+        <div className={`${headerClasses} border-b pb-4 pt-4 bg-gray-100 dark:bg-gray-900 z-40 space-y-4`}>
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             <div className="flex-shrink min-w-0">
               <h1 className="text-base sm:text-2xl md:text-3xl font-bold">Tours</h1>
