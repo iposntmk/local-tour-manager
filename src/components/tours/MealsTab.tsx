@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy, ArrowUp, ArrowDown, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   DropdownMenu,
@@ -209,7 +209,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
           {editingIndex !== null ? 'Edit Meal' : 'Add Meal'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex gap-2">
               <Popover open={openMeal} onOpenChange={setOpenMeal}>
                 <PopoverTrigger asChild>
@@ -268,30 +268,33 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
-            <Input
-              type="number"
-              min={0}
-              max={tour?.totalGuests || 0}
-              placeholder={`Guests (max ${tour?.totalGuests || 0})`}
-              value={formData.guests ?? ''}
-              onChange={(e) => {
-                const max = tour?.totalGuests || 0;
-                let val = e.target.value === '' ? undefined : Number(e.target.value);
-                if (typeof val === 'number' && !Number.isNaN(val)) {
-                  if (val < 0) val = 0;
-                  if (max && val > max) {
-                    toast.warning(`Guests cannot exceed total tour guests (${max}).`);
-                    val = max;
+            <div className="flex items-center gap-2">
+              <DateInput
+                value={formData.date}
+                onChange={(date) => setFormData({ ...formData, date })}
+                required
+              />
+              <Input
+                type="number"
+                min={0}
+                max={tour?.totalGuests || 0}
+                placeholder={`Guests`}
+                className="w-20"
+                value={formData.guests ?? ''}
+                onChange={(e) => {
+                  const max = tour?.totalGuests || 0;
+                  let val = e.target.value === '' ? undefined : Number(e.target.value);
+                  if (typeof val === 'number' && !Number.isNaN(val)) {
+                    if (val < 0) val = 0;
+                    if (max && val > max) {
+                      toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                      val = max;
+                    }
                   }
-                }
-                setFormData({ ...formData, guests: val as any });
-              }}
-            />
-            <DateInput
-              value={formData.date}
-              onChange={(date) => setFormData({ ...formData, date })}
-              required
-            />
+                  setFormData({ ...formData, guests: val as any });
+                }}
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <Button type="submit" className="hover-scale">
@@ -365,89 +368,31 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            className="w-24"
-                            min={0}
-                            max={tourGuests}
-                            value={meal.guests ?? ''}
-                            onChange={(e) => {
-                              let val = e.target.value === '' ? undefined : Number(e.target.value);
-                              if (typeof val === 'number' && !Number.isNaN(val)) {
-                                if (val < 0) val = 0;
-                                if (tourGuests && val > tourGuests) {
-                                  toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
-                                  val = tourGuests;
-                                }
+                        <Input
+                          type="number"
+                          className="w-16 sm:w-24"
+                          min={0}
+                          max={tourGuests}
+                          value={meal.guests ?? ''}
+                          onChange={(e) => {
+                            let val = e.target.value === '' ? undefined : Number(e.target.value);
+                            if (typeof val === 'number' && !Number.isNaN(val)) {
+                              if (val < 0) val = 0;
+                              if (tourGuests && val > tourGuests) {
+                                toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
+                                val = tourGuests;
                               }
-                              const updated: Meal = { ...meal, guests: val as any } as any;
-                              if (tourId) {
-                                updateMutation.mutate({ index: meal.originalIndex, meal: updated });
-                              } else {
-                                const newMeals = [...meals];
-                                newMeals[meal.originalIndex] = updated as any;
-                                onChange?.(newMeals);
-                              }
-                            }}
-                          />
-                          {rowIndex > 0 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              title="Copy guests from previous row"
-                              onClick={() => {
-                                const sorted = meals
-                                  .map((m, i) => ({ ...m, originalIndex: i }))
-                                  .sort((a, b) => {
-                                    const da = a.date ? new Date(a.date).getTime() : Infinity;
-                                    const db = b.date ? new Date(b.date).getTime() : Infinity;
-                                    return da - db;
-                                  });
-                                const prev = sorted[rowIndex - 1];
-                                const g = Math.min(prev.guests ?? tourGuests, tourGuests);
-                                const updated: Meal = { ...meal, guests: g } as any;
-                                if (tourId) updateMutation.mutate({ index: meal.originalIndex, meal: updated });
-                                else {
-                                  const newMeals = [...meals];
-                                  newMeals[meal.originalIndex] = updated as any;
-                                  onChange?.(newMeals);
-                                }
-                              }}
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {rowIndex < meals.length - 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              title="Copy guests to next row"
-                              onClick={() => {
-                                const sorted = meals
-                                  .map((m, i) => ({ ...m, originalIndex: i }))
-                                  .sort((a, b) => {
-                                    const da = a.date ? new Date(a.date).getTime() : Infinity;
-                                    const db = b.date ? new Date(b.date).getTime() : Infinity;
-                                    return da - db;
-                                  });
-                                const g = Math.min(meal.guests ?? tourGuests, tourGuests);
-                                const nxt = sorted[rowIndex + 1];
-                                const updatedNext: Meal = { ...nxt, guests: g } as any;
-                                if (tourId) updateMutation.mutate({ index: nxt.originalIndex, meal: updatedNext });
-                                else {
-                                  const newMeals = [...meals];
-                                  newMeals[nxt.originalIndex] = updatedNext as any;
-                                  onChange?.(newMeals);
-                                }
-                              }}
-                            >
-                              <ArrowDown className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                            }
+                            const updated: Meal = { ...meal, guests: val as any } as any;
+                            if (tourId) {
+                              updateMutation.mutate({ index: meal.originalIndex, meal: updated });
+                            } else {
+                              const newMeals = [...meals];
+                              newMeals[meal.originalIndex] = updated as any;
+                              onChange?.(newMeals);
+                            }
+                          }}
+                        />
                       </TableCell>
                       <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
                       <TableCell>{formatDate(meal.date)}</TableCell>

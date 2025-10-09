@@ -202,7 +202,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
           </span>
         </div>
         {showQuickAmounts && (
-          <div className={cn('flex flex-wrap', isCompact ? 'gap-1' : 'gap-2')}>
+          <div className={cn('flex flex-nowrap overflow-x-auto', isCompact ? 'gap-1' : 'gap-2')}>
             {QUICK_AMOUNTS.map((amount) => (
               <Button
                 key={amount}
@@ -211,8 +211,8 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
                 size={isCompact ? 'xs' as any : 'sm'}
                 onClick={() => handleQuickAmount(amount)}
                 className={cn(
-                  'rounded-full border-lime-200 text-lime-700 transition hover:border-lime-400 hover:bg-lime-50',
-                  isCompact ? 'h-6 px-2 py-0.5 text-[11px]' : 'h-8 px-3 py-1 text-xs font-semibold'
+                  'rounded-full border-lime-200 text-lime-700 transition hover:border-lime-400 hover:bg-lime-50 flex-shrink-0',
+                  isCompact ? 'h-6 px-2 py-0.5 text-[10px]' : 'h-7 px-2.5 py-0.5 text-[10px] font-medium'
                 )}
               >
                 {amount >= 1000 ? `${amount / 1000}k` : amount}

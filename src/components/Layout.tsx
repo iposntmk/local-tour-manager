@@ -60,7 +60,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
     return (
       <>
         <NavLink
-          to="/tours"
+          to="/"
           className={({ isActive }) => navLinkClass(isActive)}
         >
           <Home className="h-5 w-5" />
@@ -114,7 +114,7 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
   return (
     <>
       <NavLink
-        to="/tours"
+        to="/"
         className={({ isActive }) => navLinkClass(isActive)}
       >
         <Home className="h-5 w-5" />
@@ -150,8 +150,8 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
 export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Navigation - both mobile and desktop */}
-      <nav className="border-b bg-card sticky top-0 z-50">
+      {/* Top Navigation - desktop only */}
+      <nav className="hidden md:block border-b bg-card sticky top-0 z-50">
         <div className="mx-auto flex items-center gap-1 md:gap-3 overflow-x-auto px-2 py-2 md:px-6 md:py-3 max-w-7xl">
           <NavLinks isMobile={false} />
         </div>
@@ -166,7 +166,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main Content */}
       <main className="flex-1 w-full">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-28 md:pb-12">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-24 pt-4 md:pb-12 md:pt-0">
           {children}
         </div>
       </main>
