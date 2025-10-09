@@ -98,6 +98,64 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/d542a080-a514-4b29-bb2b-af361d31ab36) and click on Share -> Publish.
 
+### Deploying to GitHub Pages
+
+If you prefer to host the static build on GitHub Pages instead of Lovable, follow these steps:
+
+1. **Set the base path:** add a `.env` (or repository secret in GitHub Actions) with the path that matches your repository name:
+
+   ```
+   VITE_APP_BASE_PATH=local-tour-manager
+   ```
+
+   If you are publishing from a project root on `https://<username>.github.io/`, leave this variable empty so the base defaults to `/`.
+
+2. **Switch routing to hash mode:** the application now uses `HashRouter`, which works out of the box on static hosts such as GitHub Pages.
+
+3. **Build the production bundle:**
+
+   ```sh
+   npm run build
+   ```
+
+   The static files will be generated in `dist/`.
+
+4. **Publish to GitHub Pages:** serve the contents of `dist/` from the `gh-pages` branch (or the `/docs` folder) using the method you prefer:
+
+   - Manually copy the build output to the branch that Pages is configured to serve.
+   - Or automate with GitHub Actions. A minimal workflow could look like:
+
+     ```yaml
+     name: Deploy to GitHub Pages
+
+     on:
+       push:
+         branches: [main]
+
+     jobs:
+       build-and-deploy:
+         runs-on: ubuntu-latest
+         steps:
+           - uses: actions/checkout@v4
+           - uses: actions/setup-node@v4
+             with:
+               node-version: 20
+           - run: npm ci
+           - run: npm run build
+             env:
+               VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+               VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+               VITE_APP_BASE_PATH: ${{ secrets.VITE_APP_BASE_PATH }}
+           - uses: actions/upload-pages-artifact@v2
+             with:
+               path: dist
+           - uses: actions/deploy-pages@v2
+     ```
+
+5. **Configure Supabase environment variables:** make sure the Supabase keys are provided as GitHub repository secrets (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) so the build can access your backend.
+
+After the workflow completes, your app will be available at `https://<username>.github.io/<repo-name>/`.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
