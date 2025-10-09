@@ -15,6 +15,8 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
+import { SupabaseHealthBanner } from '@/components/SupabaseHealthBanner';
 import { useState } from 'react';
 import {
   DropdownMenu,
@@ -167,6 +169,8 @@ export function Layout({ children }: LayoutProps) {
       {/* Main Content */}
       <main className="flex-1 w-full">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-24 pt-4 md:pb-12 md:pt-0">
+          <SupabaseStatusBanner />
+          <SupabaseHealthBanner />
           {children}
         </div>
       </main>
