@@ -3,8 +3,14 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, ArrowUp, ArrowDown, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -278,12 +284,37 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
             <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
             <TableCell>{formatDate(destination.date)}</TableCell>
             <TableCell className="text-right">
-              <div className="flex gap-2 justify-end">
+              {/* Responsive actions: dropdown on small screens, buttons on larger screens */}
+              <div className="sm:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleEdit(destination.originalIndex)}>
+                      <Edit2 className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => deleteMutation.mutate(destination.originalIndex)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleEdit(destination.originalIndex)}
                   className="hover-scale"
+                  title="Edit"
                 >
                   <Edit2 className="h-4 w-4" />
                 </Button>
@@ -292,6 +323,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                   size="sm"
                   onClick={() => deleteMutation.mutate(destination.originalIndex)}
                   className="hover-scale text-destructive hover:text-destructive"
+                  title="Delete"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -529,8 +561,8 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
             No destinations added yet
           </div>
         ) : (
-          <div>
-            <Table className="min-w-[680px] sm:min-w-0">
+          <div className="overflow-x-auto">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">#</TableHead>
@@ -548,8 +580,8 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                     <span className="hidden sm:inline">Total Amount</span>
                   </TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right w-[80px] sm:w-auto">
-                    <span className="sm:hidden">Act</span>
+                  <TableHead className="text-right w-[50px]">
+                    <span className="sm:hidden">...</span>
                     <span className="hidden sm:inline">Actions</span>
                   </TableHead>
                 </TableRow>
