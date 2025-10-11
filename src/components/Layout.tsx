@@ -13,17 +13,22 @@ import {
   BarChart3,
   Settings,
   ChevronDown,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
 import { SupabaseHealthBanner } from '@/components/SupabaseHealthBanner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import type { User } from '@supabase/supabase-js';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -150,12 +155,41 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
 };
 
 export function Layout({ children }: LayoutProps) {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Navigation - desktop only */}
       <nav className="hidden md:block border-b bg-card sticky top-0 z-50">
-        <div className="mx-auto flex items-center gap-1 md:gap-3 overflow-x-auto px-2 py-2 md:px-6 md:py-3 max-w-7xl">
-          <NavLinks isMobile={false} />
+        <div className="mx-auto flex items-center justify-between gap-1 md:gap-3 px-2 py-2 md:px-6 md:py-3 max-w-7xl">
+          <div className="flex items-center gap-1 md:gap-3 overflow-x-auto">
+            <NavLinks isMobile={false} />
+          </div>
+          {user && (
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          )}
         </div>
       </nav>
 
