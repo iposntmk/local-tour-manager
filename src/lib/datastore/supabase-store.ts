@@ -160,6 +160,7 @@ export class SupabaseStore implements DataStore {
     return {
       id: row.id,
       name: row.name,
+      dataType: row.data_type || 'text',
       status: row.status,
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
@@ -177,6 +178,7 @@ export class SupabaseStore implements DataStore {
       diaryTypeRef: {
         id: row.diary_type_id || '',
         nameAtBooking: row.diary_type_name_at_booking || '',
+        dataType: row.diary_type_data_type || 'text',
       },
       contentType: row.content_type,
       contentText: row.content_text || '',
@@ -1349,6 +1351,7 @@ export class SupabaseStore implements DataStore {
       .from('diary_types')
       .insert({
         name: input.name,
+        data_type: input.dataType || 'text',
         status: 'active',
         search_keywords: searchKeywords,
       })
@@ -1361,7 +1364,7 @@ export class SupabaseStore implements DataStore {
 
   async updateDiaryType(id: string, patch: Partial<DiaryType>): Promise<void> {
     const updates: any = {};
-    
+
     if (patch.name !== undefined) {
       const { data: existing } = await this.supabase
         .from('diary_types')
@@ -1377,6 +1380,7 @@ export class SupabaseStore implements DataStore {
       updates.name = patch.name;
       updates.search_keywords = generateSearchKeywords(patch.name);
     }
+    if (patch.dataType !== undefined) updates.data_type = patch.dataType;
     if (patch.status !== undefined) updates.status = patch.status;
 
     const { error } = await this.supabase.from('diary_types').update(updates).eq('id', id);
@@ -1395,6 +1399,7 @@ export class SupabaseStore implements DataStore {
     if (!original) throw new Error('Diary type not found');
     return this.createDiaryType({
       name: `${original.name} (Copy)`,
+      dataType: original.dataType,
     });
   }
 
@@ -1431,6 +1436,7 @@ export class SupabaseStore implements DataStore {
 
     const records = inputs.map(input => ({
       name: input.name,
+      data_type: input.dataType || 'text',
       status: 'active',
       search_keywords: generateSearchKeywords(input.name),
     }));
@@ -1471,6 +1477,7 @@ export class SupabaseStore implements DataStore {
         tour_code_at_booking: input.tourRef.tourCodeAtBooking,
         diary_type_id: input.diaryTypeRef.id,
         diary_type_name_at_booking: input.diaryTypeRef.nameAtBooking,
+        diary_type_data_type: input.diaryTypeRef.dataType,
         content_type: input.contentType,
         content_text: input.contentText || '',
         content_urls: input.contentUrls || [],

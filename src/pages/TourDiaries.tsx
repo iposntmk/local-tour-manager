@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
+import { Layout } from '@/components/Layout';
 
 export default function TourDiaries() {
   const [tourDiaries, setTourDiaries] = useState<TourDiary[]>([]);
@@ -107,14 +108,15 @@ export default function TourDiaries() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Tour Diaries</h1>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Tour Diary
-        </Button>
-      </div>
+    <Layout>
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Tour Diaries</h1>
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Tour Diary
+          </Button>
+        </div>
 
       <div className="flex gap-4">
         <div className="relative flex-1">
@@ -223,6 +225,7 @@ export default function TourDiaries() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </Layout>
   );
 }

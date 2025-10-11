@@ -142,9 +142,12 @@ export interface DetailedExpenseInput {
   };
 }
 
+export type DiaryDataType = 'text' | 'date' | 'time' | 'datetime' | 'number' | 'boolean' | 'image' | 'video' | 'audio' | 'location';
+
 export interface DiaryType {
   id: string;
   name: string;
+  dataType: DiaryDataType;
   status: EntityStatus;
   searchKeywords: string[];
   createdAt: string;
@@ -153,6 +156,7 @@ export interface DiaryType {
 
 export interface DiaryTypeInput {
   name: string;
+  dataType?: DiaryDataType;
 }
 
 export interface TourDiary {
@@ -164,6 +168,7 @@ export interface TourDiary {
   diaryTypeRef: {
     id: string;
     nameAtBooking: string;
+    dataType: DiaryDataType;
   };
   contentType: 'text' | 'image' | 'video';
   contentText?: string;
@@ -180,6 +185,7 @@ export interface TourDiaryInput {
   diaryTypeRef: {
     id: string;
     nameAtBooking: string;
+    dataType: DiaryDataType;
   };
   contentType: 'text' | 'image' | 'video';
   contentText?: string;

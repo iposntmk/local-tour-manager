@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { store } from '@/lib/datastore';
-import type { DiaryType, DiaryTypeInput } from '@/types/master';
+import type { DiaryType, DiaryTypeInput, DiaryDataType } from '@/types/master';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ interface DiaryTypeDialogProps {
 
 interface FormData extends DiaryTypeInput {
   status?: 'active' | 'inactive';
+  dataType: DiaryDataType;
 }
 
 export function DiaryTypeDialog({ open, onOpenChange, diaryType, onSuccess }: DiaryTypeDialogProps) {
@@ -37,16 +38,19 @@ export function DiaryTypeDialog({ open, onOpenChange, diaryType, onSuccess }: Di
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>();
 
   const status = watch('status');
+  const dataType = watch('dataType');
 
   useEffect(() => {
     if (diaryType) {
       reset({
         name: diaryType.name,
+        dataType: diaryType.dataType,
         status: diaryType.status,
       });
     } else {
       reset({
         name: '',
+        dataType: 'text',
         status: 'active',
       });
     }
@@ -89,6 +93,27 @@ export function DiaryTypeDialog({ open, onOpenChange, diaryType, onSuccess }: Di
             {errors.name && (
               <p className="text-sm text-destructive mt-1">{errors.name.message}</p>
             )}
+          </div>
+
+          <div>
+            <Label htmlFor="dataType">Data Type *</Label>
+            <Select value={dataType} onValueChange={(value: DiaryDataType) => setValue('dataType', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select data type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Text</SelectItem>
+                <SelectItem value="date">Date</SelectItem>
+                <SelectItem value="time">Time</SelectItem>
+                <SelectItem value="datetime">Date & Time</SelectItem>
+                <SelectItem value="number">Number</SelectItem>
+                <SelectItem value="boolean">Boolean (Yes/No)</SelectItem>
+                <SelectItem value="image">Image</SelectItem>
+                <SelectItem value="video">Video</SelectItem>
+                <SelectItem value="audio">Audio</SelectItem>
+                <SelectItem value="location">Location</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {diaryType && (

@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Layout } from '@/components/Layout';
 
 export default function DiaryTypes() {
   const [diaryTypes, setDiaryTypes] = useState<DiaryType[]>([]);
@@ -98,14 +99,15 @@ export default function DiaryTypes() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Diary Types</h1>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Diary Type
-        </Button>
-      </div>
+    <Layout>
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Diary Types</h1>
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Diary Type
+          </Button>
+        </div>
 
       <div className="flex gap-4">
         <div className="relative flex-1">
@@ -199,6 +201,7 @@ export default function DiaryTypes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </Layout>
   );
 }

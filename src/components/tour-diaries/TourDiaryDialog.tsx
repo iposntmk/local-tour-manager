@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
 
@@ -88,19 +89,9 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
     }
   };
 
-  useEffect(() => {
-    const selected = diaryTypes.find(dt => dt.id === selectedDiaryTypeId);
-    if (selected) {
-      const typeName = selected.name.toLowerCase();
-      if (typeName.includes('text')) {
-        setContentType('text');
-      } else if (typeName.includes('image')) {
-        setContentType('image');
-      } else if (typeName.includes('video')) {
-        setContentType('video');
-      }
-    }
-  }, [selectedDiaryTypeId, diaryTypes]);
+  // Get selected diary type's data type
+  const selectedDiaryType = diaryTypes.find(dt => dt.id === selectedDiaryTypeId);
+  const diaryDataType = selectedDiaryType?.dataType || 'text';
 
   const handleAddUrl = () => {
     setContentUrls([...contentUrls, '']);
@@ -118,7 +109,7 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedTourId || !selectedDiaryTypeId) {
       toast({
         title: 'Error',
@@ -128,16 +119,18 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
       return;
     }
 
-    if (contentType === 'text' && !contentText.trim()) {
+    // Validate content based on data type
+    const dataType = selectedDiaryType?.dataType || 'text';
+    if (['text', 'date', 'time', 'datetime', 'number', 'boolean', 'location'].includes(dataType) && !contentText.trim()) {
       toast({
         title: 'Error',
-        description: 'Please enter text content',
+        description: 'Please enter content',
         variant: 'destructive',
       });
       return;
     }
 
-    if ((contentType === 'image' || contentType === 'video') && contentUrls.filter(u => u.trim()).length === 0) {
+    if (['image', 'video', 'audio'].includes(dataType) && contentUrls.filter(u => u.trim()).length === 0) {
       toast({
         title: 'Error',
         description: 'Please add at least one URL',
@@ -155,6 +148,11 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
         throw new Error('Selected tour or diary type not found');
       }
 
+      // Determine content type based on data type
+      let finalContentType: 'text' | 'image' | 'video' = 'text';
+      if (selectedDiaryType.dataType === 'image') finalContentType = 'image';
+      else if (selectedDiaryType.dataType === 'video' || selectedDiaryType.dataType === 'audio') finalContentType = 'video';
+
       const input: TourDiaryInput = {
         tourRef: {
           id: selectedTour.id,
@@ -163,10 +161,11 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
         diaryTypeRef: {
           id: selectedDiaryType.id,
           nameAtBooking: selectedDiaryType.name,
+          dataType: selectedDiaryType.dataType,
         },
-        contentType,
-        contentText: contentType === 'text' ? contentText : undefined,
-        contentUrls: contentType !== 'text' ? contentUrls.filter(u => u.trim()) : [],
+        contentType: finalContentType,
+        contentText: ['text', 'date', 'time', 'datetime', 'number', 'boolean', 'location'].includes(selectedDiaryType.dataType) ? contentText : undefined,
+        contentUrls: ['image', 'video', 'audio'].includes(selectedDiaryType.dataType) ? contentUrls.filter(u => u.trim()) : [],
       };
 
       if (tourDiary) {
@@ -228,47 +227,119 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
             </Select>
           </div>
 
-          {contentType === 'text' && (
+          {/* Dynamic content input based on diary type's data type */}
+          {selectedDiaryTypeId && (
             <div>
-              <Label htmlFor="contentText">Text Content *</Label>
-              <Textarea
-                id="contentText"
-                value={contentText}
-                onChange={(e) => setContentText(e.target.value)}
-                placeholder="Enter text content"
-                rows={8}
-              />
-            </div>
-          )}
+              <Label htmlFor="content">Content *</Label>
 
-          {(contentType === 'image' || contentType === 'video') && (
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label>URLs *</Label>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddUrl}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Add URL
-                </Button>
-              </div>
-              {contentUrls.map((url, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={url}
-                    onChange={(e) => handleUrlChange(index, e.target.value)}
-                    placeholder={`Enter ${contentType} URL`}
+              {/* Text input */}
+              {diaryDataType === 'text' && (
+                <Textarea
+                  id="content"
+                  value={contentText}
+                  onChange={(e) => setContentText(e.target.value)}
+                  placeholder="Enter text content"
+                  rows={8}
+                />
+              )}
+
+              {/* Date input */}
+              {diaryDataType === 'date' && (
+                <Input
+                  id="content"
+                  type="date"
+                  value={contentText}
+                  onChange={(e) => setContentText(e.target.value)}
+                />
+              )}
+
+              {/* Time input */}
+              {diaryDataType === 'time' && (
+                <Input
+                  id="content"
+                  type="time"
+                  value={contentText}
+                  onChange={(e) => setContentText(e.target.value)}
+                />
+              )}
+
+              {/* DateTime input */}
+              {diaryDataType === 'datetime' && (
+                <Input
+                  id="content"
+                  type="datetime-local"
+                  value={contentText}
+                  onChange={(e) => setContentText(e.target.value)}
+                />
+              )}
+
+              {/* Number input */}
+              {diaryDataType === 'number' && (
+                <Input
+                  id="content"
+                  type="number"
+                  value={contentText}
+                  onChange={(e) => setContentText(e.target.value)}
+                  placeholder="Enter number"
+                />
+              )}
+
+              {/* Boolean input */}
+              {diaryDataType === 'boolean' && (
+                <div className="flex items-center space-x-2 py-2">
+                  <Checkbox
+                    id="content"
+                    checked={contentText === 'true'}
+                    onCheckedChange={(checked) => setContentText(checked ? 'true' : 'false')}
                   />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleRemoveUrl(index)}
-                  >
-                    Remove
-                  </Button>
+                  <label htmlFor="content" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    {contentText === 'true' ? 'Yes' : 'No'}
+                  </label>
                 </div>
-              ))}
-              {contentUrls.length === 0 && (
-                <p className="text-sm text-muted-foreground">No URLs added yet. Click "Add URL" to add.</p>
+              )}
+
+              {/* Location input */}
+              {diaryDataType === 'location' && (
+                <Input
+                  id="content"
+                  type="text"
+                  value={contentText}
+                  onChange={(e) => setContentText(e.target.value)}
+                  placeholder="Enter location (e.g., coordinates or address)"
+                />
+              )}
+
+              {/* Image/Video/Audio URL inputs */}
+              {(diaryDataType === 'image' || diaryDataType === 'video' || diaryDataType === 'audio') && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label>URLs *</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddUrl}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Add URL
+                    </Button>
+                  </div>
+                  {contentUrls.map((url, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        value={url}
+                        onChange={(e) => handleUrlChange(index, e.target.value)}
+                        placeholder={`Enter ${diaryDataType} URL`}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleRemoveUrl(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  {contentUrls.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No URLs added yet. Click "Add URL" to add.</p>
+                  )}
+                </div>
               )}
             </div>
           )}

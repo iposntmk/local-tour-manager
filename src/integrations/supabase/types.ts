@@ -100,6 +100,7 @@ export type Database = {
       diary_types: {
         Row: {
           created_at: string | null
+          data_type: string
           id: string
           name: string
           search_keywords: string[] | null
@@ -108,6 +109,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          data_type?: string
           id?: string
           name: string
           search_keywords?: string[] | null
@@ -116,6 +118,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          data_type?: string
           id?: string
           name?: string
           search_keywords?: string[] | null
@@ -356,6 +359,7 @@ export type Database = {
           content_type: string
           content_urls: string[] | null
           created_at: string | null
+          diary_type_data_type: string
           diary_type_id: string | null
           diary_type_name_at_booking: string | null
           id: string
@@ -368,6 +372,7 @@ export type Database = {
           content_type: string
           content_urls?: string[] | null
           created_at?: string | null
+          diary_type_data_type?: string
           diary_type_id?: string | null
           diary_type_name_at_booking?: string | null
           id?: string
@@ -380,6 +385,7 @@ export type Database = {
           content_type?: string
           content_urls?: string[] | null
           created_at?: string | null
+          diary_type_data_type?: string
           diary_type_id?: string | null
           diary_type_name_at_booking?: string | null
           id?: string

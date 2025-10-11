@@ -37,6 +37,8 @@ interface LayoutProps {
 }
 
 const masterDataItems = [
+  { to: '/diary-types', icon: BookOpen, label: 'Diary Types' },
+  { to: '/tour-diaries', icon: FileText, label: 'Tour Diaries' },
   { to: '/guides', icon: Users, label: 'Guides' },
   { to: '/companies', icon: Building2, label: 'Companies' },
   { to: '/nationalities', icon: Globe, label: 'Nationalities' },
@@ -45,8 +47,6 @@ const masterDataItems = [
   { to: '/shopping', icon: ShoppingBag, label: 'Shopping' },
   { to: '/expense-categories', icon: Tag, label: 'Categories' },
   { to: '/detailed-expenses', icon: Receipt, label: 'Expenses' },
-  { to: '/diary-types', icon: BookOpen, label: 'Diary Types' },
-  { to: '/tour-diaries', icon: FileText, label: 'Tour Diaries' },
 ];
 
 const mainNavItems = [
