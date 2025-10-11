@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,26 +19,13 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast({ title: "Logged in successfully!" });
-        navigate("/");
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-          },
-        });
-        if (error) throw error;
-        toast({ title: "Account created! Please log in." });
-        setIsLogin(true);
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      toast({ title: "Logged in successfully!" });
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -55,9 +41,9 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{isLogin ? "Login" : "Sign Up"}</CardTitle>
+          <CardTitle>Login</CardTitle>
           <CardDescription>
-            {isLogin ? "Enter your credentials to access Tour Manager" : "Create an account to get started"}
+            Enter your credentials to access Tour Manager
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -86,15 +72,7 @@ export default function Auth() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : isLogin ? "Login" : "Sign Up"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? "Need an account? Sign up" : "Already have an account? Login"}
+              {loading ? "Loading..." : "Login"}
             </Button>
           </form>
         </CardContent>
