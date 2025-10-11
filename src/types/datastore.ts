@@ -1,4 +1,4 @@
-import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput } from './master';
+import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput, DiaryType, DiaryTypeInput, TourDiary, TourDiaryInput } from './master';
 import type {
   Tour,
   TourInput,
@@ -107,6 +107,27 @@ export interface DataStore {
   deleteDetailedExpense(id: string): Promise<void>;
   deleteAllDetailedExpenses(): Promise<void>;
   bulkCreateDetailedExpenses(inputs: DetailedExpenseInput[]): Promise<DetailedExpense[]>;
+  
+  // Diary Types
+  listDiaryTypes(query?: SearchQuery): Promise<DiaryType[]>;
+  getDiaryType(id: string): Promise<DiaryType | undefined>;
+  createDiaryType(input: DiaryTypeInput): Promise<DiaryType>;
+  updateDiaryType(id: string, patch: Partial<DiaryType>): Promise<void>;
+  toggleDiaryTypeStatus(id: string): Promise<void>;
+  duplicateDiaryType(id: string): Promise<DiaryType>;
+  deleteDiaryType(id: string): Promise<void>;
+  deleteAllDiaryTypes(): Promise<void>;
+  bulkCreateDiaryTypes(inputs: DiaryTypeInput[]): Promise<DiaryType[]>;
+  
+  // Tour Diaries
+  listTourDiaries(query?: SearchQuery): Promise<TourDiary[]>;
+  getTourDiary(id: string): Promise<TourDiary | undefined>;
+  createTourDiary(input: TourDiaryInput): Promise<TourDiary>;
+  updateTourDiary(id: string, patch: Partial<TourDiary>): Promise<void>;
+  duplicateTourDiary(id: string): Promise<TourDiary>;
+  deleteTourDiary(id: string): Promise<void>;
+  deleteAllTourDiaries(): Promise<void>;
+  bulkCreateTourDiaries(inputs: TourDiaryInput[]): Promise<TourDiary[]>;
   
   // Tours
   listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult>;

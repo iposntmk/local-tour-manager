@@ -141,3 +141,47 @@ export interface DetailedExpenseInput {
     nameAtBooking: string;
   };
 }
+
+export interface DiaryType {
+  id: string;
+  name: string;
+  status: EntityStatus;
+  searchKeywords: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiaryTypeInput {
+  name: string;
+}
+
+export interface TourDiary {
+  id: string;
+  tourRef: {
+    id: string;
+    tourCodeAtBooking: string;
+  };
+  diaryTypeRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  contentType: 'text' | 'image' | 'video';
+  contentText?: string;
+  contentUrls: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TourDiaryInput {
+  tourRef: {
+    id: string;
+    tourCodeAtBooking: string;
+  };
+  diaryTypeRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  contentType: 'text' | 'image' | 'video';
+  contentText?: string;
+  contentUrls?: string[];
+}

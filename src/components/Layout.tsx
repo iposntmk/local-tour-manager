@@ -14,6 +14,8 @@ import {
   Settings,
   ChevronDown,
   LogOut,
+  BookOpen,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
@@ -43,6 +45,8 @@ const masterDataItems = [
   { to: '/shopping', icon: ShoppingBag, label: 'Shopping' },
   { to: '/expense-categories', icon: Tag, label: 'Categories' },
   { to: '/detailed-expenses', icon: Receipt, label: 'Expenses' },
+  { to: '/diary-types', icon: BookOpen, label: 'Diary Types' },
+  { to: '/tour-diaries', icon: FileText, label: 'Tour Diaries' },
 ];
 
 const mainNavItems = [

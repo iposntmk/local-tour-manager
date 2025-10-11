@@ -97,6 +97,33 @@ export type Database = {
           },
         ]
       }
+      diary_types: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          search_keywords: string[] | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          search_keywords?: string[] | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          search_keywords?: string[] | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           created_at: string | null
@@ -316,6 +343,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tour_destinations_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tour_diaries: {
+        Row: {
+          content_text: string | null
+          content_type: string
+          content_urls: string[] | null
+          created_at: string | null
+          diary_type_id: string | null
+          diary_type_name_at_booking: string | null
+          id: string
+          tour_code_at_booking: string | null
+          tour_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_text?: string | null
+          content_type: string
+          content_urls?: string[] | null
+          created_at?: string | null
+          diary_type_id?: string | null
+          diary_type_name_at_booking?: string | null
+          id?: string
+          tour_code_at_booking?: string | null
+          tour_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_text?: string | null
+          content_type?: string
+          content_urls?: string[] | null
+          created_at?: string | null
+          diary_type_id?: string | null
+          diary_type_name_at_booking?: string | null
+          id?: string
+          tour_code_at_booking?: string | null
+          tour_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_diaries_diary_type_id_fkey"
+            columns: ["diary_type_id"]
+            isOneToOne: false
+            referencedRelation: "diary_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_diaries_tour_id_fkey"
             columns: ["tour_id"]
             isOneToOne: false
             referencedRelation: "tours"
