@@ -50,7 +50,7 @@ const mainNavItems = [
   { to: '/statistics', icon: BarChart3, label: 'Statistics' },
 ];
 
-const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
+const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; user: User | null; onLogout: () => void }) => {
   const location = useLocation();
   const [masterDataOpen, setMasterDataOpen] = useState(false);
 
@@ -98,7 +98,16 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
               <span className="text-center truncate w-full">Settings</span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="w-48 mb-2">
+          <DropdownMenuContent align="end" side="top" className="w-56 mb-2">
+            {user && (
+              <>
+                <div className="px-2 py-2 text-sm">
+                  <div className="font-medium">Signed in as</div>
+                  <div className="text-muted-foreground truncate">{user.email}</div>
+                </div>
+                <DropdownMenuSeparator />
+              </>
+            )}
             {masterDataItems.map((item) => (
               <DropdownMenuItem key={item.to} asChild>
                 <NavLink
@@ -111,6 +120,15 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
                 </NavLink>
               </DropdownMenuItem>
             ))}
+            {user && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </>
@@ -179,7 +197,7 @@ export function Layout({ children }: LayoutProps) {
       <nav className="hidden md:block border-b bg-card sticky top-0 z-50">
         <div className="mx-auto flex items-center justify-between gap-1 md:gap-3 px-2 py-2 md:px-6 md:py-3 max-w-7xl">
           <div className="flex items-center gap-1 md:gap-3 overflow-x-auto">
-            <NavLinks isMobile={false} />
+            <NavLinks isMobile={false} user={user} onLogout={handleLogout} />
           </div>
           {user && (
             <div className="flex items-center gap-3 flex-shrink-0">
@@ -196,7 +214,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Bottom Navigation - mobile only */}
       <div className="fixed bottom-0 left-0 right-0 border-t bg-card z-50 shadow-lg md:hidden">
         <div className="flex items-stretch justify-evenly px-1 py-1.5">
-          <NavLinks isMobile={true} />
+          <NavLinks isMobile={true} user={user} onLogout={handleLogout} />
         </div>
       </div>
 
