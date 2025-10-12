@@ -1,10 +1,29 @@
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users, Building2, Globe, ArrowRight, BarChart3 } from 'lucide-react';
+import { MapPin, Users, Building2, Globe, ArrowRight, BarChart3, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { generateFullSQLBackup, downloadSQLBackup } from '@/lib/sql-backup';
+import { toast } from 'sonner';
+import { useState } from 'react';
 
 const Index = () => {
   const navigate = useNavigate();
+  const [isBackingUp, setIsBackingUp] = useState(false);
+
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      toast.info('Generating SQL backup...');
+      const sql = await generateFullSQLBackup();
+      downloadSQLBackup(sql);
+      toast.success('Backup downloaded successfully!');
+    } catch (error) {
+      console.error('Backup error:', error);
+      toast.error('Failed to generate backup');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
 
   const features = [
     {
@@ -62,6 +81,16 @@ const Index = () => {
             <Button size="lg" onClick={() => navigate('/tours')} className="gap-2">
               Get Started <ArrowRight className="h-4 w-4" />
             </Button>
+            <Button 
+              size="lg" 
+              variant="outline" 
+              onClick={handleBackup}
+              disabled={isBackingUp}
+              className="gap-2"
+            >
+              <Database className="h-4 w-4" />
+              {isBackingUp ? 'Creating Backup...' : 'SQL Backup'}
+            </Button>
           </div>
         </div>
 
@@ -98,6 +127,7 @@ const Index = () => {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>✓ Cloud-based storage with Supabase backend</p>
+            <p>✓ Full SQL backups with schema + data</p>
             <p>✓ Export/Import data as JSON for backup and sharing</p>
             <p>✓ Responsive design works on desktop and mobile</p>
             <p>✓ Fast typeahead search for all master data</p>
