@@ -23,7 +23,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Upload } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TourDiaryDialogProps {
   open: boolean;
@@ -49,6 +50,7 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
   const [contentText, setContentText] = useState('');
   const [contentUrls, setContentUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -105,6 +107,55 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
     const newUrls = [...contentUrls];
     newUrls[index] = value;
     setContentUrls(newUrls);
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingFiles(true);
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+        const filePath = `tour-diaries/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from('tour-images')
+          .upload(filePath, file);
+
+        if (error) {
+          throw error;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('tour-images')
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrl);
+      }
+
+      setContentUrls([...contentUrls, ...uploadedUrls]);
+      toast({
+        title: 'Success',
+        description: `${uploadedUrls.length} file(s) uploaded successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to upload files',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingFiles(false);
+      // Reset file input
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -309,36 +360,79 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
                 />
               )}
 
-              {/* Image/Video/Audio URL inputs */}
+              {/* Image/Video/Audio file uploads */}
               {(diaryDataType === 'image' || diaryDataType === 'video' || diaryDataType === 'audio') && (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label>URLs *</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddUrl}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Add URL
-                    </Button>
-                  </div>
-                  {contentUrls.map((url, index) => (
-                    <div key={index} className="flex gap-2">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="file-upload">Upload Files</Label>
+                    <div className="flex items-center gap-2">
                       <Input
-                        value={url}
-                        onChange={(e) => handleUrlChange(index, e.target.value)}
-                        placeholder={`Enter ${diaryDataType} URL`}
+                        id="file-upload"
+                        type="file"
+                        multiple
+                        accept={
+                          diaryDataType === 'image' ? 'image/*' :
+                          diaryDataType === 'video' ? 'video/*' :
+                          'audio/*'
+                        }
+                        onChange={handleFileUpload}
+                        disabled={uploadingFiles}
+                        className="cursor-pointer"
                       />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleRemoveUrl(index)}
-                      >
-                        Remove
-                      </Button>
+                      {uploadingFiles && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
                     </div>
-                  ))}
-                  {contentUrls.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No URLs added yet. Click "Add URL" to add.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Select one or multiple {diaryDataType} files to upload
+                    </p>
+                  </div>
+
+                  {contentUrls.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Uploaded Files ({contentUrls.length})</Label>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {contentUrls.map((url, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                            {diaryDataType === 'image' && url && !url.startsWith('http') === false && (
+                              <img src={url} alt={`Preview ${index + 1}`} className="h-12 w-12 object-cover rounded" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              {url ? (
+                                <p className="text-sm truncate">{url.split('/').pop() || url}</p>
+                              ) : (
+                                <Input
+                                  value={url}
+                                  onChange={(e) => handleUrlChange(index, e.target.value)}
+                                  placeholder={`Enter ${diaryDataType} URL`}
+                                  className="h-8"
+                                />
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveUrl(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
+
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleAddUrl}
+                    className="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Add URL manually
+                  </Button>
                 </div>
               )}
             </div>
