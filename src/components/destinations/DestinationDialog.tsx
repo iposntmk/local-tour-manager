@@ -18,6 +18,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -145,28 +146,30 @@ export function DestinationDialog({
               <PopoverContent className="w-full p-0">
                 <Command>
                   <CommandInput placeholder="Search province..." />
-                  <CommandEmpty>No province found.</CommandEmpty>
-                  <CommandGroup>
-                    {provinces.map((province) => (
-                      <CommandItem
-                        key={province.id}
-                        value={province.name}
-                        onSelect={() => {
-                          setSelectedProvinceId(province.id);
-                          setProvinceOpen(false);
-                          if (fieldErrors.province) setFieldErrors({ ...fieldErrors, province: false });
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            'mr-2 h-4 w-4',
-                            selectedProvinceId === province.id ? 'opacity-100' : 'opacity-0'
-                          )}
-                        />
-                        {province.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                  <CommandList>
+                    <CommandEmpty>No province found.</CommandEmpty>
+                    <CommandGroup>
+                      {provinces.map((province) => (
+                        <CommandItem
+                          key={province.id}
+                          value={province.name}
+                          onSelect={() => {
+                            setSelectedProvinceId(province.id);
+                            setProvinceOpen(false);
+                            if (fieldErrors.province) setFieldErrors({ ...fieldErrors, province: false });
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedProvinceId === province.id ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          {province.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
                 </Command>
               </PopoverContent>
             </Popover>

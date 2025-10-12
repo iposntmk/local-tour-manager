@@ -23,8 +23,45 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, X, Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+
+const COMMON_RELIGIONS = [
+  'Christianity',
+  'Islam',
+  'Hinduism',
+  'Buddhism',
+  'Sikhism',
+  'Judaism',
+  "Bahá'í Faith",
+  'Jainism',
+  'Shinto',
+  'Cao Dai',
+  'Zoroastrianism',
+  'Tenrikyo',
+  'Animism',
+  'Neo-Paganism',
+  'Unitarian Universalism',
+  'Rastafari',
+  'Secular/Nonreligious/Agnostic/Atheist',
+  'Traditional African Religions',
+  'Chinese Traditional Religion',
+  'Spiritism',
+];
 
 interface TourDiaryDialogProps {
   open: boolean;
@@ -51,6 +88,7 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
   const [contentUrls, setContentUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [openReligionCombobox, setOpenReligionCombobox] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -94,6 +132,7 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
   // Get selected diary type's data type
   const selectedDiaryType = diaryTypes.find(dt => dt.id === selectedDiaryTypeId);
   const diaryDataType = selectedDiaryType?.dataType || 'text';
+  const isReligionType = selectedDiaryType?.name.toLowerCase().includes('religion') || false;
 
   const handleAddUrl = () => {
     setContentUrls([...contentUrls, '']);
@@ -284,7 +323,7 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
               <Label htmlFor="content">Content *</Label>
 
               {/* Text input */}
-              {diaryDataType === 'text' && (
+              {diaryDataType === 'text' && !isReligionType && (
                 <Textarea
                   id="content"
                   value={contentText}
@@ -292,6 +331,51 @@ export function TourDiaryDialog({ open, onOpenChange, tourDiary, onSuccess }: To
                   placeholder="Enter text content"
                   rows={8}
                 />
+              )}
+
+              {/* Religion combobox */}
+              {diaryDataType === 'text' && isReligionType && (
+                <Popover open={openReligionCombobox} onOpenChange={setOpenReligionCombobox}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openReligionCombobox}
+                      className="w-full justify-between"
+                    >
+                      {contentText || "Select religion..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search religion..." />
+                      <CommandList>
+                        <CommandEmpty>No religion found.</CommandEmpty>
+                        <CommandGroup className="max-h-64 overflow-y-auto">
+                          {COMMON_RELIGIONS.map((religion) => (
+                            <CommandItem
+                              key={religion}
+                              value={religion}
+                              onSelect={() => {
+                                setContentText(religion);
+                                setOpenReligionCombobox(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  contentText === religion ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {religion}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               )}
 
               {/* Date input */}

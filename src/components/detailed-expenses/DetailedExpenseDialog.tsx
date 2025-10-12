@@ -18,6 +18,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -145,28 +146,30 @@ export function DetailedExpenseDialog({
               <PopoverContent className="w-full p-0">
                 <Command>
                   <CommandInput placeholder="Search category..." />
-                  <CommandEmpty>No category found.</CommandEmpty>
-                  <CommandGroup>
-                    {categories.map((category) => (
-                      <CommandItem
-                        key={category.id}
-                        value={category.name}
-                        onSelect={() => {
-                          setSelectedCategoryId(category.id);
-                          setCategoryOpen(false);
-                          if (fieldErrors.category) setFieldErrors({ ...fieldErrors, category: false });
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            'mr-2 h-4 w-4',
-                            selectedCategoryId === category.id ? 'opacity-100' : 'opacity-0'
-                          )}
-                        />
-                        {category.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                  <CommandList>
+                    <CommandEmpty>No category found.</CommandEmpty>
+                    <CommandGroup>
+                      {categories.map((category) => (
+                        <CommandItem
+                          key={category.id}
+                          value={category.name}
+                          onSelect={() => {
+                            setSelectedCategoryId(category.id);
+                            setCategoryOpen(false);
+                            if (fieldErrors.category) setFieldErrors({ ...fieldErrors, category: false });
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedCategoryId === category.id ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          {category.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
                 </Command>
               </PopoverContent>
             </Popover>

@@ -15,6 +15,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -222,27 +223,29 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
             <PopoverContent className="w-full p-0">
               <Command>
                 <CommandInput placeholder="Search company..." />
-                <CommandEmpty>No company found.</CommandEmpty>
-                <CommandGroup>
-                  {companies.map((company) => (
-                    <CommandItem
-                      key={company.id}
-                      value={company.name}
-                      onSelect={() => {
-                        setSelectedCompanyId(company.id);
-                        setCompanyOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          'mr-2 h-4 w-4',
-                          selectedCompanyId === company.id ? 'opacity-100' : 'opacity-0'
-                        )}
-                      />
-                      {company.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+                <CommandList>
+                  <CommandEmpty>No company found.</CommandEmpty>
+                  <CommandGroup>
+                    {companies.map((company) => (
+                      <CommandItem
+                        key={company.id}
+                        value={company.name}
+                        onSelect={() => {
+                          setSelectedCompanyId(company.id);
+                          setCompanyOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            selectedCompanyId === company.id ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        {company.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
               </Command>
             </PopoverContent>
           </Popover>
@@ -265,27 +268,29 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
             <PopoverContent className="w-full p-0">
               <Command>
                 <CommandInput placeholder="Search guide..." />
-                <CommandEmpty>No guide found.</CommandEmpty>
-                <CommandGroup>
-                  {guides.map((guide) => (
-                    <CommandItem
-                      key={guide.id}
-                      value={guide.name}
-                      onSelect={() => {
-                        setSelectedGuideId(guide.id);
-                        setGuideOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          'mr-2 h-4 w-4',
-                          selectedGuideId === guide.id ? 'opacity-100' : 'opacity-0'
-                        )}
-                      />
-                      {guide.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+                <CommandList>
+                  <CommandEmpty>No guide found.</CommandEmpty>
+                  <CommandGroup>
+                    {guides.map((guide) => (
+                      <CommandItem
+                        key={guide.id}
+                        value={guide.name}
+                        onSelect={() => {
+                          setSelectedGuideId(guide.id);
+                          setGuideOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            selectedGuideId === guide.id ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        {guide.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
               </Command>
             </PopoverContent>
           </Popover>
@@ -327,27 +332,29 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
             <PopoverContent className="w-full p-0">
               <Command>
                 <CommandInput placeholder="Search nationality..." />
-                <CommandEmpty>No nationality found.</CommandEmpty>
-                <CommandGroup>
-                  {nationalities.map((nationality) => (
-                    <CommandItem
-                      key={nationality.id}
-                      value={nationality.name}
-                      onSelect={() => {
-                        setSelectedNationalityId(nationality.id);
-                        setNationalityOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          'mr-2 h-4 w-4',
-                          selectedNationalityId === nationality.id ? 'opacity-100' : 'opacity-0'
-                        )}
-                      />
-                      {nationality.emoji} {nationality.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+                <CommandList>
+                  <CommandEmpty>No nationality found.</CommandEmpty>
+                  <CommandGroup>
+                    {nationalities.map((nationality) => (
+                      <CommandItem
+                        key={nationality.id}
+                        value={nationality.name}
+                        onSelect={() => {
+                          setSelectedNationalityId(nationality.id);
+                          setNationalityOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            selectedNationalityId === nationality.id ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        {nationality.emoji} {nationality.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
               </Command>
             </PopoverContent>
           </Popover>
