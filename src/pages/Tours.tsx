@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Flag,
   Baby,
+  Database,
 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -57,6 +58,7 @@ import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour, TourListResult, TourQuery } from '@/types/tour';
 import Fuse from 'fuse.js';
+import { generateFullSQLBackup, downloadSQLBackup } from '@/lib/sql-backup';
 
 
 // Truncate helper with ellipsis included in `max` length
@@ -68,6 +70,8 @@ const truncateText = (text: string | undefined | null, max = 15): string => {
 };
 
 const Tours = () => {
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  
   // Separate search inputs for code, date range, and company
   const [searchCode, setSearchCode] = useState(() => localStorage.getItem('tours.search.code') || '');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -726,6 +730,21 @@ const Tours = () => {
     importMutation.mutate(tours);
   };
 
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      toast.info('Generating SQL backup...');
+      const sql = await generateFullSQLBackup();
+      downloadSQLBackup(sql);
+      toast.success('Backup downloaded successfully!');
+    } catch (error) {
+      console.error('Backup error:', error);
+      toast.error('Failed to generate backup');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
   const { classes: headerClasses } = useHeaderMode('tours.headerMode');
 
   return (
@@ -739,6 +758,17 @@ const Tours = () => {
               <p className="text-xs sm:text-sm md:text-base text-muted-foreground truncate">Manage your tours and itineraries</p>
             </div>
             <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
+              <Button
+                onClick={handleBackup}
+                variant="outline"
+                size="sm"
+                disabled={isBackingUp}
+                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                title="Download full SQL backup (schema + data)"
+              >
+                <Database className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{isBackingUp ? 'Backing up...' : 'SQL Backup'}</span>
+              </Button>
               <ImportTourDialogEnhanced
                 onImport={handleImport}
                 trigger={
