@@ -191,6 +191,7 @@ Required `.env` file:
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_BUCKET=your_bucket_name
 ```
 
 ## Common Tasks

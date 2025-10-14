@@ -1,3 +1,4 @@
+import type { PostgrestError } from '@supabase/supabase-js';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -6,13 +7,13 @@ import { TriangleAlert, RefreshCw } from 'lucide-react';
 
 export function SupabaseHealthBanner() {
   const enabled = isSupabaseEnabled();
-  if (!enabled) return null; // Handled by SupabaseStatusBanner
-
-  const supabase = getSupabaseClient();
 
   const query = useQuery({
     queryKey: ['supabase-health'],
+    enabled,
+    retry: 0,
     queryFn: async () => {
+      const supabase = getSupabaseClient();
       const { error } = await supabase
         .from('tours')
         .select('id', { head: true, count: 'exact' })
@@ -20,14 +21,27 @@ export function SupabaseHealthBanner() {
       if (error) throw error;
       return { ok: true as const };
     },
-    retry: 0,
   });
 
-  if (!query.isError) return null;
+  if (!enabled || !query.isError) return null;
 
-  const err = query.error as { message?: string; code?: string } | Error;
-  const message = (err as any)?.message || 'Failed to reach Supabase.';
-  const code = (err as any)?.code as string | undefined;
+  const error = query.error as Error | PostgrestError | null;
+  let message = 'Failed to reach Supabase.';
+  let code: string | undefined;
+
+  if (error) {
+    if (typeof error === 'object') {
+      if ('message' in error && typeof error.message === 'string') {
+        message = error.message;
+      }
+      if ('code' in error && typeof (error as { code?: unknown }).code === 'string') {
+        code = (error as { code: string }).code;
+      }
+    }
+    if (error instanceof Error && error.message) {
+      message = error.message;
+    }
+  }
 
   return (
     <div className="mb-4">

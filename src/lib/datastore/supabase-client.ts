@@ -7,7 +7,7 @@ let warnedAboutMissingCredentials = false;
 const hasCredentials = (): boolean => {
   return Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
-      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+      import.meta.env.VITE_SUPABASE_ANON_KEY
   );
 };
 
@@ -17,7 +17,7 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
   }
 
   const url = (import.meta.env.VITE_SUPABASE_URL as string).trim();
-  const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string).trim();
+  const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string).trim();
 
   const authOptions = {
     persistSession: true,
@@ -33,7 +33,7 @@ export const isSupabaseEnabled = (): boolean => {
 
   if (!enabled && import.meta.env.DEV && !warnedAboutMissingCredentials) {
     console.error(
-      "Supabase credentials are not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in your .env file.",
+      "Supabase credentials are not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.",
     );
     warnedAboutMissingCredentials = true;
   }
