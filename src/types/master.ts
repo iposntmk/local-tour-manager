@@ -191,3 +191,107 @@ export interface TourDiaryInput {
   contentText?: string;
   contentUrls?: string[];
 }
+
+// Restaurant types for managing restaurant master data
+export type RestaurantType = 'asian' | 'indian' | 'western' | 'local' | 'other';
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  restaurantType: RestaurantType;
+  phone: string;
+  address: string;
+  provinceRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  commissionForGuide: number;
+  note: string;
+  status: EntityStatus;
+  searchKeywords: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RestaurantInput {
+  name: string;
+  restaurantType: RestaurantType;
+  phone?: string;
+  address?: string;
+  provinceRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  commissionForGuide?: number;
+  note?: string;
+}
+
+// Shop Place types for managing shopping locations
+export type ShopPlaceType = 'clothing' | 'food_and_beverage' | 'souvenirs' | 'handicrafts' | 'electronics' | 'other';
+
+export interface ShopPlace {
+  id: string;
+  name: string;
+  shopType: ShopPlaceType;
+  phone: string;
+  address: string;
+  provinceRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  commissionForGuide: number;
+  note: string;
+  status: EntityStatus;
+  searchKeywords: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShopPlaceInput {
+  name: string;
+  shopType: ShopPlaceType;
+  phone?: string;
+  address?: string;
+  provinceRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  commissionForGuide?: number;
+  note?: string;
+}
+
+// Hotel types for managing hotel master data
+export type RoomType = 'single' | 'double' | 'group' | 'suite';
+
+export interface Hotel {
+  id: string;
+  name: string;
+  ownerName: string;
+  ownerPhone: string;
+  roomType: RoomType;
+  pricePerNight: number;
+  address: string;
+  provinceRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  note: string;
+  status: EntityStatus;
+  searchKeywords: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HotelInput {
+  name: string;
+  ownerName: string;
+  ownerPhone: string;
+  roomType: RoomType;
+  pricePerNight: number;
+  address?: string;
+  provinceRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  note?: string;
+}

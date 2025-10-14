@@ -17,6 +17,12 @@ import ExpenseCategories from "./pages/ExpenseCategories";
 import DetailedExpenses from "./pages/DetailedExpenses";
 import DiaryTypes from "./pages/DiaryTypes";
 import TourDiaries from "./pages/TourDiaries";
+import Restaurants from "./pages/Restaurants";
+import RestaurantDetail from "./pages/RestaurantDetail";
+import ShopPlaces from "./pages/ShopPlaces";
+import ShopPlaceDetail from "./pages/ShopPlaceDetail";
+import Hotels from "./pages/Hotels";
+import HotelDetail from "./pages/HotelDetail";
 import Tours from "./pages/Tours";
 import TourDetail from "./pages/TourDetail";
 import NotFound from "./pages/NotFound";
@@ -77,6 +83,12 @@ const App = () => {
             <Route path="/detailed-expenses" element={user ? <DetailedExpenses /> : <Navigate to="/auth" />} />
             <Route path="/diary-types" element={user ? <DiaryTypes /> : <Navigate to="/auth" />} />
             <Route path="/tour-diaries" element={user ? <TourDiaries /> : <Navigate to="/auth" />} />
+            <Route path="/restaurants" element={<Restaurants />} />
+            <Route path="/restaurants/:id" element={<RestaurantDetail />} />
+            <Route path="/shop-places" element={<ShopPlaces />} />
+            <Route path="/shop-places/:id" element={<ShopPlaceDetail />} />
+            <Route path="/hotels" element={<Hotels />} />
+            <Route path="/hotels/:id" element={<HotelDetail />} />
             <Route path="/tours" element={user ? <Tours /> : <Navigate to="/auth" />} />
             <Route path="/tours/:id" element={user ? <TourDetail /> : <Navigate to="/auth" />} />
             <Route path="/statistics" element={user ? <Statistics /> : <Navigate to="/auth" />} />

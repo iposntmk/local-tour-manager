@@ -1,4 +1,4 @@
-import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput, DiaryType, DiaryTypeInput, TourDiary, TourDiaryInput } from './master';
+import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput, DiaryType, DiaryTypeInput, TourDiary, TourDiaryInput, Restaurant, RestaurantInput, ShopPlace, ShopPlaceInput, Hotel, HotelInput } from './master';
 import type {
   Tour,
   TourInput,
@@ -128,7 +128,40 @@ export interface DataStore {
   deleteTourDiary(id: string): Promise<void>;
   deleteAllTourDiaries(): Promise<void>;
   bulkCreateTourDiaries(inputs: TourDiaryInput[]): Promise<TourDiary[]>;
-  
+
+  // Restaurants
+  listRestaurants(query?: SearchQuery): Promise<Restaurant[]>;
+  getRestaurant(id: string): Promise<Restaurant | undefined>;
+  createRestaurant(input: RestaurantInput): Promise<Restaurant>;
+  updateRestaurant(id: string, patch: Partial<Restaurant>): Promise<void>;
+  toggleRestaurantStatus(id: string): Promise<void>;
+  duplicateRestaurant(id: string): Promise<Restaurant>;
+  deleteRestaurant(id: string): Promise<void>;
+  deleteAllRestaurants(): Promise<void>;
+  bulkCreateRestaurants(inputs: RestaurantInput[]): Promise<Restaurant[]>;
+
+  // Shop Places
+  listShopPlaces(query?: SearchQuery): Promise<ShopPlace[]>;
+  getShopPlace(id: string): Promise<ShopPlace | undefined>;
+  createShopPlace(input: ShopPlaceInput): Promise<ShopPlace>;
+  updateShopPlace(id: string, patch: Partial<ShopPlace>): Promise<void>;
+  toggleShopPlaceStatus(id: string): Promise<void>;
+  duplicateShopPlace(id: string): Promise<ShopPlace>;
+  deleteShopPlace(id: string): Promise<void>;
+  deleteAllShopPlaces(): Promise<void>;
+  bulkCreateShopPlaces(inputs: ShopPlaceInput[]): Promise<ShopPlace[]>;
+
+  // Hotels
+  listHotels(query?: SearchQuery): Promise<Hotel[]>;
+  getHotel(id: string): Promise<Hotel | undefined>;
+  createHotel(input: HotelInput): Promise<Hotel>;
+  updateHotel(id: string, patch: Partial<Hotel>): Promise<void>;
+  toggleHotelStatus(id: string): Promise<void>;
+  duplicateHotel(id: string): Promise<Hotel>;
+  deleteHotel(id: string): Promise<void>;
+  deleteAllHotels(): Promise<void>;
+  bulkCreateHotels(inputs: HotelInput[]): Promise<Hotel[]>;
+
   // Tours
   listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult>;
   getTour(id: string): Promise<Tour | undefined>;

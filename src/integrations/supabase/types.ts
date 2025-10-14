@@ -613,6 +613,177 @@ export type Database = {
           },
         ]
       }
+      restaurants: {
+        Row: {
+          id: string
+          name: string
+          restaurant_type: string
+          phone: string | null
+          address: string | null
+          province_id: string | null
+          province_name_at_booking: string | null
+          commission_for_guide: number | null
+          note: string | null
+          status: string
+          search_keywords: string[] | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          restaurant_type: string
+          phone?: string | null
+          address?: string | null
+          province_id?: string | null
+          province_name_at_booking?: string | null
+          commission_for_guide?: number | null
+          note?: string | null
+          status?: string
+          search_keywords?: string[] | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          restaurant_type?: string
+          phone?: string | null
+          address?: string | null
+          province_id?: string | null
+          province_name_at_booking?: string | null
+          commission_for_guide?: number | null
+          note?: string | null
+          status?: string
+          search_keywords?: string[] | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurants_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_places: {
+        Row: {
+          id: string
+          name: string
+          shop_type: string
+          phone: string | null
+          address: string | null
+          province_id: string | null
+          province_name_at_booking: string | null
+          commission_for_guide: number | null
+          note: string | null
+          status: string
+          search_keywords: string[] | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          shop_type: string
+          phone?: string | null
+          address?: string | null
+          province_id?: string | null
+          province_name_at_booking?: string | null
+          commission_for_guide?: number | null
+          note?: string | null
+          status?: string
+          search_keywords?: string[] | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          shop_type?: string
+          phone?: string | null
+          address?: string | null
+          province_id?: string | null
+          province_name_at_booking?: string | null
+          commission_for_guide?: number | null
+          note?: string | null
+          status?: string
+          search_keywords?: string[] | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_places_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotels: {
+        Row: {
+          id: string
+          name: string
+          owner_name: string
+          owner_phone: string
+          room_type: string
+          price_per_night: number
+          address: string | null
+          province_id: string | null
+          province_name_at_booking: string | null
+          note: string | null
+          status: string
+          search_keywords: string[] | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          owner_name: string
+          owner_phone: string
+          room_type: string
+          price_per_night: number
+          address?: string | null
+          province_id?: string | null
+          province_name_at_booking?: string | null
+          note?: string | null
+          status?: string
+          search_keywords?: string[] | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          owner_name?: string
+          owner_phone?: string
+          room_type?: string
+          price_per_night?: number
+          address?: string | null
+          province_id?: string | null
+          province_name_at_booking?: string | null
+          note?: string | null
+          status?: string
+          search_keywords?: string[] | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotels_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tours: {
         Row: {
           adults: number | null

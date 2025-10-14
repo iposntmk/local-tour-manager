@@ -23,6 +23,12 @@ import type {
   DiaryTypeInput,
   TourDiary,
   TourDiaryInput,
+  Restaurant,
+  RestaurantInput,
+  ShopPlace,
+  ShopPlaceInput,
+  Hotel,
+  HotelInput,
 } from '@/types/master';
 import type {
   Tour,
@@ -41,6 +47,64 @@ import { generateSearchKeywords } from '@/lib/string-utils';
 import { differenceInDays } from 'date-fns';
 import { enrichTourWithSummary, enrichToursWithSummaries } from '@/lib/tour-utils';
 
+type GuideRow = Database['public']['Tables']['guides']['Row'];
+type GuideUpdate = Database['public']['Tables']['guides']['Update'];
+type CompanyRow = Database['public']['Tables']['companies']['Row'];
+type CompanyUpdate = Database['public']['Tables']['companies']['Update'];
+type NationalityRow = Database['public']['Tables']['nationalities']['Row'];
+type NationalityUpdate = Database['public']['Tables']['nationalities']['Update'];
+type ProvinceRow = Database['public']['Tables']['provinces']['Row'];
+type ProvinceUpdate = Database['public']['Tables']['provinces']['Update'];
+type TouristDestinationRow = Database['public']['Tables']['tourist_destinations']['Row'];
+type TouristDestinationUpdate = Database['public']['Tables']['tourist_destinations']['Update'];
+type ShoppingRow = Database['public']['Tables']['shoppings']['Row'];
+type ShoppingUpdate = Database['public']['Tables']['shoppings']['Update'];
+type ExpenseCategoryRow = Database['public']['Tables']['expense_categories']['Row'];
+type ExpenseCategoryUpdate = Database['public']['Tables']['expense_categories']['Update'];
+type DetailedExpenseRow = Database['public']['Tables']['detailed_expenses']['Row'];
+type DetailedExpenseUpdate = Database['public']['Tables']['detailed_expenses']['Update'];
+type DiaryTypeRow = Database['public']['Tables']['diary_types']['Row'];
+type DiaryTypeUpdate = Database['public']['Tables']['diary_types']['Update'];
+type TourDiaryRow = Database['public']['Tables']['tour_diaries']['Row'];
+type TourDiaryUpdate = Database['public']['Tables']['tour_diaries']['Update'];
+type RestaurantRow = Database['public']['Tables']['restaurants']['Row'];
+type RestaurantUpdate = Database['public']['Tables']['restaurants']['Update'];
+type ShopPlaceRow = Database['public']['Tables']['shop_places']['Row'];
+type ShopPlaceUpdate = Database['public']['Tables']['shop_places']['Update'];
+type HotelRow = Database['public']['Tables']['hotels']['Row'];
+type HotelUpdate = Database['public']['Tables']['hotels']['Update'];
+type TourRow = Database['public']['Tables']['tours']['Row'];
+type TourUpdateRow = Database['public']['Tables']['tours']['Update'];
+type TourDestinationRow = Database['public']['Tables']['tour_destinations']['Row'];
+type TourExpenseRow = Database['public']['Tables']['tour_expenses']['Row'];
+type TourMealRow = Database['public']['Tables']['tour_meals']['Row'];
+type TourAllowanceRow = Database['public']['Tables']['tour_allowances']['Row'];
+type TourShoppingRow = Database['public']['Tables']['tour_shoppings']['Row'];
+
+type TourRowWithDetails = TourRow & {
+  tour_destinations?: TourDestinationRow[] | null;
+  tour_expenses?: TourExpenseRow[] | null;
+  tour_meals?: TourMealRow[] | null;
+  tour_allowances?: TourAllowanceRow[] | null;
+  tour_shoppings?: TourShoppingRow[] | null;
+};
+
+type TourRowWithAllowances = TourRow & {
+  tour_allowances?: Array<Pick<TourAllowanceRow, 'price' | 'quantity'>> | null;
+};
+
+interface ExportSnapshot {
+  guides: Guide[];
+  companies: Company[];
+  nationalities: Nationality[];
+  provinces: Province[];
+  touristDestinations: TouristDestination[];
+  shoppings: Shopping[];
+  expenseCategories: ExpenseCategory[];
+  detailedExpenses: DetailedExpense[];
+  tours: Tour[];
+}
+
 export class SupabaseStore implements DataStore {
   private readonly supabase: SupabaseClient<Database>;
 
@@ -49,7 +113,7 @@ export class SupabaseStore implements DataStore {
   }
 
   // Helper to map database rows to app types
-  private mapGuide(row: any): Guide {
+  private mapGuide(row: GuideRow): Guide {
     return {
       id: row.id,
       name: row.name,
@@ -62,7 +126,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapCompany(row: any): Company {
+  private mapCompany(row: CompanyRow): Company {
     return {
       id: row.id,
       name: row.name,
@@ -77,7 +141,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapNationality(row: any): Nationality {
+  private mapNationality(row: NationalityRow): Nationality {
     return {
       id: row.id,
       name: row.name,
@@ -90,7 +154,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapProvince(row: any): Province {
+  private mapProvince(row: ProvinceRow): Province {
     return {
       id: row.id,
       name: row.name,
@@ -101,7 +165,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapTouristDestination(row: any): TouristDestination {
+  private mapTouristDestination(row: TouristDestinationRow): TouristDestination {
     return {
       id: row.id,
       name: row.name,
@@ -117,7 +181,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapShopping(row: any): Shopping {
+  private mapShopping(row: ShoppingRow): Shopping {
     return {
       id: row.id,
       name: row.name,
@@ -129,7 +193,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapExpenseCategory(row: any): ExpenseCategory {
+  private mapExpenseCategory(row: ExpenseCategoryRow): ExpenseCategory {
     return {
       id: row.id,
       name: row.name,
@@ -140,7 +204,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapDetailedExpense(row: any): DetailedExpense {
+  private mapDetailedExpense(row: DetailedExpenseRow): DetailedExpense {
     return {
       id: row.id,
       name: row.name,
@@ -156,7 +220,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapDiaryType(row: any): DiaryType {
+  private mapDiaryType(row: DiaryTypeRow): DiaryType {
     return {
       id: row.id,
       name: row.name,
@@ -168,7 +232,7 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapTourDiary(row: any): TourDiary {
+  private mapTourDiary(row: TourDiaryRow): TourDiary {
     return {
       id: row.id,
       tourRef: {
@@ -188,7 +252,68 @@ export class SupabaseStore implements DataStore {
     };
   }
 
-  private mapTour(row: any): Tour {
+  private mapRestaurant(row: RestaurantRow): Restaurant {
+    return {
+      id: row.id,
+      name: row.name,
+      restaurantType: row.restaurant_type,
+      phone: row.phone || '',
+      address: row.address || '',
+      provinceRef: {
+        id: row.province_id || '',
+        nameAtBooking: row.province_name_at_booking || '',
+      },
+      commissionForGuide: row.commission_for_guide || 0,
+      note: row.note || '',
+      status: row.status,
+      searchKeywords: row.search_keywords || [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  private mapShopPlace(row: ShopPlaceRow): ShopPlace {
+    return {
+      id: row.id,
+      name: row.name,
+      shopType: row.shop_type,
+      phone: row.phone || '',
+      address: row.address || '',
+      provinceRef: {
+        id: row.province_id || '',
+        nameAtBooking: row.province_name_at_booking || '',
+      },
+      commissionForGuide: row.commission_for_guide || 0,
+      note: row.note || '',
+      status: row.status,
+      searchKeywords: row.search_keywords || [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  private mapHotel(row: HotelRow): Hotel {
+    return {
+      id: row.id,
+      name: row.name,
+      ownerName: row.owner_name || '',
+      ownerPhone: row.owner_phone || '',
+      roomType: row.room_type,
+      pricePerNight: row.price_per_night,
+      address: row.address || '',
+      provinceRef: {
+        id: row.province_id || '',
+        nameAtBooking: row.province_name_at_booking || '',
+      },
+      note: row.note || '',
+      status: row.status,
+      searchKeywords: row.search_keywords || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  private mapTour(row: TourRow): Tour {
     const totalGuests = (row.adults || 0) + (row.children || 0);
     // Read total_days from DB when available; fallback to inclusive diff (counting both start and end days)
     const computedInclusive = Math.max(1, differenceInDays(new Date(row.end_date), new Date(row.start_date)) + 1);
@@ -287,7 +412,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateGuide(id: string, guide: Partial<Guide>): Promise<void> {
-    const updates: any = {};
+    const updates: GuideUpdate = {};
     if (guide.name !== undefined) {
       // Check for duplicate name (excluding current record)
       const { data: existing } = await this.supabase
@@ -452,7 +577,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateCompany(id: string, company: Partial<Company>): Promise<void> {
-    const updates: any = {};
+    const updates: CompanyUpdate = {};
     if (company.name !== undefined) {
       // Check for duplicate name (excluding current record)
       const { data: existing } = await this.supabase
@@ -589,7 +714,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateNationality(id: string, nationality: Partial<Nationality>): Promise<void> {
-    const updates: any = {};
+    const updates: NationalityUpdate = {};
     if (nationality.name !== undefined) {
       // Check for duplicate name (excluding current record)
       const { data: existing } = await this.supabase
@@ -718,7 +843,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateProvince(id: string, province: Partial<Province>): Promise<void> {
-    const updates: any = {};
+    const updates: ProvinceUpdate = {};
     if (province.name !== undefined) {
       // Check for duplicate name (excluding current record)
       const { data: existing } = await this.supabase
@@ -844,7 +969,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateTouristDestination(id: string, destination: Partial<TouristDestination>): Promise<void> {
-    const updates: any = {};
+    const updates: TouristDestinationUpdate = {};
     if (destination.name !== undefined) {
       // Check for duplicate name (excluding current record)
       const { data: existing } = await this.supabase
@@ -978,7 +1103,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateShopping(id: string, shopping: Partial<Shopping>): Promise<void> {
-    const updates: any = {};
+    const updates: ShoppingUpdate = {};
     if (shopping.name !== undefined) {
       // Check for duplicate name (excluding current record)
       const { data: existing } = await this.supabase
@@ -1101,7 +1226,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateExpenseCategory(id: string, category: Partial<ExpenseCategory>): Promise<void> {
-    const updates: any = {};
+    const updates: ExpenseCategoryUpdate = {};
     if (category.name !== undefined) {
       // Check for duplicate name (excluding current record)
       const { data: existing } = await this.supabase
@@ -1228,7 +1353,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateDetailedExpense(id: string, expense: Partial<DetailedExpense>): Promise<void> {
-    const updates: any = {};
+    const updates: DetailedExpenseUpdate = {};
     if (expense.name !== undefined) {
       // Check for duplicate name (excluding current record)
       const { data: existing } = await this.supabase
@@ -1363,7 +1488,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateDiaryType(id: string, patch: Partial<DiaryType>): Promise<void> {
-    const updates: any = {};
+    const updates: DiaryTypeUpdate = {};
 
     if (patch.name !== undefined) {
       const { data: existing } = await this.supabase
@@ -1550,6 +1675,439 @@ export class SupabaseStore implements DataStore {
     return (data || []).map(this.mapTourDiary);
   }
 
+  // Restaurants
+  async listRestaurants(query?: SearchQuery): Promise<Restaurant[]> {
+    let queryBuilder = this.supabase.from('restaurants').select('*').order('name');
+
+    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
+    if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
+    const { data, error } = await queryBuilder;
+    if (error) throw error;
+    return (data || []).map(this.mapRestaurant);
+  }
+
+  async getRestaurant(id: string): Promise<Restaurant | null> {
+    const { data, error } = await this.supabase.from('restaurants').select('*').eq('id', id).single();
+    if (error) return null;
+    return data ? this.mapRestaurant(data) : null;
+  }
+
+  async createRestaurant(input: RestaurantInput): Promise<Restaurant> {
+    // Check for duplicate name
+    const { data: existing } = await this.supabase
+      .from('restaurants')
+      .select('id')
+      .ilike('name', input.name)
+      .maybeSingle();
+    if (existing) {
+      throw new Error('A restaurant with this name already exists');
+    }
+    const searchKeywords = generateSearchKeywords(input.name);
+    const { data, error } = await this.supabase
+      .from('restaurants')
+      .insert({
+        name: input.name,
+        restaurant_type: input.restaurantType,
+        phone: input.phone || '',
+        address: input.address || '',
+        province_id: input.provinceRef.id || null,
+        province_name_at_booking: input.provinceRef.nameAtBooking || null,
+        commission_for_guide: input.commissionForGuide ?? 0,
+        note: input.note || '',
+        status: 'active',
+        search_keywords: searchKeywords,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return this.mapRestaurant(data);
+  }
+
+  async updateRestaurant(id: string, patch: Partial<Restaurant>): Promise<void> {
+    const updates: RestaurantUpdate = {};
+    if (patch.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await this.supabase
+        .from('restaurants')
+        .select('id')
+        .ilike('name', patch.name)
+        .neq('id', id)
+        .maybeSingle();
+      if (existing) {
+        throw new Error('A restaurant with this name already exists');
+      }
+      updates.name = patch.name;
+      updates.search_keywords = generateSearchKeywords(patch.name);
+    }
+    if (patch.restaurantType !== undefined) updates.restaurant_type = patch.restaurantType;
+    if (patch.phone !== undefined) updates.phone = patch.phone;
+    if (patch.address !== undefined) updates.address = patch.address;
+    if (patch.provinceRef !== undefined) {
+      updates.province_id = patch.provinceRef.id || null;
+      updates.province_name_at_booking = patch.provinceRef.nameAtBooking || null;
+    }
+    if (patch.commissionForGuide !== undefined) updates.commission_for_guide = patch.commissionForGuide;
+    if (patch.note !== undefined) updates.note = patch.note;
+    const { error } = await this.supabase.from('restaurants').update(updates).eq('id', id);
+    if (error) throw error;
+  }
+
+  async toggleRestaurantStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+
+  async duplicateRestaurant(id: string): Promise<Restaurant> {
+    const original = await this.getRestaurant(id);
+    if (!original) throw new Error('Restaurant not found');
+    return this.createRestaurant({
+      name: `${original.name} (Copy)`,
+      restaurantType: original.restaurantType,
+      phone: original.phone,
+      address: original.address,
+      provinceRef: original.provinceRef,
+      commissionForGuide: original.commissionForGuide,
+      note: original.note,
+    });
+  }
+
+  async deleteRestaurant(id: string): Promise<void> {
+    const { error } = await this.supabase.from('restaurants').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async deleteAllRestaurants(): Promise<void> {
+    const { error } = await this.supabase.from('restaurants').delete().gte('created_at', '1970-01-01');
+    if (error) throw error;
+  }
+
+  async bulkCreateRestaurants(inputs: RestaurantInput[]): Promise<Restaurant[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+    // Check for duplicates with existing records
+    const { data: existing } = await this.supabase
+      .from('restaurants')
+      .select('name');
+    if (existing) {
+      const existingNames = existing.map(r => r.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following restaurants already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+    const records = inputs.map(input => ({
+      name: input.name,
+      restaurant_type: input.restaurantType,
+      phone: input.phone || '',
+      address: input.address || '',
+      commission_for_guide: input.commissionForGuide ?? 0,
+      note: input.note || '',
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+    const { data, error } = await this.supabase
+      .from('restaurants')
+      .insert(records)
+      .select();
+    if (error) throw error;
+    return (data || []).map(this.mapRestaurant);
+  }
+
+  // Shop Places
+  async listShopPlaces(query?: SearchQuery): Promise<ShopPlace[]> {
+    let queryBuilder = this.supabase.from('shop_places').select('*').order('name');
+
+    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
+    if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
+    const { data, error } = await queryBuilder;
+    if (error) throw error;
+    return (data || []).map(this.mapShopPlace);
+  }
+
+  async getShopPlace(id: string): Promise<ShopPlace | null> {
+    const { data, error } = await this.supabase.from('shop_places').select('*').eq('id', id).single();
+    if (error) return null;
+    return data ? this.mapShopPlace(data) : null;
+  }
+
+  async createShopPlace(input: ShopPlaceInput): Promise<ShopPlace> {
+    // Check for duplicate name
+    const { data: existing } = await this.supabase
+      .from('shop_places')
+      .select('id')
+      .ilike('name', input.name)
+      .maybeSingle();
+    if (existing) {
+      throw new Error('A shop place with this name already exists');
+    }
+    const searchKeywords = generateSearchKeywords(input.name);
+    const { data, error } = await this.supabase
+      .from('shop_places')
+      .insert({
+        name: input.name,
+        shop_type: input.shopType,
+        phone: input.phone || '',
+        address: input.address || '',
+        province_id: input.provinceRef.id || null,
+        province_name_at_booking: input.provinceRef.nameAtBooking || null,
+        commission_for_guide: input.commissionForGuide ?? 0,
+        note: input.note || '',
+        status: 'active',
+        search_keywords: searchKeywords,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return this.mapShopPlace(data);
+  }
+
+  async updateShopPlace(id: string, patch: Partial<ShopPlace>): Promise<void> {
+    const updates: ShopPlaceUpdate = {};
+    if (patch.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await this.supabase
+        .from('shop_places')
+        .select('id')
+        .ilike('name', patch.name)
+        .neq('id', id)
+        .maybeSingle();
+      if (existing) {
+        throw new Error('A shop place with this name already exists');
+      }
+      updates.name = patch.name;
+      updates.search_keywords = generateSearchKeywords(patch.name);
+    }
+    if (patch.shopType !== undefined) updates.shop_type = patch.shopType;
+    if (patch.phone !== undefined) updates.phone = patch.phone;
+    if (patch.address !== undefined) updates.address = patch.address;
+    if (patch.provinceRef !== undefined) {
+      updates.province_id = patch.provinceRef.id || null;
+      updates.province_name_at_booking = patch.provinceRef.nameAtBooking || null;
+    }
+    if (patch.commissionForGuide !== undefined) updates.commission_for_guide = patch.commissionForGuide;
+    if (patch.note !== undefined) updates.note = patch.note;
+    const { error } = await this.supabase.from('shop_places').update(updates).eq('id', id);
+    if (error) throw error;
+  }
+
+  async toggleShopPlaceStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+
+  async duplicateShopPlace(id: string): Promise<ShopPlace> {
+    const original = await this.getShopPlace(id);
+    if (!original) throw new Error('Shop place not found');
+    return this.createShopPlace({
+      name: `${original.name} (Copy)`,
+      shopType: original.shopType,
+      phone: original.phone,
+      address: original.address,
+      provinceRef: original.provinceRef,
+      commissionForGuide: original.commissionForGuide,
+      note: original.note,
+    });
+  }
+
+  async deleteShopPlace(id: string): Promise<void> {
+    const { error } = await this.supabase.from('shop_places').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async deleteAllShopPlaces(): Promise<void> {
+    const { error } = await this.supabase.from('shop_places').delete().gte('created_at', '1970-01-01');
+    if (error) throw error;
+  }
+
+  async bulkCreateShopPlaces(inputs: ShopPlaceInput[]): Promise<ShopPlace[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+    // Check for duplicates with existing records
+    const { data: existing } = await this.supabase
+      .from('shop_places')
+      .select('name');
+    if (existing) {
+      const existingNames = existing.map(s => s.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following shop places already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+    const records = inputs.map(input => ({
+      name: input.name,
+      shop_type: input.shopType,
+      phone: input.phone || '',
+      address: input.address || '',
+      commission_for_guide: input.commissionForGuide ?? 0,
+      note: input.note || '',
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+    const { data, error } = await this.supabase
+      .from('shop_places')
+      .insert(records)
+      .select();
+    if (error) throw error;
+    return (data || []).map(this.mapShopPlace);
+  }
+
+  // Hotels
+  async listHotels(query?: SearchQuery): Promise<Hotel[]> {
+    let queryBuilder = this.supabase.from('hotels').select('*').order('name');
+
+    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
+    if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
+    const { data, error } = await queryBuilder;
+    if (error) throw error;
+    return (data || []).map(this.mapHotel);
+  }
+
+  async getHotel(id: string): Promise<Hotel | null> {
+    const { data, error } = await this.supabase.from('hotels').select('*').eq('id', id).single();
+    if (error) return null;
+    return data ? this.mapHotel(data) : null;
+  }
+
+  async createHotel(input: HotelInput): Promise<Hotel> {
+    // Check for duplicate name
+    const { data: existing } = await this.supabase
+      .from('hotels')
+      .select('id')
+      .ilike('name', input.name)
+      .maybeSingle();
+    if (existing) {
+      throw new Error('A hotel with this name already exists');
+    }
+    const searchKeywords = generateSearchKeywords(input.name);
+    const { data, error } = await this.supabase
+      .from('hotels')
+      .insert({
+        name: input.name,
+        owner_name: input.ownerName,
+        owner_phone: input.ownerPhone,
+        room_type: input.roomType,
+        price_per_night: input.pricePerNight,
+        address: input.address || '',
+        province_id: input.provinceRef.id || null,
+        province_name_at_booking: input.provinceRef.nameAtBooking || null,
+        note: input.note || '',
+        status: 'active',
+        search_keywords: searchKeywords,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return this.mapHotel(data);
+  }
+
+  async updateHotel(id: string, patch: Partial<Hotel>): Promise<void> {
+    const updates: HotelUpdate = {};
+    if (patch.name !== undefined) {
+      // Check for duplicate name (excluding current record)
+      const { data: existing } = await this.supabase
+        .from('hotels')
+        .select('id')
+        .ilike('name', patch.name)
+        .neq('id', id)
+        .maybeSingle();
+      if (existing) {
+        throw new Error('A hotel with this name already exists');
+      }
+      updates.name = patch.name;
+      updates.search_keywords = generateSearchKeywords(patch.name);
+    }
+    if (patch.ownerName !== undefined) updates.owner_name = patch.ownerName;
+    if (patch.ownerPhone !== undefined) updates.owner_phone = patch.ownerPhone;
+    if (patch.roomType !== undefined) updates.room_type = patch.roomType;
+    if (patch.pricePerNight !== undefined) updates.price_per_night = patch.pricePerNight;
+    if (patch.address !== undefined) updates.address = patch.address;
+    if (patch.provinceRef !== undefined) {
+      updates.province_id = patch.provinceRef.id || null;
+      updates.province_name_at_booking = patch.provinceRef.nameAtBooking || null;
+    }
+    if (patch.note !== undefined) updates.note = patch.note;
+    const { error } = await this.supabase.from('hotels').update(updates).eq('id', id);
+    if (error) throw error;
+  }
+
+  async toggleHotelStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+
+  async duplicateHotel(id: string): Promise<Hotel> {
+    const original = await this.getHotel(id);
+    if (!original) throw new Error('Hotel not found');
+    return this.createHotel({
+      name: `${original.name} (Copy)`,
+      ownerName: original.ownerName,
+      ownerPhone: original.ownerPhone,
+      roomType: original.roomType,
+      pricePerNight: original.pricePerNight,
+      address: original.address,
+      provinceRef: original.provinceRef,
+      note: original.note,
+    });
+  }
+
+  async deleteHotel(id: string): Promise<void> {
+    const { error } = await this.supabase.from('hotels').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async deleteAllHotels(): Promise<void> {
+    const { error } = await this.supabase.from('hotels').delete().gte('created_at', '1970-01-01');
+    if (error) throw error;
+  }
+
+  async bulkCreateHotels(inputs: HotelInput[]): Promise<Hotel[]> {
+    // Check for duplicates within the batch
+    const names = inputs.map(input => input.name.toLowerCase());
+    const duplicatesInBatch = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicatesInBatch.length > 0) {
+      throw new Error('Duplicate names found in batch');
+    }
+    // Check for duplicates with existing records
+    const { data: existing } = await this.supabase
+      .from('hotels')
+      .select('name');
+    if (existing) {
+      const existingNames = existing.map(h => h.name.toLowerCase());
+      const duplicates = inputs.filter(input =>
+        existingNames.includes(input.name.toLowerCase())
+      );
+      if (duplicates.length > 0) {
+        throw new Error(`The following hotels already exist: ${duplicates.map(d => d.name).join(', ')}`);
+      }
+    }
+    const records = inputs.map(input => ({
+      name: input.name,
+      owner_name: input.ownerName,
+      owner_phone: input.ownerPhone,
+      room_type: input.roomType,
+      price_per_night: input.pricePerNight,
+      address: input.address || '',
+      note: input.note || '',
+      status: 'active',
+      search_keywords: generateSearchKeywords(input.name),
+    }));
+    const { data, error } = await this.supabase
+      .from('hotels')
+      .insert(records)
+      .select();
+    if (error) throw error;
+    return (data || []).map(this.mapHotel);
+  }
+
   // Tours
   async listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult> {
     const includeDetails = options?.includeDetails ?? false;
@@ -1648,41 +2206,42 @@ export class SupabaseStore implements DataStore {
     const { data, error, count } = await queryBuilder;
     if (error) throw error;
 
-    const tours = (data || []).map((row: any) => {
+    const tours = (data || []).map((row) => {
+      const typedRow = row as TourRowWithDetails;
       const tour = this.mapTour(row);
       if (includeDetails) {
-        tour.destinations = (row.tour_destinations || []).map((d: any) => ({
+        tour.destinations = (typedRow.tour_destinations || []).map((d) => ({
           name: d.name,
           price: Number(d.price) || 0,
           date: d.date,
           guests: d.guests !== null && d.guests !== undefined ? Number(d.guests) : undefined,
         }));
-        tour.expenses = (row.tour_expenses || []).map((e: any) => ({
+        tour.expenses = (typedRow.tour_expenses || []).map((e) => ({
           name: e.name,
           price: Number(e.price) || 0,
           date: e.date,
           guests: e.guests !== null && e.guests !== undefined ? Number(e.guests) : undefined,
         }));
-        tour.meals = (row.tour_meals || []).map((m: any) => ({
+        tour.meals = (typedRow.tour_meals || []).map((m) => ({
           name: m.name,
           price: Number(m.price) || 0,
           date: m.date,
           guests: m.guests !== null && m.guests !== undefined ? Number(m.guests) : undefined,
         }));
-        tour.allowances = (row.tour_allowances || []).map((a: any) => ({
+        tour.allowances = (typedRow.tour_allowances || []).map((a) => ({
           date: a.date,
           name: a.name,
           price: Number(a.price) || 0,
           quantity: a.quantity || 1,
         }));
-        tour.shoppings = (row.tour_shoppings || []).map((s: any) => ({
+        tour.shoppings = (typedRow.tour_shoppings || []).map((s) => ({
           name: s.name,
           price: Number(s.price) || 0,
           date: s.date,
         }));
       } else {
         // When not including full details, still map allowances for total calculation
-        tour.allowances = (row.tour_allowances || []).map((a: any) => ({
+        tour.allowances = (typedRow.tour_allowances || []).map((a) => ({
           date: '',
           name: '',
           price: Number(a.price) || 0,

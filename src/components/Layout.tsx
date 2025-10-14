@@ -16,6 +16,9 @@ import {
   LogOut,
   BookOpen,
   FileText,
+  UtensilsCrossed,
+  Store,
+  Hotel,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
@@ -44,6 +47,9 @@ const masterDataItems = [
   { to: '/nationalities', icon: Globe, label: 'Nationalities' },
   { to: '/provinces', icon: MapPin, label: 'Provinces' },
   { to: '/destinations', icon: Map, label: 'Destinations' },
+  { to: '/restaurants', icon: UtensilsCrossed, label: 'Restaurants' },
+  { to: '/shop-places', icon: Store, label: 'Shop Places' },
+  { to: '/hotels', icon: Hotel, label: 'Hotels' },
   { to: '/shopping', icon: ShoppingBag, label: 'Shopping' },
   { to: '/expense-categories', icon: Tag, label: 'Categories' },
   { to: '/detailed-expenses', icon: Receipt, label: 'Expenses' },
@@ -61,8 +67,8 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
   const isMasterDataActive = masterDataItems.some(item => location.pathname.startsWith(item.to));
 
   const navLinkClass = (isActive: boolean) => cn(
-    'flex flex-col items-center py-2 rounded-lg font-medium transition-colors',
-    isMobile ? 'flex-1 px-1 min-w-0 gap-0.5 text-xs' : 'flex-shrink-0 w-20 px-2 gap-1 text-sm',
+    'flex flex-col items-center py-1 rounded-lg font-medium transition-colors',
+    isMobile ? 'flex-1 px-1 min-w-0 gap-0.5 text-xs' : 'flex-shrink-0 w-16 px-1 gap-0.5 text-xs',
     isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
   );
 
@@ -74,7 +80,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           to="/"
           className={({ isActive }) => navLinkClass(isActive)}
         >
-          <Home className="h-5 w-5" />
+          <Home className="h-4 w-4" />
           <span className="text-center truncate w-full">Home</span>
         </NavLink>
 
@@ -146,7 +152,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
         to="/"
         className={({ isActive }) => navLinkClass(isActive)}
       >
-        <Home className="h-5 w-5" />
+        <Home className="h-4 w-4" />
         <span className="text-center truncate w-full">Home</span>
       </NavLink>
 
@@ -156,7 +162,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           to={item.to}
           className={({ isActive }) => navLinkClass(isActive)}
         >
-          <item.icon className="h-5 w-5" />
+          <item.icon className="h-4 w-4" />
           <span className="text-center truncate w-full">{item.label}</span>
         </NavLink>
       ))}
@@ -168,7 +174,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           to={item.to}
           className={({ isActive }) => navLinkClass(isActive)}
         >
-          <item.icon className="h-5 w-5" />
+          <item.icon className="h-4 w-4" />
           <span className="text-center truncate w-full">{item.label}</span>
         </NavLink>
       ))}
@@ -199,15 +205,15 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Navigation - desktop only */}
       <nav className="hidden md:block border-b bg-card sticky top-0 z-50">
-        <div className="mx-auto flex items-center justify-between gap-1 md:gap-3 px-2 py-2 md:px-6 md:py-3 max-w-7xl">
-          <div className="flex items-center gap-1 md:gap-3 overflow-x-auto">
+        <div className="mx-auto flex items-center justify-between gap-1 px-2 py-1.5 max-w-7xl">
+          <div className="flex items-center gap-0.5 overflow-x-auto">
             <NavLinks isMobile={false} user={user} onLogout={handleLogout} />
           </div>
           {user && (
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <span className="text-sm text-muted-foreground">{user.email}</span>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-xs text-muted-foreground">{user.email}</span>
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="h-7 text-xs">
+                <LogOut className="h-3 w-3 mr-1" />
                 Logout
               </Button>
             </div>
