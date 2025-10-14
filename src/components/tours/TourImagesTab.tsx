@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Upload, Image as ImageIcon, X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Upload, Image as ImageIcon, X, ZoomIn, ZoomOut, RotateCcw, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
+import JSZip from 'jszip';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ interface TourImagesTabProps {
 
 export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
   const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<TourImage | null>(null);
   const [imageScale, setImageScale] = useState(1);
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
@@ -231,6 +233,45 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
     setImagePosition({ x: 0, y: 0 });
   };
 
+  // Download all images as zip
+  const handleDownloadAll = async () => {
+    if (images.length === 0) {
+      toast.error('No images to download');
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const zip = new JSZip();
+      
+      // Fetch and add each image to zip
+      for (const image of images) {
+        const imageUrl = getImageUrl(image.storage_path);
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        zip.file(image.file_name, blob);
+      }
+
+      // Generate and download zip file
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${tourCode}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Downloaded ${images.length} images`);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download images');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -248,7 +289,27 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
       <div className="rounded-lg border bg-card p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Tour Images</h3>
-          <div>
+          <div className="flex gap-2">
+            {images.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={handleDownloadAll}
+                disabled={downloading}
+                className="hover-scale"
+              >
+                {downloading ? (
+                  <>
+                    <Download className="h-4 w-4 mr-2 animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download All
+                  </>
+                )}
+              </Button>
+            )}
             <input
               type="file"
               id="tour-image-upload"
