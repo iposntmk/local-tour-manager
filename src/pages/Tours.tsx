@@ -758,7 +758,7 @@ const Tours = () => {
       // Fetch all tour images from database
       const { data: allImages, error } = await supabase
         .from('tour_images')
-        .select('*, tours!inner(tour_code)')
+        .select('*, tours!tour_images_tour_id_fkey(tour_code)')
         .order('tour_id');
 
       if (error) throw error;
