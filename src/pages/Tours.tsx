@@ -21,12 +21,16 @@ import {
   Flag,
   Baby,
   Database,
+  Download,
+  Image as ImageIcon,
 } from 'lucide-react';
+import JSZip from 'jszip';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { recalculateAllTourSummaries } from '@/lib/recalculate-all-summaries';
 import { differenceInDays, format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,6 +75,7 @@ const truncateText = (text: string | undefined | null, max = 15): string => {
 
 const Tours = () => {
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isDownloadingImages, setIsDownloadingImages] = useState(false);
   
   // Separate search inputs for code, date range, and company
   const [searchCode, setSearchCode] = useState(() => localStorage.getItem('tours.search.code') || '');
@@ -745,6 +750,75 @@ const Tours = () => {
     }
   };
 
+  const handleDownloadAllImages = async () => {
+    setIsDownloadingImages(true);
+    try {
+      toast.info('Fetching all tour images...');
+      
+      // Fetch all tour images from database
+      const { data: allImages, error } = await supabase
+        .from('tour_images')
+        .select('*, tours!inner(tour_code)')
+        .order('tour_id');
+
+      if (error) throw error;
+
+      if (!allImages || allImages.length === 0) {
+        toast.error('No images found in database');
+        return;
+      }
+
+      toast.info(`Downloading ${allImages.length} images...`);
+
+      const zip = new JSZip();
+
+      // Group images by tour code
+      const imagesByTour: Record<string, typeof allImages> = {};
+      allImages.forEach((img) => {
+        const tourCode = (img.tours as any)?.tour_code || 'unknown';
+        if (!imagesByTour[tourCode]) {
+          imagesByTour[tourCode] = [];
+        }
+        imagesByTour[tourCode].push(img);
+      });
+
+      // Add images to zip organized by tour folders
+      for (const [tourCode, images] of Object.entries(imagesByTour)) {
+        for (const image of images) {
+          try {
+            const { data: publicUrlData } = supabase.storage
+              .from('tour-images')
+              .getPublicUrl(image.storage_path);
+            
+            const response = await fetch(publicUrlData.publicUrl);
+            const blob = await response.blob();
+            zip.file(`${tourCode}/${image.file_name}`, blob);
+          } catch (err) {
+            console.error(`Failed to download ${image.file_name}:`, err);
+          }
+        }
+      }
+
+      // Generate and download zip
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `all-tour-images.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Downloaded ${allImages.length} images from ${Object.keys(imagesByTour).length} tours`);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download images');
+    } finally {
+      setIsDownloadingImages(false);
+    }
+  };
+
   const { classes: headerClasses } = useHeaderMode('tours.headerMode');
 
   return (
@@ -768,6 +842,17 @@ const Tours = () => {
               >
                 <Database className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">{isBackingUp ? 'Backing up...' : 'SQL Backup'}</span>
+              </Button>
+              <Button
+                onClick={handleDownloadAllImages}
+                variant="outline"
+                size="sm"
+                disabled={isDownloadingImages}
+                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                title="Download all images from all tours"
+              >
+                <ImageIcon className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{isDownloadingImages ? 'Downloading...' : 'Download All Images'}</span>
               </Button>
               <ImportTourDialogEnhanced
                 onImport={handleImport}
