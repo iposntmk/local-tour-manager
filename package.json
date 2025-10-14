@@ -11,6 +11,7 @@
     "test": "vitest",
     "preview": "vite preview",
     "backfill:total-days": "node scripts/backfill-total-days.mjs",
+    "upload:tour-images": "node scripts/upload-tour-images.mjs",
     "deploy": "scripts/deploy-gh-pages.sh"
   },
   "dependencies": {
