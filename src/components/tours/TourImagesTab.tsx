@@ -23,12 +23,27 @@ interface TourImage {
   created_at: string;
 }
 
+
 interface TourImagesTabProps {
   tourId: string;
   tourCode: string;
 }
 
 export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
+  const generateStoragePath = (file: File) => {
+    const safeTourCode = tourCode.replace(/[^a-zA-Z0-9-_]/g, '_') || 'tour';
+    const rawBaseName = file.name.replace(/\.[^/.]+$/, '');
+    const safeBaseName = rawBaseName.replace(/[^a-zA-Z0-9-_]/g, '-').slice(0, 40) || 'image';
+    const extension = file.name.includes('.') ? file.name.split('.').pop() : '';
+    const uniqueSuffix =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const fileName = `${safeBaseName}-${uniqueSuffix}${extension ? `.${extension}` : ''}`;
+    return `${safeTourCode}/${fileName}`;
+  };
+
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<TourImage | null>(null);
@@ -57,9 +72,7 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${tourCode}_${Date.now()}.${fileExt}`;
-      const filePath = `${tourCode}/${fileName}`;
+      const filePath = generateStoragePath(file);
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
@@ -69,7 +82,12 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
           upsert: false
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message?.toLowerCase().includes('resource already exists')) {
+          throw new Error('An image with the same name already exists. Please try uploading again.');
+        }
+        throw uploadError;
+      }
 
       // Save record to database
       const { error: dbError } = await supabase
@@ -287,15 +305,16 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h3 className="text-lg font-semibold">Tour Images</h3>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             {images.length > 0 && (
               <Button
                 variant="outline"
                 onClick={handleDownloadAll}
                 disabled={downloading}
-                className="hover-scale"
+                size="sm"
+                className="hover-scale w-full sm:w-auto"
               >
                 {downloading ? (
                   <>
@@ -322,7 +341,8 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
             <Button
               onClick={() => document.getElementById('tour-image-upload')?.click()}
               disabled={uploading}
-              className="hover-scale"
+              size="sm"
+              className="hover-scale w-full sm:w-auto"
             >
               {uploading ? (
                 <>

@@ -123,14 +123,14 @@ const HotelDetail = () => {
 
   return (
     <LayoutComponent>
-      <div className="space-y-6 max-w-3xl mx-auto">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex gap-2">
+      <div className="space-y-6 max-w-3xl mx-auto px-4 sm:px-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             {user ? (
               <Button
                 variant="ghost"
                 onClick={() => navigate('/hotels')}
-                className="gap-2"
+                className="gap-2 w-full sm:w-auto"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
@@ -139,19 +139,19 @@ const HotelDetail = () => {
               <Button
                 variant="outline"
                 onClick={() => navigate('/hotels')}
-                className="gap-2"
+                className="gap-2 w-full sm:w-auto"
               >
                 <List className="h-4 w-4" />
                 See All List
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button onClick={handleCopyToClipboard} variant="outline" className="gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button onClick={handleCopyToClipboard} variant="outline" className="gap-2 w-full sm:w-auto">
               <Share2 className="h-4 w-4" />
               Copy
             </Button>
-            <Button onClick={handleShareToZalo} className="gap-2 bg-blue-600 hover:bg-blue-700">
+            <Button onClick={handleShareToZalo} className="gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
               <Share2 className="h-4 w-4" />
               Share to Zalo
             </Button>
@@ -169,54 +169,54 @@ const HotelDetail = () => {
 
             <div className="grid gap-4">
               {hotel.provinceRef.nameAtBooking && (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   <div className="text-sm font-medium text-muted-foreground">Province:</div>
-                  <div className="col-span-2 font-medium">
+                  <div className="font-medium sm:col-span-2">
                     {hotel.provinceRef.nameAtBooking}
                   </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <div className="text-sm font-medium text-muted-foreground">Price per Night:</div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <span className="text-lg font-semibold text-green-600">
                     {hotel.pricePerNight.toLocaleString()} ₫
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <div className="text-sm font-medium text-muted-foreground">Owner Name:</div>
-                <div className="col-span-2">{hotel.ownerName}</div>
+                <div className="sm:col-span-2">{hotel.ownerName}</div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <div className="text-sm font-medium text-muted-foreground">Owner Phone:</div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <a href={`tel:${hotel.ownerPhone}`} className="text-blue-600 hover:underline">
                     {hotel.ownerPhone}
                   </a>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <div className="text-sm font-medium text-muted-foreground">Address:</div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   {hotel.address || <span className="text-muted-foreground">N/A</span>}
                 </div>
               </div>
 
               {hotel.note && (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   <div className="text-sm font-medium text-muted-foreground">Note:</div>
-                  <div className="col-span-2 whitespace-pre-wrap">{hotel.note}</div>
+                  <div className="sm:col-span-2 whitespace-pre-wrap">{hotel.note}</div>
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-2 pt-4 border-t">
+              <div className="grid gap-2 sm:grid-cols-3 pt-4 border-t">
                 <div className="text-sm font-medium text-muted-foreground">Status:</div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     hotel.status === 'active'
                       ? 'bg-green-100 text-green-800'
