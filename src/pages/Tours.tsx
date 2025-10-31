@@ -3,6 +3,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Plus,
   Calendar as CalendarIcon,
@@ -23,11 +25,12 @@ import {
   Database,
   Download,
   Image as ImageIcon,
+  FolderArchive,
+  FileSpreadsheet,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { recalculateAllTourSummaries } from '@/lib/recalculate-all-summaries';
 import { differenceInDays, format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { supabase } from '@/integrations/supabase/client';
@@ -117,6 +120,10 @@ const Tours = () => {
     const saved = localStorage.getItem('tours.filtersExpanded');
     return saved !== null ? JSON.parse(saved) : true;
   });
+  const [searchExpanded, setSearchExpanded] = useState(() => {
+    const saved = localStorage.getItem('tours.searchExpanded');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
   // Pagination disabled; show all results
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -147,6 +154,10 @@ const Tours = () => {
   useEffect(() => {
     localStorage.setItem('tours.filtersExpanded', JSON.stringify(filtersExpanded));
   }, [filtersExpanded]);
+
+  useEffect(() => {
+    localStorage.setItem('tours.searchExpanded', JSON.stringify(searchExpanded));
+  }, [searchExpanded]);
 
   const baseTourQuery = useMemo((): TourQuery => {
     const query: TourQuery = {};
@@ -314,28 +325,24 @@ const Tours = () => {
   //   },
   // });
 
+  const [deleteAllPinInput, setDeleteAllPinInput] = useState('');
+  const [showDeleteAllPinDialog, setShowDeleteAllPinDialog] = useState(false);
+  const CORRECT_PIN = '0829101188';
+
   const handleDeleteAll = () => {
-    toast.warning('Bulk delete not available. Please delete tours individually.');
+    setShowDeleteAllPinDialog(true);
   };
 
-  // Mutation to recalculate all tour summaries (one-time fix for stale data)
-  const recalculateSummariesMutation = useMutation({
-    mutationFn: recalculateAllTourSummaries,
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
-      toast.success(
-        `Recalculated ${result.updated} of ${result.total} tours. ${
-          result.errors.length > 0 ? `${result.errors.length} errors.` : ''
-        }`
-      );
-      if (result.errors.length > 0) {
-        console.error('Recalculation errors:', result.errors);
-      }
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to recalculate summaries: ${error.message}`);
-    },
-  });
+  const handleDeleteAllConfirm = () => {
+    if (deleteAllPinInput === CORRECT_PIN) {
+      toast.warning('Bulk delete not available. Please delete tours individually.');
+      setShowDeleteAllPinDialog(false);
+      setDeleteAllPinInput('');
+    } else {
+      toast.error('Incorrect PIN. Access denied.');
+      setDeleteAllPinInput('');
+    }
+  };
 
   const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
     const detailedTour = await store.getTour(tour.id);
@@ -827,32 +834,31 @@ const Tours = () => {
         {/* Sticky Header - Always pinned to top */}
         <div className={`${headerClasses} border-b pb-4 pt-4 bg-gray-100 dark:bg-gray-900 z-40 space-y-4`}>
           <div className="flex items-center justify-between gap-2 sm:gap-4">
-            <div className="flex-shrink min-w-0">
-              <h1 className="text-base sm:text-2xl md:text-3xl font-bold">Tours</h1>
-              <p className="text-xs sm:text-sm md:text-base text-muted-foreground truncate">Manage your tours and itineraries</p>
+            <div className="flex-shrink-0">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Tours</h1>
             </div>
-            <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
+            <div className="flex gap-1 items-center flex-shrink-0 flex-wrap">
               <Button
                 onClick={handleBackup}
                 variant="outline"
                 size="sm"
                 disabled={isBackingUp}
-                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                className="hidden lg:flex hover-scale lg:h-10 lg:px-3 text-xs"
                 title="Download full SQL backup (schema + data)"
               >
-                <Database className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{isBackingUp ? 'Backing up...' : 'SQL Backup'}</span>
+                <Database className="h-4 w-4 lg:mr-1.5" />
+                <span className="hidden lg:inline">{isBackingUp ? 'Backing up...' : 'SQL Backup'}</span>
               </Button>
               <Button
                 onClick={handleDownloadAllImages}
                 variant="outline"
                 size="sm"
                 disabled={isDownloadingImages}
-                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                className="hidden lg:flex hover-scale lg:h-10 lg:px-3 text-xs"
                 title="Download all images from all tours"
               >
-                <ImageIcon className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{isDownloadingImages ? 'Downloading...' : 'Download All Images'}</span>
+                <ImageIcon className="h-4 w-4 lg:mr-1.5" />
+                <span className="hidden lg:inline">{isDownloadingImages ? 'Downloading...' : 'Download All Images'}</span>
               </Button>
               <ImportTourDialogEnhanced
                 onImport={handleImport}
@@ -860,10 +866,10 @@ const Tours = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                    className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-green-600 hover:text-green-700 border-green-600 hover:border-green-700"
                   >
-                    <Upload className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Import</span>
+                    <Upload className="h-5 w-5 lg:mr-1.5" />
+                    <span className="text-[10px] lg:text-xs">Import</span>
                   </Button>
                 }
               />
@@ -871,21 +877,23 @@ const Tours = () => {
                 onClick={handleExportAll}
                 variant="outline"
                 size="sm"
-                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-blue-600 hover:text-blue-700 border-blue-600 hover:border-blue-700"
                 title="Export all tours into folders by month (ZIP)"
               >
-                <FileDown className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Export All Tours → Folders</span>
+                <FolderArchive className="h-5 w-5 lg:mr-1.5" />
+                <span className="text-[10px] lg:text-xs hidden sm:inline">Export All Tours → Folders</span>
+                <span className="text-[10px] lg:text-xs sm:hidden">Folders</span>
               </Button>
               <Button
                 onClick={handleExportAllSingle}
                 variant="outline"
                 size="sm"
-                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-purple-600 hover:text-purple-700 border-purple-600 hover:border-purple-700"
                 title="Export all tours to 1 Excel file (single sheet with grand total)"
               >
-                <FileDown className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Export All Tours → Single Sheet</span>
+                <FileSpreadsheet className="h-5 w-5 lg:mr-1.5" />
+                <span className="text-[10px] lg:text-xs hidden sm:inline">Export All Tours → Single Sheet</span>
+                <span className="text-[10px] lg:text-xs sm:hidden">Single</span>
               </Button>
               {/* <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -963,28 +971,46 @@ const Tours = () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog> */}
-              <AlertDialog>
+              <AlertDialog open={showDeleteAllPinDialog} onOpenChange={setShowDeleteAllPinDialog}>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="hover-scale text-destructive hover:text-destructive h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                    className="hover-scale text-destructive hover:text-destructive h-auto py-2 px-2 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs"
                   >
-                    <Trash className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Delete All</span>
+                    <Trash className="h-5 w-5 lg:mr-1.5" />
+                    <span className="text-[9px] lg:text-xs">Delete All</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogTitle>Delete All Tours - PIN Required</AlertDialogTitle>
                     <AlertDialogDescription>
                       This action cannot be undone. This will permanently delete all tours from the database.
+                      <div className="mt-4 space-y-2">
+                        <Label htmlFor="delete-all-pin">Enter PIN to confirm:</Label>
+                        <Input
+                          id="delete-all-pin"
+                          type="password"
+                          placeholder="Enter PIN"
+                          value={deleteAllPinInput}
+                          onChange={(e) => setDeleteAllPinInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleDeleteAllConfirm();
+                            }
+                          }}
+                        />
+                      </div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel onClick={() => {
+                      setDeleteAllPinInput('');
+                      setShowDeleteAllPinDialog(false);
+                    }}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={handleDeleteAll}
+                      onClick={handleDeleteAllConfirm}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       Delete All Tours
@@ -992,135 +1018,109 @@ const Tours = () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
-                    title="Recalculate summaries for all tours (fixes stale data)"
-                  >
-                    <RefreshCw className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Recalculate Summaries</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Recalculate All Tour Summaries?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will recalculate and update summary fields (total_tabs, final_total, etc.) for all tours based on their current destinations, expenses, meals, and allowances.
-                      <div className="mt-2">
-                        <strong>Use this if:</strong>
-                        <ul className="list-disc ml-4 mt-1">
-                          <li>Tour cards show different final totals than the Summary tab</li>
-                          <li>Final Total on page differs from Excel export totals</li>
-                          <li>You've imported old data and need to fix summary values</li>
-                          <li>You changed the calculation formula (advance payment, collections, tip)</li>
-                        </ul>
-                      </div>
-                      <div className="mt-2 text-muted-foreground text-sm">
-                        Note: This may take a few moments for large numbers of tours.
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => recalculateSummariesMutation.mutate()}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      disabled={recalculateSummariesMutation.isPending}
-                    >
-                      {recalculateSummariesMutation.isPending ? 'Recalculating...' : 'Recalculate All'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
               <Button
                 onClick={() => navigate('/tours/new')}
                 size="sm"
-                className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
+                className="hover-scale h-auto py-2 px-2 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs"
               >
-                <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">New Tour</span>
+                <Plus className="h-5 w-5 lg:mr-1.5" />
+                <span className="text-[9px] lg:text-xs">New Tour</span>
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <SearchInput
-              value={searchCode}
-              onChange={setSearchCode}
-              placeholder="Search tour code..."
-            />
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={`w-full justify-start text-left font-normal h-10 ${
-                    !dateRange?.from && !dateRange?.to ? 'text-muted-foreground' : ''
-                  }`}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateRange?.from ? (
-                    dateRange.to ? (
-                      <>
-                        {format(dateRange.from, 'dd/MM/yyyy')} - {format(dateRange.to, 'dd/MM/yyyy')}
-                      </>
+          {/* Search Area Header - Mobile Only */}
+          <div className="flex items-center gap-2 sm:hidden mb-2">
+            <h2 className="text-xs font-semibold flex items-center gap-1">
+              <Filter className="h-3 w-3" />
+              Search & Filter
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSearchExpanded(!searchExpanded)}
+              className="ml-auto h-7 w-7 p-0"
+            >
+              {searchExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+          </div>
+
+          <div className={`space-y-2 sm:space-y-3 transition-all duration-200 overflow-hidden ${searchExpanded ? 'sm:block' : 'hidden sm:block'}`}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+              <SearchInput
+                value={searchCode}
+                onChange={setSearchCode}
+                placeholder="Search tour code..."
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal h-10 ${
+                      !dateRange?.from && !dateRange?.to ? 'text-muted-foreground' : ''
+                    }`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, 'dd/MM/yyyy')} - {format(dateRange.to, 'dd/MM/yyyy')}
+                        </>
+                      ) : (
+                        format(dateRange.from, 'dd/MM/yyyy')
+                      )
                     ) : (
-                      format(dateRange.from, 'dd/MM/yyyy')
-                    )
-                  ) : (
-                    <span>Pick a date range</span>
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                    initialFocus
+                  />
+                  {(dateRange?.from || dateRange?.to) && (
+                    <div className="border-t p-3">
+                      <Button
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => setDateRange(undefined)}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Clear dates
+                      </Button>
+                    </div>
                   )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  numberOfMonths={2}
-                  initialFocus
-                />
-                {(dateRange?.from || dateRange?.to) && (
-                  <div className="border-t p-3">
-                    <Button
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => setDateRange(undefined)}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Clear dates
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-            <SearchInput
-              value={searchCompany}
-              onChange={setSearchCompany}
-              placeholder="Search company..."
-            />
-          </div>
-
-          {/* Filters */}
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xs sm:text-sm font-semibold flex items-center gap-1 sm:gap-2">
-                <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Filters</span>
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFiltersExpanded(!filtersExpanded)}
-                className="ml-auto h-7 w-7 p-0 sm:h-8 sm:w-8"
-              >
-                {filtersExpanded ? <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" /> : <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />}
-              </Button>
+                </PopoverContent>
+              </Popover>
+              <SearchInput
+                value={searchCompany}
+                onChange={setSearchCompany}
+                placeholder="Search company..."
+              />
             </div>
 
-            <div className={`transition-all duration-200 overflow-hidden ${filtersExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+            {/* Filters */}
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex items-center gap-2 sm:hidden">
+                <h2 className="text-xs font-semibold flex items-center gap-1">
+                  <Filter className="h-3 w-3" />
+                  Advanced Filters
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFiltersExpanded(!filtersExpanded)}
+                  className="ml-auto h-7 w-7 p-0"
+                >
+                  {filtersExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </Button>
+              </div>
+
+              <div className={`transition-all duration-200 overflow-hidden ${filtersExpanded ? 'block' : 'hidden sm:block'}`}>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3">
                   <div className="space-y-1">
@@ -1234,6 +1234,7 @@ const Tours = () => {
                   )}
                 </div>
               )}
+              </div>
             </div>
           </div>
         </div>

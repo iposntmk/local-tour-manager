@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, FileDown } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TourForm } from '@/components/tours/TourForm';
@@ -17,9 +17,11 @@ import { ShoppingsTab } from '@/components/tours/ShoppingsTab';
 import { AllowancesTab } from '@/components/tours/AllowancesTab';
 import { SummaryTab } from '@/components/tours/SummaryTab';
 import { TourImagesTab } from '@/components/tours/TourImagesTab';
+import { CombinedTab } from '@/components/tours/CombinedTab';
 import { toast } from 'sonner';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { formatCurrency } from '@/lib/currency-utils';
+import { exportTourToExcel } from '@/lib/excel-utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -238,6 +240,20 @@ const TourDetail = () => {
     }
   };
 
+  const handleExportExcel = async () => {
+    if (!displayTour || isNewTour) {
+      toast.error('Cannot export tour that has not been saved yet');
+      return;
+    }
+    try {
+      await exportTourToExcel(displayTour as Tour);
+      toast.success('Tour exported to Excel successfully');
+    } catch (error) {
+      toast.error('Failed to export tour to Excel');
+      console.error('Export error:', error);
+    }
+  };
+
   const shouldShowSaveButton = () => {
     // For create mode: show Save Tour button on Info tab
     // For edit mode: show Save Info button on Info tab
@@ -313,6 +329,18 @@ const TourDetail = () => {
                     )}
                     {!isNewTour && (
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportExcel}
+                        className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
+                        title="Export to Excel"
+                      >
+                        <FileDown className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Export Excel</span>
+                      </Button>
+                    )}
+                    {!isNewTour && (
+                      <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => setDeleteDialogOpen(true)}
@@ -355,7 +383,7 @@ const TourDetail = () => {
               </div>
 
               <div className="pt-2 sm:pt-4">
-                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 gap-1 rounded-xl bg-background shadow-sm border p-0.5 sm:p-1 h-auto">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 gap-1 rounded-xl bg-background shadow-sm border p-0.5 sm:p-1 h-auto">
                   <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
                   <TabsTrigger value="destinations" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
@@ -383,12 +411,12 @@ const TourDetail = () => {
                       </span>
                     </div>
                   </TabsTrigger>
-                  <TabsTrigger value="shoppings" className="text-xs sm:text-sm">
+                  <TabsTrigger value="combined" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span className="sm:hidden">Shop</span>
-                      <span className="hidden sm:inline">Shopping</span>
+                      <span className="sm:hidden">D+E+M</span>
+                      <span className="hidden sm:inline">Dest+Exp+Meals</span>
                       <span className="text-xs sm:text-sm font-bold">
-                        {displayTour?.shoppings?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).shoppings)}
+                        {formatCurrency(calculateTabTotals(displayTour).destinations + calculateTabTotals(displayTour).expenses + calculateTabTotals(displayTour).meals)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -407,6 +435,15 @@ const TourDetail = () => {
                       <span className="hidden sm:inline">Summary</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {formatCurrency(displayTour?.summary?.finalTotal ?? 0)}
+                      </span>
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger value="shoppings" className="text-xs sm:text-sm">
+                    <div className="flex flex-col items-center">
+                      <span className="sm:hidden">Shop</span>
+                      <span className="hidden sm:inline">Shopping</span>
+                      <span className="text-xs sm:text-sm font-bold">
+                        {displayTour?.shoppings?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).shoppings)}
                       </span>
                     </div>
                   </TabsTrigger>
@@ -468,15 +505,10 @@ const TourDetail = () => {
               />
             </TabsContent>
 
-            <TabsContent value="shoppings" className="animate-fade-in">
-              <ShoppingsTab
+            <TabsContent value="combined" className="animate-fade-in">
+              <CombinedTab
                 tourId={isNewTour ? undefined : id!}
-                shoppings={displayTour?.shoppings || []}
-                onChange={(shops) => {
-                  if (isNewTour) {
-                    setNewTourData({ ...newTourData, shoppings: shops });
-                  }
-                }}
+                tour={displayTour}
               />
             </TabsContent>
 
@@ -502,6 +534,18 @@ const TourDetail = () => {
                     // Save to DB only when user edits input fields
                     // (advancePayment, collectionsForCompany, companyTip)
                     handleSummaryUpdate(summary);
+                  }
+                }}
+              />
+            </TabsContent>
+
+            <TabsContent value="shoppings" className="animate-fade-in">
+              <ShoppingsTab
+                tourId={isNewTour ? undefined : id!}
+                shoppings={displayTour?.shoppings || []}
+                onChange={(shops) => {
+                  if (isNewTour) {
+                    setNewTourData({ ...newTourData, shoppings: shops });
                   }
                 }}
               />

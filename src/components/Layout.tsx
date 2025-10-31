@@ -14,11 +14,6 @@ import {
   Settings,
   ChevronDown,
   LogOut,
-  BookOpen,
-  FileText,
-  UtensilsCrossed,
-  Store,
-  Hotel,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
@@ -40,16 +35,11 @@ interface LayoutProps {
 }
 
 const masterDataItems = [
-  { to: '/diary-types', icon: BookOpen, label: 'Diary Types' },
-  { to: '/tour-diaries', icon: FileText, label: 'Tour Diaries' },
   { to: '/guides', icon: Users, label: 'Guides' },
   { to: '/companies', icon: Building2, label: 'Companies' },
   { to: '/nationalities', icon: Globe, label: 'Nationalities' },
   { to: '/provinces', icon: MapPin, label: 'Provinces' },
   { to: '/destinations', icon: Map, label: 'Destinations' },
-  { to: '/restaurants', icon: UtensilsCrossed, label: 'Restaurants' },
-  { to: '/shop-places', icon: Store, label: 'Shop Places' },
-  { to: '/hotels', icon: Hotel, label: 'Hotels' },
   { to: '/shopping', icon: ShoppingBag, label: 'Shopping' },
   { to: '/expense-categories', icon: Tag, label: 'Categories' },
   { to: '/detailed-expenses', icon: Receipt, label: 'Expenses' },
@@ -68,7 +58,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
 
   const navLinkClass = (isActive: boolean) => cn(
     'flex flex-col items-center py-1 rounded-lg font-medium transition-colors',
-    isMobile ? 'flex-1 px-1 min-w-0 gap-0.5 text-xs' : 'flex-shrink-0 w-16 px-1 gap-0.5 text-xs',
+    isMobile ? 'flex-1 px-1 min-w-0 gap-0.5 text-xs' : 'flex-shrink-0 px-2 gap-0.5 text-xs whitespace-nowrap',
     isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
   );
 
@@ -153,7 +143,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
         className={({ isActive }) => navLinkClass(isActive)}
       >
         <Home className="h-4 w-4" />
-        <span className="text-center truncate w-full">Home</span>
+        <span className="text-center">Home</span>
       </NavLink>
 
       {mainNavItems.map((item) => (
@@ -163,7 +153,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           className={({ isActive }) => navLinkClass(isActive)}
         >
           <item.icon className="h-4 w-4" />
-          <span className="text-center truncate w-full">{item.label}</span>
+          <span className="text-center">{item.label}</span>
         </NavLink>
       ))}
 
@@ -175,7 +165,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           className={({ isActive }) => navLinkClass(isActive)}
         >
           <item.icon className="h-4 w-4" />
-          <span className="text-center truncate w-full">{item.label}</span>
+          <span className="text-center">{item.label}</span>
         </NavLink>
       ))}
     </>

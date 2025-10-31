@@ -20,6 +20,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Expense } from '@/types/tour';
 
 interface ExpensesTabProps {
@@ -234,7 +235,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
           {editingIndex !== null ? 'Edit Expense' : 'Add Expense'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
             <div className="flex gap-2">
               <Popover open={openExpense} onOpenChange={setOpenExpense}>
                 <PopoverTrigger asChild>
@@ -278,7 +279,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                   </Command>
                 </PopoverContent>
               </Popover>
-                  <Button
+              <Button
                 type="button"
                 variant="outline"
                 size="icon"
@@ -293,41 +294,35 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
-            <div className="flex items-center gap-2">
-              <DateInput
-                value={formData.date}
-                onChange={(date) => setFormData({ ...formData, date })}
-                required
-              />
-              <Input
-                type="number"
-                min={0}
-                max={tour?.totalGuests || 0}
-                placeholder={`Guests`}
-                className="w-20"
-                value={formData.guests ?? ''}
-                onChange={(e) => {
-                  const max = tour?.totalGuests || 0;
-                  let val = e.target.value === '' ? undefined : Number(e.target.value);
-                  if (typeof val === 'number' && !Number.isNaN(val)) {
-                    if (val < 0) val = 0;
-                    if (max && val > max) {
-                      toast.warning(`Guests cannot exceed total tour guests (${max}).`);
-                      val = max;
-                    }
-                  }
-                  setFormData({ ...formData, guests: val as any });
-                }}
-              />
-            </div>
+            <DateInput
+              value={formData.date}
+              onChange={(date) => setFormData({ ...formData, date })}
+              required
+            />
+            <NumberInputMobile
+              value={formData.guests}
+              onChange={(val) => {
+                const max = tour?.totalGuests || 0;
+                if (val !== undefined && max && val > max) {
+                  toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                  setFormData({ ...formData, guests: max });
+                } else {
+                  setFormData({ ...formData, guests: val });
+                }
+              }}
+              min={0}
+              max={tour?.totalGuests || 0}
+              placeholder="Guests"
+              className="w-full"
+            />
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" className="hover-scale">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button type="submit" className="hover-scale w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               {editingIndex !== null ? 'Update' : 'Add'}
             </Button>
             {editingIndex !== null && (
-              <Button type="button" variant="outline" onClick={handleCancel}>
+              <Button type="button" variant="outline" onClick={handleCancel} className="w-full sm:w-auto">
                 Cancel
               </Button>
             )}
@@ -345,25 +340,25 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="text-xs sm:text-sm">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>
+                  <TableHead className="w-8 sm:w-[50px] p-1 sm:p-4">#</TableHead>
+                  <TableHead className="min-w-[80px] sm:min-w-[120px] p-1 sm:p-4">
                     <span className="sm:hidden">Exp</span>
                     <span className="hidden sm:inline">Expense</span>
                   </TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="w-[80px]">
+                  <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">Price</TableHead>
+                  <TableHead className="w-16 sm:w-[80px] p-1 sm:p-4">
                     <span className="sm:hidden">Guests</span>
                     <span className="hidden sm:inline">Total Guests</span>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">
                     <span className="sm:hidden">Total</span>
                     <span className="hidden sm:inline">Total Amount</span>
                   </TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right w-[50px]">
+                  <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Date</TableHead>
+                  <TableHead className="text-right w-8 sm:w-[50px] p-1 sm:p-4">
                     <span className="sm:hidden">...</span>
                     <span className="hidden sm:inline">Actions</span>
                   </TableHead>
@@ -427,29 +422,23 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                         )}
                       </TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            className="w-16 sm:w-24 h-8"
-                            min={0}
-                            max={totalGuests}
-                            value={expense.guests ?? ''}
-                            disabled={!!expense.merged}
-                            title={expense.merged ? 'Merged row' : 'Edit guests'}
-                            onChange={(e) => {
+                          <NumberInputMobile
+                            value={expense.guests}
+                            onChange={(val) => {
                               if (expense.merged) return;
-                              let val = e.target.value === '' ? undefined : Number(e.target.value);
-                              if (typeof val === 'number' && !Number.isNaN(val)) {
-                                if (val < 0) val = 0;
-                                if (totalGuests && val > totalGuests) {
-                                  toast.warning(`Guests cannot exceed total tour guests (${totalGuests}).`);
-                                  val = totalGuests;
-                                }
+                              if (val !== undefined && totalGuests && val > totalGuests) {
+                                toast.warning(`Guests cannot exceed total tour guests (${totalGuests}).`);
+                                val = totalGuests;
                               }
-                              const updated = { ...expense, guests: val as any } as Expense;
+                              const updated = { ...expense, guests: val } as Expense;
                               // Remove helper field before saving
                               const { originalIndex, ...clean } = updated as any;
                               updateMutation.mutate({ index: expense.originalIndex, expense: clean as Expense });
                             }}
+                            min={0}
+                            max={totalGuests}
+                            disabled={!!expense.merged}
+                            className="w-16 sm:w-24"
                           />
                         </TableCell>
                         <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>

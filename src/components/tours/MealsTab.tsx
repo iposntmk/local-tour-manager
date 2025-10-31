@@ -20,6 +20,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Meal } from '@/types/tour';
 
 interface MealsTabProps {
@@ -209,7 +210,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
           {editingIndex !== null ? 'Edit Meal' : 'Add Meal'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
             <div className="flex gap-2">
               <Popover open={openMeal} onOpenChange={setOpenMeal}>
                 <PopoverTrigger asChild>
@@ -268,41 +269,35 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
-            <div className="flex items-center gap-2">
-              <DateInput
-                value={formData.date}
-                onChange={(date) => setFormData({ ...formData, date })}
-                required
-              />
-              <Input
-                type="number"
-                min={0}
-                max={tour?.totalGuests || 0}
-                placeholder={`Guests`}
-                className="w-20"
-                value={formData.guests ?? ''}
-                onChange={(e) => {
-                  const max = tour?.totalGuests || 0;
-                  let val = e.target.value === '' ? undefined : Number(e.target.value);
-                  if (typeof val === 'number' && !Number.isNaN(val)) {
-                    if (val < 0) val = 0;
-                    if (max && val > max) {
-                      toast.warning(`Guests cannot exceed total tour guests (${max}).`);
-                      val = max;
-                    }
-                  }
-                  setFormData({ ...formData, guests: val as any });
-                }}
-              />
-            </div>
+            <DateInput
+              value={formData.date}
+              onChange={(date) => setFormData({ ...formData, date })}
+              required
+            />
+            <NumberInputMobile
+              value={formData.guests}
+              onChange={(val) => {
+                const max = tour?.totalGuests || 0;
+                if (val !== undefined && max && val > max) {
+                  toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                  setFormData({ ...formData, guests: max });
+                } else {
+                  setFormData({ ...formData, guests: val });
+                }
+              }}
+              min={0}
+              max={tour?.totalGuests || 0}
+              placeholder="Guests"
+              className="w-full"
+            />
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" className="hover-scale">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button type="submit" className="hover-scale w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               {editingIndex !== null ? 'Update' : 'Add'}
             </Button>
             {editingIndex !== null && (
-              <Button type="button" variant="outline" onClick={handleCancel}>
+              <Button type="button" variant="outline" onClick={handleCancel} className="w-full sm:w-auto">
                 Cancel
               </Button>
             )}
@@ -320,25 +315,25 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="text-xs sm:text-sm">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>
+                  <TableHead className="w-8 sm:w-[50px] p-1 sm:p-4">#</TableHead>
+                  <TableHead className="min-w-[80px] sm:min-w-[120px] p-1 sm:p-4">
                     <span className="sm:hidden">Meal</span>
                     <span className="hidden sm:inline">Meal</span>
                   </TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="w-[80px]">
+                  <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">Price</TableHead>
+                  <TableHead className="w-16 sm:w-[80px] p-1 sm:p-4">
                     <span className="sm:hidden">Guests</span>
                     <span className="hidden sm:inline">Total Guests</span>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">
                     <span className="sm:hidden">Total</span>
                     <span className="hidden sm:inline">Total Amount</span>
                   </TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right w-[50px]">
+                  <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Date</TableHead>
+                  <TableHead className="text-right w-8 sm:w-[50px] p-1 sm:p-4">
                     <span className="sm:hidden">...</span>
                     <span className="hidden sm:inline">Actions</span>
                   </TableHead>
@@ -359,31 +354,23 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                   const isZeroPrice = (meal.price ?? 0) === 0;
                   return (
                     <TableRow key={`${meal.originalIndex}-${meal.date}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
-                      <TableCell className="font-medium">{rowIndex + 1}</TableCell>
-                      <TableCell className="font-medium">{meal.name}</TableCell>
-                      <TableCell className={meal.price === 0 ? 'text-destructive font-semibold' : ''}>
+                      <TableCell className="font-medium p-1 sm:p-4">{rowIndex + 1}</TableCell>
+                      <TableCell className="font-medium p-1 sm:p-4">{meal.name}</TableCell>
+                      <TableCell className={`p-1 sm:p-4 ${meal.price === 0 ? 'text-destructive font-semibold' : ''}`}>
                         {formatCurrency(meal.price)}
                         {meal.price === 0 && (
-                          <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                          <span className="ml-1 sm:ml-2 text-destructive" title="Price is zero">⚑</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          className="w-16 sm:w-24"
-                          min={0}
-                          max={tourGuests}
-                          value={meal.guests ?? ''}
-                          onChange={(e) => {
-                            let val = e.target.value === '' ? undefined : Number(e.target.value);
-                            if (typeof val === 'number' && !Number.isNaN(val)) {
-                              if (val < 0) val = 0;
-                              if (tourGuests && val > tourGuests) {
-                                toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
-                                val = tourGuests;
-                              }
+                      <TableCell className="p-1 sm:p-4">
+                        <NumberInputMobile
+                          value={meal.guests}
+                          onChange={(val) => {
+                            if (val !== undefined && tourGuests && val > tourGuests) {
+                              toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
+                              val = tourGuests;
                             }
-                            const updated: Meal = { ...meal, guests: val as any } as any;
+                            const updated: Meal = { ...meal, guests: val } as any;
                             if (tourId) {
                               updateMutation.mutate({ index: meal.originalIndex, meal: updated });
                             } else {
@@ -392,11 +379,14 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                               onChange?.(newMeals);
                             }
                           }}
+                          min={0}
+                          max={tourGuests}
+                          className="w-12 sm:w-24"
                         />
                       </TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
-                      <TableCell>{formatDate(meal.date)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="font-semibold p-1 sm:p-4">{formatCurrency(totalAmount)}</TableCell>
+                      <TableCell className="p-1 sm:p-4">{formatDate(meal.date)}</TableCell>
+                      <TableCell className="text-right p-1 sm:p-4">
                         <div className="sm:hidden">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

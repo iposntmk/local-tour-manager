@@ -3,8 +3,14 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Copy, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -12,6 +18,7 @@ import { cn, formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
+import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Allowance } from '@/types/tour';
 
 interface AllowancesTabProps {
@@ -162,14 +169,14 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
           {editingIndex !== null ? 'Edit Allowance' : 'Add Allowance'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="space-y-3">
             <Popover open={openExpense} onOpenChange={setOpenExpense}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
                   aria-expanded={openExpense}
-                  className="justify-between"
+                  className="justify-between w-full"
                 >
                   {formData.name || "Select allowance..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -222,24 +229,24 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
               onChange={(date) => setFormData({ ...formData, date })}
               required
             />
-            <Input
-              type="number"
-              placeholder="Quantity"
+            <NumberInputMobile
               value={formData.quantity || 1}
-              onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-              min="1"
+              onChange={(val) => setFormData({ ...formData, quantity: val || 1 })}
+              min={1}
+              placeholder="Quantity"
+              className="w-full"
             />
-            <div className="flex gap-2">
-              <Button type="submit" className="hover-scale flex-1">
-                <Plus className="h-4 w-4 mr-2" />
-                {editingIndex !== null ? 'Update' : 'Add'}
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" className="hover-scale flex-1">
+              <Plus className="h-4 w-4 mr-2" />
+              {editingIndex !== null ? 'Update' : 'Add'}
+            </Button>
+            {editingIndex !== null && (
+              <Button type="button" variant="outline" onClick={handleCancel}>
+                Cancel
               </Button>
-              {editingIndex !== null && (
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
-              )}
-            </div>
+            )}
           </div>
         </form>
       </div>
@@ -302,7 +309,34 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                       <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
                       <TableCell>{formatDate(allowance.date)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
+                        <div className="sm:hidden">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(allowance.originalIndex)}>
+                                <Edit2 className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCopy(allowance.originalIndex)}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => deleteMutation.mutate(allowance.originalIndex)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                           <Button
                             variant="ghost"
                             size="sm"

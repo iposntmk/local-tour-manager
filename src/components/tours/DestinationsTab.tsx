@@ -20,6 +20,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Destination } from '@/types/tour';
 
 interface DestinationsTabProps {
@@ -209,22 +210,14 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               )}
             </TableCell>
             <TableCell>
-              <Input
-                type="number"
-                className="w-16 sm:w-24"
-                min={0}
-                max={tourGuests}
-                value={destination.guests ?? ''}
-                onChange={(e) => {
-                  let val = e.target.value === '' ? undefined : Number(e.target.value);
-                  if (typeof val === 'number' && !Number.isNaN(val)) {
-                    if (val < 0) val = 0;
-                    if (tourGuests && val > tourGuests) {
-                      toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
-                      val = tourGuests;
-                    }
+              <NumberInputMobile
+                value={destination.guests}
+                onChange={(val) => {
+                  if (val !== undefined && tourGuests && val > tourGuests) {
+                    toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
+                    val = tourGuests;
                   }
-                  const updated: Destination = { ...destination, guests: val as any } as any;
+                  const updated: Destination = { ...destination, guests: val } as any;
                   if (tourId) {
                     updateMutation.mutate({ index: destination.originalIndex, destination: updated });
                   } else {
@@ -233,6 +226,9 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                     onChange?.(newDests);
                   }
                 }}
+                min={0}
+                max={tourGuests}
+                className="w-16 sm:w-24"
               />
             </TableCell>
             <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
@@ -399,7 +395,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
           {editingIndex !== null ? 'Edit Destination' : 'Add Destination'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
             <div className="flex gap-2">
               <Popover open={openDestination} onOpenChange={setOpenDestination}>
                 <PopoverTrigger asChild>
@@ -465,33 +461,27 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
-            <div className="flex items-center gap-2">
-              <DateInput
-                value={formData.date}
-                onChange={(date) => setFormData({ ...formData, date })}
-                required
-              />
-              <Input
-                type="number"
-                min={0}
-                max={tour?.totalGuests || 0}
-                placeholder={`Guests`}
-                className="w-20"
-                value={formData.guests ?? ''}
-                onChange={(e) => {
-                  const max = tour?.totalGuests || 0;
-                  let val = e.target.value === '' ? undefined : Number(e.target.value);
-                  if (typeof val === 'number' && !Number.isNaN(val)) {
-                    if (val < 0) val = 0;
-                    if (max && val > max) {
-                      toast.warning(`Guests cannot exceed total tour guests (${max}).`);
-                      val = max;
-                    }
-                  }
-                  setFormData({ ...formData, guests: val as any });
-                }}
-              />
-            </div>
+            <DateInput
+              value={formData.date}
+              onChange={(date) => setFormData({ ...formData, date })}
+              required
+            />
+            <NumberInputMobile
+              value={formData.guests}
+              onChange={(val) => {
+                const max = tour?.totalGuests || 0;
+                if (val !== undefined && max && val > max) {
+                  toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                  setFormData({ ...formData, guests: max });
+                } else {
+                  setFormData({ ...formData, guests: val });
+                }
+              }}
+              min={0}
+              max={tour?.totalGuests || 0}
+              placeholder="Guests"
+              className="w-full"
+            />
           </div>
           <div className="flex gap-2">
             <Button type="submit" className="hover-scale">
