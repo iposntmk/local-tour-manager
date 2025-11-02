@@ -74,7 +74,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Meal added');
+      toast.success('Đã thêm bữa ăn');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
@@ -94,7 +94,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Meal updated');
+      toast.success('Đã cập nhật bữa ăn');
       setEditingIndex(null);
     },
   });
@@ -113,7 +113,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
       } else {
         onChange?.(meals.filter((_, i) => i !== index));
       }
-      toast.success('Meal removed');
+      toast.success('Đã xóa bữa ăn');
     },
   });
 
@@ -121,7 +121,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
     mutationFn: ({ name, price, categoryId }: { name: string; price: number; categoryId: string }) => {
       const category = expenseCategories.find(c => c.id === categoryId);
       if (!category) {
-        throw new Error('Category not found');
+        throw new Error('Không tìm thấy hạng mục');
       }
       return store.createDetailedExpense({
         name,
@@ -134,7 +134,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
     },
     onSuccess: (newMeal) => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Detailed meal created');
+      toast.success('Đã tạo bữa ăn chi tiết');
       setShowNewMealDialog(false);
       setNewMealName('');
       setNewMealPrice(0);
@@ -143,7 +143,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
       setFormData({ ...formData, name: newMeal.name, price: newMeal.price });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create meal: ${error.message}`);
+      toast.error(`Tạo bữa ăn thất bại: ${error.message}`);
     },
   });
 
@@ -151,7 +151,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
     e.preventDefault();
     // Validate required fields
     if (!formData.name || !formData.date) {
-      toast.error('Please fill in all required fields');
+      toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
       return;
     }
 
@@ -185,15 +185,15 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
 
   const handleCreateNewMeal = () => {
     if (!newMealName.trim()) {
-      toast.error('Please enter a meal name');
+      toast.error('Vui lòng nhập tên bữa ăn');
       return;
     }
     if (newMealPrice <= 0) {
-      toast.error('Please enter a valid price');
+      toast.error('Vui lòng nhập giá hợp lệ');
       return;
     }
     if (!newMealCategoryId) {
-      toast.error('Please select a category');
+      toast.error('Vui lòng chọn hạng mục');
       return;
     }
     createMealMutation.mutate({
@@ -207,7 +207,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
-          {editingIndex !== null ? 'Edit Meal' : 'Add Meal'}
+          {editingIndex !== null ? 'Chỉnh sửa bữa ăn' : 'Thêm bữa ăn'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
@@ -220,15 +220,15 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                     aria-expanded={openMeal}
                     className="flex-1 justify-between"
                   >
-                    {formData.name || "Select meal..."}
+                    {formData.name || "Chọn bữa ăn..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search meal..." />
+                    <CommandInput placeholder="Tìm bữa ăn..." />
                     <CommandList>
-                      <CommandEmpty>No meal found.</CommandEmpty>
+                      <CommandEmpty>Không tìm thấy bữa ăn.</CommandEmpty>
                       <CommandGroup>
                         {detailedExpenses.map((item) => (
                           <CommandItem
@@ -259,13 +259,13 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                 variant="outline"
                 size="icon"
                 onClick={() => setShowNewMealDialog(true)}
-                title="Add new meal"
+                title="Thêm bữa ăn mới"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
             <CurrencyInput
-              placeholder="Price (VND)"
+              placeholder="Giá (VND)"
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
@@ -279,7 +279,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
               onChange={(val) => {
                 const max = tour?.totalGuests || 0;
                 if (val !== undefined && max && val > max) {
-                  toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                  toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
                   setFormData({ ...formData, guests: max });
                 } else {
                   setFormData({ ...formData, guests: val });
@@ -287,18 +287,18 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
               }}
               min={0}
               max={tour?.totalGuests || 0}
-              placeholder="Guests"
+              placeholder="Số khách"
               className="w-full"
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Button type="submit" className="hover-scale w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
-              {editingIndex !== null ? 'Update' : 'Add'}
+              {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
             </Button>
             {editingIndex !== null && (
               <Button type="button" variant="outline" onClick={handleCancel} className="w-full sm:w-auto">
-                Cancel
+                Hủy
               </Button>
             )}
           </div>
@@ -307,11 +307,11 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Meals List</h3>
+          <h3 className="font-semibold">Danh sách bữa ăn</h3>
         </div>
         {meals.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            No meals added yet
+            Chưa có bữa ăn nào
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -320,22 +320,22 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                 <TableRow>
                   <TableHead className="w-8 sm:w-[50px] p-1 sm:p-4">#</TableHead>
                   <TableHead className="min-w-[80px] sm:min-w-[120px] p-1 sm:p-4">
-                    <span className="sm:hidden">Meal</span>
-                    <span className="hidden sm:inline">Meal</span>
+                    <span className="sm:hidden">Bữa</span>
+                    <span className="hidden sm:inline">Bữa ăn</span>
                   </TableHead>
-                  <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">Price</TableHead>
+                  <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">Giá</TableHead>
                   <TableHead className="w-16 sm:w-[80px] p-1 sm:p-4">
-                    <span className="sm:hidden">Guests</span>
-                    <span className="hidden sm:inline">Total Guests</span>
+                    <span className="sm:hidden">Khách</span>
+                    <span className="hidden sm:inline">Tổng khách</span>
                   </TableHead>
                   <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">
-                    <span className="sm:hidden">Total</span>
-                    <span className="hidden sm:inline">Total Amount</span>
+                    <span className="sm:hidden">Tổng</span>
+                    <span className="hidden sm:inline">Thành tiền</span>
                   </TableHead>
-                  <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Date</TableHead>
+                  <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Ngày</TableHead>
                   <TableHead className="text-right w-8 sm:w-[50px] p-1 sm:p-4">
                     <span className="sm:hidden">...</span>
-                    <span className="hidden sm:inline">Actions</span>
+                    <span className="hidden sm:inline">Thao tác</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -359,7 +359,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                       <TableCell className={`p-1 sm:p-4 ${meal.price === 0 ? 'text-destructive font-semibold' : ''}`}>
                         {formatCurrency(meal.price)}
                         {meal.price === 0 && (
-                          <span className="ml-1 sm:ml-2 text-destructive" title="Price is zero">⚑</span>
+                          <span className="ml-1 sm:ml-2 text-destructive" title="Giá bằng 0">⚑</span>
                         )}
                       </TableCell>
                       <TableCell className="p-1 sm:p-4">
@@ -367,7 +367,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                           value={meal.guests}
                           onChange={(val) => {
                             if (val !== undefined && tourGuests && val > tourGuests) {
-                              toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
+                              toast.warning(`Số khách không được vượt quá tổng khách của tour (${tourGuests}).`);
                               val = tourGuests;
                             }
                             const updated: Meal = { ...meal, guests: val } as any;
@@ -391,25 +391,25 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
+                                <span className="sr-only">Mở menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleEdit(meal.originalIndex)}>
                                 <Edit2 className="mr-2 h-4 w-4" />
-                                Edit
+                                Sửa
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDuplicate(meal.originalIndex)}>
                                 <Copy className="mr-2 h-4 w-4" />
-                                Duplicate
+                                Nhân bản
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => deleteMutation.mutate(meal.originalIndex)}
                                 className="text-destructive"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                                Xóa
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -420,7 +420,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                             size="sm"
                             onClick={() => handleEdit(meal.originalIndex)}
                             className="hover-scale"
-                            title="Edit"
+                            title="Sửa"
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -429,7 +429,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                             size="sm"
                             onClick={() => handleDuplicate(meal.originalIndex)}
                             className="hover-scale"
-                            title="Duplicate"
+                            title="Nhân bản"
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
@@ -438,7 +438,7 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                             size="sm"
                             onClick={() => deleteMutation.mutate(meal.originalIndex)}
                             className="hover-scale text-destructive hover:text-destructive"
-                            title="Delete"
+                            title="Xóa"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -451,10 +451,10 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
             </Table>
             <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
               <div className="text-lg font-semibold">
-                Total: {formatCurrency(meals.reduce((sum, meal) => {
+                Tổng cộng: {formatCurrency(meals.reduce((sum, meal) => {
                   const g = typeof meal.guests === 'number' ? meal.guests : 0;
                   return sum + (meal.price * g);
-                },0))}
+                }, 0))}
               </div>
             </div>
           </div>
@@ -465,23 +465,23 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
       <Dialog open={showNewMealDialog} onOpenChange={setShowNewMealDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Detailed Meal</DialogTitle>
+            <DialogTitle>Thêm bữa ăn chi tiết mới</DialogTitle>
             <DialogDescription>
-              Create a new detailed meal that can be reused across tours.
+              Tạo bữa ăn chi tiết mới để có thể dùng lại cho các tour khác.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="new-meal-name">Meal Name</Label>
+              <Label htmlFor="new-meal-name">Tên bữa ăn</Label>
               <Input
                 id="new-meal-name"
-                placeholder="e.g., Breakfast, Lunch, Dinner"
+                placeholder="ví dụ: Bữa sáng, Bữa trưa, Bữa tối"
                 value={newMealName}
                 onChange={(e) => setNewMealName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="meal-category">Expense Category</Label>
+              <Label htmlFor="meal-category">Nhóm chi phí</Label>
               <Popover open={openCategory} onOpenChange={setOpenCategory}>
                 <PopoverTrigger asChild>
                   <Button
@@ -493,15 +493,15 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                   >
                     {newMealCategoryId
                       ? expenseCategories.find((cat) => cat.id === newMealCategoryId)?.name
-                      : "Select category..."}
+                      : "Chọn nhóm chi phí..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-full p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search category..." />
+                    <CommandInput placeholder="Tìm nhóm chi phí..." />
                     <CommandList>
-                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandEmpty>Không tìm thấy nhóm chi phí.</CommandEmpty>
                       <CommandGroup>
                         {expenseCategories.map((cat) => (
                           <CommandItem
@@ -528,10 +528,10 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
               </Popover>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-meal-price">Default Price (VND)</Label>
+              <Label htmlFor="new-meal-price">Giá mặc định (VND)</Label>
               <CurrencyInput
                 id="new-meal-price"
-                placeholder="Default price"
+                placeholder="Giá mặc định"
                 value={newMealPrice}
                 onChange={setNewMealPrice}
               />
@@ -548,14 +548,14 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
                 setNewMealCategoryId('');
               }}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               type="button"
               onClick={handleCreateNewMeal}
               disabled={createMealMutation.isPending}
             >
-              {createMealMutation.isPending ? 'Creating...' : 'Create'}
+              {createMealMutation.isPending ? 'Đang tạo...' : 'Tạo'}
             </Button>
           </DialogFooter>
         </DialogContent>

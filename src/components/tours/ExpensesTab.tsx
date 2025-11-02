@@ -70,7 +70,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Expense added');
+      toast.success('Đã thêm chi phí');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
@@ -92,7 +92,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Expense updated');
+      toast.success('Đã cập nhật chi phí');
       setEditingIndex(null);
     },
   });
@@ -111,7 +111,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
       } else {
         onChange?.(expenses.filter((_, i) => i !== index));
       }
-      toast.success('Expense removed');
+      toast.success('Đã xóa chi phí');
     },
   });
 
@@ -119,7 +119,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
     mutationFn: ({ name, price, categoryId }: { name: string; price: number; categoryId: string }) => {
       const category = expenseCategories.find(c => c.id === categoryId);
       if (!category) {
-        throw new Error('Category not found');
+        throw new Error('Không tìm thấy hạng mục');
       }
       return store.createDetailedExpense({
         name,
@@ -132,7 +132,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
     },
     onSuccess: (newExpense) => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Detailed expense created');
+      toast.success('Đã tạo chi phí chi tiết');
       setShowNewExpenseDialog(false);
       setNewExpenseName('');
       setNewExpensePrice(0);
@@ -141,7 +141,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
       setFormData({ ...formData, name: newExpense.name, price: newExpense.price });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create expense: ${error.message}`);
+      toast.error(`Tạo chi phí thất bại: ${error.message}`);
     },
   });
 
@@ -149,7 +149,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
     e.preventDefault();
     // Validate required fields
     if (!formData.name || !formData.date) {
-      toast.error('Please fill in all required fields');
+      toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
       return;
     }
 
@@ -185,13 +185,13 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
     const totalGuests = tour?.totalGuests || 0;
 
     if (newGuests > totalGuests) {
-      toast.error(`Guests cannot exceed total guests (${totalGuests})`);
+      toast.error(`Số khách không được vượt quá tổng khách (${totalGuests})`);
       setEditingGuestsIndex(null);
       return;
     }
 
     if (newGuests < 0) {
-      toast.error('Guests cannot be negative');
+      toast.error('Số khách không thể âm');
       setEditingGuestsIndex(null);
       return;
     }
@@ -205,15 +205,15 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
 
   const handleCreateNewExpense = () => {
     if (!newExpenseName.trim()) {
-      toast.error('Please enter an expense name');
+      toast.error('Vui lòng nhập tên chi phí');
       return;
     }
     if (newExpensePrice <= 0) {
-      toast.error('Please enter a valid price');
+      toast.error('Vui lòng nhập giá hợp lệ');
       return;
     }
     if (!newExpenseCategoryId) {
-      toast.error('Please select a category');
+      toast.error('Vui lòng chọn hạng mục');
       return;
     }
     createExpenseMutation.mutate({
@@ -232,7 +232,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
-          {editingIndex !== null ? 'Edit Expense' : 'Add Expense'}
+          {editingIndex !== null ? 'Chỉnh sửa chi phí' : 'Thêm chi phí'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
@@ -245,15 +245,15 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                     aria-expanded={openExpense}
                     className="justify-between flex-1"
                   >
-                    {formData.name || "Select expense..."}
+                    {formData.name || "Chọn chi phí..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search expense..." />
+                    <CommandInput placeholder="Tìm chi phí..." />
                     <CommandList>
-                      <CommandEmpty>No expense found.</CommandEmpty>
+                      <CommandEmpty>Không tìm thấy chi phí.</CommandEmpty>
                       <CommandGroup>
                         {detailedExpenses.map((exp) => (
                           <CommandItem
@@ -284,13 +284,13 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                 variant="outline"
                 size="icon"
                 onClick={() => setShowNewExpenseDialog(true)}
-                title="Add new expense type"
+                title="Thêm loại chi phí mới"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
             <CurrencyInput
-              placeholder="Price (VND)"
+              placeholder="Giá (VND)"
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
@@ -304,7 +304,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
               onChange={(val) => {
                 const max = tour?.totalGuests || 0;
                 if (val !== undefined && max && val > max) {
-                  toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                  toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
                   setFormData({ ...formData, guests: max });
                 } else {
                   setFormData({ ...formData, guests: val });
@@ -312,18 +312,18 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
               }}
               min={0}
               max={tour?.totalGuests || 0}
-              placeholder="Guests"
+              placeholder="Số khách"
               className="w-full"
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Button type="submit" className="hover-scale w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
-              {editingIndex !== null ? 'Update' : 'Add'}
+              {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
             </Button>
             {editingIndex !== null && (
               <Button type="button" variant="outline" onClick={handleCancel} className="w-full sm:w-auto">
-                Cancel
+                Hủy
               </Button>
             )}
           </div>
@@ -332,11 +332,11 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Expenses List</h3>
+          <h3 className="font-semibold">Danh sách chi phí</h3>
         </div>
         {expenses.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            No expenses added yet
+            Chưa có chi phí nào
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -345,22 +345,22 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                 <TableRow>
                   <TableHead className="w-8 sm:w-[50px] p-1 sm:p-4">#</TableHead>
                   <TableHead className="min-w-[80px] sm:min-w-[120px] p-1 sm:p-4">
-                    <span className="sm:hidden">Exp</span>
-                    <span className="hidden sm:inline">Expense</span>
+                    <span className="sm:hidden">CP</span>
+                    <span className="hidden sm:inline">Chi phí</span>
                   </TableHead>
-                  <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">Price</TableHead>
+                  <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">Giá</TableHead>
                   <TableHead className="w-16 sm:w-[80px] p-1 sm:p-4">
-                    <span className="sm:hidden">Guests</span>
-                    <span className="hidden sm:inline">Total Guests</span>
+                    <span className="sm:hidden">Khách</span>
+                    <span className="hidden sm:inline">Tổng khách</span>
                   </TableHead>
                   <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">
-                    <span className="sm:hidden">Total</span>
-                    <span className="hidden sm:inline">Total Amount</span>
+                    <span className="sm:hidden">Tổng</span>
+                    <span className="hidden sm:inline">Thành tiền</span>
                   </TableHead>
-                  <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Date</TableHead>
+                  <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Ngày</TableHead>
                   <TableHead className="text-right w-8 sm:w-[50px] p-1 sm:p-4">
                     <span className="sm:hidden">...</span>
-                    <span className="hidden sm:inline">Actions</span>
+                    <span className="hidden sm:inline">Thao tác</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -418,7 +418,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                       <TableCell className={expense.price === 0 ? 'text-destructive font-semibold' : ''}>
                         {formatCurrency(expense.price)}
                         {expense.price === 0 && (
-                          <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                          <span className="ml-2 text-destructive" title="Giá bằng 0">⚑</span>
                         )}
                       </TableCell>
                         <TableCell>
@@ -427,7 +427,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                             onChange={(val) => {
                               if (expense.merged) return;
                               if (val !== undefined && totalGuests && val > totalGuests) {
-                                toast.warning(`Guests cannot exceed total tour guests (${totalGuests}).`);
+                                toast.warning(`Số khách không được vượt quá tổng khách của tour (${totalGuests}).`);
                                 val = totalGuests;
                               }
                               const updated = { ...expense, guests: val } as Expense;
@@ -448,25 +448,25 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <span className="sr-only">Open menu</span>
+                                  <span className="sr-only">Mở menu</span>
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => handleEdit(expense.originalIndex)}>
                                   <Edit2 className="mr-2 h-4 w-4" />
-                                  Edit
+                                  Sửa
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleDuplicate(expense.originalIndex)}>
                                   <Copy className="mr-2 h-4 w-4" />
-                                  Duplicate
+                                  Nhân bản
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => deleteMutation.mutate(expense.originalIndex)}
                                   className="text-destructive"
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
+                                  Xóa
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -477,7 +477,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                               size="sm"
                               onClick={() => handleEdit(expense.originalIndex)}
                               className="hover-scale"
-                              title="Edit"
+                              title="Sửa"
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -486,7 +486,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                               size="sm"
                               onClick={() => handleDuplicate(expense.originalIndex)}
                               className="hover-scale"
-                              title="Duplicate"
+                              title="Nhân bản"
                             >
                               <Copy className="h-4 w-4" />
                             </Button>
@@ -495,7 +495,7 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                               size="sm"
                               onClick={() => deleteMutation.mutate(expense.originalIndex)}
                               className="hover-scale text-destructive hover:text-destructive"
-                              title="Delete"
+                              title="Xóa"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -522,23 +522,23 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
       <Dialog open={showNewExpenseDialog} onOpenChange={setShowNewExpenseDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Detailed Expense</DialogTitle>
+            <DialogTitle>Thêm chi phí chi tiết mới</DialogTitle>
             <DialogDescription>
-              Create a new detailed expense that can be reused across tours.
+              Tạo chi phí chi tiết mới để có thể dùng lại cho các tour khác.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="expense-name">Expense Name</Label>
+              <Label htmlFor="expense-name">Tên chi phí</Label>
               <Input
                 id="expense-name"
-                placeholder="e.g., Hotel, Transport, Food"
+                placeholder="ví dụ: Khách sạn, Di chuyển, Ăn uống"
                 value={newExpenseName}
                 onChange={(e) => setNewExpenseName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="expense-category">Expense Category</Label>
+              <Label htmlFor="expense-category">Nhóm chi phí</Label>
               <Popover open={openCategory} onOpenChange={setOpenCategory}>
                 <PopoverTrigger asChild>
                   <Button
@@ -550,15 +550,15 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                   >
                     {newExpenseCategoryId
                       ? expenseCategories.find((cat) => cat.id === newExpenseCategoryId)?.name
-                      : "Select category..."}
+                      : "Chọn nhóm chi phí..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-full p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search category..." />
+                    <CommandInput placeholder="Tìm nhóm chi phí..." />
                     <CommandList>
-                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandEmpty>Không tìm thấy nhóm chi phí.</CommandEmpty>
                       <CommandGroup>
                         {expenseCategories.map((cat) => (
                           <CommandItem
@@ -585,10 +585,10 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
               </Popover>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="expense-price">Default Price (VND)</Label>
+              <Label htmlFor="expense-price">Giá mặc định (VND)</Label>
               <CurrencyInput
                 id="expense-price"
-                placeholder="Default price"
+                placeholder="Giá mặc định"
                 value={newExpensePrice}
                 onChange={(price) => setNewExpensePrice(price)}
               />
@@ -605,14 +605,14 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
                 setNewExpenseCategoryId('');
               }}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               type="button"
               onClick={handleCreateNewExpense}
               disabled={createExpenseMutation.isPending}
             >
-              {createExpenseMutation.isPending ? 'Creating...' : 'Create'}
+              {createExpenseMutation.isPending ? 'Đang tạo...' : 'Tạo'}
             </Button>
           </DialogFooter>
         </DialogContent>

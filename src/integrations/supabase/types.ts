@@ -796,6 +796,7 @@ export type Database = {
           company_name_at_booking: string | null
           company_tip: number | null
           created_at: string | null
+          created_by_user_id: string | null
           driver_name: string | null
           end_date: string
           final_total: number | null
@@ -827,6 +828,7 @@ export type Database = {
           company_name_at_booking?: string | null
           company_tip?: number | null
           created_at?: string | null
+          created_by_user_id?: string | null
           driver_name?: string | null
           end_date: string
           final_total?: number | null
@@ -858,6 +860,7 @@ export type Database = {
           company_name_at_booking?: string | null
           company_tip?: number | null
           created_at?: string | null
+          created_by_user_id?: string | null
           driver_name?: string | null
           end_date?: string
           final_total?: number | null

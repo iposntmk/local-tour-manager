@@ -835,7 +835,7 @@ const Tours = () => {
         <div className={`${headerClasses} border-b pb-4 pt-4 bg-gray-100 dark:bg-gray-900 z-40 space-y-4`}>
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             <div className="flex-shrink-0">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Tours</h1>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Tour</h1>
             </div>
             <div className="flex gap-1 items-center flex-shrink-0 flex-wrap">
               <Button
@@ -844,10 +844,10 @@ const Tours = () => {
                 size="sm"
                 disabled={isBackingUp}
                 className="hidden lg:flex hover-scale lg:h-10 lg:px-3 text-xs"
-                title="Download full SQL backup (schema + data)"
+                title="Tải bản sao SQL đầy đủ (schema + data)"
               >
                 <Database className="h-4 w-4 lg:mr-1.5" />
-                <span className="hidden lg:inline">{isBackingUp ? 'Backing up...' : 'SQL Backup'}</span>
+                <span className="hidden lg:inline">{isBackingUp ? 'Đang sao lưu...' : 'Sao lưu SQL'}</span>
               </Button>
               <Button
                 onClick={handleDownloadAllImages}
@@ -855,10 +855,10 @@ const Tours = () => {
                 size="sm"
                 disabled={isDownloadingImages}
                 className="hidden lg:flex hover-scale lg:h-10 lg:px-3 text-xs"
-                title="Download all images from all tours"
+                title="Tải tất cả ảnh từ tất cả tour"
               >
                 <ImageIcon className="h-4 w-4 lg:mr-1.5" />
-                <span className="hidden lg:inline">{isDownloadingImages ? 'Downloading...' : 'Download All Images'}</span>
+                <span className="hidden lg:inline">{isDownloadingImages ? 'Đang tải...' : 'Tải tất cả ảnh'}</span>
               </Button>
               <ImportTourDialogEnhanced
                 onImport={handleImport}
@@ -869,7 +869,7 @@ const Tours = () => {
                     className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-green-600 hover:text-green-700 border-green-600 hover:border-green-700"
                   >
                     <Upload className="h-5 w-5 lg:mr-1.5" />
-                    <span className="text-[10px] lg:text-xs">Import</span>
+                    <span className="text-[10px] lg:text-xs">Nhập</span>
                   </Button>
                 }
               />
@@ -878,22 +878,22 @@ const Tours = () => {
                 variant="outline"
                 size="sm"
                 className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-blue-600 hover:text-blue-700 border-blue-600 hover:border-blue-700"
-                title="Export all tours into folders by month (ZIP)"
+                title="Xuất tất cả tour vào thư mục theo tháng (ZIP)"
               >
                 <FolderArchive className="h-5 w-5 lg:mr-1.5" />
-                <span className="text-[10px] lg:text-xs hidden sm:inline">Export All Tours → Folders</span>
-                <span className="text-[10px] lg:text-xs sm:hidden">Folders</span>
+                <span className="text-[10px] lg:text-xs hidden sm:inline">Xuất tất cả → Thư mục</span>
+                <span className="text-[10px] lg:text-xs sm:hidden">Thư mục</span>
               </Button>
               <Button
                 onClick={handleExportAllSingle}
                 variant="outline"
                 size="sm"
                 className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-purple-600 hover:text-purple-700 border-purple-600 hover:border-purple-700"
-                title="Export all tours to 1 Excel file (single sheet with grand total)"
+                title="Xuất tất cả tour vào 1 file Excel (1 trang với tổng lớn)"
               >
                 <FileSpreadsheet className="h-5 w-5 lg:mr-1.5" />
-                <span className="text-[10px] lg:text-xs hidden sm:inline">Export All Tours → Single Sheet</span>
-                <span className="text-[10px] lg:text-xs sm:hidden">Single</span>
+                <span className="text-[10px] lg:text-xs hidden sm:inline">Xuất tất cả → 1 trang</span>
+                <span className="text-[10px] lg:text-xs sm:hidden">1 trang</span>
               </Button>
               {/* <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -979,20 +979,20 @@ const Tours = () => {
                     className="hover-scale text-destructive hover:text-destructive h-auto py-2 px-2 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs"
                   >
                     <Trash className="h-5 w-5 lg:mr-1.5" />
-                    <span className="text-[9px] lg:text-xs">Delete All</span>
+                    <span className="text-[9px] lg:text-xs">Xóa tất cả</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete All Tours - PIN Required</AlertDialogTitle>
+                    <AlertDialogTitle>Xóa tất cả Tour - Yêu cầu mã PIN</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete all tours from the database.
+                      Hành động này không thể hoàn tác. Hành động này sẽ xóa vĩnh viễn tất cả tour khỏi cơ sở dữ liệu.
                       <div className="mt-4 space-y-2">
-                        <Label htmlFor="delete-all-pin">Enter PIN to confirm:</Label>
+                        <Label htmlFor="delete-all-pin">Nhập mã PIN để xác nhận:</Label>
                         <Input
                           id="delete-all-pin"
                           type="password"
-                          placeholder="Enter PIN"
+                          placeholder="Nhập mã PIN"
                           value={deleteAllPinInput}
                           onChange={(e) => setDeleteAllPinInput(e.target.value)}
                           onKeyDown={(e) => {
@@ -1008,12 +1008,12 @@ const Tours = () => {
                     <AlertDialogCancel onClick={() => {
                       setDeleteAllPinInput('');
                       setShowDeleteAllPinDialog(false);
-                    }}>Cancel</AlertDialogCancel>
+                    }}>Hủy</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDeleteAllConfirm}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Delete All Tours
+                      Xóa tất cả Tour
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -1024,7 +1024,7 @@ const Tours = () => {
                 className="hover-scale h-auto py-2 px-2 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs"
               >
                 <Plus className="h-5 w-5 lg:mr-1.5" />
-                <span className="text-[9px] lg:text-xs">New Tour</span>
+                <span className="text-[9px] lg:text-xs">Thêm Tour</span>
               </Button>
             </div>
           </div>
@@ -1033,7 +1033,7 @@ const Tours = () => {
           <div className="flex items-center gap-2 sm:hidden mb-2">
             <h2 className="text-xs font-semibold flex items-center gap-1">
               <Filter className="h-3 w-3" />
-              Search & Filter
+              Tìm kiếm & Lọc
             </h2>
             <Button
               variant="ghost"
@@ -1050,7 +1050,7 @@ const Tours = () => {
               <SearchInput
                 value={searchCode}
                 onChange={setSearchCode}
-                placeholder="Search tour code..."
+                placeholder="Tìm kiếm mã tour..."
               />
               <Popover>
                 <PopoverTrigger asChild>
@@ -1070,7 +1070,7 @@ const Tours = () => {
                         format(dateRange.from, 'dd/MM/yyyy')
                       )
                     ) : (
-                      <span>Pick a date range</span>
+                      <span>Chọn khoảng thời gian</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -1090,7 +1090,7 @@ const Tours = () => {
                         onClick={() => setDateRange(undefined)}
                       >
                         <X className="h-4 w-4 mr-2" />
-                        Clear dates
+                        Xóa ngày
                       </Button>
                     </div>
                   )}
@@ -1099,7 +1099,7 @@ const Tours = () => {
               <SearchInput
                 value={searchCompany}
                 onChange={setSearchCompany}
-                placeholder="Search company..."
+                placeholder="Tìm kiếm công ty..."
               />
             </div>
 
@@ -1108,7 +1108,7 @@ const Tours = () => {
               <div className="flex items-center gap-2 sm:hidden">
                 <h2 className="text-xs font-semibold flex items-center gap-1">
                   <Filter className="h-3 w-3" />
-                  Advanced Filters
+                  Bộ lọc nâng cao
                 </h2>
                 <Button
                   variant="ghost"
@@ -1126,14 +1126,14 @@ const Tours = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <Filter className="h-3 w-3" />
-                      Nationality
+                      Quốc tịch
                     </label>
                     <Select value={nationalityFilter} onValueChange={setNationalityFilter}>
                       <SelectTrigger className="h-8 sm:h-10">
-                        <SelectValue placeholder="All Nationalities" />
+                        <SelectValue placeholder="Tất cả quốc tịch" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Nationalities</SelectItem>
+                        <SelectItem value="all">Tất cả quốc tịch</SelectItem>
                         {nationalities.map(nationality => (
                           <SelectItem key={nationality.id} value={nationality.id}>
                             {nationality.emoji} {nationality.name}
@@ -1146,14 +1146,14 @@ const Tours = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <CalendarIcon className="h-3 w-3" />
-                      Month
+                      Tháng
                     </label>
                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                       <SelectTrigger className="h-8 sm:h-10">
-                        <SelectValue placeholder="All" />
+                        <SelectValue placeholder="Tất cả" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="all">Tất cả</SelectItem>
                         {months.map(month => (
                           <SelectItem key={month.value} value={month.value}>
                             {month.label}
@@ -1166,14 +1166,14 @@ const Tours = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <CalendarIcon className="h-3 w-3" />
-                      Year
+                      Năm
                     </label>
                     <Select value={selectedYear} onValueChange={setSelectedYear}>
                       <SelectTrigger className="h-8 sm:h-10">
-                        <SelectValue placeholder="All" />
+                        <SelectValue placeholder="Tất cả" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="all">Tất cả</SelectItem>
                         {availableYears.map(year => (
                           <SelectItem key={year} value={year.toString()}>
                             {year}
@@ -1186,23 +1186,23 @@ const Tours = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <ArrowUpDown className="h-3 w-3" />
-                      Sort By
+                      Sắp xếp
                     </label>
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger className="h-8 sm:h-10">
-                        <SelectValue placeholder="Sort by..." />
+                        <SelectValue placeholder="Sắp xếp theo..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="startDate-desc">Start Date (Newest First)</SelectItem>
-                        <SelectItem value="startDate-asc">Start Date (Oldest First)</SelectItem>
-                        <SelectItem value="endDate-desc">End Date (Newest First)</SelectItem>
-                        <SelectItem value="endDate-asc">End Date (Oldest First)</SelectItem>
-                        <SelectItem value="tourCode-asc">Tour Code (A-Z)</SelectItem>
-                        <SelectItem value="tourCode-desc">Tour Code (Z-A)</SelectItem>
-                        <SelectItem value="clientName-asc">Client Name (A-Z)</SelectItem>
-                        <SelectItem value="clientName-desc">Client Name (Z-A)</SelectItem>
-                        <SelectItem value="createdAt-desc">Created (Newest First)</SelectItem>
-                        <SelectItem value="createdAt-asc">Created (Oldest First)</SelectItem>
+                        <SelectItem value="startDate-desc">Ngày bắt đầu (Mới nhất)</SelectItem>
+                        <SelectItem value="startDate-asc">Ngày bắt đầu (Cũ nhất)</SelectItem>
+                        <SelectItem value="endDate-desc">Ngày kết thúc (Mới nhất)</SelectItem>
+                        <SelectItem value="endDate-asc">Ngày kết thúc (Cũ nhất)</SelectItem>
+                        <SelectItem value="tourCode-asc">Mã tour (A-Z)</SelectItem>
+                        <SelectItem value="tourCode-desc">Mã tour (Z-A)</SelectItem>
+                        <SelectItem value="clientName-asc">Tên khách (A-Z)</SelectItem>
+                        <SelectItem value="clientName-desc">Tên khách (Z-A)</SelectItem>
+                        <SelectItem value="createdAt-desc">Ngày tạo (Mới nhất)</SelectItem>
+                        <SelectItem value="createdAt-asc">Ngày tạo (Cũ nhất)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1211,7 +1211,7 @@ const Tours = () => {
                 {hasActiveFilters && (
                   <Button variant="outline" onClick={clearFilters} className="h-8 sm:h-10 sm:self-end">
                     <X className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                    Clear Filters
+                    Xóa bộ lọc
                   </Button>
                 )}
               </div>
@@ -1220,7 +1220,7 @@ const Tours = () => {
               {hasActiveFilters && (
                 <div className="flex items-center gap-2 mt-3">
               <span className="text-base sm:text-lg font-semibold">
-                    Showing {tours.length} tours
+                    Hiển thị {tours.length} tour
                   </span>
                   {nationalityFilter !== 'all' && (
                     <Badge variant="secondary" className="text-sm font-medium">
@@ -1243,13 +1243,13 @@ const Tours = () => {
         <div className="flex flex-wrap items-center justify-between gap-4 text-sm sm:text-base border-y py-3 bg-muted/30">
           {filteredToursTotal !== 0 && (
             <div>
-              <span className="text-muted-foreground">Final Total ({tours.length} tours): </span>
+              <span className="text-muted-foreground">Tổng cuối ({tours.length} tour): </span>
               <span className="font-bold text-primary">{formatCurrency(filteredToursTotal)}</span>
             </div>
           )}
           {allToursData && allToursData.grandTotal !== 0 && (
             <div>
-              <span className="text-muted-foreground">Grand Total (All {allToursData.count} tours in database): </span>
+              <span className="text-muted-foreground">Tổng lớn (Tất cả {allToursData.count} tour): </span>
               <span className="font-bold text-green-600">{formatCurrency(allToursData.grandTotal)}</span>
             </div>
           )}
@@ -1264,8 +1264,8 @@ const Tours = () => {
         ) : totalTours === 0 ? (
           <div className="text-center py-12 text-muted-foreground mt-6">
             {!hasActiveFilters && !(searchCode.trim() || dateRange?.from || dateRange?.to || searchCompany.trim())
-              ? 'No tours found. Create your first tour to get started.'
-              : 'No tours match your current filters.'}
+              ? 'Không tìm thấy tour nào. Tạo tour đầu tiên để bắt đầu.'
+              : 'Không có tour nào phù hợp với bộ lọc.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
@@ -1312,9 +1312,9 @@ const Tours = () => {
                             {tour.totalGuests || ((tour.adults || 0) + (tour.children || 0))}p
                           </Badge>
                           {showRedFlag && (
-                            <span className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm" title={hasDuplicateDestNames && hasZeroPrice ? 'Duplicate destination name(s) and zero price item(s) found' : hasDuplicateDestNames ? 'Duplicate destination name(s) found' : 'Zero price item(s) found'}>
+                            <span className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm" title={hasDuplicateDestNames && hasZeroPrice ? 'Tên điểm đến trùng lặp và giá 0' : hasDuplicateDestNames ? 'Tên điểm đến trùng lặp' : 'Có mục giá 0'}>
                               <Flag className="h-3 w-3 sm:h-4 sm:w-4" />
-                              <span className="hidden sm:inline">Check</span>
+                              <span className="hidden sm:inline">Kiểm tra</span>
                             </span>
                           )}
                         </div>
@@ -1409,13 +1409,13 @@ const Tours = () => {
         <AlertDialog open={!!deleteTourId} onOpenChange={(open) => !open && setDeleteTourId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete this tour?</AlertDialogTitle>
+              <AlertDialogTitle>Xóa tour này?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. The tour will be permanently removed.
+                Hành động này không thể hoàn tác. Tour sẽ bị xóa vĩnh viễn.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setDeleteTourId(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => setDeleteTourId(null)}>Hủy</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={() => {
@@ -1425,7 +1425,7 @@ const Tours = () => {
                   }
                 }}
               >
-                Delete
+                Xóa
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

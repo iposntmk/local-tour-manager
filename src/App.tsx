@@ -35,6 +35,12 @@ const App = () => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Clear all React Query cache on auth state change
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          queryClient.clear();
+          queryClient.invalidateQueries();
+        }
       }
     );
 

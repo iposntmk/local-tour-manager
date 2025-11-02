@@ -62,12 +62,12 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Allowance added');
+      toast.success('Đã thêm phụ cấp');
       setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
     },
     onError: (error) => {
       console.error('Error adding allowance:', error);
-      toast.error('Failed to add allowance: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      toast.error('Thêm phụ cấp thất bại: ' + (error instanceof Error ? error.message : 'lỗi không xác định'));
     },
   });
 
@@ -86,7 +86,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Allowance updated');
+      toast.success('Đã cập nhật phụ cấp');
       setEditingIndex(null);
     },
   });
@@ -105,7 +105,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
       } else {
         onChange?.(allowances.filter((_, i) => i !== index));
       }
-      toast.success('Allowance removed');
+      toast.success('Đã xóa phụ cấp');
     },
   });
 
@@ -116,7 +116,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
 
     // Validate required fields
     if (!formData.name || !formData.date) {
-      toast.error('Please fill in all required fields');
+      toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
       return;
     }
 
@@ -166,7 +166,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
-          {editingIndex !== null ? 'Edit Allowance' : 'Add Allowance'}
+          {editingIndex !== null ? 'Chỉnh sửa phụ cấp' : 'Thêm phụ cấp'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
@@ -178,15 +178,15 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                   aria-expanded={openExpense}
                   className="justify-between w-full"
                 >
-                  {formData.name || "Select allowance..."}
+                  {formData.name || "Chọn phụ cấp..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Search allowance..." />
+                  <CommandInput placeholder="Tìm phụ cấp..." />
                   <CommandList>
-                    <CommandEmpty>No allowance found.</CommandEmpty>
+                    <CommandEmpty>Không tìm thấy phụ cấp.</CommandEmpty>
                     <CommandGroup>
                       {detailedExpenses.map((exp) => (
                         <CommandItem
@@ -220,7 +220,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
               </PopoverContent>
             </Popover>
             <CurrencyInput
-              placeholder="Price (VND)"
+              placeholder="Giá (VND)"
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
@@ -233,18 +233,18 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
               value={formData.quantity || 1}
               onChange={(val) => setFormData({ ...formData, quantity: val || 1 })}
               min={1}
-              placeholder="Quantity"
+              placeholder="Số lượng"
               className="w-full"
             />
           </div>
           <div className="flex gap-2">
             <Button type="submit" className="hover-scale flex-1">
               <Plus className="h-4 w-4 mr-2" />
-              {editingIndex !== null ? 'Update' : 'Add'}
+              {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
             </Button>
             {editingIndex !== null && (
               <Button type="button" variant="outline" onClick={handleCancel}>
-                Cancel
+                Hủy
               </Button>
             )}
           </div>
@@ -253,11 +253,11 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Allowances List</h3>
+          <h3 className="font-semibold">Danh sách phụ cấp</h3>
         </div>
         {allowances.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            No allowances added yet
+            Chưa có phụ cấp nào
           </div>
         ) : (
           <Table className="min-w-[680px] sm:min-w-0">
@@ -265,19 +265,19 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
               <TableRow>
                 <TableHead className="w-[50px]">#</TableHead>
                 <TableHead>
-                  <span className="sm:hidden">Name</span>
-                  <span className="hidden sm:inline">Name</span>
+                  <span className="sm:hidden">Tên</span>
+                  <span className="hidden sm:inline">Tên</span>
                 </TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead className="w-[80px]">Qty</TableHead>
+                <TableHead>Giá</TableHead>
+                <TableHead className="w-[80px]">SL</TableHead>
                 <TableHead>
-                  <span className="sm:hidden">Total</span>
-                  <span className="hidden sm:inline">Total Amount</span>
+                  <span className="sm:hidden">Tổng</span>
+                  <span className="hidden sm:inline">Thành tiền</span>
                 </TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Ngày</TableHead>
                 <TableHead className="text-right w-[80px] sm:w-auto">
-                  <span className="sm:hidden">Act</span>
-                  <span className="hidden sm:inline">Actions</span>
+                  <span className="sm:hidden">Tác</span>
+                  <span className="hidden sm:inline">Thao tác</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -302,7 +302,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                       <TableCell className={allowance.price === 0 ? 'text-destructive font-semibold' : ''}>
                         {formatCurrency(allowance.price)}
                         {allowance.price === 0 && (
-                          <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                          <span className="ml-2 text-destructive" title="Giá bằng 0">⚑</span>
                         )}
                       </TableCell>
                       <TableCell>{qty}</TableCell>
@@ -313,25 +313,25 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
+                                <span className="sr-only">Mở menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleEdit(allowance.originalIndex)}>
                                 <Edit2 className="mr-2 h-4 w-4" />
-                                Edit
+                                Sửa
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleCopy(allowance.originalIndex)}>
                                 <Copy className="mr-2 h-4 w-4" />
-                                Copy
+                                Sao chép
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => deleteMutation.mutate(allowance.originalIndex)}
                                 className="text-destructive"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                                Xóa
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -342,7 +342,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                             size="sm"
                             onClick={() => handleCopy(allowance.originalIndex)}
                             className="hover-scale"
-                            title="Copy row"
+                            title="Sao chép dòng"
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
@@ -351,7 +351,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                             size="sm"
                             onClick={() => handleEdit(allowance.originalIndex)}
                             className="hover-scale"
-                            title="Edit"
+                            title="Sửa"
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -360,7 +360,7 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                             size="sm"
                             onClick={() => deleteMutation.mutate(allowance.originalIndex)}
                             className="hover-scale text-destructive hover:text-destructive"
-                            title="Delete"
+                            title="Xóa"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -370,12 +370,12 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
                   );
                 })}
               <TableRow className="bg-muted/50 font-semibold">
-                <TableCell colSpan={3} className="text-right">Total:</TableCell>
+                <TableCell colSpan={3} className="text-right">Tổng cộng:</TableCell>
                 <TableCell>
-                  {allowances.reduce((sum, a) => sum + (a.quantity || 1), 0)} days
+                  {allowances.reduce((sum, a) => sum + (a.quantity || 1), 0)} ngày
                 </TableCell>
                 <TableCell className="font-bold">
-                  {formatCurrency(allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)),0))}
+                  {formatCurrency(allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0))}
                 </TableCell>
                 <TableCell colSpan={2}></TableCell>
               </TableRow>

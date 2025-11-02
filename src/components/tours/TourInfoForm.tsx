@@ -142,29 +142,29 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
     const missingFields: string[] = [];
     
     if (!data.tourCode?.trim()) {
-      missingFields.push('Tour Code');
+      missingFields.push('Mã tour');
     }
     if (!data.clientName?.trim()) {
-      missingFields.push('Client Name');
+      missingFields.push('Tên khách hàng');
     }
     if (!data.startDate) {
-      missingFields.push('Start Date');
+      missingFields.push('Ngày bắt đầu');
     }
     if (!data.endDate) {
-      missingFields.push('End Date');
+      missingFields.push('Ngày kết thúc');
     }
     if (!selectedCompanyId) {
-      missingFields.push('Company');
+      missingFields.push('Công ty');
     }
     if (!selectedGuideId) {
-      missingFields.push('Guide');
+      missingFields.push('Hướng dẫn viên');
     }
     if (!selectedNationalityId) {
-      missingFields.push('Nationality');
+      missingFields.push('Quốc tịch');
     }
 
     if (missingFields.length > 0) {
-      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      toast.error(`Vui lòng điền đầy đủ các trường bắt buộc: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -173,7 +173,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
     const selectedNationality = nationalities.find((n) => n.id === selectedNationalityId);
 
     if (!selectedCompany || !selectedGuide || !selectedNationality) {
-      toast.error('Please select valid Company, Guide, and Nationality');
+      toast.error('Vui lòng chọn Công ty, Hướng dẫn viên và Quốc tịch hợp lệ');
       return;
     }
 
@@ -194,11 +194,11 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Tour Code */}
         <div className="space-y-2">
-          <Label htmlFor="tourCode">Tour Code *</Label>
+          <Label htmlFor="tourCode">Mã tour *</Label>
           <Input
             id="tourCode"
-            {...register('tourCode', { required: 'Tour code is required' })}
-            placeholder="e.g., AT-250901"
+            {...register('tourCode', { required: 'Bắt buộc nhập mã tour' })}
+            placeholder="ví dụ: AT-250901"
             className={cn(getRequiredFieldClasses(!!errors.tourCode))}
           />
           {errors.tourCode && (
@@ -208,7 +208,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
         {/* Company */}
         <div className="space-y-2">
-          <Label>Company *</Label>
+          <Label>Công ty *</Label>
           <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -216,15 +216,15 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
                 role="combobox"
                 className={cn("w-full justify-between", getRequiredFieldClasses(!selectedCompanyId))}
               >
-                {selectedCompany ? selectedCompany.name : 'Select company...'}
+                {selectedCompany ? selectedCompany.name : 'Chọn công ty...'}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
               <Command>
-                <CommandInput placeholder="Search company..." />
+                <CommandInput placeholder="Tìm công ty..." />
                 <CommandList>
-                  <CommandEmpty>No company found.</CommandEmpty>
+                  <CommandEmpty>Không tìm thấy công ty.</CommandEmpty>
                   <CommandGroup>
                     {companies.map((company) => (
                       <CommandItem
@@ -253,7 +253,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
         {/* Guide */}
         <div className="space-y-2">
-          <Label>Guide *</Label>
+          <Label>Hướng dẫn viên *</Label>
           <Popover open={guideOpen} onOpenChange={setGuideOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -261,15 +261,15 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
                 role="combobox"
                 className="w-full justify-between"
               >
-                {selectedGuide ? selectedGuide.name : 'Select guide...'}
+                {selectedGuide ? selectedGuide.name : 'Chọn hướng dẫn viên...'}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
               <Command>
-                <CommandInput placeholder="Search guide..." />
+                <CommandInput placeholder="Tìm hướng dẫn viên..." />
                 <CommandList>
-                  <CommandEmpty>No guide found.</CommandEmpty>
+                  <CommandEmpty>Không tìm thấy hướng dẫn viên.</CommandEmpty>
                   <CommandGroup>
                     {guides.map((guide) => (
                       <CommandItem
@@ -298,11 +298,11 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
         {/* Client Name */}
         <div className="space-y-2">
-          <Label htmlFor="clientName">Client Name *</Label>
+          <Label htmlFor="clientName">Tên khách hàng *</Label>
           <Input
             id="clientName"
-            {...register('clientName', { required: 'Client name is required' })}
-            placeholder="e.g., Mrs. Matilde Lamura"
+            {...register('clientName', { required: 'Bắt buộc nhập tên khách hàng' })}
+            placeholder="ví dụ: Bà Nguyễn Thị A"
           />
           {errors.clientName && (
             <p className="text-sm text-destructive">{errors.clientName.message}</p>
@@ -311,7 +311,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
         {/* Nationality */}
         <div className="space-y-2">
-          <Label>Nationality *</Label>
+          <Label>Quốc tịch *</Label>
           <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -324,16 +324,16 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
                     {selectedNationality.emoji} {selectedNationality.name}
                   </span>
                 ) : (
-                  'Select nationality...'
+                  'Chọn quốc tịch...'
                 )}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
               <Command>
-                <CommandInput placeholder="Search nationality..." />
+                <CommandInput placeholder="Tìm quốc tịch..." />
                 <CommandList>
-                  <CommandEmpty>No nationality found.</CommandEmpty>
+                  <CommandEmpty>Không tìm thấy quốc tịch.</CommandEmpty>
                   <CommandGroup>
                     {nationalities.map((nationality) => (
                       <CommandItem
@@ -362,7 +362,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
         {/* Adults */}
         <div className="space-y-2">
-          <Label htmlFor="adults">Adults *</Label>
+          <Label htmlFor="adults">Người lớn *</Label>
           <NumberInput
             id="adults"
             value={watch('adults')}
@@ -373,7 +373,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
         {/* Children */}
         <div className="space-y-2">
-          <Label htmlFor="children">Children</Label>
+          <Label htmlFor="children">Trẻ em</Label>
           <NumberInput
             id="children"
             value={watch('children')}
@@ -384,39 +384,39 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
         {/* Total Guests (display only) */}
         <div className="space-y-2">
-          <Label>Total Guests</Label>
+          <Label>Tổng khách</Label>
           <Input value={totalGuests} disabled className="bg-muted" />
         </div>
 
         {/* Total Days from DB (display only) */}
         <div className="space-y-2">
-          <Label>Total Days</Label>
-          <Input value={totalDays > 0 ? `${totalDays} day${totalDays !== 1 ? 's' : ''}` : ''} disabled className="bg-muted" />
+          <Label>Tổng số ngày</Label>
+          <Input value={totalDays > 0 ? `${totalDays} ngày` : ''} disabled className="bg-muted" />
         </div>
 
         {/* Driver Name */}
         <div className="space-y-2">
-          <Label htmlFor="driverName">Driver Name</Label>
+          <Label htmlFor="driverName">Tên tài xế</Label>
           <Input
             id="driverName"
             {...register('driverName')}
-            placeholder="e.g., Mr Đức"
+            placeholder="ví dụ: Anh Đức"
           />
         </div>
 
         {/* Client Phone */}
         <div className="space-y-2">
-          <Label htmlFor="clientPhone">Client Phone</Label>
+          <Label htmlFor="clientPhone">Điện thoại khách hàng</Label>
           <Input
             id="clientPhone"
             {...register('clientPhone')}
-            placeholder="e.g., +39 348 470 4413"
+            placeholder="ví dụ: +84 912 345 678"
           />
         </div>
 
         {/* Start Date */}
         <div className="space-y-2">
-          <Label htmlFor="startDate">Start Date *</Label>
+          <Label htmlFor="startDate">Ngày bắt đầu *</Label>
           <DateInput
             id="startDate"
             value={watch('startDate')}
@@ -429,7 +429,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
         {/* End Date */}
         <div className="space-y-2">
-          <Label htmlFor="endDate">End Date *</Label>
+          <Label htmlFor="endDate">Ngày kết thúc *</Label>
           <DateInput
             id="endDate"
             value={watch('endDate')}
@@ -443,11 +443,11 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
 
       {/* Notes - Full width */}
       <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
+        <Label htmlFor="notes">Ghi chú</Label>
         <textarea
           id="notes"
           {...register('notes')}
-          placeholder="Add any additional notes about this tour..."
+          placeholder="Thêm ghi chú cho tour này..."
           rows={4}
           className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
         />
@@ -457,7 +457,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
         <div className="flex justify-end">
           <Button type="submit" className="hover-scale">
             <Save className="h-4 w-4 mr-2" />
-            Save Tour Info
+            Lưu thông tin tour
           </Button>
         </div>
       )}

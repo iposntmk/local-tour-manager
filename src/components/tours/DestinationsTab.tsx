@@ -63,7 +63,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     (touristDestinations || []).forEach(td => {
       const key = (td.name || '').trim().toLowerCase();
       if (!key) return;
-      const provinceName = td.provinceRef?.nameAtBooking || 'Unknown';
+      const provinceName = td.provinceRef?.nameAtBooking || 'Không xác định';
       if (!map.has(key)) map.set(key, provinceName);
     });
     return map;
@@ -98,7 +98,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Destination added');
+      toast.success('Đã thêm điểm đến');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
@@ -118,7 +118,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Destination updated');
+      toast.success('Đã cập nhật điểm đến');
       setEditingIndex(null);
     },
   });
@@ -138,7 +138,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
         // Create mode: call onChange with updated list
         onChange?.(destinations.filter((_, i) => i !== index));
       }
-      toast.success('Destination removed');
+      toast.success('Đã xóa điểm đến');
     },
   });
 
@@ -166,8 +166,8 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     });
 
     const sortedGroupNames = Array.from(groups.keys()).sort((a, b) => {
-      if (a === 'Unknown') return 1;
-      if (b === 'Unknown') return -1;
+      if (a === 'Không xác định') return 1;
+      if (b === 'Không xác định') return -1;
       return a.localeCompare(b);
     });
 
@@ -182,7 +182,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
       rows.push(
         <TableRow key={`group-${groupName}`} className="bg-muted/50">
           <TableCell colSpan={7} className="font-semibold">
-            Province: {groupName} ({groupItems.length})
+            Tỉnh: {groupName} ({groupItems.length})
           </TableCell>
         </TableRow>
       );
@@ -200,13 +200,13 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
             <TableCell className="font-medium">
               {destination.name}
               {(isDupName) && (
-                <span className="ml-2 text-destructive" title="Duplicate destination name">⚑</span>
+                <span className="ml-2 text-destructive" title="Tên điểm đến trùng">⚑</span>
               )}
             </TableCell>
             <TableCell className={destination.price === 0 ? 'text-destructive font-semibold' : ''}>
               {formatCurrency(destination.price)}
               {destination.price === 0 && (
-                <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                <span className="ml-2 text-destructive" title="Giá bằng 0">⚑</span>
               )}
             </TableCell>
             <TableCell>
@@ -214,7 +214,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                 value={destination.guests}
                 onChange={(val) => {
                   if (val !== undefined && tourGuests && val > tourGuests) {
-                    toast.warning(`Guests cannot exceed total tour guests (${tourGuests}).`);
+                    toast.warning(`Số khách không được vượt quá tổng khách của tour (${tourGuests}).`);
                     val = tourGuests;
                   }
                   const updated: Destination = { ...destination, guests: val } as any;
@@ -239,21 +239,21 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <span className="sr-only">Open menu</span>
+                      <span className="sr-only">Mở menu</span>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => handleEdit(destination.originalIndex)}>
                       <Edit2 className="mr-2 h-4 w-4" />
-                      Edit
+                      Sửa
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => deleteMutation.mutate(destination.originalIndex)}
                       className="text-destructive"
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
+                      Xóa
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -264,7 +264,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                   size="sm"
                   onClick={() => handleEdit(destination.originalIndex)}
                   className="hover-scale"
-                  title="Edit"
+                  title="Sửa"
                 >
                   <Edit2 className="h-4 w-4" />
                 </Button>
@@ -273,7 +273,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                   size="sm"
                   onClick={() => deleteMutation.mutate(destination.originalIndex)}
                   className="hover-scale text-destructive hover:text-destructive"
-                  title="Delete"
+                  title="Xóa"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -297,7 +297,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     mutationFn: ({ name, price, provinceId }: { name: string; price: number; provinceId: string }) => {
       const province = provinces.find(p => p.id === provinceId);
       if (!province) {
-        throw new Error('Province not found');
+        throw new Error('Không tìm thấy tỉnh/thành');
       }
       return store.createTouristDestination({
         name,
@@ -310,7 +310,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     },
     onSuccess: (newDestination) => {
       queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
-      toast.success('Tourist destination created');
+      toast.success('Đã tạo điểm tham quan');
       setShowNewDestinationDialog(false);
       setNewDestinationName('');
       setNewDestinationPrice(0);
@@ -319,7 +319,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
       setFormData({ ...formData, name: newDestination.name, price: newDestination.price });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create destination: ${error.message}`);
+      toast.error(`Tạo điểm đến thất bại: ${error.message}`);
     },
   });
 
@@ -328,7 +328,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     
     // Validate required fields
     if (!formData.name || !formData.date) {
-      toast.error('Please fill in all required fields');
+      toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
       return;
     }
     
@@ -337,7 +337,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
       const targetName = formData.name.trim().toLowerCase();
       const isDuplicate = destinations.some((dest, idx) => idx !== editingIndex && dest.name.trim().toLowerCase() === targetName);
       if (isDuplicate) {
-        toast.error('Destination name must be unique');
+        toast.error('Tên điểm đến phải là duy nhất');
         return;
       }
       updateMutation.mutate({ index: editingIndex, destination: formData });
@@ -347,7 +347,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
       const isDuplicate = destinations.some(dest => dest.name.trim().toLowerCase() === targetName);
       
       if (isDuplicate) {
-        toast.error('A destination with this name already exists');
+        toast.error('Đã tồn tại điểm đến với tên này');
         return;
       }
       
@@ -363,15 +363,15 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
 
   const handleCreateNewDestination = () => {
     if (!newDestinationName.trim()) {
-      toast.error('Please enter a destination name');
+      toast.error('Vui lòng nhập tên điểm đến');
       return;
     }
     if (newDestinationPrice <= 0) {
-      toast.error('Please enter a valid price');
+      toast.error('Vui lòng nhập giá hợp lệ');
       return;
     }
     if (!newDestinationProvinceId) {
-      toast.error('Please select a province');
+      toast.error('Vui lòng chọn tỉnh/thành');
       return;
     }
     createDestinationMutation.mutate({
@@ -392,7 +392,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
-          {editingIndex !== null ? 'Edit Destination' : 'Add Destination'}
+          {editingIndex !== null ? 'Chỉnh sửa điểm đến' : 'Thêm điểm đến'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
@@ -405,15 +405,15 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                     aria-expanded={openDestination}
                     className="flex-1 justify-between"
                   >
-                    {formData.name || "Select destination..."}
+                    {formData.name || "Chọn điểm đến..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search destination..." />
+                    <CommandInput placeholder="Tìm điểm đến..." />
                     <CommandList>
-                      <CommandEmpty>No destination found.</CommandEmpty>
+                      <CommandEmpty>Không tìm thấy điểm đến.</CommandEmpty>
                       <CommandGroup>
                         {touristDestinations.map((dest) => (
                           <CommandItem
@@ -451,13 +451,13 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                 variant="outline"
                 size="icon"
                 onClick={() => setShowNewDestinationDialog(true)}
-                title="Add new destination"
+                title="Thêm điểm đến mới"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
             <CurrencyInput
-              placeholder="Price (VND)"
+              placeholder="Giá (VND)"
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
             />
@@ -471,7 +471,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               onChange={(val) => {
                 const max = tour?.totalGuests || 0;
                 if (val !== undefined && max && val > max) {
-                  toast.warning(`Guests cannot exceed total tour guests (${max}).`);
+                  toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
                   setFormData({ ...formData, guests: max });
                 } else {
                   setFormData({ ...formData, guests: val });
@@ -479,18 +479,18 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               }}
               min={0}
               max={tour?.totalGuests || 0}
-              placeholder="Guests"
+              placeholder="Số khách"
               className="w-full"
             />
           </div>
           <div className="flex gap-2">
             <Button type="submit" className="hover-scale">
               <Plus className="h-4 w-4 mr-2" />
-              {editingIndex !== null ? 'Update' : 'Add'}
+              {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
             </Button>
             {editingIndex !== null && (
               <Button type="button" variant="outline" onClick={handleCancel}>
-                Cancel
+                Hủy
               </Button>
             )}
           </div>
@@ -499,11 +499,11 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Destinations List</h3>
+          <h3 className="font-semibold">Danh sách điểm đến</h3>
         </div>
         {destinations.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            No destinations added yet
+            Chưa có điểm đến nào
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -512,22 +512,22 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                 <TableRow>
                   <TableHead className="w-[50px]">#</TableHead>
                   <TableHead>
-                    <span className="sm:hidden">Dest</span>
-                    <span className="hidden sm:inline">Destination</span>
+                    <span className="sm:hidden">Đến</span>
+                    <span className="hidden sm:inline">Điểm đến</span>
                   </TableHead>
-                  <TableHead>Price</TableHead>
+                  <TableHead>Giá</TableHead>
                   <TableHead className="w-[80px]">
-                    <span className="sm:hidden">Guests</span>
-                    <span className="hidden sm:inline">Total Guests</span>
+                    <span className="sm:hidden">Khách</span>
+                    <span className="hidden sm:inline">Tổng khách</span>
                   </TableHead>
                   <TableHead>
-                    <span className="sm:hidden">Total</span>
-                    <span className="hidden sm:inline">Total Amount</span>
+                    <span className="sm:hidden">Tổng</span>
+                    <span className="hidden sm:inline">Thành tiền</span>
                   </TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Ngày</TableHead>
                   <TableHead className="text-right w-[50px]">
                     <span className="sm:hidden">...</span>
-                    <span className="hidden sm:inline">Actions</span>
+                    <span className="hidden sm:inline">Thao tác</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -535,7 +535,7 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
             </Table>
             <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-end">
               <div className="text-lg font-semibold">
-                Total: {formatCurrency(destinations.reduce((sum, dest) => {
+                Tổng cộng: {formatCurrency(destinations.reduce((sum, dest) => {
                   const g = typeof (dest as any).guests === 'number' ? (dest as any).guests : 0;
                   return sum + (dest.price * g);
                 }, 0))}
@@ -549,23 +549,23 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
       <Dialog open={showNewDestinationDialog} onOpenChange={setShowNewDestinationDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Tourist Destination</DialogTitle>
+            <DialogTitle>Thêm điểm tham quan mới</DialogTitle>
             <DialogDescription>
-              Create a new tourist destination that can be reused across tours.
+              Tạo điểm tham quan mới để có thể dùng lại cho các tour khác.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="new-destination-name">Destination Name</Label>
+              <Label htmlFor="new-destination-name">Tên điểm đến</Label>
               <Input
                 id="new-destination-name"
-                placeholder="e.g., Ha Long Bay, Hoi An"
+                placeholder="ví dụ: Vịnh Hạ Long, Hội An"
                 value={newDestinationName}
                 onChange={(e) => setNewDestinationName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="destination-province">Province</Label>
+              <Label htmlFor="destination-province">Tỉnh/Thành phố</Label>
               <Popover open={openProvince} onOpenChange={setOpenProvince}>
                 <PopoverTrigger asChild>
                   <Button
@@ -577,15 +577,15 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                   >
                     {newDestinationProvinceId
                       ? provinces.find((prov) => prov.id === newDestinationProvinceId)?.name
-                      : "Select province..."}
+                      : "Chọn tỉnh/thành..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-full p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search province..." />
+                    <CommandInput placeholder="Tìm tỉnh/thành..." />
                     <CommandList>
-                      <CommandEmpty>No province found.</CommandEmpty>
+                      <CommandEmpty>Không tìm thấy tỉnh/thành.</CommandEmpty>
                       <CommandGroup>
                         {provinces.map((prov) => (
                           <CommandItem
@@ -612,10 +612,10 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
               </Popover>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-destination-price">Default Price (VND)</Label>
+              <Label htmlFor="new-destination-price">Giá mặc định (VND)</Label>
               <CurrencyInput
                 id="new-destination-price"
-                placeholder="Default price"
+                placeholder="Giá mặc định"
                 value={newDestinationPrice}
                 onChange={setNewDestinationPrice}
               />
@@ -632,14 +632,14 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
                 setNewDestinationProvinceId('');
               }}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               type="button"
               onClick={handleCreateNewDestination}
               disabled={createDestinationMutation.isPending}
             >
-              {createDestinationMutation.isPending ? 'Creating...' : 'Create'}
+              {createDestinationMutation.isPending ? 'Đang tạo...' : 'Tạo'}
             </Button>
           </DialogFooter>
         </DialogContent>

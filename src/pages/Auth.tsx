@@ -24,11 +24,11 @@ export default function Auth() {
         password,
       });
       if (error) throw error;
-      toast({ title: "Logged in successfully!" });
+      toast({ title: "Đăng nhập thành công!" });
       navigate("/");
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Lỗi",
         description: error.message,
         variant: "destructive",
       });
@@ -41,9 +41,9 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Login</CardTitle>
+          <CardTitle>Đăng nhập</CardTitle>
           <CardDescription>
-            Enter your credentials to access Tour Manager
+            Nhập thông tin đăng nhập để truy cập Tour Manager
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,14 +53,14 @@ export default function Auth() {
               <Input
                 id="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Mật khẩu</Label>
               <Input
                 id="password"
                 type="password"
@@ -72,7 +72,7 @@ export default function Auth() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : "Login"}
+              {loading ? "Đang tải..." : "Đăng nhập"}
             </Button>
           </form>
         </CardContent>

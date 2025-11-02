@@ -35,19 +35,19 @@ interface LayoutProps {
 }
 
 const masterDataItems = [
-  { to: '/guides', icon: Users, label: 'Guides' },
-  { to: '/companies', icon: Building2, label: 'Companies' },
-  { to: '/nationalities', icon: Globe, label: 'Nationalities' },
-  { to: '/provinces', icon: MapPin, label: 'Provinces' },
-  { to: '/destinations', icon: Map, label: 'Destinations' },
-  { to: '/shopping', icon: ShoppingBag, label: 'Shopping' },
-  { to: '/expense-categories', icon: Tag, label: 'Categories' },
-  { to: '/detailed-expenses', icon: Receipt, label: 'Expenses' },
+  { to: '/guides', icon: Users, label: 'Hướng dẫn viên' },
+  { to: '/companies', icon: Building2, label: 'Công ty' },
+  { to: '/nationalities', icon: Globe, label: 'Quốc tịch' },
+  { to: '/provinces', icon: MapPin, label: 'Tỉnh thành' },
+  { to: '/destinations', icon: Map, label: 'Điểm đến' },
+  { to: '/shopping', icon: ShoppingBag, label: 'Mua sắm' },
+  { to: '/expense-categories', icon: Tag, label: 'Danh mục' },
+  { to: '/detailed-expenses', icon: Receipt, label: 'Chi phí' },
 ];
 
 const mainNavItems = [
-  { to: '/tours', icon: Plane, label: 'Tours' },
-  { to: '/statistics', icon: BarChart3, label: 'Statistics' },
+  { to: '/tours', icon: Plane, label: 'Tour' },
+  { to: '/statistics', icon: BarChart3, label: 'Thống kê' },
 ];
 
 const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; user: User | null; onLogout: () => void }) => {
@@ -71,7 +71,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           className={({ isActive }) => navLinkClass(isActive)}
         >
           <Home className="h-4 w-4" />
-          <span className="text-center truncate w-full">Home</span>
+          <span className="text-center truncate w-full">Trang chủ</span>
         </NavLink>
 
         {mainNavItems.map((item) => (
@@ -95,14 +95,14 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
               )}
             >
               <Settings className="h-5 w-5" />
-              <span className="text-center truncate w-full">Settings</span>
+              <span className="text-center truncate w-full">Cài đặt</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-56 mb-2">
             {user && (
               <>
                 <div className="px-2 py-2 text-sm">
-                  <div className="font-medium">Signed in as</div>
+                  <div className="font-medium">Đã đăng nhập với</div>
                   <div className="text-muted-foreground truncate">{user.email}</div>
                 </div>
                 <DropdownMenuSeparator />
@@ -125,7 +125,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
                   <LogOut className="h-4 w-4 mr-2" />
-                  <span>Logout</span>
+                  <span>Đăng xuất</span>
                 </DropdownMenuItem>
               </>
             )}
@@ -204,7 +204,7 @@ export function Layout({ children }: LayoutProps) {
               <span className="text-xs text-muted-foreground">{user.email}</span>
               <Button variant="ghost" size="sm" onClick={handleLogout} className="h-7 text-xs">
                 <LogOut className="h-3 w-3 mr-1" />
-                Logout
+                Đăng xuất
               </Button>
             </div>
           )}

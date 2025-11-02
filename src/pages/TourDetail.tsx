@@ -159,15 +159,15 @@ const TourDetail = () => {
     },
     onSuccess: (newTour) => {
       queryClient.invalidateQueries({ queryKey: ['tours'] });
-      toast.success('Tour created successfully');
+      toast.success('Tạo tour thành công');
       navigate('/tours');
     },
     onError: (error: Error) => {
       const errorMessage = error.message.toLowerCase();
       if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('tour_code')) {
-        toast.error('This tour code already exists. Please use a different tour code.');
+        toast.error('Mã tour này đã tồn tại. Vui lòng dùng mã khác.');
       } else {
-        toast.error(error.message || 'Failed to create tour');
+        toast.error(error.message || 'Tạo tour thất bại');
       }
     },
   });
@@ -178,14 +178,14 @@ const TourDetail = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tour', id] });
       queryClient.invalidateQueries({ queryKey: ['tours'] });
-      toast.success('Tour updated successfully');
+      toast.success('Cập nhật tour thành công');
     },
     onError: (error: Error) => {
       const errorMessage = error.message.toLowerCase();
       if (errorMessage.includes('unique') || errorMessage.includes('duplicate') || errorMessage.includes('tour_code')) {
-        toast.error('This tour code already exists. Please use a different tour code.');
+        toast.error('Mã tour này đã tồn tại. Vui lòng dùng mã khác.');
       } else {
-        toast.error(error.message || 'Failed to update tour');
+        toast.error(error.message || 'Cập nhật tour thất bại');
       }
     },
   });
@@ -194,7 +194,7 @@ const TourDetail = () => {
     mutationFn: (id: string) => store.deleteTour(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tours'] });
-      toast.success('Tour deleted successfully');
+      toast.success('Xóa tour thành công');
       navigate('/tours');
     },
   });
@@ -242,14 +242,14 @@ const TourDetail = () => {
 
   const handleExportExcel = async () => {
     if (!displayTour || isNewTour) {
-      toast.error('Cannot export tour that has not been saved yet');
+      toast.error('Không thể xuất tour chưa được lưu');
       return;
     }
     try {
       await exportTourToExcel(displayTour as Tour);
-      toast.success('Tour exported to Excel successfully');
+      toast.success('Xuất tour ra Excel thành công');
     } catch (error) {
-      toast.error('Failed to export tour to Excel');
+      toast.error('Xuất tour ra Excel thất bại');
       console.error('Export error:', error);
     }
   };
@@ -293,12 +293,12 @@ const TourDetail = () => {
                       size="icon"
                       onClick={() => navigate('/tours')}
                       className="hover-scale h-8 w-8 flex-shrink-0"
-                      title="Back to tours list"
+                      title="Quay lại danh sách tour"
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold truncate">
-                      {isNewTour ? 'New Tour' : (tour?.tourCode || 'Tour Details')}
+                      {isNewTour ? 'Tour mới' : (tour?.tourCode || 'Chi tiết tour')}
                     </h1>
                   </div>
 
@@ -309,10 +309,10 @@ const TourDetail = () => {
                         size="sm"
                         onClick={handleHeaderSave}
                         className="hover-scale h-10 px-4"
-                        title="Save tour"
+                        title="Lưu tour"
                       >
                         <Save className="h-4 w-4 mr-2" />
-                        <span>Save Tour</span>
+                        <span>Lưu tour</span>
                       </Button>
                     )}
                     {!isNewTour && activeTab === 'info' && (
@@ -321,10 +321,10 @@ const TourDetail = () => {
                         size="sm"
                         onClick={handleHeaderSave}
                         className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
-                        title="Save tour info"
+                        title="Lưu thông tin tour"
                       >
                         <Save className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Save Info</span>
+                        <span className="hidden sm:inline">Lưu</span>
                       </Button>
                     )}
                     {!isNewTour && (
@@ -333,10 +333,10 @@ const TourDetail = () => {
                         size="sm"
                         onClick={handleExportExcel}
                         className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
-                        title="Export to Excel"
+                        title="Xuất Excel"
                       >
                         <FileDown className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Export Excel</span>
+                        <span className="hidden sm:inline">Xuất Excel</span>
                       </Button>
                     )}
                     {!isNewTour && (
@@ -345,10 +345,10 @@ const TourDetail = () => {
                         size="sm"
                         onClick={() => setDeleteDialogOpen(true)}
                         className="hover-scale h-8 w-8 p-0 sm:h-10 sm:w-auto sm:px-4"
-                        title="Delete tour"
+                        title="Xóa tour"
                       >
                         <Trash2 className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Delete</span>
+                        <span className="hidden sm:inline">Xóa</span>
                       </Button>
                     )}
                   </div>
@@ -358,24 +358,24 @@ const TourDetail = () => {
                 {displayTour && (
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm px-2 sm:px-0">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-muted-foreground">Date:</span>
+                      <span className="text-muted-foreground">Ngày:</span>
                       <span className="font-semibold">{displayTour.startDate && displayTour.endDate ? formatDateRangeDisplay(displayTour.startDate, displayTour.endDate) : '-'}</span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-muted-foreground">Days:</span>
+                      <span className="text-muted-foreground">Số ngày:</span>
                       <span className="font-semibold">{displayTour.totalDays || 0}</span>
                     </div>
                     <span className="text-muted-foreground hidden sm:inline">|</span>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-muted-foreground">Adults:</span>
+                      <span className="text-muted-foreground">Người lớn:</span>
                       <span className="font-semibold">{displayTour.adults || 0}</span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-muted-foreground">Children:</span>
+                      <span className="text-muted-foreground">Trẻ em:</span>
                       <span className="font-semibold">{displayTour.children || 0}</span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-muted-foreground">Guests:</span>
+                      <span className="text-muted-foreground">Khách:</span>
                       <span className="font-semibold">{totalGuests}</span>
                     </div>
                   </div>
@@ -384,11 +384,11 @@ const TourDetail = () => {
 
               <div className="pt-2 sm:pt-4">
                 <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 gap-1 rounded-xl bg-background shadow-sm border p-0.5 sm:p-1 h-auto">
-                  <TabsTrigger value="info" className="text-xs sm:text-sm">Info</TabsTrigger>
+                  <TabsTrigger value="info" className="text-xs sm:text-sm">Thông tin</TabsTrigger>
                   <TabsTrigger value="destinations" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span className="sm:hidden">Dest</span>
-                      <span className="hidden sm:inline">Destinations</span>
+                      <span className="sm:hidden">Điểm</span>
+                      <span className="hidden sm:inline">Điểm đến</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.destinations?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).destinations)}
                       </span>
@@ -396,8 +396,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="expenses" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span className="sm:hidden">Exp</span>
-                      <span className="hidden sm:inline">Expenses</span>
+                      <span className="sm:hidden">CP</span>
+                      <span className="hidden sm:inline">Chi phí</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.expenses?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).expenses)}
                       </span>
@@ -405,7 +405,7 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="meals" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span>Meals</span>
+                      <span>Bữa ăn</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.meals?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).meals)}
                       </span>
@@ -413,8 +413,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="combined" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span className="sm:hidden">D+E+M</span>
-                      <span className="hidden sm:inline">Dest+Exp+Meals</span>
+                      <span className="sm:hidden">Tổng</span>
+                      <span className="hidden sm:inline">Tổng hợp</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {formatCurrency(calculateTabTotals(displayTour).destinations + calculateTabTotals(displayTour).expenses + calculateTabTotals(displayTour).meals)}
                       </span>
@@ -422,8 +422,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="allowances" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span className="sm:hidden">Allow</span>
-                      <span className="hidden sm:inline">Allowances</span>
+                      <span className="sm:hidden">PC</span>
+                      <span className="hidden sm:inline">Phụ cấp</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.allowances?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).allowances)}
                       </span>
@@ -431,8 +431,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="summary" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span className="sm:hidden">Sum</span>
-                      <span className="hidden sm:inline">Summary</span>
+                      <span className="sm:hidden">TK</span>
+                      <span className="hidden sm:inline">Tổng kết</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {formatCurrency(displayTour?.summary?.finalTotal ?? 0)}
                       </span>
@@ -440,8 +440,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="shoppings" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span className="sm:hidden">Shop</span>
-                      <span className="hidden sm:inline">Shopping</span>
+                      <span className="sm:hidden">Mua</span>
+                      <span className="hidden sm:inline">Mua sắm</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.shoppings?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).shoppings)}
                       </span>
@@ -450,8 +450,8 @@ const TourDetail = () => {
                   {!isNewTour && (
                     <TabsTrigger value="images" className="text-xs sm:text-sm">
                       <div className="flex flex-col items-center">
-                        <span className="sm:hidden">Img</span>
-                        <span className="hidden sm:inline">Images</span>
+                        <span className="sm:hidden">Ảnh</span>
+                        <span className="hidden sm:inline">Hình ảnh</span>
                         <span className="text-xs sm:text-sm font-bold">
                           {tourImages.length}
                         </span>
@@ -562,15 +562,15 @@ const TourDetail = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Tour</AlertDialogTitle>
+            <AlertDialogTitle>Xóa tour</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this tour? This action cannot be undone.
+              Bạn có chắc chắn muốn xóa tour này không? Hành động này không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Delete
+              Xóa
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

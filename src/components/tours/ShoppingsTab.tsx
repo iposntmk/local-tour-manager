@@ -81,7 +81,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       }
-      toast.success('Shopping added');
+      toast.success('Đã thêm mục mua sắm');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
@@ -100,7 +100,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       }
-      toast.success('Shopping updated');
+      toast.success('Đã cập nhật mục mua sắm');
       setEditingIndex(null);
     },
   });
@@ -118,7 +118,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
       } else {
         onChange?.(shoppings.filter((_, i) => i !== index));
       }
-      toast.success('Shopping removed');
+      toast.success('Đã xóa mục mua sắm');
     },
   });
 
@@ -126,14 +126,14 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
     mutationFn: (name: string) => store.createShopping({ name }),
     onSuccess: (newShopping) => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
-      toast.success('Shopping item created');
+      toast.success('Đã tạo mục mua sắm');
       setShowNewShoppingDialog(false);
       setNewShoppingName('');
       // Auto-select the newly created shopping item
       setFormData({ ...formData, name: newShopping.name });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create shopping: ${error.message}`);
+      toast.error(`Tạo mục mua sắm thất bại: ${error.message}`);
     },
   });
 
@@ -141,7 +141,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
     e.preventDefault();
     // Validate required fields
     if (!formData.name || !formData.date) {
-      toast.error('Please fill in all required fields');
+      toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
       return;
     }
 
@@ -164,7 +164,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
   };
 
   const handleDelete = (index: number) => {
-    if (confirm('Are you sure you want to delete this shopping item?')) {
+    if (confirm('Bạn có chắc chắn muốn xóa mục mua sắm này không?')) {
       deleteMutation.mutate(index);
     }
   };
@@ -176,7 +176,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
 
   const handleCreateNewShopping = () => {
     if (!newShoppingName.trim()) {
-      toast.error('Please enter a shopping name');
+      toast.error('Vui lòng nhập tên mục mua sắm');
       return;
     }
     createShoppingMutation.mutate(newShoppingName.trim());
@@ -206,14 +206,14 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
-              Shopping Tab Access
+              Mở khóa tab mua sắm
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePinSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="pin" className="text-sm font-medium">
-                  Enter PIN (hint: your phone number)
+                  Nhập mã PIN (gợi ý: số điện thoại của bạn)
                 </label>
                 <Input
                   id="pin"
@@ -225,16 +225,16 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
                     setPinInput(e.target.value);
                     setPinError(false);
                   }}
-                  placeholder="Enter PIN"
+                  placeholder="Nhập mã PIN"
                   className={pinError ? 'border-red-500' : ''}
                   autoFocus
                 />
                 {pinError && (
-                  <p className="text-sm text-red-500">Incorrect PIN. Please try again.</p>
+                  <p className="text-sm text-red-500">PIN không đúng. Vui lòng thử lại.</p>
                 )}
               </div>
               <Button type="submit" className="w-full">
-                Unlock Shopping Tab
+                Mở khóa tab mua sắm
               </Button>
             </form>
           </CardContent>
@@ -248,11 +248,11 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
       {/* Add Shopping Form */}
       <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-semibold mb-4">
-          {editingIndex !== null ? 'Edit Shopping' : 'Add Shopping'}
+          {editingIndex !== null ? 'Chỉnh sửa mục mua sắm' : 'Thêm mục mua sắm'}
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="text-sm font-medium mb-2 block">Shopping Item *</label>
+            <label className="text-sm font-medium mb-2 block">Mục mua sắm *</label>
             <div className="flex gap-2">
               <Popover open={openShopping} onOpenChange={setOpenShopping}>
                 <PopoverTrigger asChild>
@@ -261,14 +261,14 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
                     role="combobox"
                     className="flex-1 justify-between"
                   >
-                    {formData.name || "Select shopping..."}
+                    {formData.name || "Chọn mục mua sắm..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0">
                   <Command>
-                    <CommandInput placeholder="Search shopping..." />
-                    <CommandEmpty>No shopping found.</CommandEmpty>
+                    <CommandInput placeholder="Tìm mục mua sắm..." />
+                    <CommandEmpty>Không tìm thấy mục mua sắm.</CommandEmpty>
                     <CommandList>
                       <CommandGroup>
                         {shoppingItems.map((item) => (
@@ -299,21 +299,21 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
                 variant="outline"
                 size="icon"
                 onClick={() => setShowNewShoppingDialog(true)}
-                title="Add new shopping item"
+                title="Thêm mục mua sắm mới"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">Price *</label>
+            <label className="text-sm font-medium mb-2 block">Giá *</label>
             <CurrencyInput
               value={formData.price}
               onChange={(value) => setFormData({ ...formData, price: value })}
             />
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">Date *</label>
+            <label className="text-sm font-medium mb-2 block">Ngày *</label>
             <DateInput
               value={formData.date}
               onChange={(value) => setFormData({ ...formData, date: value })}
@@ -325,18 +325,18 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
             {editingIndex !== null ? (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Update
+                Cập nhật
               </>
             ) : (
               <>
                 <Plus className="h-4 w-4 mr-2" />
-                Add
+                Thêm
               </>
             )}
           </Button>
           {editingIndex !== null && (
             <Button type="button" variant="outline" onClick={handleCancel}>
-              Cancel
+              Hủy
             </Button>
           )}
         </div>
@@ -348,14 +348,14 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
           <TableHeader>
             <TableRow>
               <TableHead>
-                <span className="sm:hidden">Item</span>
-                <span className="hidden sm:inline">Shopping Item</span>
+                <span className="sm:hidden">Mục</span>
+                <span className="hidden sm:inline">Mục mua sắm</span>
               </TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>Giá</TableHead>
+              <TableHead>Ngày</TableHead>
               <TableHead className="w-[80px] sm:w-[100px]">
-                <span className="sm:hidden">Act</span>
-                <span className="hidden sm:inline">Actions</span>
+                <span className="sm:hidden">Tác</span>
+                <span className="hidden sm:inline">Thao tác</span>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -363,7 +363,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
             {shoppings.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center text-muted-foreground">
-                  No shopping items added yet
+                  Chưa có mục mua sắm nào
                 </TableCell>
               </TableRow>
             ) : (
@@ -373,7 +373,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
                   <TableCell className={shopping.price === 0 ? 'text-destructive font-semibold' : ''}>
                     {formatCurrency(shopping.price)}
                     {shopping.price === 0 && (
-                      <span className="ml-2 text-destructive" title="Price is zero">⚑</span>
+                      <span className="ml-2 text-destructive" title="Giá bằng 0">⚑</span>
                     )}
                   </TableCell>
                   <TableCell>{formatDate(shopping.date)}</TableCell>
@@ -382,21 +382,21 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
+                            <span className="sr-only">Mở menu</span>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleEdit(index)}>
                             <Edit2 className="mr-2 h-4 w-4" />
-                            Edit
+                            Sửa
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDelete(index)}
                             className="text-destructive"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
+                            Xóa
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -407,7 +407,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
                         size="sm"
                         onClick={() => handleEdit(index)}
                         className="hover-scale"
-                        title="Edit"
+                        title="Sửa"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -416,7 +416,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
                         size="sm"
                         onClick={() => handleDelete(index)}
                         className="hover-scale text-destructive hover:text-destructive"
-                        title="Delete"
+                        title="Xóa"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -430,11 +430,11 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
         {shoppings.length > 0 && (
           <div className="border-t p-4 bg-muted/50 space-y-2">
             <div className="flex justify-between items-center font-semibold">
-              <span>Total Shopping Amount:</span>
+              <span>Tổng giá trị mua sắm:</span>
               <span className="text-lg">{formatCurrency(totalAmount)}</span>
             </div>
             <div className="flex justify-between items-center font-semibold text-primary">
-              <span>Total Tip:</span>
+              <span>Tổng tiền tip:</span>
               <span className="text-lg">{formatCurrency(totalTip)}</span>
             </div>
           </div>
@@ -445,17 +445,17 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
       <Dialog open={showNewShoppingDialog} onOpenChange={setShowNewShoppingDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Shopping Item</DialogTitle>
+            <DialogTitle>Thêm mục mua sắm mới</DialogTitle>
             <DialogDescription>
-              Create a new shopping item to add to the master shopping list.
+              Tạo mục mua sắm mới để thêm vào danh sách dùng chung.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="new-shopping-name">Shopping Name *</Label>
+              <Label htmlFor="new-shopping-name">Tên mục mua sắm *</Label>
               <Input
                 id="new-shopping-name"
-                placeholder="e.g., TIP, Souvenir Shop"
+                placeholder="ví dụ: TIP, Cửa hàng lưu niệm"
                 value={newShoppingName}
                 onChange={(e) => setNewShoppingName(e.target.value)}
                 onKeyDown={(e) => {
@@ -476,14 +476,14 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
                 setNewShoppingName('');
               }}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               type="button"
               onClick={handleCreateNewShopping}
               disabled={createShoppingMutation.isPending}
             >
-              {createShoppingMutation.isPending ? 'Creating...' : 'Create'}
+              {createShoppingMutation.isPending ? 'Đang tạo...' : 'Tạo'}
             </Button>
           </DialogFooter>
         </DialogContent>

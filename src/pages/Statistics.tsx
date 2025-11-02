@@ -209,7 +209,7 @@ const Statistics = () => {
     );
   }, [filteredTours]);
 
-  // Grand total of ALL tours in database
+  // Grand total of ALL tour trong cơ sở dữ liệu
   const grandTotals = useMemo(() => {
     return tours.reduce(
       (acc, tour) => {
@@ -426,7 +426,7 @@ const Statistics = () => {
               <form onSubmit={handlePinSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <label htmlFor="pin" className="text-sm font-medium">
-                    Enter PIN (hint: your phone number)
+                    Nhập mã PIN (gợi ý: số điện thoại của bạn)
                   </label>
                   <Input
                     id="pin"
@@ -443,7 +443,7 @@ const Statistics = () => {
                     autoFocus
                   />
                   {pinError && (
-                    <p className="text-sm text-red-500">Incorrect PIN. Please try again.</p>
+                    <p className="text-sm text-red-500">Mã PIN không đúng. Vui lòng thử lại.</p>
                   )}
                 </div>
                 <Button type="submit" className="w-full">
@@ -463,9 +463,9 @@ const Statistics = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Statistics</h1>
+              <h1 className="text-3xl font-bold">Thống kê</h1>
               <p className="text-muted-foreground">
-                Review allowances, tips, and shopping statistics by guide, company, nationality, and month.
+                Xem thống kê công tác phí, tip và mua sắm theo HDV, công ty, quốc tịch và tháng.
               </p>
             </div>
           </div>
@@ -473,7 +473,7 @@ const Statistics = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Filters</CardTitle>
+            <CardTitle>Bộ lọc</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -482,10 +482,10 @@ const Statistics = () => {
                   <label className="mb-1 block text-sm font-medium text-muted-foreground">Guide</label>
                   <Select value={selectedGuide} onValueChange={setSelectedGuide}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All guides" />
+                      <SelectValue placeholder="Tất cả HDV" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All guides</SelectItem>
+                      <SelectItem value="all">Tất cả HDV</SelectItem>
                       {availableGuides.map(guide => (
                         <SelectItem key={guide.id} value={guide.id}>
                           {guide.name}
@@ -498,10 +498,10 @@ const Statistics = () => {
                   <label className="mb-1 block text-sm font-medium text-muted-foreground">Company</label>
                   <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All companies" />
+                      <SelectValue placeholder="Tất cả công ty" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All companies</SelectItem>
+                      <SelectItem value="all">Tất cả công ty</SelectItem>
                       {availableCompanies.map(company => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name}
@@ -514,10 +514,10 @@ const Statistics = () => {
                   <label className="mb-1 block text-sm font-medium text-muted-foreground">Nationality</label>
                   <Select value={selectedNationality} onValueChange={setSelectedNationality}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All nationalities" />
+                      <SelectValue placeholder="Tất cả quốc tịch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All nationalities</SelectItem>
+                      <SelectItem value="all">Tất cả quốc tịch</SelectItem>
                       {availableNationalities.map(nationality => (
                         <SelectItem key={nationality.id} value={nationality.id}>
                           {nationality.name}
@@ -530,10 +530,10 @@ const Statistics = () => {
                   <label className="mb-1 block text-sm font-medium text-muted-foreground">Month</label>
                   <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All months" />
+                      <SelectValue placeholder="Tất cả tháng" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All months</SelectItem>
+                      <SelectItem value="all">Tất cả tháng</SelectItem>
                       {availableMonths.map(month => (
                         <SelectItem key={month} value={month}>
                           {month}
@@ -552,7 +552,7 @@ const Statistics = () => {
                 </div>
               </div>
               <div className="text-sm text-muted-foreground">
-                {filteredTours.length} tour(s) match the current filters.
+                {filteredTours.length} tour phù hợp với bộ lọc hiện tại.
               </div>
             </div>
           </CardContent>
@@ -561,16 +561,16 @@ const Statistics = () => {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
           <Card className="bg-primary/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Tours</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tổng số tour</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{totals.tours}</div>
-              <p className="text-xs text-muted-foreground">Tours included</p>
+              <p className="text-xs text-muted-foreground">Tour được tính</p>
             </CardContent>
           </Card>
           <Card className="bg-primary/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Guests</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tổng khách</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{totals.guests}</div>
@@ -579,38 +579,38 @@ const Statistics = () => {
           </Card>
           <Card className="bg-blue-50 dark:bg-blue-950">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Allowances</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Công tác phí</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(totals.allowances)}</div>
-              <p className="text-xs text-muted-foreground">CTP total</p>
+              <p className="text-xs text-muted-foreground">Tổng CTP</p>
             </CardContent>
           </Card>
           <Card className="bg-green-50 dark:bg-green-950">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Tips from Guests</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tip từ khách</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(totals.tipFromGuests)}</div>
-              <p className="text-xs text-muted-foreground">Shopping "TIP"</p>
+              <p className="text-xs text-muted-foreground">Mua sắm "TIP"</p>
             </CardContent>
           </Card>
           <Card className="bg-purple-50 dark:bg-purple-950">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Company Tips</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tip công ty</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(totals.companyTip)}</div>
-              <p className="text-xs text-muted-foreground">From summary</p>
+              <p className="text-xs text-muted-foreground">Từ tổng kết</p>
             </CardContent>
           </Card>
           <Card className="bg-orange-50 dark:bg-orange-950">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Shoppings</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Mua sắm</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(totals.shoppings)}</div>
-              <p className="text-xs text-muted-foreground">Excluding TIP</p>
+              <p className="text-xs text-muted-foreground">Không tính TIP</p>
             </CardContent>
           </Card>
           <Card className="bg-primary/20">
@@ -628,31 +628,31 @@ const Statistics = () => {
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="bg-blue-100 dark:bg-blue-900 border-2 border-blue-400">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">Final Total (Filtered Tours)</CardTitle>
+              <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">Tổng cuối (Tour đã lọc)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-900 dark:text-blue-100">{formatCurrency(totals.finalTotal)}</div>
-              <p className="text-xs text-muted-foreground">{totals.tours} tours (current filters)</p>
+              <p className="text-xs text-muted-foreground">{totals.tours} tour (bộ lọc hiện tại)</p>
             </CardContent>
           </Card>
           <Card className="bg-green-100 dark:bg-green-900 border-2 border-green-400">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100">Grand Total (All Tours)</CardTitle>
+              <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100">Tổng lớn (Tất cả Tour)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-900 dark:text-green-100">{formatCurrency(grandTotals.finalTotal)}</div>
-              <p className="text-xs text-muted-foreground">{grandTotals.tours} tours in database</p>
+              <p className="text-xs text-muted-foreground">{grandTotals.tours} tour trong cơ sở dữ liệu</p>
             </CardContent>
           </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Statistics by Guide</CardTitle>
+            <CardTitle>Thống kê theo Hướng dẫn viên</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="py-8 text-center text-muted-foreground">Loading statistics...</div>
+              <div className="py-8 text-center text-muted-foreground">Đang tải thống kê...</div>
             ) : guideStats.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 No tours found for the selected filters.
@@ -662,12 +662,12 @@ const Statistics = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Guide</TableHead>
-                      <TableHead className="text-right">Tours</TableHead>
-                      <TableHead className="text-right">Allowances</TableHead>
-                      <TableHead className="text-right">Tips (Guests)</TableHead>
-                      <TableHead className="text-right">Tips (Company)</TableHead>
-                      <TableHead className="text-right">Shoppings</TableHead>
+                      <TableHead>Hướng dẫn viên</TableHead>
+                      <TableHead className="text-right">Số tour</TableHead>
+                      <TableHead className="text-right">Công tác phí</TableHead>
+                      <TableHead className="text-right">Tip (Khách)</TableHead>
+                      <TableHead className="text-right">Tip (Công ty)</TableHead>
+                      <TableHead className="text-right">Mua sắm</TableHead>
                       <TableHead className="text-right font-semibold">Total (S+T+A)</TableHead>
                       <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">Final Total</TableHead>
                     </TableRow>
@@ -694,11 +694,11 @@ const Statistics = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Statistics by Company</CardTitle>
+            <CardTitle>Thống kê theo Công ty</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="py-8 text-center text-muted-foreground">Loading statistics...</div>
+              <div className="py-8 text-center text-muted-foreground">Đang tải thống kê...</div>
             ) : companyStats.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 No tours found for the selected filters.
@@ -708,12 +708,12 @@ const Statistics = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Company</TableHead>
-                      <TableHead className="text-right">Tours</TableHead>
-                      <TableHead className="text-right">Allowances</TableHead>
-                      <TableHead className="text-right">Tips (Guests)</TableHead>
-                      <TableHead className="text-right">Tips (Company)</TableHead>
-                      <TableHead className="text-right">Shoppings</TableHead>
+                      <TableHead>Công ty</TableHead>
+                      <TableHead className="text-right">Số tour</TableHead>
+                      <TableHead className="text-right">Công tác phí</TableHead>
+                      <TableHead className="text-right">Tip (Khách)</TableHead>
+                      <TableHead className="text-right">Tip (Công ty)</TableHead>
+                      <TableHead className="text-right">Mua sắm</TableHead>
                       <TableHead className="text-right font-semibold">Total (S+T+A)</TableHead>
                       <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">Final Total</TableHead>
                     </TableRow>
@@ -740,11 +740,11 @@ const Statistics = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Statistics</CardTitle>
+            <CardTitle>Thống kê theo Tháng</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="py-8 text-center text-muted-foreground">Loading statistics...</div>
+              <div className="py-8 text-center text-muted-foreground">Đang tải thống kê...</div>
             ) : monthlyStats.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 No tours found for the selected filters.
@@ -754,12 +754,12 @@ const Statistics = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Month</TableHead>
-                      <TableHead className="text-right">Tours</TableHead>
-                      <TableHead className="text-right">Allowances</TableHead>
-                      <TableHead className="text-right">Tips (Guests)</TableHead>
-                      <TableHead className="text-right">Tips (Company)</TableHead>
-                      <TableHead className="text-right">Shoppings</TableHead>
+                      <TableHead>Tháng</TableHead>
+                      <TableHead className="text-right">Số tour</TableHead>
+                      <TableHead className="text-right">Công tác phí</TableHead>
+                      <TableHead className="text-right">Tip (Khách)</TableHead>
+                      <TableHead className="text-right">Tip (Công ty)</TableHead>
+                      <TableHead className="text-right">Mua sắm</TableHead>
                       <TableHead className="text-right font-semibold">Total (S+T+A)</TableHead>
                       <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">Final Total</TableHead>
                     </TableRow>
@@ -786,11 +786,11 @@ const Statistics = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Statistics by Nationality</CardTitle>
+            <CardTitle>Thống kê theo Quốc tịch</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="py-8 text-center text-muted-foreground">Loading statistics...</div>
+              <div className="py-8 text-center text-muted-foreground">Đang tải thống kê...</div>
             ) : nationalityStats.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 No tours found for the selected filters.
@@ -800,12 +800,12 @@ const Statistics = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nationality</TableHead>
-                      <TableHead className="text-right">Tours</TableHead>
-                      <TableHead className="text-right">Allowances</TableHead>
-                      <TableHead className="text-right">Tips (Guests)</TableHead>
-                      <TableHead className="text-right">Tips (Company)</TableHead>
-                      <TableHead className="text-right">Shoppings</TableHead>
+                      <TableHead>Quốc tịch</TableHead>
+                      <TableHead className="text-right">Số tour</TableHead>
+                      <TableHead className="text-right">Công tác phí</TableHead>
+                      <TableHead className="text-right">Tip (Khách)</TableHead>
+                      <TableHead className="text-right">Tip (Công ty)</TableHead>
+                      <TableHead className="text-right">Mua sắm</TableHead>
                       <TableHead className="text-right font-semibold">Total (S+T+A)</TableHead>
                       <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">Final Total</TableHead>
                     </TableRow>

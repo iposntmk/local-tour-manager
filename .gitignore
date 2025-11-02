@@ -25,3 +25,27 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backup files
+*.backup
+
+# Translation and migration documentation
+FINAL_TRANSLATION_STATUS.md
+GET_CORRECT_KEYS.md
+MANUAL_TRANSLATION_SUMMARY.md
+MIGRATION_GUIDE.md
+TRANSLATION_COMPLETED.md
+TRANSLATION_FINAL_COMPLETE.md
+VIETNAMESE_TRANSLATION_COMPLETE.md
+VIETNAMESE_TRANSLATION_GUIDE.md
+
+# SQL debug files
+debug-rls.sql
+fix-rls*.sql
+test-rls*.sql
+
+# Shell scripts (temporary)
+*.sh
+
+# Supabase migrations (local only)
+supabase-migrations/
