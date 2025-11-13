@@ -21,15 +21,16 @@ import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
-import type { Meal } from '@/types/tour';
+import type { Meal, Tour } from '@/types/tour';
 
 interface MealsTabProps {
   tourId?: string;
   meals: Meal[];
   onChange?: (meals: Meal[]) => void;
+  tour?: Tour | null;
 }
 
-export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
+export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Meal>({ name: '', price: 0, date: '' });
   const [openMeal, setOpenMeal] = useState(false);
@@ -39,12 +40,6 @@ export function MealsTab({ tourId, meals, onChange }: MealsTabProps) {
   const [newMealCategoryId, setNewMealCategoryId] = useState('');
   const [openCategory, setOpenCategory] = useState(false);
   const queryClient = useQueryClient();
-
-  const { data: tour } = useQuery({
-    queryKey: ['tour', tourId],
-    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
-    enabled: !!tourId,
-  });
 
   // Default guests for new rows in create mode when not editing
   if (!tourId && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {

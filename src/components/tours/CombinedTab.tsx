@@ -1,12 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
-import { store } from '@/lib/datastore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
-import type { Tour, Destination, Expense, Meal } from '@/types/tour';
+import type { Tour } from '@/types/tour';
 
 interface CombinedTabProps {
-  tourId?: string;
   tour: Tour | null | undefined;
 }
 
@@ -17,19 +14,12 @@ const clampGuests = (guestValue: number | undefined, tourGuests: number): number
   return Math.min(Math.max(guestValue, 0), tourGuests);
 };
 
-export function CombinedTab({ tourId, tour }: CombinedTabProps) {
-  const { data: fetchedTour } = useQuery({
-    queryKey: ['tour', tourId],
-    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
-    enabled: !!tourId,
-  });
+export function CombinedTab({ tour }: CombinedTabProps) {
+  const tourGuests = tour?.totalGuests || 0;
 
-  const displayTour = tour || fetchedTour;
-  const tourGuests = displayTour?.totalGuests || 0;
-
-  const destinations = displayTour?.destinations || [];
-  const expenses = displayTour?.expenses || [];
-  const meals = displayTour?.meals || [];
+  const destinations = tour?.destinations || [];
+  const expenses = tour?.expenses || [];
+  const meals = tour?.meals || [];
 
   // Calculate totals
   const totalDestinations = destinations.reduce((sum, d) => {

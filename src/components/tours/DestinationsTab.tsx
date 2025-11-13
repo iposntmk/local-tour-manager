@@ -21,15 +21,16 @@ import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
-import type { Destination } from '@/types/tour';
+import type { Destination, Tour } from '@/types/tour';
 
 interface DestinationsTabProps {
   tourId?: string;
   destinations: Destination[];
   onChange?: (destinations: Destination[]) => void;
+  tour?: Tour | null;
 }
 
-export function DestinationsTab({ tourId, destinations, onChange }: DestinationsTabProps) {
+export function DestinationsTab({ tourId, destinations, onChange, tour }: DestinationsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Destination>({ name: '', price: 0, date: '' });
   const [openDestination, setOpenDestination] = useState(false);
@@ -39,12 +40,6 @@ export function DestinationsTab({ tourId, destinations, onChange }: Destinations
   const [newDestinationProvinceId, setNewDestinationProvinceId] = useState('');
   const [openProvince, setOpenProvince] = useState(false);
   const queryClient = useQueryClient();
-
-  const { data: tour } = useQuery({
-    queryKey: ['tour', tourId],
-    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
-    enabled: !!tourId,
-  });
 
   // Default guests for new rows = tour totalGuests
   if (!tourId && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {

@@ -21,15 +21,16 @@ import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
-import type { Expense } from '@/types/tour';
+import type { Expense, Tour } from '@/types/tour';
 
 interface ExpensesTabProps {
   tourId?: string;
   expenses: Expense[];
   onChange?: (expenses: Expense[]) => void;
+  tour?: Tour | null;
 }
 
-export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
+export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Expense>({ name: '', price: 0, date: '' });
   const [openExpense, setOpenExpense] = useState(false);
@@ -40,12 +41,6 @@ export function ExpensesTab({ tourId, expenses, onChange }: ExpensesTabProps) {
   const [openCategory, setOpenCategory] = useState(false);
   const [editingGuestsIndex, setEditingGuestsIndex] = useState<number | null>(null);
   const queryClient = useQueryClient();
-
-  const { data: tour } = useQuery({
-    queryKey: ['tour', tourId],
-    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
-    enabled: !!tourId,
-  });
 
   const { data: detailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses'],

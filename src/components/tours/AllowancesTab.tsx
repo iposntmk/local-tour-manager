@@ -19,15 +19,16 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
-import type { Allowance } from '@/types/tour';
+import type { Allowance, Tour } from '@/types/tour';
 
 interface AllowancesTabProps {
   tourId?: string;
   allowances: Allowance[];
   onChange?: (allowances: Allowance[]) => void;
+  tour?: Tour | null;
 }
 
-export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabProps) {
+export function AllowancesTab({ tourId, allowances, onChange, tour }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0, quantity: 1 });
   const [openProvince, setOpenProvince] = useState(false);
@@ -142,12 +143,6 @@ export function AllowancesTab({ tourId, allowances, onChange }: AllowancesTabPro
     setEditingIndex(null);
     setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
   };
-  // Default date to tour start date when available
-  const { data: tour } = useQuery({
-    queryKey: ['tour', tourId],
-    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
-    enabled: !!tourId,
-  });
 
   useEffect(() => {
     if (!formData.date && tour?.startDate) {

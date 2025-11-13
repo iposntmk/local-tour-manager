@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Shopping } from '@/types/tour';
+import type { Shopping, Tour } from '@/types/tour';
 
 const REQUIRED_PIN = '0829101188';
 
@@ -29,9 +29,10 @@ interface ShoppingsTabProps {
   tourId?: string;
   shoppings: Shopping[];
   onChange?: (shoppings: Shopping[]) => void;
+  tour?: Tour | null;
 }
 
-export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps) {
+export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTabProps) {
   const [isUnlocked, setIsUnlocked] = useState(() => {
     const saved = sessionStorage.getItem('shopping.unlocked');
     return saved === 'true';
@@ -43,12 +44,6 @@ export function ShoppingsTab({ tourId, shoppings, onChange }: ShoppingsTabProps)
   const [showNewShoppingDialog, setShowNewShoppingDialog] = useState(false);
   const [newShoppingName, setNewShoppingName] = useState('');
   const queryClient = useQueryClient();
-
-  const { data: tour } = useQuery({
-    queryKey: ['tour', tourId],
-    queryFn: () => tourId ? store.getTour(tourId) : Promise.resolve(null),
-    enabled: !!tourId,
-  });
 
   // Initialize formData with tour's start date
   const [formData, setFormData] = useState<Shopping>(() => ({

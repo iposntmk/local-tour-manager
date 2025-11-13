@@ -6,7 +6,7 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download, Eye, EyeOff } from 'lucide-react';
 import { SearchInput } from '@/components/master/SearchInput';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
@@ -68,13 +68,30 @@ const DetailedExpenses = () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('Detailed expense duplicated successfully');
     },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => store.deleteDetailedExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Detailed expense deleted successfully');
+      toast.success('Detailed expense hidden successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: (id: string) => store.toggleDetailedExpenseStatus(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success('Status updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -83,6 +100,9 @@ const DetailedExpenses = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('All detailed expenses deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -101,6 +121,9 @@ const DetailedExpenses = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -273,10 +296,15 @@ const DetailedExpenses = () => {
                   {filteredExpenses.map((expense) => (
                     <tr
                       key={expense.id}
-                      className="border-t hover:bg-muted/50 cursor-pointer"
+                      className={`border-t hover:bg-muted/50 cursor-pointer ${expense.status === 'inactive' ? 'opacity-50 bg-muted/30' : ''}`}
                       onClick={() => handleOpenDialog(expense)}
                     >
-                      <td className="p-4 font-medium">{expense.name}</td>
+                      <td className="p-4 font-medium">
+                        {expense.name}
+                        {expense.status === 'inactive' && (
+                          <span className="ml-2 text-xs text-muted-foreground">(Hidden)</span>
+                        )}
+                      </td>
                       <td className="p-4 text-muted-foreground">{expense.categoryRef.nameAtBooking}</td>
                       <td className="p-4 text-muted-foreground">
                         {formatCurrency(expense.price)}
@@ -305,8 +333,21 @@ const DetailedExpenses = () => {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => toggleStatusMutation.mutate(expense.id)}
+                            className="h-8 w-8 p-0"
+                            title={expense.status === 'active' ? 'Hide expense' : 'Show expense'}
+                          >
+                            {expense.status === 'active' ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => {
-                              if (confirm('Are you sure you want to delete this expense?')) {
+                              if (confirm('Are you sure you want to hide this expense?')) {
                                 deleteMutation.mutate(expense.id);
                               }
                             }}
@@ -327,12 +368,17 @@ const DetailedExpenses = () => {
               {filteredExpenses.map((expense) => (
                 <div
                   key={expense.id}
-                  className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
+                  className={`rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50 ${expense.status === 'inactive' ? 'opacity-50 bg-muted/30' : ''}`}
                   onClick={() => handleOpenDialog(expense)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-medium">{expense.name}</h3>
+                      <h3 className="font-medium">
+                        {expense.name}
+                        {expense.status === 'inactive' && (
+                          <span className="ml-2 text-xs text-muted-foreground">(Hidden)</span>
+                        )}
+                      </h3>
                       <p className="text-sm text-muted-foreground">
                         {expense.categoryRef.nameAtBooking} • {formatCurrency(expense.price)}
                       </p>
@@ -360,8 +406,21 @@ const DetailedExpenses = () => {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => toggleStatusMutation.mutate(expense.id)}
+                        className="h-8 w-8 p-0"
+                        title={expense.status === 'active' ? 'Hide expense' : 'Show expense'}
+                      >
+                        {expense.status === 'active' ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
-                          if (confirm('Are you sure you want to delete this expense?')) {
+                          if (confirm('Are you sure you want to hide this expense?')) {
                             deleteMutation.mutate(expense.id);
                           }
                         }}

@@ -473,6 +473,7 @@ const TourDetail = () => {
               <DestinationsTab
                 tourId={isNewTour ? undefined : id!}
                 destinations={displayTour?.destinations || []}
+                tour={displayTour}
                 onChange={(dests) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, destinations: dests });
@@ -485,6 +486,7 @@ const TourDetail = () => {
               <ExpensesTab
                 tourId={isNewTour ? undefined : id!}
                 expenses={displayTour?.expenses || []}
+                tour={displayTour}
                 onChange={(exps) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, expenses: exps });
@@ -497,6 +499,7 @@ const TourDetail = () => {
               <MealsTab
                 tourId={isNewTour ? undefined : id!}
                 meals={displayTour?.meals || []}
+                tour={displayTour}
                 onChange={(mls) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, meals: mls });
@@ -507,7 +510,6 @@ const TourDetail = () => {
 
             <TabsContent value="combined" className="animate-fade-in">
               <CombinedTab
-                tourId={isNewTour ? undefined : id!}
                 tour={displayTour}
               />
             </TabsContent>
@@ -516,6 +518,7 @@ const TourDetail = () => {
               <AllowancesTab
                 tourId={isNewTour ? undefined : id!}
                 allowances={displayTour?.allowances || []}
+                tour={displayTour}
                 onChange={(allows) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, allowances: allows });
@@ -543,6 +546,7 @@ const TourDetail = () => {
               <ShoppingsTab
                 tourId={isNewTour ? undefined : id!}
                 shoppings={displayTour?.shoppings || []}
+                tour={displayTour}
                 onChange={(shops) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, shoppings: shops });

@@ -14,6 +14,7 @@ import {
   Settings,
   ChevronDown,
   LogOut,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
@@ -29,12 +30,20 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import type { User } from '@supabase/supabase-js';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const masterDataItems = [
+interface NavItem {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  adminOnly?: boolean;
+}
+
+const masterDataItems: NavItem[] = [
   { to: '/guides', icon: Users, label: 'Hướng dẫn viên' },
   { to: '/companies', icon: Building2, label: 'Công ty' },
   { to: '/nationalities', icon: Globe, label: 'Quốc tịch' },
@@ -45,14 +54,19 @@ const masterDataItems = [
   { to: '/detailed-expenses', icon: Receipt, label: 'Chi phí' },
 ];
 
-const mainNavItems = [
+const mainNavItems: NavItem[] = [
   { to: '/tours', icon: Plane, label: 'Tour' },
   { to: '/statistics', icon: BarChart3, label: 'Thống kê' },
+  { to: '/users', icon: UserCog, label: 'Người dùng', adminOnly: true },
 ];
 
 const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; user: User | null; onLogout: () => void }) => {
   const location = useLocation();
   const [masterDataOpen, setMasterDataOpen] = useState(false);
+  const { isAdmin, userProfile } = useAuth();
+
+  // Debug logging
+  console.log('[Layout] isAdmin:', isAdmin, 'userProfile:', userProfile);
 
   const isMasterDataActive = masterDataItems.some(item => location.pathname.startsWith(item.to));
 
@@ -74,16 +88,18 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           <span className="text-center truncate w-full">Trang chủ</span>
         </NavLink>
 
-        {mainNavItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) => navLinkClass(isActive)}
-          >
-            <item.icon className="h-5 w-5" />
-            <span className="text-center truncate w-full">{item.label}</span>
-          </NavLink>
-        ))}
+        {mainNavItems
+          .filter((item) => !item.adminOnly || isAdmin)
+          .map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) => navLinkClass(isActive)}
+            >
+              <item.icon className="h-5 w-5" />
+              <span className="text-center truncate w-full">{item.label}</span>
+            </NavLink>
+          ))}
 
         {/* Master Data Dropdown - Mobile only */}
         <DropdownMenu open={masterDataOpen} onOpenChange={setMasterDataOpen}>
@@ -146,16 +162,18 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
         <span className="text-center">Home</span>
       </NavLink>
 
-      {mainNavItems.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          className={({ isActive }) => navLinkClass(isActive)}
-        >
-          <item.icon className="h-4 w-4" />
-          <span className="text-center">{item.label}</span>
-        </NavLink>
-      ))}
+      {mainNavItems
+        .filter((item) => !item.adminOnly || isAdmin)
+        .map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => navLinkClass(isActive)}
+          >
+            <item.icon className="h-4 w-4" />
+            <span className="text-center">{item.label}</span>
+          </NavLink>
+        ))}
 
       {/* Master Data Items - Desktop only (show all) */}
       {masterDataItems.map((item) => (

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Guides from "./pages/Guides";
 import Companies from "./pages/Companies";
@@ -20,8 +21,21 @@ import TourDetail from "./pages/TourDetail";
 import NotFound from "./pages/NotFound";
 import Statistics from "./pages/Statistics";
 import Auth from "./pages/Auth";
+import Users from "./pages/Users";
 
-const queryClient = new QueryClient();
+const FIVE_MINUTES = 5 * 60 * 1000;
+const THIRTY_MINUTES = 30 * 60 * 1000;
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: FIVE_MINUTES,
+      gcTime: THIRTY_MINUTES,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+  },
+});
 
 const App = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -36,8 +50,8 @@ const App = () => {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Clear all React Query cache on auth state change
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        // Clear all React Query cache only on sign in/out (not token refresh)
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
           queryClient.clear();
           queryClient.invalidateQueries();
         }
@@ -64,28 +78,31 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <HashRouter>
-          <Routes>
-            <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/" />} />
-            <Route path="/" element={user ? <Tours /> : <Navigate to="/auth" />} />
-            <Route path="/guides" element={user ? <Guides /> : <Navigate to="/auth" />} />
-            <Route path="/companies" element={user ? <Companies /> : <Navigate to="/auth" />} />
-            <Route path="/nationalities" element={user ? <Nationalities /> : <Navigate to="/auth" />} />
-            <Route path="/provinces" element={user ? <Provinces /> : <Navigate to="/auth" />} />
-            <Route path="/destinations" element={user ? <Destinations /> : <Navigate to="/auth" />} />
-            <Route path="/shopping" element={user ? <Shopping /> : <Navigate to="/auth" />} />
-            <Route path="/expense-categories" element={user ? <ExpenseCategories /> : <Navigate to="/auth" />} />
-            <Route path="/detailed-expenses" element={user ? <DetailedExpenses /> : <Navigate to="/auth" />} />
-            <Route path="/tours" element={user ? <Tours /> : <Navigate to="/auth" />} />
-            <Route path="/tours/:id" element={user ? <TourDetail /> : <Navigate to="/auth" />} />
-            <Route path="/statistics" element={user ? <Statistics /> : <Navigate to="/auth" />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </HashRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <HashRouter>
+            <Routes>
+              <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/" />} />
+              <Route path="/" element={user ? <Tours /> : <Navigate to="/auth" />} />
+              <Route path="/guides" element={user ? <Guides /> : <Navigate to="/auth" />} />
+              <Route path="/companies" element={user ? <Companies /> : <Navigate to="/auth" />} />
+              <Route path="/nationalities" element={user ? <Nationalities /> : <Navigate to="/auth" />} />
+              <Route path="/provinces" element={user ? <Provinces /> : <Navigate to="/auth" />} />
+              <Route path="/destinations" element={user ? <Destinations /> : <Navigate to="/auth" />} />
+              <Route path="/shopping" element={user ? <Shopping /> : <Navigate to="/auth" />} />
+              <Route path="/expense-categories" element={user ? <ExpenseCategories /> : <Navigate to="/auth" />} />
+              <Route path="/detailed-expenses" element={user ? <DetailedExpenses /> : <Navigate to="/auth" />} />
+              <Route path="/tours" element={user ? <Tours /> : <Navigate to="/auth" />} />
+              <Route path="/tours/:id" element={user ? <TourDetail /> : <Navigate to="/auth" />} />
+              <Route path="/statistics" element={user ? <Statistics /> : <Navigate to="/auth" />} />
+              <Route path="/users" element={user ? <Users /> : <Navigate to="/auth" />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </HashRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 };

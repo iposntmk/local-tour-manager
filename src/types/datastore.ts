@@ -11,6 +11,7 @@ import type {
   TourSummary,
   TourListResult,
 } from './tour';
+import type { UserProfile, UserProfileInput } from './user';
 
 export interface SearchQuery {
   search?: string;
@@ -102,9 +103,9 @@ export interface DataStore {
   getDetailedExpense(id: string): Promise<DetailedExpense | undefined>;
   createDetailedExpense(input: DetailedExpenseInput): Promise<DetailedExpense>;
   updateDetailedExpense(id: string, patch: Partial<DetailedExpense>): Promise<void>;
-  toggleDetailedExpenseStatus(id: string): Promise<void>;
   duplicateDetailedExpense(id: string): Promise<DetailedExpense>;
   deleteDetailedExpense(id: string): Promise<void>;
+  toggleDetailedExpenseStatus(id: string): Promise<void>;
   deleteAllDetailedExpenses(): Promise<void>;
   bulkCreateDetailedExpenses(inputs: DetailedExpenseInput[]): Promise<DetailedExpense[]>;
   
@@ -195,4 +196,13 @@ export interface DataStore {
   exportData(): Promise<any>;
   importData(data: any): Promise<void>;
   clearAllData(): Promise<void>;
+
+  // User Profiles
+  listUserProfiles(query?: SearchQuery): Promise<UserProfile[]>;
+  getUserProfile(id: string): Promise<UserProfile | undefined>;
+  getUserProfileByEmail(email: string): Promise<UserProfile | undefined>;
+  createUserProfile(userId: string, input: UserProfileInput, createdBy?: string): Promise<UserProfile>;
+  updateUserProfile(id: string, patch: Partial<UserProfileInput>): Promise<void>;
+  deleteUserProfile(id: string): Promise<void>;
+  getCurrentUserProfile(): Promise<UserProfile | undefined>;
 }
