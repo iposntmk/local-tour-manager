@@ -38,11 +38,16 @@ TRANSLATION_COMPLETED.md
 TRANSLATION_FINAL_COMPLETE.md
 VIETNAMESE_TRANSLATION_COMPLETE.md
 VIETNAMESE_TRANSLATION_GUIDE.md
+QUICK_START_*.md
+USER_MANAGEMENT_*.md
 
 # SQL debug files
 debug-rls.sql
 fix-rls*.sql
 test-rls*.sql
+DEBUG_*.sql
+FIX_*.sql
+*_DEBUG.sql
 
 # Shell scripts (temporary)
 *.sh
