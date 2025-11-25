@@ -1284,7 +1284,17 @@ const Tours = () => {
               for (const n of destNames) nameCount.set(n, (nameCount.get(n) || 0) + 1);
               const hasDuplicateDestNames = Array.from(nameCount.values()).some(c => c > 1);
 
-              const showRedFlag = hasZeroPrice || hasDuplicateDestNames;
+              // Check if water expense exists
+              const waterExpenseNames = [
+                'nước uống cho khách 10k/1 khách / 1 ngày',
+                'nước uống cho khách 15k/1 khách / 1 ngày',
+              ];
+              const hasWaterExpense = (tour.expenses || []).some(exp =>
+                waterExpenseNames.includes((exp.name || '').trim().toLowerCase())
+              );
+              const missingWaterExpense = !hasWaterExpense;
+
+              const showRedFlag = hasZeroPrice || hasDuplicateDestNames || missingWaterExpense;
               const hasChildren = (tour.children || 0) > 0;
               return (
                 <div
@@ -1312,7 +1322,16 @@ const Tours = () => {
                             {tour.totalGuests || ((tour.adults || 0) + (tour.children || 0))}p
                           </Badge>
                           {showRedFlag && (
-                            <span className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm" title={hasDuplicateDestNames && hasZeroPrice ? 'Tên điểm đến trùng lặp và giá 0' : hasDuplicateDestNames ? 'Tên điểm đến trùng lặp' : 'Có mục giá 0'}>
+                            <span
+                              className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm"
+                              title={
+                                [
+                                  hasDuplicateDestNames && 'Tên điểm đến trùng lặp',
+                                  hasZeroPrice && 'Có mục giá 0',
+                                  missingWaterExpense && 'Thiếu chi phí nước uống'
+                                ].filter(Boolean).join(' • ') || 'Cần kiểm tra'
+                              }
+                            >
                               <Flag className="h-3 w-3 sm:h-4 sm:w-4" />
                               <span className="hidden sm:inline">Kiểm tra</span>
                             </span>

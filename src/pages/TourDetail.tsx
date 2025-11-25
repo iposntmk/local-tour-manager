@@ -265,6 +265,16 @@ const TourDetail = () => {
   const displayTour = isNewTour ? newTourData as Tour : tour;
   const totalGuests = displayTour?.totalGuests || (displayTour?.adults || 0) + (displayTour?.children || 0) || 0;
 
+  // Check if water expense exists
+  const waterExpenseNames = [
+    'Nước uống cho khách 10k/1 khách / 1 ngày',
+    'Nước uống cho khách 15k/1 khách / 1 ngày',
+  ];
+  const hasWaterExpense = (displayTour?.expenses || []).some(exp =>
+    waterExpenseNames.includes(exp.name || '')
+  );
+  const showWaterWarning = !isNewTour && !hasWaterExpense;
+
   const { classes: headerClasses } = useHeaderMode('tourdetail.headerMode');
 
   if (isLoading && !isNewTour) {
@@ -422,8 +432,8 @@ const TourDetail = () => {
                   </TabsTrigger>
                   <TabsTrigger value="allowances" className="text-xs sm:text-sm">
                     <div className="flex flex-col items-center">
-                      <span className="sm:hidden">PC</span>
-                      <span className="hidden sm:inline">Phụ cấp</span>
+                      <span className="sm:hidden">CTP</span>
+                      <span className="hidden sm:inline">Công tác phí (CTP)</span>
                       <span className="text-xs sm:text-sm font-bold">
                         {displayTour?.allowances?.length || 0} | {formatCurrency(calculateTabTotals(displayTour).allowances)}
                       </span>
@@ -464,12 +474,42 @@ const TourDetail = () => {
 
             {/* Tab contents */}
             <TabsContent value="info" className="animate-fade-in">
+              {showWaterWarning && (
+                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                        Thiếu chi phí nước uống
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="rounded-lg border bg-card p-6">
                 <TourInfoForm initialData={isNewTour ? undefined : tour} onSubmit={handleInfoSave} showSubmitButton={false} />
               </div>
             </TabsContent>
 
             <TabsContent value="destinations" className="animate-fade-in">
+              {showWaterWarning && (
+                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                        Thiếu chi phí nước uống
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <DestinationsTab
                 tourId={isNewTour ? undefined : id!}
                 destinations={displayTour?.destinations || []}
@@ -496,6 +536,21 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="meals" className="animate-fade-in">
+              {showWaterWarning && (
+                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                        Thiếu chi phí nước uống
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <MealsTab
                 tourId={isNewTour ? undefined : id!}
                 meals={displayTour?.meals || []}
@@ -509,12 +564,42 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="combined" className="animate-fade-in">
+              {showWaterWarning && (
+                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                        Thiếu chi phí nước uống
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <CombinedTab
                 tour={displayTour}
               />
             </TabsContent>
 
             <TabsContent value="allowances" className="animate-fade-in">
+              {showWaterWarning && (
+                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                        Thiếu chi phí nước uống
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <AllowancesTab
                 tourId={isNewTour ? undefined : id!}
                 allowances={displayTour?.allowances || []}
@@ -528,6 +613,21 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="summary" className="animate-fade-in">
+              {showWaterWarning && (
+                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                        Thiếu chi phí nước uống
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <SummaryTab
                 tour={displayTour as Tour}
                 onSummaryUpdate={(summary) => {
@@ -543,6 +643,21 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="shoppings" className="animate-fade-in">
+              {showWaterWarning && (
+                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                        Thiếu chi phí nước uống
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <ShoppingsTab
                 tourId={isNewTour ? undefined : id!}
                 shoppings={displayTour?.shoppings || []}

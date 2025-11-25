@@ -223,8 +223,31 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
     formData.guests = tour!.totalGuests;
   }
 
+  // Check if water expense exists
+  const waterExpenseNames = [
+    'Nước uống cho khách 10k/1 khách / 1 ngày',
+    'Nước uống cho khách 15k/1 khách / 1 ngày',
+  ];
+  const hasWaterExpense = expenses.some(exp => waterExpenseNames.includes(exp.name || ''));
+  const showWaterWarning = tourId && !hasWaterExpense; // Only show for existing tours
+
   return (
     <div className="space-y-6">
+      {showWaterWarning && (
+        <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                Thiếu chi phí nước uống
+              </h4>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
           {editingIndex !== null ? 'Chỉnh sửa chi phí' : 'Thêm chi phí'}
@@ -297,16 +320,9 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
             <NumberInputMobile
               value={formData.guests}
               onChange={(val) => {
-                const max = tour?.totalGuests || 0;
-                if (val !== undefined && max && val > max) {
-                  toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
-                  setFormData({ ...formData, guests: max });
-                } else {
-                  setFormData({ ...formData, guests: val });
-                }
+                setFormData({ ...formData, guests: val });
               }}
               min={0}
-              max={tour?.totalGuests || 0}
               placeholder="Số khách"
               className="w-full"
             />
@@ -421,17 +437,12 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
                             value={expense.guests}
                             onChange={(val) => {
                               if (expense.merged) return;
-                              if (val !== undefined && totalGuests && val > totalGuests) {
-                                toast.warning(`Số khách không được vượt quá tổng khách của tour (${totalGuests}).`);
-                                val = totalGuests;
-                              }
                               const updated = { ...expense, guests: val } as Expense;
                               // Remove helper field before saving
                               const { originalIndex, ...clean } = updated as any;
                               updateMutation.mutate({ index: expense.originalIndex, expense: clean as Expense });
                             }}
                             min={0}
-                            max={totalGuests}
                             disabled={!!expense.merged}
                             className="w-16 sm:w-24"
                           />

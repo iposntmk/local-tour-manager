@@ -2422,15 +2422,29 @@ export class SupabaseStore implements DataStore {
     }
     
     const createdTour = await this.getTour(data.id) as Tour;
-    
+
     // Add subcollections if provided
     try {
       if (tour.destinations && tour.destinations.length > 0) {
         await Promise.all(tour.destinations.map(dest => this.addDestination(createdTour.id, dest)));
       }
+
+      // Auto-add default water expense for new tours
+      const defaultWaterExpense: Expense = {
+        name: 'Nước uống cho khách 10k/1 khách / 1 ngày',
+        price: 10000,
+        date: tour.startDate,
+        guests: totalGuests * totalDays, // totalGuests * totalDays
+      };
+
+      // Add default water expense first
+      await this.addExpense(createdTour.id, defaultWaterExpense);
+
+      // Then add any additional expenses provided
       if (tour.expenses && tour.expenses.length > 0) {
         await Promise.all(tour.expenses.map(exp => this.addExpense(createdTour.id, exp)));
       }
+
       if (tour.meals && tour.meals.length > 0) {
         await Promise.all(tour.meals.map(meal => this.addMeal(createdTour.id, meal)));
       }
@@ -2448,7 +2462,7 @@ export class SupabaseStore implements DataStore {
       // Don't fail the entire import if subcollections fail
       // The main tour was created successfully
     }
-    
+
     return createdTour;
   }
 
@@ -2504,6 +2518,40 @@ export class SupabaseStore implements DataStore {
 
     const { error } = await this.supabase.from('tours').update(updates).eq('id', id);
     if (error) throw error;
+
+    // Auto-update water expense when totalGuests or totalDays changes
+    const guestsChanged = tour.totalGuests !== undefined || tour.adults !== undefined || tour.children !== undefined;
+    const daysChanged = tour.totalDays !== undefined || tour.startDate !== undefined || tour.endDate !== undefined;
+
+    if (guestsChanged || daysChanged) {
+      try {
+        // Get current tour to calculate new values
+        const currentTour = await this.getTour(id);
+        if (currentTour) {
+          const newTotalGuests = currentTour.totalGuests || 0;
+          const newTotalDays = currentTour.totalDays || 0;
+          const newGuestsValue = newTotalGuests * newTotalDays;
+
+          // Find water expense and update it
+          const waterExpenseNames = [
+            'Nước uống cho khách 10k/1 khách / 1 ngày',
+            'Nước uống cho khách 15k/1 khách / 1 ngày',
+          ];
+
+          const expenses = currentTour.expenses || [];
+          for (let i = 0; i < expenses.length; i++) {
+            if (waterExpenseNames.includes(expenses[i].name || '')) {
+              // Update the water expense (this will also call recalculateTourSummary)
+              await this.updateExpense(id, i, { ...expenses[i], guests: newGuestsValue });
+              break; // Only update the first water expense found
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error auto-updating water expense:', error);
+        // Don't fail the entire update if water expense update fails
+      }
+    }
   }
 
   async deleteTour(id: string): Promise<void> {

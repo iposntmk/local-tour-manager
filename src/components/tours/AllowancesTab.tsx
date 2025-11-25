@@ -63,12 +63,12 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Đã thêm phụ cấp');
+      toast.success('Đã thêm CTP');
       setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
     },
     onError: (error) => {
       console.error('Error adding allowance:', error);
-      toast.error('Thêm phụ cấp thất bại: ' + (error instanceof Error ? error.message : 'lỗi không xác định'));
+      toast.error('Thêm CTP thất bại: ' + (error instanceof Error ? error.message : 'lỗi không xác định'));
     },
   });
 
@@ -87,7 +87,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
-      toast.success('Đã cập nhật phụ cấp');
+      toast.success('Đã cập nhật CTP');
       setEditingIndex(null);
     },
   });
@@ -106,7 +106,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
       } else {
         onChange?.(allowances.filter((_, i) => i !== index));
       }
-      toast.success('Đã xóa phụ cấp');
+      toast.success('Đã xóa CTP');
     },
   });
 
@@ -161,7 +161,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
-          {editingIndex !== null ? 'Chỉnh sửa phụ cấp' : 'Thêm phụ cấp'}
+          {editingIndex !== null ? 'Chỉnh sửa CTP' : 'Thêm CTP'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
@@ -173,15 +173,15 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                   aria-expanded={openExpense}
                   className="justify-between w-full"
                 >
-                  {formData.name || "Chọn phụ cấp..."}
+                  {formData.name || "Chọn CTP..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Tìm phụ cấp..." />
+                  <CommandInput placeholder="Tìm CTP..." />
                   <CommandList>
-                    <CommandEmpty>Không tìm thấy phụ cấp.</CommandEmpty>
+                    <CommandEmpty>Không tìm thấy CTP.</CommandEmpty>
                     <CommandGroup>
                       {detailedExpenses.map((exp) => (
                         <CommandItem
@@ -248,7 +248,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Danh sách phụ cấp</h3>
+          <h3 className="font-semibold">Danh sách CTP</h3>
         </div>
         {allowances.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
@@ -280,18 +280,37 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
               {allowances
                 .map((a, i) => ({ ...a, originalIndex: i }))
                 .sort((a, b) => {
-                  const n = (a.name || '').localeCompare(b.name || '');
-                  if (n !== 0) return n;
                   const da = a.date ? new Date(a.date).getTime() : Infinity;
                   const db = b.date ? new Date(b.date).getTime() : Infinity;
                   return da - db;
                 })
-                .map((allowance: any, rowIndex: number) => {
+                .map((allowance: any, rowIndex: number, arr: any[]) => {
                   const qty = allowance.quantity || 1;
                   const total = allowance.price * qty;
                   const isZeroPrice = (allowance.price ?? 0) === 0;
+
+                  // Determine group for current and previous allowance
+                  const getGroup = (name: string) => {
+                    const nameLower = (name || '').toLowerCase().trim();
+                    if (nameLower.includes('công tác phí') || nameLower.includes('cong tac phi')) return 'ctp';
+                    if (nameLower.includes('tiền ngủ') || nameLower.includes('tien ngu')) return 'ngu';
+                    if (nameLower.includes('tiền xe') || nameLower.includes('tien xe')) return 'xe';
+                    return 'other';
+                  };
+
+                  const currentGroup = getGroup(allowance.name);
+                  const prevAllowance = rowIndex > 0 ? arr[rowIndex - 1] : null;
+                  const prevGroup = prevAllowance ? getGroup(prevAllowance.name) : null;
+                  const showSeparator = prevGroup && currentGroup !== prevGroup;
+
                   return (
-                    <TableRow key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
+                    <>
+                      {showSeparator && (
+                        <TableRow key={`separator-${rowIndex}`} className="border-t-2 border-primary">
+                          <TableCell colSpan={7} className="h-0 p-0"></TableCell>
+                        </TableRow>
+                      )}
+                      <TableRow key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
                       <TableCell className="font-medium">{rowIndex + 1}</TableCell>
                       <TableCell className="font-medium">{allowance.name}</TableCell>
                       <TableCell className={allowance.price === 0 ? 'text-destructive font-semibold' : ''}>
@@ -362,6 +381,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                         </div>
                       </TableCell>
                     </TableRow>
+                    </>
                   );
                 })}
               <TableRow className="bg-muted/50 font-semibold">
