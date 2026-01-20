@@ -315,21 +315,34 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
         serviceItems.push({ kind: 'exp', name: m.name || '', date: m.date, price: m.price || 0, guests: typeof m.guests === 'number' ? m.guests : undefined });
       });
     }
-    // Sort services: destinations first, then expenses; within group by name
+    // Sort services by date (column D - serviceDate), items without dates go to the end
     serviceItems.sort((a, b) => {
-      const ra = a.kind === 'dest' ? 0 : 1;
-      const rb = b.kind === 'dest' ? 0 : 1;
-      if (ra !== rb) return ra - rb;
-      const na = (a.name || '').localeCompare(b.name || '');
-      return na;
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+
+      // Items without dates go to the end
+      if (!dateA && dateB) return 1;
+      if (dateA && !dateB) return -1;
+      if (!dateA && !dateB) return 0;
+
+      // Compare dates (YYYY-MM-DD format compares correctly as strings)
+      return dateA.localeCompare(dateB);
     });
 
-  // Do not group allowances — list each entry, sort by name
+  // Do not group allowances — list each entry, sort by date (column I - locationDate)
   const allowanceItems = allowances
     .slice()
     .sort((a, b) => {
-      const n = (a.name || '').localeCompare(b.name || '');
-      return n;
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+
+      // Items without dates go to the end
+      if (!dateA && dateB) return 1;
+      if (dateA && !dateB) return -1;
+      if (!dateA && !dateB) return 0;
+
+      // Compare dates (YYYY-MM-DD format compares correctly as strings)
+      return dateA.localeCompare(dateB);
     })
     .map(a => ({ name: a.name || '', date: a.date || '', price: a.price || 0 }));
   const dataRowCount = Math.max(serviceItems.length, allowanceItems.length);
@@ -568,6 +581,7 @@ const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResul
       alignment: { horizontal: 'left', vertical: 'top', wrapText: true, shrinkToFit: false, indent: 0, readingOrder: 'ltr', textRotation: 0 },
     });
     const row = worksheet.getRow(currentRow);
+    row.getCell(1).font = { color: { argb: 'FFFF0000' } }; // Red color
     row.height = 30; // give a bit more space for wrap
   }
 
@@ -876,19 +890,32 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
       });
     }
 
-    // Sort services: destinations first, then expenses; within group by name
+    // Sort services by date (column D - serviceDate), items without dates go to the end
     (serviceItems as any[]).sort((a, b) => {
-      const ra = a.kind === 'dest' ? 0 : 1;
-      const rb = b.kind === 'dest' ? 0 : 1;
-      if (ra !== rb) return ra - rb;
-      const na = (a.name || '').localeCompare(b.name || '');
-      return na;
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+
+      // Items without dates go to the end
+      if (!dateA && dateB) return 1;
+      if (dateA && !dateB) return -1;
+      if (!dateA && !dateB) return 0;
+
+      // Compare dates (YYYY-MM-DD format compares correctly as strings)
+      return dateA.localeCompare(dateB);
     });
 
-    // Do NOT merge allowance rows — list each row individually, sort by name only
+    // Do NOT merge allowance rows — list each row individually, sort by date (column I - locationDate)
     const allowanceRows = (allowances || []).slice().sort((a, b) => {
-      const n = (a.name || '').localeCompare(b.name || '');
-      return n;
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+
+      // Items without dates go to the end
+      if (!dateA && dateB) return 1;
+      if (dateA && !dateB) return -1;
+      if (!dateA && !dateB) return 0;
+
+      // Compare dates (YYYY-MM-DD format compares correctly as strings)
+      return dateA.localeCompare(dateB);
     });
 
     const dataRowCount = Math.max(serviceItems.length, allowanceRows.length);
@@ -1090,6 +1117,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
       worksheet.mergeCells(`A${currentRow}:M${currentRow}`);
       noteRow.getCell(1).value = `Ghi chú: ${tour.notes}`;
       noteRow.getCell(1).alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+      noteRow.getCell(1).font = { color: { argb: 'FFFF0000' } }; // Red color
       for (let col = 1; col <= 13; col += 1) {
         noteRow.getCell(col).border = thinBorder;
       }
