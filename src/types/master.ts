@@ -5,6 +5,7 @@ export interface Guide {
   name: string;
   phone: string;
   note: string;
+  isDefault: boolean;
   status: EntityStatus;
   searchKeywords: string[];
   createdAt: string;
@@ -15,6 +16,7 @@ export interface GuideInput {
   name: string;
   phone?: string;
   note?: string;
+  isDefault?: boolean;
 }
 
 export interface Company {
@@ -24,6 +26,7 @@ export interface Company {
   phone: string;
   email: string;
   note: string;
+  isDefault: boolean;
   status: EntityStatus;
   searchKeywords: string[];
   createdAt: string;
@@ -36,6 +39,7 @@ export interface CompanyInput {
   phone?: string;
   email?: string;
   note?: string;
+  isDefault?: boolean;
 }
 
 export interface Nationality {

@@ -114,10 +114,38 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
     queryFn: () => store.listCompanies({ status: 'active' }),
   });
 
+  useEffect(() => {
+    if (initialData || selectedCompanyId || companies.length === 0) {
+      return;
+    }
+
+    const defaultCompany = companies.find((company) => company.isDefault);
+    if (!defaultCompany) {
+      return;
+    }
+
+    setSelectedCompanyId(defaultCompany.id);
+    setValue('companyRef', { id: defaultCompany.id, nameAtBooking: defaultCompany.name });
+  }, [companies, initialData, selectedCompanyId, setValue]);
+
   const { data: guides = [] } = useQuery({
     queryKey: ['guides'],
     queryFn: () => store.listGuides({ status: 'active' }),
   });
+
+  useEffect(() => {
+    if (initialData || selectedGuideId || guides.length === 0) {
+      return;
+    }
+
+    const defaultGuide = guides.find((guide) => guide.isDefault);
+    if (!defaultGuide) {
+      return;
+    }
+
+    setSelectedGuideId(defaultGuide.id);
+    setValue('guideRef', { id: defaultGuide.id, nameAtBooking: defaultGuide.name });
+  }, [guides, initialData, selectedGuideId, setValue]);
 
   const { data: nationalities = [] } = useQuery({
     queryKey: ['nationalities'],

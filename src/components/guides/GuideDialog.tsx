@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TextareaWithSave } from '@/components/ui/textarea-with-save';
@@ -22,6 +23,18 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ name?: boolean }>({});
+
+  useEffect(() => {
+    if (!open) return;
+
+    setFormData({
+      name: guide?.name || '',
+      phone: guide?.phone || '',
+      note: guide?.note || '',
+      isDefault: guide?.isDefault || false,
+    });
+    setErrors({});
+  }, [guide, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +115,19 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
                 placeholder="Languages, specialties, etc."
                 rows={3}
               />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isDefault"
+                checked={!!formData.isDefault}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isDefault: checked === true })
+                }
+              />
+              <Label htmlFor="isDefault" className="cursor-pointer">
+                Use as default guide for new tours
+              </Label>
             </div>
           </div>
 

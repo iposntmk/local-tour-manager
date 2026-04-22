@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -29,9 +30,10 @@ const Companies = () => {
     search,
   };
 
-  const { data: companies = [], isLoading } = useQuery({
+  const { data: companies = [], isLoading, error: companiesError } = useQuery({
     queryKey: ['companies', query],
     queryFn: () => store.listCompanies(query),
+    retry: false,
   });
 
   const createMutation = useMutation({
@@ -70,6 +72,9 @@ const Companies = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       toast.success('Company deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete company');
     },
   });
 
@@ -178,6 +183,17 @@ const Companies = () => {
     });
   }, [companies, nameFilter, contactFilter, phoneFilter]);
 
+  const handleSetDefaultCompany = async (company: Company, checked: boolean) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: company.id,
+        data: { isDefault: checked },
+      });
+    } catch {
+      // Error toast handled by mutation
+    }
+  };
+
   const { classes: headerClasses } = useHeaderMode('companies.headerMode');
 
   return (
@@ -221,7 +237,11 @@ const Companies = () => {
             </div>
           </div>
 
-          {isLoading ? (
+          {companiesError ? (
+            <div className="text-center py-8 text-destructive">
+              {companiesError instanceof Error ? companiesError.message : 'Failed to load companies'}
+            </div>
+          ) : isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading...</div>
           ) : companies.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -237,6 +257,7 @@ const Companies = () => {
                       <TableHead>Company Name</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Phone</TableHead>
+                      <TableHead>Default</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
@@ -267,6 +288,7 @@ const Companies = () => {
                       </TableHead>
                       <TableHead></TableHead>
                       <TableHead></TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -279,6 +301,13 @@ const Companies = () => {
                         <TableCell className="font-medium">{company.name}</TableCell>
                         <TableCell>{company.contactName || '-'}</TableCell>
                         <TableCell>{company.phone || '-'}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={company.isDefault}
+                            onCheckedChange={(checked) => handleSetDefaultCompany(company, checked === true)}
+                            aria-label={`Set ${company.name} as default company`}
+                          />
+                        </TableCell>
                         <TableCell>{company.email || '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -328,7 +357,14 @@ const Companies = () => {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{company.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{company.name}</h3>
+                          {company.isDefault && (
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                              Default
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {company.contactName || 'No contact'}
                         </p>

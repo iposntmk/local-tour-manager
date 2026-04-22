@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TextareaWithSave } from '@/components/ui/textarea-with-save';
@@ -21,9 +22,24 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
     phone: company?.phone || '',
     email: company?.email || '',
     note: company?.note || '',
+    isDefault: company?.isDefault || false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ name?: boolean }>({});
+
+  useEffect(() => {
+    if (!open) return;
+
+    setFormData({
+      name: company?.name || '',
+      contactName: company?.contactName || '',
+      phone: company?.phone || '',
+      email: company?.email || '',
+      note: company?.note || '',
+      isDefault: company?.isDefault || false,
+    });
+    setErrors({});
+  }, [company, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +64,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
     try {
       await onSubmit(formData);
       onOpenChange(false);
-      setFormData({ name: '', contactName: '', phone: '', email: '', note: '' });
+      setFormData({ name: '', contactName: '', phone: '', email: '', note: '', isDefault: false });
     } catch (error) {
       // Error handled by parent
     } finally {
@@ -127,6 +143,19 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
                 placeholder="Additional information"
                 rows={3}
               />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isDefault"
+                checked={!!formData.isDefault}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isDefault: checked === true })
+                }
+              />
+              <Label htmlFor="isDefault" className="cursor-pointer">
+                Use as default company for new tours
+              </Label>
             </div>
           </div>
 

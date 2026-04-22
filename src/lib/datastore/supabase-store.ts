@@ -123,6 +123,7 @@ export class SupabaseStore implements DataStore {
       name: row.name,
       phone: row.phone || '',
       note: row.note || '',
+      isDefault: row.is_default || false,
       status: row.status,
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
@@ -138,6 +139,7 @@ export class SupabaseStore implements DataStore {
       phone: row.phone || '',
       email: row.email || '',
       note: row.note || '',
+      isDefault: row.is_default || false,
       status: row.status,
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
@@ -370,14 +372,47 @@ export class SupabaseStore implements DataStore {
 
   // Guides
   async listGuides(query?: SearchQuery): Promise<Guide[]> {
-    let queryBuilder = this.supabase.from('guides').select('*').order('name');
-    
-    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
-    if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
+    const applyFilters = <T extends { eq: (...args: any[]) => any; ilike: (...args: any[]) => any }>(queryBuilder: T) => {
+      let filteredBuilder = queryBuilder;
 
-    const { data, error } = await queryBuilder;
-    if (error) throw error;
-    return (data || []).map(this.mapGuide);
+      if (query?.status) filteredBuilder = filteredBuilder.eq('status', query.status);
+      if (query?.search) filteredBuilder = filteredBuilder.ilike('name', `%${query.search}%`);
+
+      return filteredBuilder;
+    };
+
+    const primaryQuery = applyFilters(
+      this.supabase
+        .from('guides')
+        .select('*')
+        .order('is_default', { ascending: false })
+        .order('name')
+    );
+
+    const { data, error } = await primaryQuery;
+    if (!error) {
+      return (data || []).map(this.mapGuide);
+    }
+
+    const isMissingDefaultColumn =
+      error.message?.includes('is_default') ||
+      error.details?.includes('is_default') ||
+      error.hint?.includes('is_default');
+
+    if (!isMissingDefaultColumn) {
+      throw error;
+    }
+
+    const fallbackQuery = applyFilters(
+      this.supabase
+        .from('guides')
+        .select('*')
+        .order('name')
+    );
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    if (fallbackError) throw fallbackError;
+    return (fallbackData || []).map(this.mapGuide);
   }
 
   async getGuide(id: string): Promise<Guide | null> {
@@ -398,10 +433,20 @@ export class SupabaseStore implements DataStore {
       throw new Error('A guide with this name already exists');
     }
 
+    if (guide.isDefault) {
+      const { error: clearDefaultError } = await this.supabase
+        .from('guides')
+        .update({ is_default: false })
+        .eq('is_default', true);
+
+      if (clearDefaultError) throw clearDefaultError;
+    }
+
     const searchKeywords = generateSearchKeywords(guide.name);
     const { data, error } = await this.supabase
       .from('guides')
       .insert({
+        is_default: guide.isDefault || false,
         name: guide.name,
         phone: guide.phone || '',
         note: guide.note || '',
@@ -416,6 +461,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateGuide(id: string, guide: Partial<Guide>): Promise<void> {
+    const { data: existingGuide, error: guideLookupError } = await this.supabase
+      .from('guides')
+      .select('id, name')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (guideLookupError) throw guideLookupError;
+    if (!existingGuide) {
+      throw new Error('Guide not found or you do not have permission to edit it');
+    }
+
     const updates: GuideUpdate = {};
     if (guide.name !== undefined) {
       // Check for duplicate name (excluding current record)
@@ -435,14 +491,68 @@ export class SupabaseStore implements DataStore {
     }
     if (guide.phone !== undefined) updates.phone = guide.phone;
     if (guide.note !== undefined) updates.note = guide.note;
+    if (guide.isDefault !== undefined) updates.is_default = guide.isDefault;
 
-    const { error } = await this.supabase.from('guides').update(updates).eq('id', id);
+    const hasUpdates = Object.keys(updates).length > 0;
+    if (!hasUpdates) {
+      throw new Error('No changes to save');
+    }
+
+    if (guide.isDefault) {
+      const { error: clearDefaultError } = await this.supabase
+        .from('guides')
+        .update({ is_default: false })
+        .neq('id', id)
+        .eq('is_default', true);
+
+      if (clearDefaultError) throw clearDefaultError;
+    }
+
+    const { data: updatedGuide, error } = await this.supabase
+      .from('guides')
+      .update(updates)
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+
     if (error) throw error;
+    if (!updatedGuide) {
+      throw new Error(`Guide "${existingGuide.name}" was not updated. Refresh and try again.`);
+    }
   }
 
   async deleteGuide(id: string): Promise<void> {
-    const { error } = await this.supabase.from('guides').delete().eq('id', id);
+    const { data: guide, error: guideLookupError } = await this.supabase
+      .from('guides')
+      .select('id, name')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (guideLookupError) throw guideLookupError;
+    if (!guide) {
+      throw new Error('Guide not found or you do not have permission to delete it');
+    }
+
+    const { error: detachError } = await this.supabase
+      .from('tours')
+      .update({ guide_id: null })
+      .eq('guide_id', id);
+
+    if (detachError) {
+      throw new Error(`Cannot delete guide "${guide.name}" because related tours could not be updated`);
+    }
+
+    const { data: deletedGuide, error } = await this.supabase
+      .from('guides')
+      .delete()
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+
     if (error) throw error;
+    if (!deletedGuide) {
+      throw new Error(`Guide "${guide.name}" was not deleted. Refresh and try again.`);
+    }
   }
 
   async duplicateGuide(id: string): Promise<Guide> {
@@ -452,10 +562,18 @@ export class SupabaseStore implements DataStore {
       name: `${original.name} (Copy)`,
       phone: original.phone,
       note: original.note,
+      isDefault: false,
     });
   }
 
   async deleteAllGuides(): Promise<void> {
+    const { error: detachError } = await this.supabase
+      .from('tours')
+      .update({ guide_id: null })
+      .not('guide_id', 'is', null);
+
+    if (detachError) throw detachError;
+
     const { error } = await this.supabase.from('guides').delete().gte('created_at', '1970-01-01');
     if (error) throw error;
   }
@@ -534,13 +652,46 @@ export class SupabaseStore implements DataStore {
 
   // Companies
   async listCompanies(query?: SearchQuery): Promise<Company[]> {
-    let queryBuilder = this.supabase.from('companies').select('*').order('name');
-    
-    if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
+    const applyFilters = <T extends { ilike: (...args: any[]) => any }>(queryBuilder: T) => {
+      let filteredBuilder = queryBuilder;
 
-    const { data, error } = await queryBuilder;
-    if (error) throw error;
-    return (data || []).map(this.mapCompany);
+      if (query?.search) filteredBuilder = filteredBuilder.ilike('name', `%${query.search}%`);
+
+      return filteredBuilder;
+    };
+
+    const primaryQuery = applyFilters(
+      this.supabase
+        .from('companies')
+        .select('*')
+        .order('is_default', { ascending: false })
+        .order('name')
+    );
+
+    const { data, error } = await primaryQuery;
+    if (!error) {
+      return (data || []).map(this.mapCompany);
+    }
+
+    const isMissingDefaultColumn =
+      error.message?.includes('is_default') ||
+      error.details?.includes('is_default') ||
+      error.hint?.includes('is_default');
+
+    if (!isMissingDefaultColumn) {
+      throw error;
+    }
+
+    const fallbackQuery = applyFilters(
+      this.supabase
+        .from('companies')
+        .select('*')
+        .order('name')
+    );
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    if (fallbackError) throw fallbackError;
+    return (fallbackData || []).map(this.mapCompany);
   }
 
   async getCompany(id: string): Promise<Company | null> {
@@ -561,10 +712,20 @@ export class SupabaseStore implements DataStore {
       throw new Error('A company with this name already exists');
     }
 
+    if (company.isDefault) {
+      const { error: clearDefaultError } = await this.supabase
+        .from('companies')
+        .update({ is_default: false })
+        .eq('is_default', true);
+
+      if (clearDefaultError) throw clearDefaultError;
+    }
+
     const searchKeywords = generateSearchKeywords(company.name);
     const { data, error } = await this.supabase
       .from('companies')
       .insert({
+        is_default: company.isDefault || false,
         name: company.name,
         contact_name: company.contactName || '',
         phone: company.phone || '',
@@ -581,6 +742,17 @@ export class SupabaseStore implements DataStore {
   }
 
   async updateCompany(id: string, company: Partial<Company>): Promise<void> {
+    const { data: existingCompany, error: companyLookupError } = await this.supabase
+      .from('companies')
+      .select('id, name')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (companyLookupError) throw companyLookupError;
+    if (!existingCompany) {
+      throw new Error('Company not found or you do not have permission to edit it');
+    }
+
     const updates: CompanyUpdate = {};
     if (company.name !== undefined) {
       // Check for duplicate name (excluding current record)
@@ -602,9 +774,34 @@ export class SupabaseStore implements DataStore {
     if (company.phone !== undefined) updates.phone = company.phone;
     if (company.email !== undefined) updates.email = company.email;
     if (company.note !== undefined) updates.note = company.note;
+    if (company.isDefault !== undefined) updates.is_default = company.isDefault;
 
-    const { error } = await this.supabase.from('companies').update(updates).eq('id', id);
+    const hasUpdates = Object.keys(updates).length > 0;
+    if (!hasUpdates) {
+      throw new Error('No changes to save');
+    }
+
+    if (company.isDefault) {
+      const { error: clearDefaultError } = await this.supabase
+        .from('companies')
+        .update({ is_default: false })
+        .neq('id', id)
+        .eq('is_default', true);
+
+      if (clearDefaultError) throw clearDefaultError;
+    }
+
+    const { data: updatedCompany, error } = await this.supabase
+      .from('companies')
+      .update(updates)
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+
     if (error) throw error;
+    if (!updatedCompany) {
+      throw new Error(`Company "${existingCompany.name}" was not updated. Refresh and try again.`);
+    }
   }
 
   async deleteCompany(id: string): Promise<void> {
@@ -621,6 +818,7 @@ export class SupabaseStore implements DataStore {
       phone: original.phone,
       email: original.email,
       note: original.note,
+      isDefault: false,
     });
   }
 

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -29,9 +30,10 @@ const Guides = () => {
     search,
   };
 
-  const { data: guides = [], isLoading } = useQuery({
+  const { data: guides = [], isLoading, error: guidesError } = useQuery({
     queryKey: ['guides', query],
     queryFn: () => store.listGuides(query),
+    retry: false,
   });
 
   const createMutation = useMutation({
@@ -70,6 +72,9 @@ const Guides = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guides'] });
       toast.success('Guide deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete guide');
     },
   });
 
@@ -162,6 +167,17 @@ const Guides = () => {
     });
   }, [guides, nameFilter, phoneFilter]);
 
+  const handleSetDefaultGuide = async (guide: Guide, checked: boolean) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: guide.id,
+        data: { isDefault: checked },
+      });
+    } catch {
+      // Error toast handled by mutation
+    }
+  };
+
   const { classes: headerClasses } = useHeaderMode('guides.headerMode');
 
   return (
@@ -217,7 +233,11 @@ const Guides = () => {
             </div>
           </div>
 
-          {isLoading ? (
+          {guidesError ? (
+            <div className="text-center py-8 text-destructive">
+              {guidesError instanceof Error ? guidesError.message : 'Failed to load guides'}
+            </div>
+          ) : isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading...</div>
           ) : guides.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -232,6 +252,7 @@ const Guides = () => {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
+                      <TableHead>Default</TableHead>
                       <TableHead>Note</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
@@ -254,6 +275,7 @@ const Guides = () => {
                       </TableHead>
                       <TableHead></TableHead>
                       <TableHead></TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -265,6 +287,13 @@ const Guides = () => {
                       >
                         <TableCell className="font-medium">{guide.name}</TableCell>
                         <TableCell>{guide.phone || '-'}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={guide.isDefault}
+                            onCheckedChange={(checked) => handleSetDefaultGuide(guide, checked === true)}
+                            aria-label={`Set ${guide.name} as default guide`}
+                          />
+                        </TableCell>
                         <TableCell className="max-w-xs truncate">{guide.note || '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -314,7 +343,14 @@ const Guides = () => {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{guide.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{guide.name}</h3>
+                          {guide.isDefault && (
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                              Default
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">{guide.phone || 'No phone'}</p>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
