@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,11 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
-import { removeDiacritics } from '@/lib/string-utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Allowance, Tour } from '@/types/tour';
-import type { DetailedExpense } from '@/types/master';
 
 interface AllowancesTabProps {
   tourId?: string;
@@ -30,65 +28,12 @@ interface AllowancesTabProps {
   tour?: Tour | null;
 }
 
-const allowanceGroupOrder = {
-  ctp: 0,
-  ngu: 1,
-  xe: 2,
-  other: 3,
-} as const;
-
-type AllowanceGroup = keyof typeof allowanceGroupOrder;
-
-const allowanceGroupLabel: Record<AllowanceGroup, string> = {
-  ctp: 'CTP',
-  ngu: 'Ngủ',
-  xe: 'Xe',
-  other: 'Khác',
-};
-
-const normalizeAllowanceText = (value?: string | null) =>
-  removeDiacritics(value || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ');
-
-const hasWord = (value: string, word: string) =>
-  value.split(' ').includes(word);
-
-const getAllowanceGroup = (name?: string, category?: string): AllowanceGroup => {
-  const normalizedName = normalizeAllowanceText(name);
-  const normalizedCategory = normalizeAllowanceText(category);
-
-  if (
-    normalizedCategory === 'ctp' ||
-    normalizedCategory.includes('cong tac phi') ||
-    normalizedName.includes('cong tac phi')
-  ) {
-    return 'ctp';
-  }
-
-  if (hasWord(normalizedCategory, 'ngu') || normalizedName.includes('tien ngu')) {
-    return 'ngu';
-  }
-
-  if (hasWord(normalizedCategory, 'xe') || normalizedName.includes('tien xe')) {
-    return 'xe';
-  }
-
-  return 'other';
-};
-
-const isAllowanceDetailedExpense = (expense: DetailedExpense) =>
-  getAllowanceGroup(expense.name, expense.categoryRef?.nameAtBooking) !== 'other';
-
 export function AllowancesTab({ tourId, allowances, onChange, tour }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0, quantity: 1 });
   const [openProvince, setOpenProvince] = useState(false);
   const [openExpense, setOpenExpense] = useState(false);
   const queryClient = useQueryClient();
-  const tourStartDate = tour?.startDate;
 
   const { data: provinces = [] } = useQuery({
     queryKey: ['provinces'],
@@ -100,17 +45,9 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     queryFn: () => store.listDetailedExpenses({ status: 'active' }),
   });
 
-  // The CTP tab also covers related "ngủ" and "xe" allowance-style expenses.
-  const detailedExpenses = useMemo(
-    () =>
-      allDetailedExpenses
-        .filter(isAllowanceDetailedExpense)
-        .sort((a, b) => {
-          const groupA = getAllowanceGroup(a.name, a.categoryRef?.nameAtBooking);
-          const groupB = getAllowanceGroup(b.name, b.categoryRef?.nameAtBooking);
-          return allowanceGroupOrder[groupA] - allowanceGroupOrder[groupB] || a.name.localeCompare(b.name);
-        }),
-    [allDetailedExpenses]
+  // Filter detailed expenses to only show CTP category
+  const detailedExpenses = allDetailedExpenses.filter(
+    exp => exp.categoryRef?.nameAtBooking === 'CTP'
   );
 
   const addMutation = useMutation({
@@ -127,7 +64,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
         queryClient.invalidateQueries({ queryKey: ['tours'] });
       }
       toast.success('Đã thêm CTP');
-      setFormData({ date: tourStartDate || '', name: '', price: 0, quantity: 1 });
+      setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
     },
     onError: (error) => {
       console.error('Error adding allowance:', error);
@@ -204,16 +141,14 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ date: tourStartDate || '', name: '', price: 0, quantity: 1 });
+    setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
   };
 
   useEffect(() => {
-    if (!tourStartDate) return;
-
-    setFormData(prev => (
-      prev.date ? prev : { ...prev, date: tourStartDate }
-    ));
-  }, [tourStartDate]);
+    if (!formData.date && tour?.startDate) {
+      setFormData(prev => ({ ...prev, date: tour.startDate! }));
+    }
+  }, [tour?.startDate]);
 
   const handleCopy = (index: number) => {
     const allowanceToCopy = allowances[index];
@@ -248,43 +183,32 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                   <CommandList>
                     <CommandEmpty>Không tìm thấy CTP.</CommandEmpty>
                     <CommandGroup>
-                      {detailedExpenses.map((exp) => {
-                        const categoryLabel =
-                          exp.categoryRef?.nameAtBooking ||
-                          allowanceGroupLabel[getAllowanceGroup(exp.name, exp.categoryRef?.nameAtBooking)];
-
-                        return (
-                          <CommandItem
-                            key={exp.id}
-                            value={`${exp.name} ${categoryLabel}`}
-                            onSelect={() => {
-                              const today = new Date().toISOString().split('T')[0];
-                              const defaultDate = tour?.startDate || today;
-                              setFormData({
-                                ...formData,
-                                name: exp.name,
-                                price: exp.price,
-                                date: formData.date || defaultDate,
-                                quantity: formData.quantity || 1
-                              });
-                              setOpenExpense(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.name === exp.name ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                              <span className="truncate">{exp.name}</span>
-                              <span className="shrink-0 text-xs text-muted-foreground">
-                                {categoryLabel} - {formatCurrency(exp.price)}
-                              </span>
-                            </span>
-                          </CommandItem>
-                        );
-                      })}
+                      {detailedExpenses.map((exp) => (
+                        <CommandItem
+                          key={exp.id}
+                          value={exp.name}
+                          onSelect={() => {
+                            const today = new Date().toISOString().split('T')[0];
+                            const defaultDate = tour?.startDate || today;
+                            setFormData({
+                              ...formData,
+                              name: exp.name,
+                              price: exp.price,
+                              date: formData.date || defaultDate,
+                              quantity: formData.quantity || 1
+                            });
+                            setOpenExpense(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.name === exp.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {exp.name} ({formatCurrency(exp.price)})
+                        </CommandItem>
+                      ))}
                     </CommandGroup>
                   </CommandList>
                 </Command>
@@ -360,15 +284,23 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                   const db = b.date ? new Date(b.date).getTime() : Infinity;
                   return da - db;
                 })
-                .map((allowance, rowIndex, arr) => {
+                .map((allowance: any, rowIndex: number, arr: any[]) => {
                   const qty = allowance.quantity || 1;
                   const total = allowance.price * qty;
                   const isZeroPrice = (allowance.price ?? 0) === 0;
 
                   // Determine group for current and previous allowance
-                  const currentGroup = getAllowanceGroup(allowance.name);
+                  const getGroup = (name: string) => {
+                    const nameLower = (name || '').toLowerCase().trim();
+                    if (nameLower.includes('công tác phí') || nameLower.includes('cong tac phi')) return 'ctp';
+                    if (nameLower.includes('tiền ngủ') || nameLower.includes('tien ngu')) return 'ngu';
+                    if (nameLower.includes('tiền xe') || nameLower.includes('tien xe')) return 'xe';
+                    return 'other';
+                  };
+
+                  const currentGroup = getGroup(allowance.name);
                   const prevAllowance = rowIndex > 0 ? arr[rowIndex - 1] : null;
-                  const prevGroup = prevAllowance ? getAllowanceGroup(prevAllowance.name) : null;
+                  const prevGroup = prevAllowance ? getGroup(prevAllowance.name) : null;
                   const showSeparator = prevGroup && currentGroup !== prevGroup;
 
                   return (

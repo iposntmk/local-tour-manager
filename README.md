@@ -144,7 +144,7 @@ If you prefer to host the static build on GitHub Pages instead of Lovable, follo
            - run: npm run build
              env:
                VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-               VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+               VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
                VITE_APP_BASE_PATH: ${{ secrets.VITE_APP_BASE_PATH }}
            - uses: actions/upload-pages-artifact@v2
              with:
@@ -152,7 +152,7 @@ If you prefer to host the static build on GitHub Pages instead of Lovable, follo
            - uses: actions/deploy-pages@v2
      ```
 
-5. **Configure Supabase environment variables:** make sure the Supabase keys are provided as GitHub repository secrets (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) so the build can access your backend.
+5. **Configure Supabase environment variables:** make sure the Supabase keys are provided as GitHub repository secrets (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) so the build can access your backend.
 
 After the workflow completes, your app will be available at `https://<username>.github.io/<repo-name>/`.
 
@@ -226,7 +226,7 @@ Create a `.env` file with your Supabase credentials:
 
 ```
 VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 ```
 
 ## Contributing

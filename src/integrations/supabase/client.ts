@@ -3,14 +3,28 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const SUPABASE_PUBLISHABLE_KEY = (
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  ''
+).trim();
+const HAS_SUPABASE_CREDENTIALS = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+
+if (!HAS_SUPABASE_CREDENTIALS && import.meta.env.DEV) {
+  console.error(
+    "Supabase credentials are not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in your .env file.",
+  );
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient<Database>(
+  HAS_SUPABASE_CREDENTIALS ? SUPABASE_URL : 'http://localhost:54321',
+  HAS_SUPABASE_CREDENTIALS ? SUPABASE_PUBLISHABLE_KEY : 'missing-supabase-publishable-key',
+  {
   auth: {
-    storage: localStorage,
+    ...(typeof window !== "undefined" ? { storage: window.localStorage } : {}),
     persistSession: true,
     autoRefreshToken: true,
   }

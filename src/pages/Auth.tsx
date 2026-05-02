@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { SupabaseStatusBanner } from "@/components/SupabaseStatusBanner";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -47,6 +48,7 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <SupabaseStatusBanner />
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

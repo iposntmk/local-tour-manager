@@ -82,7 +82,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <HashRouter>
+          <HashRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
             <Routes>
               <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/" />} />
               <Route path="/" element={user ? <Tours /> : <Navigate to="/auth" />} />

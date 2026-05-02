@@ -13,11 +13,10 @@ export function SupabaseStatusBanner() {
         <AlertTitle>Supabase not configured</AlertTitle>
         <AlertDescription>
           No Supabase URL/key found at build time. The app can’t load tours.
-          Configure <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>
+          Configure <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code>
           in your deployment (GitHub Actions secrets) and redeploy.
         </AlertDescription>
       </Alert>
     </div>
   );
 }
-

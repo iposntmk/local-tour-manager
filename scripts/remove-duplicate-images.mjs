@@ -20,7 +20,7 @@ envContent.split('\n').forEach(line => {
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
 );
 
 async function removeDuplicates() {
