@@ -190,7 +190,8 @@ The app uses a custom `useHeaderMode` hook (`src/hooks/useHeaderMode.ts`) for ad
 Required `.env` file:
 ```
 VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+SUPABASE_SECRET_KEY=your_supabase_secret_key
 VITE_SUPABASE_BUCKET=your_bucket_name
 ```
 
