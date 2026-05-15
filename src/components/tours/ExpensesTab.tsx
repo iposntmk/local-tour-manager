@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Expense, Tour } from '@/types/tour';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 
 interface ExpensesTabProps {
   tourId?: string;
@@ -63,7 +64,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm chi phí');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
@@ -85,7 +86,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
       if (tourId) {
         console.log('Expense updated successfully, guests:', expense.guests);
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật chi phí');
       setEditingIndex(null);
@@ -102,7 +103,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
     onSuccess: (_, index) => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
         onChange?.(expenses.filter((_, i) => i !== index));
       }

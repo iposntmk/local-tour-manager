@@ -53,7 +53,6 @@ const App = () => {
         // Clear all React Query cache only on sign in/out (not token refresh)
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
           queryClient.clear();
-          queryClient.invalidateQueries();
         }
       }
     );

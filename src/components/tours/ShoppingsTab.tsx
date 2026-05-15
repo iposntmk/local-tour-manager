@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Shopping, Tour } from '@/types/tour';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 
 const REQUIRED_PIN = '0829101188';
 
@@ -75,6 +76,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm mục mua sắm');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
@@ -94,6 +96,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật mục mua sắm');
       setEditingIndex(null);
@@ -110,6 +113,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
     onSuccess: (_, index) => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
         onChange?.(shoppings.filter((_, i) => i !== index));
       }

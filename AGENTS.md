@@ -38,3 +38,6 @@
 ## Agent-Specific Notes
 - Prefer npm over other managers (a Bun lockfile exists, but `package-lock.json` governs).
 - Keep changes minimal and cohesive; update related types, tests, and migrations together.
+## output: 
+- không hiển thị code ra màn hình
+- chỉ hiển thị ngôn ngữ tự nhiên (vietnamese) và các từ khoá chuyên ngành dev thì giữ nguyên

@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Meal, Tour } from '@/types/tour';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 
 interface MealsTabProps {
   tourId?: string;
@@ -67,7 +68,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm bữa ăn');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
@@ -87,7 +88,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật bữa ăn');
       setEditingIndex(null);
@@ -104,7 +105,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
     onSuccess: (_, index) => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
         onChange?.(meals.filter((_, i) => i !== index));
       }

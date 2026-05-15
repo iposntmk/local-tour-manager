@@ -1,6 +1,6 @@
 import { Layout } from '@/components/Layout';
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,9 @@ import {
   Image as ImageIcon,
   FolderArchive,
   FileSpreadsheet,
+  Columns3,
+  FilterX,
+  Check,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { Calendar } from '@/components/ui/calendar';
@@ -59,6 +62,17 @@ import { ImportTourDialogEnhanced } from '@/components/tours/ImportTourDialogEnh
 import { handleImportError, validateTourData, createImportError } from '@/lib/error-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
@@ -66,6 +80,16 @@ import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour, TourListResult, TourQuery } from '@/types/tour';
 import Fuse from 'fuse.js';
 import { generateFullSQLBackup, downloadSQLBackup } from '@/lib/sql-backup';
+import {
+  invalidateTourAggregateCaches,
+  TOUR_GRAND_TOTAL_GC_TIME,
+  TOUR_GRAND_TOTAL_QUERY_KEY,
+  TOUR_GRAND_TOTAL_STALE_TIME,
+  TOUR_LIST_GC_TIME,
+  TOUR_LIST_STALE_TIME,
+  TOUR_REFERENCE_GC_TIME,
+  TOUR_REFERENCE_STALE_TIME,
+} from '@/lib/query-cache';
 
 
 // Truncate helper with ellipsis included in `max` length
@@ -74,6 +98,203 @@ const truncateText = (text: string | undefined | null, max = 15): string => {
   if (text.length <= max) return text;
   if (max <= 3) return text.slice(0, max);
   return text.slice(0, max - 3) + '...';
+};
+
+const WATER_EXPENSE_NAMES = [
+  'nước uống cho khách 10k/1 khách / 1 ngày',
+  'nước uống cho khách 15k/1 khách / 1 ngày',
+];
+
+const getTourDays = (tour: Tour) =>
+  tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0);
+
+const getTourGuests = (tour: Tour) => tour.totalGuests || ((tour.adults || 0) + (tour.children || 0));
+
+const getAllowanceTotal = (tour: Tour) =>
+  (tour.allowances || []).reduce((sum, allowance) => sum + (allowance.price * (allowance.quantity || 1)), 0);
+
+const getTourWarningInfo = (tour: Tour) => {
+  const hasZeroPrice = !!(
+    (tour.destinations || []).some(d => (d.price ?? 0) === 0) ||
+    (tour.expenses || []).some(e => (e.price ?? 0) === 0) ||
+    (tour.meals || []).some(m => (m.price ?? 0) === 0) ||
+    (tour.allowances || []).some(a => (a.price ?? 0) === 0)
+  );
+
+  const destNames = (tour.destinations || []).map(d => (d.name || '').trim().toLowerCase()).filter(Boolean);
+  const nameCount = new Map<string, number>();
+  for (const name of destNames) nameCount.set(name, (nameCount.get(name) || 0) + 1);
+  const hasDuplicateDestNames = Array.from(nameCount.values()).some(count => count > 1);
+
+  const hasWaterExpense = (tour.expenses || []).some(expense =>
+    WATER_EXPENSE_NAMES.includes((expense.name || '').trim().toLowerCase())
+  );
+  const missingWaterExpense = !hasWaterExpense;
+
+  const warningTitle = [
+    hasDuplicateDestNames && 'Tên điểm đến trùng lặp',
+    hasZeroPrice && 'Có mục giá 0',
+    missingWaterExpense && 'Thiếu chi phí nước uống'
+  ].filter(Boolean).join(' • ') || 'Cần kiểm tra';
+
+  return {
+    hasZeroPrice,
+    hasDuplicateDestNames,
+    missingWaterExpense,
+    showRedFlag: hasZeroPrice || hasDuplicateDestNames || missingWaterExpense,
+    warningTitle,
+  };
+};
+
+type TourTableColumnKey =
+  | 'tourCode'
+  | 'date'
+  | 'days'
+  | 'guests'
+  | 'company'
+  | 'ctp'
+  | 'total'
+  | 'warning'
+  | 'actions';
+
+type TourTableFilterKey = Exclude<TourTableColumnKey, 'actions'>;
+
+type TourTableFilters = Record<TourTableFilterKey, string> & {
+  warning: 'all' | 'warning' | 'ok';
+};
+
+interface TourTableColumn {
+  key: TourTableColumnKey;
+  label: string;
+  headerClassName?: string;
+  cellClassName?: string;
+  filterType: 'text' | 'date' | 'company' | 'warning' | 'none';
+  filterPlaceholder?: string;
+}
+
+const TOUR_TABLE_COLUMNS: TourTableColumn[] = [
+  { key: 'tourCode', label: 'Mã tour', headerClassName: 'w-[160px] min-w-[160px]', cellClassName: 'max-w-[160px] font-semibold', filterType: 'text', filterPlaceholder: 'Lọc mã' },
+  { key: 'date', label: 'Ngày', headerClassName: 'w-[190px] min-w-[190px]', cellClassName: 'whitespace-nowrap', filterType: 'date' },
+  { key: 'days', label: 'Ngày đi', headerClassName: 'w-[100px] min-w-[100px]', cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số ngày' },
+  { key: 'guests', label: 'Khách', headerClassName: 'w-[100px] min-w-[100px]', cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số khách' },
+  { key: 'company', label: 'Công ty', headerClassName: 'min-w-[220px]', cellClassName: 'max-w-[240px]', filterType: 'company' },
+  { key: 'ctp', label: 'CTP', headerClassName: 'w-[130px] min-w-[130px] text-right', cellClassName: 'whitespace-nowrap text-right font-medium', filterType: 'text', filterPlaceholder: 'Lọc CTP' },
+  { key: 'total', label: 'Tổng', headerClassName: 'w-[130px] min-w-[130px] text-right', cellClassName: 'whitespace-nowrap text-right font-semibold text-primary', filterType: 'text', filterPlaceholder: 'Lọc tổng' },
+  { key: 'warning', label: 'Cờ cảnh báo', headerClassName: 'w-[150px] min-w-[150px]', cellClassName: 'whitespace-nowrap', filterType: 'warning' },
+  { key: 'actions', label: 'Hành động', headerClassName: 'w-[130px] min-w-[130px] text-right', filterType: 'none' },
+];
+
+const TOUR_TABLE_COLUMN_KEYS = TOUR_TABLE_COLUMNS.map(column => column.key);
+
+const createDefaultTourTableColumnVisibility = () =>
+  TOUR_TABLE_COLUMN_KEYS.reduce((visibility, key) => {
+    visibility[key] = true;
+    return visibility;
+  }, {} as Record<TourTableColumnKey, boolean>);
+
+const createDefaultTourTableFilters = (): TourTableFilters => ({
+  tourCode: '',
+  date: '',
+  days: '',
+  guests: '',
+  company: '',
+  ctp: '',
+  total: '',
+  warning: 'all',
+});
+
+const loadTourTableColumnVisibility = () => {
+  const saved = localStorage.getItem('tours.table.columnVisibility');
+  if (!saved) return createDefaultTourTableColumnVisibility();
+
+  try {
+    const parsed = JSON.parse(saved) as Partial<Record<TourTableColumnKey, boolean>>;
+    return TOUR_TABLE_COLUMN_KEYS.reduce((visibility, key) => {
+      visibility[key] = typeof parsed[key] === 'boolean' ? parsed[key]! : true;
+      return visibility;
+    }, {} as Record<TourTableColumnKey, boolean>);
+  } catch (error) {
+    console.warn('Invalid tour table column visibility settings', error);
+    return createDefaultTourTableColumnVisibility();
+  }
+};
+
+const loadTourTableFilters = () => {
+  const saved = localStorage.getItem('tours.table.filters');
+  if (!saved) return createDefaultTourTableFilters();
+
+  try {
+    const parsed = JSON.parse(saved) as Partial<Record<TourTableFilterKey, string>>;
+    return {
+      tourCode: parsed.tourCode || '',
+      date: parsed.date || '',
+      days: parsed.days || '',
+      guests: parsed.guests || '',
+      company: parsed.company || '',
+      ctp: parsed.ctp || '',
+      total: parsed.total || '',
+      warning: parsed.warning === 'warning' || parsed.warning === 'ok' ? parsed.warning : 'all',
+    };
+  } catch (error) {
+    console.warn('Invalid tour table filter settings', error);
+    return createDefaultTourTableFilters();
+  }
+};
+
+const normalizeTableFilterText = (value: string | number | undefined | null) =>
+  String(value ?? '').trim().toLowerCase();
+
+const includesTableFilter = (value: string | number | undefined | null, filter: string) => {
+  const normalizedFilter = normalizeTableFilterText(filter);
+  if (!normalizedFilter) return true;
+  return normalizeTableFilterText(value).includes(normalizedFilter);
+};
+
+const parseTableDateFilter = (value: string): DateRange | undefined => {
+  if (!value.includes('|')) return undefined;
+
+  const [fromValue, toValue] = value.split('|');
+  const from = fromValue ? new Date(fromValue) : undefined;
+  const to = toValue ? new Date(toValue) : undefined;
+
+  return {
+    from: from && !Number.isNaN(from.getTime()) ? from : undefined,
+    to: to && !Number.isNaN(to.getTime()) ? to : undefined,
+  };
+};
+
+const serializeTableDateFilter = (range: DateRange | undefined) => {
+  if (!range?.from && !range?.to) return '';
+  return `${range?.from ? format(range.from, 'yyyy-MM-dd') : ''}|${range?.to ? format(range.to, 'yyyy-MM-dd') : ''}`;
+};
+
+const formatTableDateFilterLabel = (value: string) => {
+  const selected = parseTableDateFilter(value);
+  if (!selected?.from && !selected?.to) {
+    return value || 'Chọn ngày';
+  }
+
+  if (selected.from && selected.to) {
+    return `${format(selected.from, 'dd/MM/yyyy')} - ${format(selected.to, 'dd/MM/yyyy')}`;
+  }
+
+  const singleDate = selected.from || selected.to;
+  return singleDate ? format(singleDate, 'dd/MM/yyyy') : 'Chọn ngày';
+};
+
+const tourMatchesTableDateFilter = (tour: Tour, value: string) => {
+  const selected = parseTableDateFilter(value);
+  if (!selected?.from && !selected?.to) {
+    return includesTableFilter(`${tour.startDate} ${tour.endDate} ${formatDateRangeDisplay(tour.startDate, tour.endDate)}`, value);
+  }
+
+  const from = selected.from || selected.to;
+  const to = selected.to || selected.from;
+  if (!from || !to) return true;
+
+  const filterStart = format(from, 'yyyy-MM-dd');
+  const filterEnd = format(to, 'yyyy-MM-dd');
+  return tour.startDate <= filterEnd && tour.endDate >= filterStart;
 };
 
 const Tours = () => {
@@ -116,6 +337,11 @@ const Tours = () => {
     const saved = localStorage.getItem('tours.sortBy');
     return saved || 'startDate-asc';
   });
+  const [tableColumnVisibility, setTableColumnVisibility] = useState<Record<TourTableColumnKey, boolean>>(loadTourTableColumnVisibility);
+  const [tableFilters, setTableFilters] = useState<TourTableFilters>(loadTourTableFilters);
+  const [tableDateFilterOpen, setTableDateFilterOpen] = useState(false);
+  const [tableCompanyFilterOpen, setTableCompanyFilterOpen] = useState(false);
+  const [topCompanyFilterOpen, setTopCompanyFilterOpen] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(() => {
     const saved = localStorage.getItem('tours.filtersExpanded');
     return saved !== null ? JSON.parse(saved) : true;
@@ -150,6 +376,14 @@ const Tours = () => {
   useEffect(() => {
     localStorage.setItem('tours.sortBy', sortBy);
   }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem('tours.table.columnVisibility', JSON.stringify(tableColumnVisibility));
+  }, [tableColumnVisibility]);
+
+  useEffect(() => {
+    localStorage.setItem('tours.table.filters', JSON.stringify(tableFilters));
+  }, [tableFilters]);
 
   useEffect(() => {
     localStorage.setItem('tours.filtersExpanded', JSON.stringify(filtersExpanded));
@@ -209,17 +443,106 @@ const Tours = () => {
   const {
     data: toursResult,
     isLoading,
+    isFetching,
   } = useQuery({
     queryKey: ['tours', baseTourQuery],
     queryFn: () => store.listTours({ ...baseTourQuery }, { includeDetails: true }),
-    staleTime: 30000, // Consider data fresh for 30 seconds
-    gcTime: 300000, // Keep in cache for 5 minutes
+    placeholderData: keepPreviousData,
+    staleTime: TOUR_LIST_STALE_TIME,
+    gcTime: TOUR_LIST_GC_TIME,
   });
 
   // No need for client-side sorting anymore - database handles it
-  const tours = (toursResult as TourListResult | undefined)?.tours ?? [];
+  const tours = useMemo(() => (toursResult as TourListResult | undefined)?.tours ?? [], [toursResult]);
 
   const totalTours = (toursResult as TourListResult | undefined)?.total ?? 0;
+
+  const { data: companies = [] } = useQuery({
+    queryKey: ['companies'],
+    queryFn: () => store.listCompanies({}),
+    staleTime: TOUR_REFERENCE_STALE_TIME,
+    gcTime: TOUR_REFERENCE_GC_TIME,
+  });
+
+  const visibleTourTableColumns = useMemo(
+    () => TOUR_TABLE_COLUMNS.filter(column => tableColumnVisibility[column.key]),
+    [tableColumnVisibility]
+  );
+
+  const tableCompanyOptions = useMemo(() => {
+    const companies = new Set<string>();
+    tours.forEach((tour) => {
+      const companyName = tour.companyRef?.nameAtBooking?.trim();
+      if (companyName) companies.add(companyName);
+    });
+    if (tableFilters.company.trim()) {
+      companies.add(tableFilters.company.trim());
+    }
+    return Array.from(companies).sort((a, b) => a.localeCompare(b));
+  }, [tableFilters.company, tours]);
+
+  const topCompanyOptions = useMemo(() => {
+    const companyNames = new Set<string>();
+    companies.forEach((company) => {
+      const companyName = company.name?.trim();
+      if (companyName) companyNames.add(companyName);
+    });
+    if (searchCompany.trim()) {
+      companyNames.add(searchCompany.trim());
+    }
+    return Array.from(companyNames).sort((a, b) => a.localeCompare(b));
+  }, [companies, searchCompany]);
+
+  const tableColumnFilterCount = useMemo(() => {
+    return Object.entries(tableFilters).reduce((count, [key, value]) => {
+      if (key === 'warning') return count + (value !== 'all' ? 1 : 0);
+      return count + (String(value).trim() ? 1 : 0);
+    }, 0);
+  }, [tableFilters]);
+
+  const tableFilteredTours = useMemo(() => {
+    return tours.filter((tour) => {
+      const warningInfo = getTourWarningInfo(tour);
+      const totalDays = getTourDays(tour);
+      const totalGuests = getTourGuests(tour);
+      const allowanceTotal = getAllowanceTotal(tour);
+      const finalTotal = tour.summary?.finalTotal ?? 0;
+
+      if (tableFilters.warning === 'warning' && !warningInfo.showRedFlag) return false;
+      if (tableFilters.warning === 'ok' && warningInfo.showRedFlag) return false;
+
+      return (
+        includesTableFilter(tour.tourCode, tableFilters.tourCode) &&
+        tourMatchesTableDateFilter(tour, tableFilters.date) &&
+        includesTableFilter(`${totalDays} ${totalDays} ngày ${totalDays}d`, tableFilters.days) &&
+        includesTableFilter(`${totalGuests} ${totalGuests}p ${tour.adults || 0} ${tour.children || 0}`, tableFilters.guests) &&
+        includesTableFilter(tour.companyRef?.nameAtBooking, tableFilters.company) &&
+        includesTableFilter(`${allowanceTotal} ${formatCurrency(allowanceTotal)}`, tableFilters.ctp) &&
+        includesTableFilter(`${finalTotal} ${formatCurrency(finalTotal)}`, tableFilters.total)
+      );
+    });
+  }, [tableFilters, tours]);
+
+  const updateTableFilter = (key: keyof TourTableFilters, value: string) => {
+    setTableFilters(prev => ({ ...prev, [key]: value } as TourTableFilters));
+  };
+
+  const clearTableFilters = () => {
+    setTableFilters(createDefaultTourTableFilters());
+  };
+
+  const setAllTourTableColumnsVisible = (visible: boolean) => {
+    setTableColumnVisibility(
+      TOUR_TABLE_COLUMN_KEYS.reduce((visibility, key) => {
+        visibility[key] = visible;
+        return visibility;
+      }, {} as Record<TourTableColumnKey, boolean>)
+    );
+  };
+
+  const toggleTourTableColumn = (key: TourTableColumnKey, visible: boolean) => {
+    setTableColumnVisibility(prev => ({ ...prev, [key]: visible }));
+  };
 
   // Calculate total final amount for filtered tours (current page)
   const filteredToursTotal = useMemo(() => {
@@ -229,24 +552,34 @@ const Tours = () => {
     }, 0);
   }, [tours]);
 
-  // Fetch grand total of ALL tours in database
+  const showInitialToursSkeleton = isLoading && !toursResult;
+  const showToursBackgroundRefresh = isFetching && !showInitialToursSkeleton;
+
+  // Fetch grand total of ALL tours in database without loading nested tour details
   const { data: allToursData } = useQuery({
-    queryKey: ['tours-grand-total'],
+    queryKey: TOUR_GRAND_TOTAL_QUERY_KEY,
     queryFn: async () => {
-      const { tours: allTours } = await store.listTours({}, { includeDetails: true });
-      const grandTotal = allTours.reduce((sum, tour) => {
-        const finalTotal = tour.summary?.finalTotal ?? 0;
-        return sum + finalTotal;
+      const { data, error, count } = await supabase
+        .from('tours')
+        .select('final_total', { count: 'exact' });
+
+      if (error) throw error;
+
+      const rows = data || [];
+      const grandTotal = rows.reduce((sum, tour) => {
+        return sum + (Number(tour.final_total) || 0);
       }, 0);
-      return { count: allTours.length, grandTotal };
+      return { count: typeof count === 'number' ? count : rows.length, grandTotal };
     },
-    staleTime: 30000,
-    gcTime: 300000,
+    staleTime: TOUR_GRAND_TOTAL_STALE_TIME,
+    gcTime: TOUR_GRAND_TOTAL_GC_TIME,
   });
 
   const { data: nationalities = [] } = useQuery({
     queryKey: ['nationalities'],
     queryFn: () => store.listNationalities({}),
+    staleTime: TOUR_REFERENCE_STALE_TIME,
+    gcTime: TOUR_REFERENCE_GC_TIME,
   });
 
   // Removed bulk expense query (feature removed)
@@ -291,7 +624,7 @@ const Tours = () => {
   const duplicateMutation = useMutation({
     mutationFn: (id: string) => store.duplicateTour(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      void invalidateTourAggregateCaches(queryClient);
       toast.success('Tour duplicated successfully');
     },
     onError: (error: Error) => {
@@ -305,7 +638,7 @@ const Tours = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => store.deleteTour(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      void invalidateTourAggregateCaches(queryClient);
       toast.success('Tour deleted successfully');
     },
     onError: (error: Error) => {
@@ -719,7 +1052,7 @@ const Tours = () => {
     onSuccess: async (result, tours) => {
       const { imported, skipped } = result;
 
-      await queryClient.invalidateQueries({ queryKey: ['tours'] });
+      await invalidateTourAggregateCaches(queryClient);
 
       // Show success message with details
       if (skipped.length > 0) {
@@ -827,6 +1160,263 @@ const Tours = () => {
   };
 
   const { classes: headerClasses } = useHeaderMode('tours.headerMode');
+
+  const renderTourTableHeader = (column: TourTableColumn) => {
+    const alignRight = column.headerClassName?.includes('text-right');
+
+    return (
+      <div className={`space-y-1.5 ${alignRight ? 'text-right' : ''}`}>
+        <div className="text-xs font-semibold">{column.label}</div>
+        {column.filterType === 'text' && (
+          <Input
+            value={tableFilters[column.key as TourTableFilterKey] || ''}
+            onChange={(event) => updateTableFilter(column.key as TourTableFilterKey, event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            placeholder={column.filterPlaceholder || 'Lọc'}
+            className={`h-7 px-2 text-xs font-normal ${alignRight ? 'text-right' : ''}`}
+          />
+        )}
+        {column.filterType === 'date' && (
+          <Popover open={tableDateFilterOpen} onOpenChange={setTableDateFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-7 w-full justify-start px-2 text-left text-xs font-normal"
+                title={formatTableDateFilterLabel(tableFilters.date)}
+              >
+                <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                <span className="truncate">{formatTableDateFilterLabel(tableFilters.date)}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={parseTableDateFilter(tableFilters.date)}
+                onSelect={(range) => updateTableFilter('date', serializeTableDateFilter(range))}
+                numberOfMonths={2}
+                initialFocus
+              />
+              {tableFilters.date && (
+                <div className="border-t p-3">
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      updateTableFilter('date', '');
+                      setTableDateFilterOpen(false);
+                    }}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Xóa ngày
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        )}
+        {column.filterType === 'company' && (
+          <Popover open={tableCompanyFilterOpen} onOpenChange={setTableCompanyFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-7 w-full justify-start px-2 text-left text-xs font-normal"
+                title={tableFilters.company || 'Tất cả công ty'}
+              >
+                <span className="truncate">{tableFilters.company || 'Tất cả công ty'}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[260px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Tìm công ty..." />
+                <CommandList>
+                  <CommandEmpty>Không tìm thấy công ty.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="__all_companies__"
+                      onSelect={() => {
+                        updateTableFilter('company', '');
+                        setTableCompanyFilterOpen(false);
+                      }}
+                    >
+                      <Check className={`mr-2 h-4 w-4 ${tableFilters.company ? 'opacity-0' : 'opacity-100'}`} />
+                      Tất cả công ty
+                    </CommandItem>
+                    {tableCompanyOptions.map((company) => (
+                      <CommandItem
+                        key={company}
+                        value={company}
+                        onSelect={() => {
+                          updateTableFilter('company', company);
+                          setTableCompanyFilterOpen(false);
+                        }}
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${tableFilters.company === company ? 'opacity-100' : 'opacity-0'}`} />
+                        <span className="truncate">{company}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        )}
+        {column.filterType === 'warning' && (
+          <Select value={tableFilters.warning} onValueChange={(value) => updateTableFilter('warning', value)}>
+            <SelectTrigger className="h-7 px-2 text-xs font-normal">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="warning">Cần kiểm tra</SelectItem>
+              <SelectItem value="ok">Bình thường</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {column.filterType === 'none' && <div className="h-7" />}
+      </div>
+    );
+  };
+
+  const renderTourTableCellContent = (
+    column: TourTableColumn,
+    tour: Tour,
+    row: {
+      warningInfo: ReturnType<typeof getTourWarningInfo>;
+      totalDays: number;
+      totalGuests: number;
+      allowanceTotal: number;
+      finalTotal: number;
+      hasChildren: boolean;
+    }
+  ) => {
+    switch (column.key) {
+      case 'tourCode':
+        return <span className="block truncate" title={tour.tourCode}>{tour.tourCode}</span>;
+      case 'date':
+        return formatDateRangeDisplay(tour.startDate, tour.endDate);
+      case 'days':
+        return `${row.totalDays} ngày`;
+      case 'guests':
+        return (
+          <div className="flex items-center gap-2">
+            <span>{row.totalGuests}p</span>
+            {row.hasChildren && (
+              <span className="inline-flex items-center text-blue-600 dark:text-blue-400" title={`${tour.children} trẻ em`}>
+                <Baby className="h-4 w-4" />
+              </span>
+            )}
+          </div>
+        );
+      case 'company':
+        return (
+          <span className="block truncate" title={tour.companyRef?.nameAtBooking || ''}>
+            {tour.companyRef?.nameAtBooking || '-'}
+          </span>
+        );
+      case 'ctp':
+        return formatCurrency(row.allowanceTotal);
+      case 'total':
+        return formatCurrency(row.finalTotal);
+      case 'warning':
+        return row.warningInfo.showRedFlag ? (
+          <Badge variant="destructive" className="gap-1" title={row.warningInfo.warningTitle}>
+            <Flag className="h-3 w-3" />
+            Kiểm tra
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+      case 'actions':
+        return (
+          <div className="flex justify-end gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={(event) => handleExportSingle(tour, event)}
+              title="Export to Excel"
+            >
+              <FileDown className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={(event) => handleDuplicate(tour.id, event)}
+              title="Duplicate tour"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={(event) => handleDelete(tour.id, event)}
+              disabled={deleteMutation.isPending}
+              title="Delete tour"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderTourTableToolbar = () => (
+    <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-4 py-2">
+      <div className="text-sm text-muted-foreground">
+        Hiển thị <span className="font-semibold text-foreground">{tableFilteredTours.length}</span> / {tours.length} tour trong bảng
+      </div>
+      <div className="flex items-center gap-2">
+        {tableColumnFilterCount > 0 && (
+          <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={clearTableFilters}>
+            <FilterX className="mr-1.5 h-4 w-4" />
+            Xóa lọc cột
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 px-2 text-xs">
+              <Columns3 className="mr-1.5 h-4 w-4" />
+              Cột
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Cột hiển thị</DropdownMenuLabel>
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setAllTourTableColumnsVisible(true);
+              }}
+            >
+              Hiện tất cả
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setAllTourTableColumnsVisible(false);
+              }}
+            >
+              Ẩn tất cả
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {TOUR_TABLE_COLUMNS.map((column) => (
+              <DropdownMenuCheckboxItem
+                key={column.key}
+                checked={tableColumnVisibility[column.key]}
+                onCheckedChange={(checked) => toggleTourTableColumn(column.key, checked === true)}
+                onSelect={(event) => event.preventDefault()}
+              >
+                {column.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
 
   return (
     <Layout>
@@ -1096,11 +1686,50 @@ const Tours = () => {
                   )}
                 </PopoverContent>
               </Popover>
-              <SearchInput
-                value={searchCompany}
-                onChange={setSearchCompany}
-                placeholder="Tìm kiếm công ty..."
-              />
+              <Popover open={topCompanyFilterOpen} onOpenChange={setTopCompanyFilterOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal h-10 ${!searchCompany ? 'text-muted-foreground' : ''}`}
+                    title={searchCompany || 'Tìm kiếm công ty...'}
+                  >
+                    <span className="truncate">{searchCompany || 'Tìm kiếm công ty...'}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[260px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Tìm công ty..." />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy công ty.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="__all_companies__"
+                          onSelect={() => {
+                            setSearchCompany('');
+                            setTopCompanyFilterOpen(false);
+                          }}
+                        >
+                          <Check className={`mr-2 h-4 w-4 ${searchCompany ? 'opacity-0' : 'opacity-100'}`} />
+                          Tất cả công ty
+                        </CommandItem>
+                        {topCompanyOptions.map((company) => (
+                          <CommandItem
+                            key={company}
+                            value={company}
+                            onSelect={() => {
+                              setSearchCompany(company);
+                              setTopCompanyFilterOpen(false);
+                            }}
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${searchCompany === company ? 'opacity-100' : 'opacity-0'}`} />
+                            <span className="truncate">{company}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Filters */}
@@ -1253,14 +1882,50 @@ const Tours = () => {
               <span className="font-bold text-green-600">{formatCurrency(allToursData.grandTotal)}</span>
             </div>
           )}
+          {showToursBackgroundRefresh && (
+            <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              <span>Đang cập nhật...</span>
+            </div>
+          )}
         </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
-            ))}
-          </div>
+        {showInitialToursSkeleton ? (
+          <>
+            <div className="grid grid-cols-1 gap-4 mt-6 md:hidden">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
+              ))}
+            </div>
+            <div className="hidden md:block mt-6 rounded-lg border bg-card overflow-hidden">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Mã tour</TableHead>
+                    <TableHead>Ngày</TableHead>
+                    <TableHead>Ngày đi</TableHead>
+                    <TableHead>Khách</TableHead>
+                    <TableHead>Công ty</TableHead>
+                    <TableHead className="text-right">CTP</TableHead>
+                    <TableHead className="text-right">Tổng</TableHead>
+                    <TableHead>Cờ cảnh báo</TableHead>
+                    <TableHead className="text-right">Hành động</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <TableRow key={i}>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((cell) => (
+                        <TableCell key={cell}>
+                          <div className="h-4 rounded bg-muted animate-pulse" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         ) : totalTours === 0 ? (
           <div className="text-center py-12 text-muted-foreground mt-6">
             {!hasActiveFilters && !(searchCode.trim() || dateRange?.from || dateRange?.to || searchCompany.trim())
@@ -1268,7 +1933,63 @@ const Tours = () => {
               : 'Không có tour nào phù hợp với bộ lọc.'}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+          <>
+            <div className="hidden md:block mt-6 rounded-lg border bg-card overflow-hidden">
+              {renderTourTableToolbar()}
+              {visibleTourTableColumns.length === 0 ? (
+                <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  Tất cả cột đang ẩn. Dùng nút Cột để hiện lại.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow className="hover:bg-transparent">
+                      {visibleTourTableColumns.map((column) => (
+                        <TableHead key={column.key} className={column.headerClassName}>
+                          {renderTourTableHeader(column)}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tableFilteredTours.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={visibleTourTableColumns.length} className="h-24 text-center text-muted-foreground">
+                          Không có tour nào phù hợp với bộ lọc cột.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      tableFilteredTours.map((tour) => {
+                        const row = {
+                          warningInfo: getTourWarningInfo(tour),
+                          totalDays: getTourDays(tour),
+                          totalGuests: getTourGuests(tour),
+                          allowanceTotal: getAllowanceTotal(tour),
+                          finalTotal: tour.summary?.finalTotal ?? 0,
+                          hasChildren: (tour.children || 0) > 0,
+                        };
+
+                        return (
+                          <TableRow
+                            key={tour.id}
+                            className={`cursor-pointer ${row.warningInfo.showRedFlag ? 'bg-destructive/5 hover:bg-destructive/10' : ''}`}
+                            onClick={() => navigate(`/tours/${tour.id}`)}
+                          >
+                            {visibleTourTableColumns.map((column) => (
+                              <TableCell key={column.key} className={column.cellClassName}>
+                                {renderTourTableCellContent(column, tour, row)}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+          <div className="grid grid-cols-1 gap-4 mt-6 md:hidden">
             {tours.map((tour, index) => {
               // Compute card-level warnings: zero price or duplicate destination names
               // Only consider Destinations, Expenses, Meals, Allowances (exclude Shoppings)
@@ -1421,6 +2142,7 @@ const Tours = () => {
               );
             })}
           </div>
+          </>
         )}
 
         {/* Pagination Controls (hidden when date range search is active) */}

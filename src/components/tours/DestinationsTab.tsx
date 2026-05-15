@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Destination, Tour } from '@/types/tour';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 
 interface DestinationsTabProps {
   tourId?: string;
@@ -91,7 +92,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm điểm đến');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
@@ -111,7 +112,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật điểm đến');
       setEditingIndex(null);
@@ -128,7 +129,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
     onSuccess: (_, index) => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
         // Create mode: call onChange with updated list
         onChange?.(destinations.filter((_, i) => i !== index));

@@ -122,16 +122,15 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
     return diffDays + 1; // Include both start and end dates
   })();
 
-  // Auto-save when critical fields change (dates, adults, children)
+  // Auto-save on any field change (matches SummaryTab instant-save pattern)
   const isInitialMount = useRef(true);
-  useEffect(() => {
-    // Skip on initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Only auto-save if we have a tour (editing mode) and required fields are present
+  // Shared auto-save: collects current form + combobox values and submits with debounce
+  const triggerAutoSave = () => {
+    const formValues = watch();
+    const { tourCode, clientName, startDate, endDate, driverName, clientPhone, adults, children } = formValues;
+
     if (!initialData || !tourCode || !clientName || !startDate || !endDate || !selectedCompanyId || !selectedGuideId || !selectedNationalityId) {
       return;
     }
@@ -144,26 +143,47 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
       return;
     }
 
-    // Auto-save with a small debounce
-    const timeoutId = setTimeout(() => {
-      const formData = {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      onSubmit({
         tourCode,
         clientName,
         startDate,
         endDate,
         adults: adults || 0,
         children: children || 0,
-        driverName: watch('driverName'),
-        clientPhone: watch('clientPhone'),
+        driverName,
+        clientPhone,
         companyRef: { id: selectedCompany.id, nameAtBooking: selectedCompany.name },
         guideRef: { id: selectedGuide.id, nameAtBooking: selectedGuide.name },
         clientNationalityRef: { id: selectedNationality.id, nameAtBooking: selectedNationality.name },
-      };
-      onSubmit(formData);
-    }, 500); // 500ms debounce
+      });
+    }, 500);
+  };
 
-    return () => clearTimeout(timeoutId);
-  }, [startDate, endDate, adults, children]);
+  // Subscribe to all form field changes (text inputs, date inputs, number inputs)
+  useEffect(() => {
+    const subscription = watch(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      triggerAutoSave();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watch, initialData, selectedCompanyId, selectedGuideId, selectedNationalityId]);
+
+  // Auto-save when combobox selections change (company, guide, nationality)
+  useEffect(() => {
+    if (isInitialMount.current) return;
+    triggerAutoSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCompanyId, selectedGuideId, selectedNationalityId]);
 
   const handleFormSubmit = (data: TourInput) => {
     // Validate required fields

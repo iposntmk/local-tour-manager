@@ -15,11 +15,13 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
+import { removeDiacritics } from '@/lib/string-utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Allowance, Tour } from '@/types/tour';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 
 interface AllowancesTabProps {
   tourId?: string;
@@ -27,6 +29,27 @@ interface AllowancesTabProps {
   onChange?: (allowances: Allowance[]) => void;
   tour?: Tour | null;
 }
+
+type AllowanceGroup = 'ctp' | 'ngu' | 'xe' | 'other';
+
+const allowanceGroupLabel: Record<AllowanceGroup, string> = {
+  ctp: 'CTP',
+  ngu: 'Ngủ',
+  xe: 'Xe',
+  other: 'Khác',
+};
+
+const normalizeText = (v?: string | null) =>
+  removeDiacritics(v || '').toLowerCase().trim().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ');
+
+const getAllowanceGroup = (name?: string, category?: string): AllowanceGroup => {
+  const n = normalizeText(name);
+  const c = normalizeText(category);
+  if (c === 'ctp' || c.includes('cong tac phi') || n.includes('cong tac phi')) return 'ctp';
+  if (c === 'ngu' || c.includes('tien ngu') || n.includes('tien ngu')) return 'ngu';
+  if (c === 'xe' || c.includes('tien xe') || n.includes('tien xe')) return 'xe';
+  return 'other';
+};
 
 export function AllowancesTab({ tourId, allowances, onChange, tour }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -45,10 +68,11 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     queryFn: () => store.listDetailedExpenses({ status: 'active' }),
   });
 
-  // Filter detailed expenses to only show CTP category
-  const detailedExpenses = allDetailedExpenses.filter(
-    exp => exp.categoryRef?.nameAtBooking === 'CTP'
-  );
+  // Show CTP, xe, ngu categories in dropdown
+  const detailedExpenses = allDetailedExpenses.filter(exp => {
+    const g = getAllowanceGroup(exp.name, exp.categoryRef?.nameAtBooking);
+    return g !== 'other';
+  });
 
   const addMutation = useMutation({
     mutationFn: async (allowance: Allowance) => {
@@ -61,7 +85,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm CTP');
       setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
@@ -85,7 +109,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     onSuccess: () => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật CTP');
       setEditingIndex(null);
@@ -102,7 +126,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     onSuccess: (_, index) => {
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        queryClient.invalidateQueries({ queryKey: ['tours'] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
         onChange?.(allowances.filter((_, i) => i !== index));
       }
@@ -183,32 +207,41 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                   <CommandList>
                     <CommandEmpty>Không tìm thấy CTP.</CommandEmpty>
                     <CommandGroup>
-                      {detailedExpenses.map((exp) => (
-                        <CommandItem
-                          key={exp.id}
-                          value={exp.name}
-                          onSelect={() => {
-                            const today = new Date().toISOString().split('T')[0];
-                            const defaultDate = tour?.startDate || today;
-                            setFormData({
-                              ...formData,
-                              name: exp.name,
-                              price: exp.price,
-                              date: formData.date || defaultDate,
-                              quantity: formData.quantity || 1
-                            });
-                            setOpenExpense(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              formData.name === exp.name ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {exp.name} ({formatCurrency(exp.price)})
-                        </CommandItem>
-                      ))}
+                      {detailedExpenses.map((exp) => {
+                        const group = getAllowanceGroup(exp.name, exp.categoryRef?.nameAtBooking);
+                        const categoryLabel = allowanceGroupLabel[group];
+                        return (
+                          <CommandItem
+                            key={exp.id}
+                            value={`${exp.name} ${categoryLabel}`}
+                            onSelect={() => {
+                              const today = new Date().toISOString().split('T')[0];
+                              const defaultDate = tour?.startDate || today;
+                              setFormData({
+                                ...formData,
+                                name: exp.name,
+                                price: exp.price,
+                                date: formData.date || defaultDate,
+                                quantity: formData.quantity || 1
+                              });
+                              setOpenExpense(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.name === exp.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                              <span className="truncate">{exp.name}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {categoryLabel} · {formatCurrency(exp.price)}
+                              </span>
+                            </span>
+                          </CommandItem>
+                        );
+                      })}
                     </CommandGroup>
                   </CommandList>
                 </Command>
@@ -289,18 +322,9 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                   const total = allowance.price * qty;
                   const isZeroPrice = (allowance.price ?? 0) === 0;
 
-                  // Determine group for current and previous allowance
-                  const getGroup = (name: string) => {
-                    const nameLower = (name || '').toLowerCase().trim();
-                    if (nameLower.includes('công tác phí') || nameLower.includes('cong tac phi')) return 'ctp';
-                    if (nameLower.includes('tiền ngủ') || nameLower.includes('tien ngu')) return 'ngu';
-                    if (nameLower.includes('tiền xe') || nameLower.includes('tien xe')) return 'xe';
-                    return 'other';
-                  };
-
-                  const currentGroup = getGroup(allowance.name);
+                  const currentGroup = getAllowanceGroup(allowance.name);
                   const prevAllowance = rowIndex > 0 ? arr[rowIndex - 1] : null;
-                  const prevGroup = prevAllowance ? getGroup(prevAllowance.name) : null;
+                  const prevGroup = prevAllowance ? getAllowanceGroup(prevAllowance.name) : null;
                   const showSeparator = prevGroup && currentGroup !== prevGroup;
 
                   return (

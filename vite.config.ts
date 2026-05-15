@@ -92,7 +92,6 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: ["react", "react-dom", "fuse.js", "exceljs"],
-      force: true,
     },
   };
 });

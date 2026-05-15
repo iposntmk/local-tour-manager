@@ -35,6 +35,7 @@ import {
 import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary } from '@/types/tour';
 import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { formatDate } from '@/lib/utils';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 
 // Helper function to clamp guests (same logic as SummaryTab)
 const clampGuests = (guestValue: number | undefined, tourGuests: number): number => {
@@ -139,7 +140,9 @@ const TourDetail = () => {
       if (input.startDate && input.endDate) {
         try {
           totalDays = Math.max(0, differenceInDays(new Date(input.endDate), new Date(input.startDate)) + 1);
-        } catch {}
+        } catch {
+          totalDays = 0;
+        }
       }
       
       // Merge basic tour data with subcollections from newTourData
@@ -158,7 +161,7 @@ const TourDetail = () => {
       return createdTour;
     },
     onSuccess: (newTour) => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      void invalidateTourAggregateCaches(queryClient);
       toast.success('Tạo tour thành công');
       navigate('/tours');
     },
@@ -177,7 +180,7 @@ const TourDetail = () => {
       store.updateTour(id, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tour', id] });
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      void invalidateTourAggregateCaches(queryClient, 'none');
       toast.success('Cập nhật tour thành công');
     },
     onError: (error: Error) => {
@@ -193,7 +196,7 @@ const TourDetail = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => store.deleteTour(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
+      void invalidateTourAggregateCaches(queryClient);
       toast.success('Xóa tour thành công');
       navigate('/tours');
     },
@@ -210,7 +213,9 @@ const TourDetail = () => {
       if (data.startDate && data.endDate) {
         try {
           totalDays = Math.max(0, differenceInDays(new Date(data.endDate), new Date(data.startDate)) + 1);
-        } catch {}
+        } catch {
+          totalDays = 0;
+        }
       }
       updateMutation.mutate({ id, patch: { ...data, totalGuests, totalDays } });
     }
@@ -457,23 +462,21 @@ const TourDetail = () => {
                       </span>
                     </div>
                   </TabsTrigger>
-                  {!isNewTour && (
-                    <TabsTrigger value="images" className="text-xs sm:text-sm">
-                      <div className="flex flex-col items-center">
-                        <span className="sm:hidden">Ảnh</span>
-                        <span className="hidden sm:inline">Hình ảnh</span>
-                        <span className="text-xs sm:text-sm font-bold">
-                          {tourImages.length}
-                        </span>
-                      </div>
-                    </TabsTrigger>
-                  )}
+                  <TabsTrigger value="images" className="text-xs sm:text-sm">
+                    <div className="flex flex-col items-center">
+                      <span className="sm:hidden">Ảnh</span>
+                      <span className="hidden sm:inline">Hình ảnh</span>
+                      <span className="text-xs sm:text-sm font-bold">
+                        {isNewTour ? '' : tourImages.length}
+                      </span>
+                    </div>
+                  </TabsTrigger>
                 </TabsList>
               </div>
             </div>
 
             {/* Tab contents */}
-            <TabsContent value="info" className="animate-fade-in">
+            <TabsContent value="info" className="animate-fade-in data-[state=inactive]:hidden" forceMount>
               {showWaterWarning && (
                 <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
                   <div className="flex items-start gap-3">
@@ -670,8 +673,12 @@ const TourDetail = () => {
               />
             </TabsContent>
             <TabsContent value="images" className="animate-fade-in">
-              {!isNewTour && tour && (
-                <TourImagesTab tourId={id!} tourCode={tour.tourCode} />
+              {isNewTour ? (
+                <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
+                  Lưu tour trước để có thể upload hình ảnh.
+                </div>
+              ) : (
+                tour && <TourImagesTab tourId={id!} tourCode={tour.tourCode} />
               )}
             </TabsContent>
           </Tabs>
