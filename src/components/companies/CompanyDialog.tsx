@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TextareaWithSave } from '@/components/ui/textarea-with-save';
 import { toast } from 'sonner';
-import { Copy, Check } from 'lucide-react';
+import { CopyIdRow } from '@/components/master/CopyIdRow';
 import type { Company, CompanyInput } from '@/types/master';
 
 interface CompanyDialogProps {
@@ -17,7 +17,6 @@ interface CompanyDialogProps {
 }
 
 export function CompanyDialog({ open, onOpenChange, company, onSubmit }: CompanyDialogProps) {
-  const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState<CompanyInput>({
     name: company?.name || '',
     contactName: company?.contactName || '',
@@ -32,7 +31,6 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
   useEffect(() => {
     if (!open) return;
 
-    setCopied(false);
     setFormData({
       name: company?.name || '',
       contactName: company?.contactName || '',
@@ -43,27 +41,6 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
     });
     setErrors({});
   }, [company, open]);
-
-  const handleCopyId = async () => {
-    if (company?.id) {
-      try {
-        await navigator.clipboard.writeText(company.id);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        const textArea = document.createElement('textarea');
-        textArea.value = company.id;
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,21 +83,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSubmit }: Company
               {company ? 'Update company information' : 'Create a new company profile'}
             </DialogDescription>
           </DialogHeader>
-          {company && (
-            <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-              <span className="text-sm text-muted-foreground">ID:</span>
-              <code className="flex-1 text-sm font-mono">{company.id}</code>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={(e) => { e.stopPropagation(); handleCopyId(); }}
-                className="h-7 w-7 p-0"
-              >
-                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-          )}
+          {company && <CopyIdRow id={company.id} />}
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">

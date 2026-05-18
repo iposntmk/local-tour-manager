@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Copy, Check } from 'lucide-react';
+import { CopyIdRow } from '@/components/master/CopyIdRow';
 import type { Province, ProvinceInput } from '@/types/master';
 
 interface ProvinceDialogProps {
@@ -28,7 +28,6 @@ export function ProvinceDialog({
   initialData,
   isEditing,
 }: ProvinceDialogProps) {
-  const [copied, setCopied] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ProvinceInput>({
     defaultValues: {
       name: initialData?.name || '',
@@ -37,33 +36,11 @@ export function ProvinceDialog({
 
   useEffect(() => {
     if (open) {
-      setCopied(false);
       reset({
         name: initialData?.name || '',
       });
     }
   }, [open, initialData, reset]);
-
-  const handleCopyId = async () => {
-    if (initialData?.id) {
-      try {
-        await navigator.clipboard.writeText(initialData.id);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        const textArea = document.createElement('textarea');
-        textArea.value = initialData.id;
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    }
-  };
 
   const handleFormSubmit = (data: ProvinceInput) => {
     const missingFields: string[] = [];
@@ -86,21 +63,7 @@ export function ProvinceDialog({
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Province' : 'Add New Province'}</DialogTitle>
         </DialogHeader>
-        {isEditing && initialData?.id && (
-          <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-            <span className="text-sm text-muted-foreground">ID:</span>
-            <code className="flex-1 text-sm font-mono">{initialData.id}</code>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); handleCopyId(); }}
-              className="h-7 w-7 p-0"
-            >
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-        )}
+        {isEditing && initialData?.id && <CopyIdRow id={initialData.id} />}
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Province Name *</Label>
