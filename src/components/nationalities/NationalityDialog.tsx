@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { Copy, Check } from 'lucide-react';
 import type { Nationality, NationalityInput } from '@/types/master';
 
 interface NationalityDialogProps {
@@ -14,6 +15,7 @@ interface NationalityDialogProps {
 }
 
 export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }: NationalityDialogProps) {
+  const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState<NationalityInput>({
     name: nationality?.name || '',
     iso2: nationality?.iso2 || '',
@@ -23,6 +25,7 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
   const [errors, setErrors] = useState<{ name?: boolean; iso2?: boolean; emoji?: boolean }>({});
 
   useEffect(() => {
+    setCopied(false);
     if (nationality) {
       setFormData({
         name: nationality.name || '',
@@ -34,6 +37,27 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
     }
     setErrors({});
   }, [nationality, open]);
+
+  const handleCopyId = async () => {
+    if (nationality?.id) {
+      try {
+        await navigator.clipboard.writeText(nationality.id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = nationality.id;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +100,21 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
               {nationality ? 'Update nationality information' : 'Create a new nationality'}
             </DialogDescription>
           </DialogHeader>
+          {nationality && (
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+              <span className="text-sm text-muted-foreground">ID:</span>
+              <code className="flex-1 text-sm font-mono">{nationality.id}</code>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); handleCopyId(); }}
+                className="h-7 w-7 p-0"
+              >
+                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">

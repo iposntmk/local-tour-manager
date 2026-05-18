@@ -23,6 +23,7 @@ const Nationalities = () => {
   const [editingNationality, setEditingNationality] = useState<Nationality | undefined>();
   const [nameFilter, setNameFilter] = useState('');
   const [iso2Filter, setIso2Filter] = useState('');
+  const [idFilter, setIdFilter] = useState('');
 
   const query: SearchQuery = {
     search,
@@ -156,13 +157,14 @@ const Nationalities = () => {
 
   const filteredNationalities = useMemo(() => {
     return nationalities.filter((nationality) => {
+      const matchesId = !idFilter || nationality.id.toLowerCase().includes(idFilter.toLowerCase());
       const matchesName = nameFilter === '' ||
         nationality.name.toLowerCase().includes(nameFilter.toLowerCase());
       const matchesIso2 = iso2Filter === '' ||
         (nationality.iso2?.toLowerCase() || '').includes(iso2Filter.toLowerCase());
-      return matchesName && matchesIso2;
+      return matchesId && matchesName && matchesIso2;
     });
-  }, [nationalities, nameFilter, iso2Filter]);
+  }, [nationalities, nameFilter, iso2Filter, idFilter]);
 
   const { classes: headerClasses } = useHeaderMode('nationalities.headerMode');
 
@@ -232,12 +234,21 @@ const Nationalities = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>ID</TableHead>
                       <TableHead>Country</TableHead>
                       <TableHead>ISO Code</TableHead>
                       <TableHead>Flag</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by ID..."
+                          value={idFilter}
+                          onChange={(e) => setIdFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
                       <TableHead>
                         <Input
                           placeholder="Filter by name..."
@@ -265,6 +276,7 @@ const Nationalities = () => {
                         className="cursor-pointer hover:bg-accent/50"
                         onClick={() => handleOpenDialog(nationality)}
                       >
+                        <TableCell className="font-mono text-muted-foreground">{nationality.id}</TableCell>
                         <TableCell className="font-medium">{nationality.name}</TableCell>
                         <TableCell>{nationality.iso2 || '-'}</TableCell>
                         <TableCell>
@@ -321,6 +333,9 @@ const Nationalities = () => {
                         <span className="text-3xl">{nationality.emoji || '🌍'}</span>
                         <div>
                           <h3 className="font-semibold">{nationality.name}</h3>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {nationality.id}
+                          </p>
                           <p className="text-sm text-muted-foreground">
                             {nationality.iso2 || 'No ISO code'}
                           </p>

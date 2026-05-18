@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TextareaWithSave } from '@/components/ui/textarea-with-save';
 import { toast } from 'sonner';
+import { Copy, Check } from 'lucide-react';
 import type { Guide, GuideInput } from '@/types/master';
 
 interface GuideDialogProps {
@@ -16,6 +17,7 @@ interface GuideDialogProps {
 }
 
 export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialogProps) {
+  const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState<GuideInput>({
     name: guide?.name || '',
     phone: guide?.phone || '',
@@ -27,6 +29,7 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
   useEffect(() => {
     if (!open) return;
 
+    setCopied(false);
     setFormData({
       name: guide?.name || '',
       phone: guide?.phone || '',
@@ -35,6 +38,27 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
     });
     setErrors({});
   }, [guide, open]);
+
+  const handleCopyId = async () => {
+    if (guide?.id) {
+      try {
+        await navigator.clipboard.writeText(guide.id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = guide.id;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +101,21 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
               {guide ? 'Update guide information' : 'Create a new guide profile'}
             </DialogDescription>
           </DialogHeader>
+          {guide && (
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+              <span className="text-sm text-muted-foreground">ID:</span>
+              <code className="flex-1 text-sm font-mono">{guide.id}</code>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); handleCopyId(); }}
+                className="h-7 w-7 p-0"
+              >
+                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">

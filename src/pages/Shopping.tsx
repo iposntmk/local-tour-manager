@@ -20,6 +20,8 @@ const ShoppingPage = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingShopping, setEditingShopping] = useState<Shopping | undefined>();
   const [nameFilter, setNameFilter] = useState('');
+  const [idFilter, setIdFilter] = useState('');
+  const [updatedFilter, setUpdatedFilter] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -149,11 +151,14 @@ const ShoppingPage = () => {
 
   const filteredShoppings = useMemo(() => {
     return shoppings.filter((shopping) => {
+      const matchesId = idFilter === '' || shopping.id.toLowerCase().includes(idFilter.toLowerCase());
       const matchesName = nameFilter === '' ||
         shopping.name.toLowerCase().includes(nameFilter.toLowerCase());
-      return matchesName;
+      const matchesUpdated = updatedFilter === '' ||
+        shopping.updatedAt.split("T")[0].includes(updatedFilter);
+      return matchesId && matchesName && matchesUpdated;
     });
-  }, [shoppings, nameFilter]);
+  }, [shoppings, nameFilter, idFilter, updatedFilter]);
 
   const { classes: headerClasses } = useHeaderMode('shopping.headerMode');
 
@@ -222,11 +227,20 @@ const ShoppingPage = () => {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
+                    <th className="text-left p-4 font-medium">ID</th>
                     <th className="text-left p-4 font-medium">Name</th>
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
                   <tr>
+                    <th className="text-left p-4">
+                      <Input
+                        placeholder="Filter by ID..."
+                        value={idFilter}
+                        onChange={(e) => setIdFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
                     <th className="text-left p-4">
                       <Input
                         placeholder="Filter by name..."
@@ -235,7 +249,14 @@ const ShoppingPage = () => {
                         className="h-8"
                       />
                     </th>
-                    <th className="text-left p-4"></th>
+                    <th className="text-left p-4">
+                      <Input
+                        placeholder="Filter by date..."
+                        value={updatedFilter}
+                        onChange={(e) => setUpdatedFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
                     <th className="text-right p-4"></th>
                   </tr>
                 </thead>
@@ -246,6 +267,7 @@ const ShoppingPage = () => {
                       className="border-t hover:bg-muted/50 cursor-pointer"
                       onClick={() => handleOpenDialog(shopping)}
                     >
+                      <td className="p-4 text-muted-foreground text-sm font-mono">{shopping.id}</td>
                       <td className="p-4 font-medium">{shopping.name}</td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(shopping.updatedAt.split("T")[0])}
@@ -299,7 +321,8 @@ const ShoppingPage = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-medium">{shopping.name}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground font-mono">ID: {shopping.id}</p>
+                      <p className="text-sm text-muted-foreground">
                         Updated {formatDate(shopping.updatedAt.split("T")[0])}
                       </p>
                     </div>

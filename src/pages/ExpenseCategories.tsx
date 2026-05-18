@@ -19,6 +19,8 @@ const ExpenseCategories = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseCategory | undefined>();
   const [nameFilter, setNameFilter] = useState('');
+  const [idFilter, setIdFilter] = useState('');
+  const [updatedFilter, setUpdatedFilter] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -147,10 +149,12 @@ const ExpenseCategories = () => {
 
   const filteredCategories = useMemo(() => {
     return categories.filter(category => {
+      const matchesId = !idFilter || category.id.toLowerCase().includes(idFilter.toLowerCase());
       const matchesName = !nameFilter || category.name.toLowerCase().includes(nameFilter.toLowerCase());
-      return matchesName;
+      const matchesUpdated = !updatedFilter || category.updatedAt.split("T")[0].includes(updatedFilter);
+      return matchesId && matchesName && matchesUpdated;
     });
-  }, [categories, nameFilter]);
+  }, [categories, nameFilter, idFilter, updatedFilter]);
 
   const { classes: headerClasses } = useHeaderMode('expensecategories.headerMode');
 
@@ -207,11 +211,20 @@ const ExpenseCategories = () => {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
+                    <th className="text-left p-4 font-medium">ID</th>
                     <th className="text-left p-4 font-medium">Name</th>
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
                   <tr className="border-t">
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter by ID..."
+                        value={idFilter}
+                        onChange={(e) => setIdFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
                     <th className="p-2">
                       <Input
                         placeholder="Filter by name..."
@@ -220,7 +233,14 @@ const ExpenseCategories = () => {
                         className="h-8"
                       />
                     </th>
-                    <th className="p-2"></th>
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter by date..."
+                        value={updatedFilter}
+                        onChange={(e) => setUpdatedFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
                     <th className="p-2"></th>
                   </tr>
                 </thead>
@@ -231,6 +251,7 @@ const ExpenseCategories = () => {
                       className="border-t hover:bg-muted/50 cursor-pointer"
                       onClick={() => handleOpenDialog(category)}
                     >
+                      <td className="p-4 text-muted-foreground text-sm font-mono">{category.id}</td>
                       <td className="p-4 font-medium">{category.name}</td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(category.updatedAt.split("T")[0])}
@@ -284,7 +305,8 @@ const ExpenseCategories = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-medium">{category.name}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground font-mono">ID: {category.id}</p>
+                      <p className="text-sm text-muted-foreground">
                         Updated {formatDate(category.updatedAt.split("T")[0])}
                       </p>
                     </div>

@@ -35,6 +35,7 @@ export interface Allowance {
   name: string;
   price: number;
   quantity?: number;
+  categoryId?: string;
 }
 
 export interface Shopping {

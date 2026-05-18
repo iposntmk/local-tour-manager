@@ -19,6 +19,8 @@ const Provinces = () => {
   const [editingProvince, setEditingProvince] = useState<Province | undefined>();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [nameFilter, setNameFilter] = useState('');
+  const [idFilter, setIdFilter] = useState('');
+  const [updatedFilter, setUpdatedFilter] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -147,11 +149,13 @@ const Provinces = () => {
   };
 
   const filteredProvinces = useMemo(() => {
-    if (!nameFilter) return provinces;
-    return provinces.filter((province) =>
-      province.name.toLowerCase().includes(nameFilter.toLowerCase())
-    );
-  }, [provinces, nameFilter]);
+    return provinces.filter((province) => {
+      const matchesId = !idFilter || province.id.toLowerCase().includes(idFilter.toLowerCase());
+      const matchesName = !nameFilter || province.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesUpdated = !updatedFilter || province.updatedAt.split("T")[0].includes(updatedFilter);
+      return matchesId && matchesName && matchesUpdated;
+    });
+  }, [provinces, nameFilter, idFilter, updatedFilter]);
 
   const { classes: headerClasses } = useHeaderMode('provinces.headerMode');
 
@@ -217,11 +221,20 @@ const Provinces = () => {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
+                    <th className="text-left p-4 font-medium">ID</th>
                     <th className="text-left p-4 font-medium">Name</th>
                     <th className="text-left p-4 font-medium">Updated</th>
                     <th className="text-right p-4 font-medium">Actions</th>
                   </tr>
                   <tr className="border-t">
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter by ID..."
+                        value={idFilter}
+                        onChange={(e) => setIdFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
                     <th className="p-2">
                       <Input
                         placeholder="Filter by name..."
@@ -230,7 +243,14 @@ const Provinces = () => {
                         className="h-8"
                       />
                     </th>
-                    <th className="p-2"></th>
+                    <th className="p-2">
+                      <Input
+                        placeholder="Filter by date..."
+                        value={updatedFilter}
+                        onChange={(e) => setUpdatedFilter(e.target.value)}
+                        className="h-8"
+                      />
+                    </th>
                     <th className="p-2"></th>
                   </tr>
                 </thead>
@@ -241,6 +261,7 @@ const Provinces = () => {
                       className="border-t hover:bg-muted/50 cursor-pointer"
                       onClick={() => handleOpenDialog(province)}
                     >
+                      <td className="p-4 text-muted-foreground text-sm font-mono">{province.id}</td>
                       <td className="p-4 font-medium">{province.name}</td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(province.updatedAt.split("T")[0])}
@@ -294,7 +315,8 @@ const Provinces = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-medium">{province.name}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground font-mono">ID: {province.id}</p>
+                      <p className="text-sm text-muted-foreground">
                         Updated {formatDate(province.updatedAt.split("T")[0])}
                       </p>
                     </div>

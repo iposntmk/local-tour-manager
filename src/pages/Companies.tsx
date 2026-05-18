@@ -25,6 +25,7 @@ const Companies = () => {
   const [nameFilter, setNameFilter] = useState('');
   const [contactFilter, setContactFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
+  const [idFilter, setIdFilter] = useState('');
 
   const query: SearchQuery = {
     search,
@@ -176,12 +177,13 @@ const Companies = () => {
 
   const filteredCompanies = useMemo(() => {
     return companies.filter(company => {
+      const matchesId = !idFilter || company.id.toLowerCase().includes(idFilter.toLowerCase());
       const matchesName = !nameFilter || company.name.toLowerCase().includes(nameFilter.toLowerCase());
       const matchesContact = !contactFilter || (company.contactName?.toLowerCase().includes(contactFilter.toLowerCase()) ?? false);
       const matchesPhone = !phoneFilter || (company.phone?.toLowerCase().includes(phoneFilter.toLowerCase()) ?? false);
-      return matchesName && matchesContact && matchesPhone;
+      return matchesId && matchesName && matchesContact && matchesPhone;
     });
-  }, [companies, nameFilter, contactFilter, phoneFilter]);
+  }, [companies, nameFilter, contactFilter, phoneFilter, idFilter]);
 
   const handleSetDefaultCompany = async (company: Company, checked: boolean) => {
     try {
@@ -254,6 +256,7 @@ const Companies = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>ID</TableHead>
                       <TableHead>Company Name</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Phone</TableHead>
@@ -262,6 +265,14 @@ const Companies = () => {
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by ID..."
+                          value={idFilter}
+                          onChange={(e) => setIdFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
                       <TableHead>
                         <Input
                           placeholder="Filter by name..."
@@ -298,6 +309,7 @@ const Companies = () => {
                         className="cursor-pointer hover:bg-accent/50"
                         onClick={() => handleOpenDialog(company)}
                       >
+                        <TableCell className="font-mono text-muted-foreground">{company.id}</TableCell>
                         <TableCell className="font-medium">{company.name}</TableCell>
                         <TableCell>{company.contactName || '-'}</TableCell>
                         <TableCell>{company.phone || '-'}</TableCell>
@@ -365,6 +377,7 @@ const Companies = () => {
                             </span>
                           )}
                         </div>
+                        <p className="text-xs text-muted-foreground font-mono">{company.id}</p>
                         <p className="text-sm text-muted-foreground">
                           {company.contactName || 'No contact'}
                         </p>

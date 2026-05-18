@@ -25,6 +25,7 @@ const Guides = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [nameFilter, setNameFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
+  const [idFilter, setIdFilter] = useState('');
 
   const query: SearchQuery = {
     search,
@@ -161,11 +162,12 @@ const Guides = () => {
 
   const filteredGuides = useMemo(() => {
     return guides.filter(guide => {
+      const matchesId = !idFilter || guide.id.toLowerCase().includes(idFilter.toLowerCase());
       const matchesName = !nameFilter || guide.name.toLowerCase().includes(nameFilter.toLowerCase());
       const matchesPhone = !phoneFilter || (guide.phone && guide.phone.toLowerCase().includes(phoneFilter.toLowerCase()));
-      return matchesName && matchesPhone;
+      return matchesId && matchesName && matchesPhone;
     });
-  }, [guides, nameFilter, phoneFilter]);
+  }, [guides, nameFilter, phoneFilter, idFilter]);
 
   const handleSetDefaultGuide = async (guide: Guide, checked: boolean) => {
     try {
@@ -250,6 +252,7 @@ const Guides = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Default</TableHead>
@@ -257,6 +260,14 @@ const Guides = () => {
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
+                      <TableHead>
+                        <Input
+                          placeholder="Filter by ID..."
+                          value={idFilter}
+                          onChange={(e) => setIdFilter(e.target.value)}
+                          className="h-8"
+                        />
+                      </TableHead>
                       <TableHead>
                         <Input
                           placeholder="Filter by name..."
@@ -285,6 +296,7 @@ const Guides = () => {
                         className="cursor-pointer hover:bg-accent/50"
                         onClick={() => handleOpenDialog(guide)}
                       >
+                        <TableCell className="font-mono text-muted-foreground">{guide.id}</TableCell>
                         <TableCell className="font-medium">{guide.name}</TableCell>
                         <TableCell>{guide.phone || '-'}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
@@ -351,6 +363,7 @@ const Guides = () => {
                             </span>
                           )}
                         </div>
+                        <p className="text-xs text-muted-foreground font-mono">{guide.id}</p>
                         <p className="text-sm text-muted-foreground">{guide.phone || 'No phone'}</p>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

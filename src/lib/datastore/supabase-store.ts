@@ -2452,6 +2452,7 @@ export class SupabaseStore implements DataStore {
           name: a.name,
           price: Number(a.price) || 0,
           quantity: a.quantity || 1,
+          categoryId: a.category_id ?? undefined,
         }));
         tour.shoppings = (typedRow.tour_shoppings || []).map((s) => ({
           name: s.name,
@@ -2527,6 +2528,7 @@ export class SupabaseStore implements DataStore {
       name: a.name,
       price: Number(a.price) || 0,
       quantity: a.quantity || 1,
+      categoryId: a.category_id ?? undefined,
     }));
     tour.shoppings = (row.tour_shoppings || []).map((s: any) => ({
       name: s.name,
@@ -3006,6 +3008,7 @@ export class SupabaseStore implements DataStore {
       name: row.name,
       price: Number(row.price) || 0,
       quantity: row.quantity || 1,
+      categoryId: row.category_id ?? undefined,
     }));
   }
 
@@ -3016,6 +3019,7 @@ export class SupabaseStore implements DataStore {
       name: allowance.name,
       price: allowance.price,
       quantity: allowance.quantity || 1,
+      category_id: allowance.categoryId ?? null,
     });
     if (error) throw error;
     // Recalculate and save summary
@@ -3030,6 +3034,7 @@ export class SupabaseStore implements DataStore {
         name: allowance.name,
         price: allowance.price,
         quantity: allowance.quantity || 1,
+        category_id: allowance.categoryId ?? null,
       }).eq('id', rows[index].id);
       if (error) throw error;
       // Recalculate and save summary

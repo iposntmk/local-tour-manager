@@ -285,6 +285,7 @@ export type Database = {
       }
       tour_allowances: {
         Row: {
+          category_id: string | null
           created_at: string | null
           date: string
           id: string
@@ -294,6 +295,7 @@ export type Database = {
           tour_id: string
         }
         Insert: {
+          category_id?: string | null
           created_at?: string | null
           date: string
           id?: string
@@ -303,6 +305,7 @@ export type Database = {
           tour_id: string
         }
         Update: {
+          category_id?: string | null
           created_at?: string | null
           date?: string
           id?: string
@@ -312,6 +315,13 @@ export type Database = {
           tour_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tour_allowances_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tour_allowances_tour_id_fkey"
             columns: ["tour_id"]

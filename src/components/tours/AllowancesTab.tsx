@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn, formatDate } from '@/lib/utils';
-import { removeDiacritics } from '@/lib/string-utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
@@ -30,26 +29,11 @@ interface AllowancesTabProps {
   tour?: Tour | null;
 }
 
-type AllowanceGroup = 'ctp' | 'ngu' | 'xe' | 'other';
-
-const allowanceGroupLabel: Record<AllowanceGroup, string> = {
-  ctp: 'CTP',
-  ngu: 'Ngủ',
-  xe: 'Xe',
-  other: 'Khác',
-};
-
-const normalizeText = (v?: string | null) =>
-  removeDiacritics(v || '').toLowerCase().trim().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ');
-
-const getAllowanceGroup = (name?: string, category?: string): AllowanceGroup => {
-  const n = normalizeText(name);
-  const c = normalizeText(category);
-  if (c === 'ctp' || c.includes('cong tac phi') || n.includes('cong tac phi')) return 'ctp';
-  if (c === 'ngu' || c.includes('tien ngu') || n.includes('tien ngu')) return 'ngu';
-  if (c === 'xe' || c.includes('tien xe') || n.includes('tien xe')) return 'xe';
-  return 'other';
-};
+// Order matters: index = sort priority (CTP first, then Tiền ngủ).
+const ALLOWANCE_CATEGORY_IDS = [
+  '3f721484-4b40-4a57-a879-33d5f9c0368b',
+  '1401bdaf-42cf-4d71-af0b-e3246f6e0486',
+];
 
 export function AllowancesTab({ tourId, allowances, onChange, tour }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -68,11 +52,28 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     queryFn: () => store.listDetailedExpenses({ status: 'active' }),
   });
 
-  // Show CTP, xe, ngu categories in dropdown
-  const detailedExpenses = allDetailedExpenses.filter(exp => {
-    const g = getAllowanceGroup(exp.name, exp.categoryRef?.nameAtBooking);
-    return g !== 'other';
-  });
+  const detailedExpenses = allDetailedExpenses.filter(
+    exp => exp.categoryRef?.id && ALLOWANCE_CATEGORY_IDS.includes(exp.categoryRef.id)
+  );
+
+  // Lookup: allowance.name → categoryId (so we can sort/group existing
+  // allowances by category even though only `name` is persisted).
+  const nameToCategoryId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const exp of allDetailedExpenses) {
+      if (exp.categoryRef?.id) map.set(exp.name, exp.categoryRef.id);
+    }
+    return map;
+  }, [allDetailedExpenses]);
+
+  const getCategoryPriority = (allowance: Allowance): number => {
+    // Prefer the stored categoryId; fall back to name lookup for legacy
+    // rows persisted before the column existed.
+    const id = allowance.categoryId ?? nameToCategoryId.get(allowance.name);
+    if (!id) return Number.POSITIVE_INFINITY;
+    const idx = ALLOWANCE_CATEGORY_IDS.indexOf(id);
+    return idx === -1 ? Number.POSITIVE_INFINITY : idx;
+  };
 
   const addMutation = useMutation({
     mutationFn: async (allowance: Allowance) => {
@@ -208,8 +209,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                     <CommandEmpty>Không tìm thấy CTP.</CommandEmpty>
                     <CommandGroup>
                       {detailedExpenses.map((exp) => {
-                        const group = getAllowanceGroup(exp.name, exp.categoryRef?.nameAtBooking);
-                        const categoryLabel = allowanceGroupLabel[group];
+                        const categoryLabel = exp.categoryRef?.nameAtBooking || 'Khác';
                         return (
                           <CommandItem
                             key={exp.id}
@@ -222,7 +222,8 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                                 name: exp.name,
                                 price: exp.price,
                                 date: formData.date || defaultDate,
-                                quantity: formData.quantity || 1
+                                quantity: formData.quantity || 1,
+                                categoryId: exp.categoryRef?.id,
                               });
                               setOpenExpense(false);
                             }}
@@ -313,6 +314,9 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
               {allowances
                 .map((a, i) => ({ ...a, originalIndex: i }))
                 .sort((a, b) => {
+                  const pa = getCategoryPriority(a);
+                  const pb = getCategoryPriority(b);
+                  if (pa !== pb) return pa - pb;
                   const da = a.date ? new Date(a.date).getTime() : Infinity;
                   const db = b.date ? new Date(b.date).getTime() : Infinity;
                   return da - db;
@@ -322,10 +326,10 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                   const total = allowance.price * qty;
                   const isZeroPrice = (allowance.price ?? 0) === 0;
 
-                  const currentGroup = getAllowanceGroup(allowance.name);
+                  const currentPriority = getCategoryPriority(allowance);
                   const prevAllowance = rowIndex > 0 ? arr[rowIndex - 1] : null;
-                  const prevGroup = prevAllowance ? getAllowanceGroup(prevAllowance.name) : null;
-                  const showSeparator = prevGroup && currentGroup !== prevGroup;
+                  const prevPriority = prevAllowance ? getCategoryPriority(prevAllowance) : null;
+                  const showSeparator = prevPriority !== null && currentPriority !== prevPriority;
 
                   return (
                     <>
