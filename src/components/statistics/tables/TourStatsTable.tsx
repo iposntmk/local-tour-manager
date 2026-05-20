@@ -79,6 +79,7 @@ export const TourStatsTable = ({ rows, totals, visibility, onVisibilityChange, i
                 {visibility.client && <TableHead>Client</TableHead>}
                 {visibility.guide && <TableHead>Guide</TableHead>}
                 {visibility.company && <TableHead>Company</TableHead>}
+                {visibility.landOperator && <TableHead>Land operator</TableHead>}
                 {visibility.allowances && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.allowances} /></TableHead>}
                 {visibility.guestTip && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.guestTip} /></TableHead>}
                 {visibility.companyTip && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.companyTip} /></TableHead>}
@@ -115,6 +116,7 @@ export const TourStatsTable = ({ rows, totals, visibility, onVisibilityChange, i
                   {visibility.client && <TableCell>{tour.clientName}</TableCell>}
                   {visibility.guide && <TableCell>{tour.guideName}</TableCell>}
                   {visibility.company && <TableCell>{tour.companyName}</TableCell>}
+                  {visibility.landOperator && <TableCell>{tour.landOperatorName}</TableCell>}
                   {visibility.allowances && <TableCell className="text-right">{formatCurrency(tour.totalAllowances)}</TableCell>}
                   {visibility.guestTip && <TableCell className="text-right">{formatCurrency(tour.totalTipFromGuests)}</TableCell>}
                   {visibility.companyTip && <TableCell className="text-right">{formatCurrency(tour.totalCompanyTip)}</TableCell>}
@@ -142,6 +144,7 @@ export const TourStatsTable = ({ rows, totals, visibility, onVisibilityChange, i
                 {visibility.client && <TableCell className="font-bold">{totalLabel('client')}</TableCell>}
                 {visibility.guide && <TableCell className="font-bold">{totalLabel('guide')}</TableCell>}
                 {visibility.company && <TableCell className="font-bold">{totalLabel('company')}</TableCell>}
+                {visibility.landOperator && <TableCell className="font-bold">{totalLabel('landOperator')}</TableCell>}
                 {visibility.allowances && <TableCell className="text-right font-bold">{formatCurrency(totals.allowances)}</TableCell>}
                 {visibility.guestTip && <TableCell className="text-right font-bold">{formatCurrency(totals.tipFromGuests)}</TableCell>}
                 {visibility.companyTip && <TableCell className="text-right font-bold">{formatCurrency(totals.companyTip)}</TableCell>}

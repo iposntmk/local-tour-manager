@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
@@ -16,6 +15,8 @@ import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import { GuideDialog } from '@/components/guides/GuideDialog';
 import type { Guide, GuideInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
+import { useAuth } from '@/contexts/AuthContext';
+import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
 
 const Guides = () => {
   const queryClient = useQueryClient();
@@ -26,6 +27,12 @@ const Guides = () => {
   const [nameFilter, setNameFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
   const [idFilter, setIdFilter] = useState('');
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canCreate = hasPermission('create_guides');
+  const canEdit = hasPermission('edit_guides');
+  const canDelete = hasPermission('delete_guides');
+  const canImport = hasPermission('import_guides');
+  const canExport = hasPermission('export_guides');
 
   const query: SearchQuery = {
     search,
@@ -35,6 +42,11 @@ const Guides = () => {
     queryKey: ['guides', query],
     queryFn: () => store.listGuides(query),
     retry: false,
+  });
+
+  const { data: languages = [] } = useQuery({
+    queryKey: ['languages'],
+    queryFn: () => store.listLanguages({ status: 'active' }),
   });
 
   const createMutation = useMutation({
@@ -49,7 +61,7 @@ const Guides = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Guide> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<GuideInput> }) =>
       store.updateGuide(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guides'] });
@@ -102,10 +114,18 @@ const Guides = () => {
   });
 
   const handleCreate = async (data: GuideInput) => {
+    if (!canCreate) {
+      toast.error('Bạn không có quyền tạo hướng dẫn viên');
+      return;
+    }
     await createMutation.mutateAsync(data);
   };
 
   const handleEdit = async (data: GuideInput) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa hướng dẫn viên');
+      return;
+    }
     if (!editingGuide) return;
     await updateMutation.mutateAsync({
       id: editingGuide.id,
@@ -114,6 +134,9 @@ const Guides = () => {
   };
 
   const handleOpenDialog = (guide?: Guide) => {
+    if (guide && !canEdit) return;
+    if (!guide && !canCreate) return;
+    if (guide && !ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
     setEditingGuide(guide);
     setDialogOpen(true);
   };
@@ -124,16 +147,28 @@ const Guides = () => {
   };
 
   const handleDeleteAll = async () => {
+    if (!canDelete) {
+      toast.error('Bạn không có quyền xóa hướng dẫn viên');
+      return;
+    }
     if (confirm('Are you sure you want to delete all guides? This action cannot be undone.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
 
   const handleBulkImport = async (items: GuideInput[]) => {
+    if (!canImport) {
+      toast.error('Bạn không có quyền import hướng dẫn viên');
+      return;
+    }
     await bulkImportMutation.mutateAsync(items);
   };
 
   const handleExportTxt = () => {
+    if (!canExport) {
+      toast.error('Bạn không có quyền export hướng dẫn viên');
+      return;
+    }
     if (filteredGuides.length === 0) {
       toast.error('No guides to export');
       return;
@@ -143,6 +178,7 @@ const Guides = () => {
       .map(guide => {
         const parts = [guide.name];
         if (guide.phone) parts.push(guide.phone);
+        if (guide.languages.length > 0) parts.push(guide.languages.map((language) => language.name).join('|'));
         if (guide.note) parts.push(guide.note);
         return parts.join(',');
       })
@@ -170,6 +206,10 @@ const Guides = () => {
   }, [guides, nameFilter, phoneFilter, idFilter]);
 
   const handleSetDefaultGuide = async (guide: Guide, checked: boolean) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa hướng dẫn viên');
+      return;
+    }
     try {
       await updateMutation.mutateAsync({
         id: guide.id,
@@ -183,7 +223,7 @@ const Guides = () => {
   const { classes: headerClasses } = useHeaderMode('guides.headerMode');
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -192,34 +232,30 @@ const Guides = () => {
               <p className="text-muted-foreground">Manage your tour guides</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button
-                onClick={handleExportTxt}
-                variant="outline"
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export TXT
-              </Button>
-              <Button
-                onClick={() => setImportDialogOpen(true)}
-                variant="outline"
-                className="gap-2"
-              >
-                <Upload className="h-4 w-4" />
-                Import
-              </Button>
-              <Button
-                onClick={handleDeleteAll}
-                variant="outline"
-                className="gap-2 text-destructive hover:text-destructive"
-              >
-                <Trash className="h-4 w-4" />
-                Delete All
-              </Button>
-              <Button onClick={() => handleOpenDialog()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Guide
-              </Button>
+              {canExport && (
+                <Button onClick={handleExportTxt} variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Export TXT
+                </Button>
+              )}
+              {canImport && (
+                <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              )}
+              {canDelete && (
+                <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
+                  <Trash className="h-4 w-4" />
+                  Delete All
+                </Button>
+              )}
+              {canCreate && (
+                <Button onClick={() => handleOpenDialog()} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Guide
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -255,6 +291,7 @@ const Guides = () => {
                       <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
+                      <TableHead>Languages</TableHead>
                       <TableHead>Default</TableHead>
                       <TableHead>Note</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
@@ -287,6 +324,7 @@ const Guides = () => {
                       <TableHead></TableHead>
                       <TableHead></TableHead>
                       <TableHead></TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -294,49 +332,50 @@ const Guides = () => {
                       <TableRow
                         key={guide.id}
                         className="cursor-pointer hover:bg-accent/50"
-                        onClick={() => handleOpenDialog(guide)}
+                        onClick={() => canEdit && handleOpenDialog(guide)}
                       >
                         <TableCell className="font-mono text-muted-foreground">{guide.id}</TableCell>
                         <TableCell className="font-medium">{guide.name}</TableCell>
                         <TableCell>{guide.phone || '-'}</TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {guide.languages.length > 0 ? guide.languages.map((language) => language.name).join(', ') : '-'}
+                        </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={guide.isDefault}
                             onCheckedChange={(checked) => handleSetDefaultGuide(guide, checked === true)}
+                            disabled={!canEdit}
                             aria-label={`Set ${guide.name} as default guide`}
                           />
                         </TableCell>
                         <TableCell className="max-w-xs truncate">{guide.note || '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenDialog(guide)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => duplicateMutation.mutate(guide.id)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm('Are you sure you want to delete this guide?')) {
-                                  deleteMutation.mutate(guide.id);
-                                }
-                              }}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canEdit && (
+                              <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(guide)} className="h-8 w-8 p-0">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canCreate && (
+                              <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(guide.id)} className="h-8 w-8 p-0">
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (!ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
+                                  if (confirm('Are you sure you want to delete this guide?')) {
+                                    deleteMutation.mutate(guide.id);
+                                  }
+                                }}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -351,7 +390,7 @@ const Guides = () => {
                   <Card
                     key={guide.id}
                     className="p-4 cursor-pointer hover:bg-accent/50"
-                    onClick={() => handleOpenDialog(guide)}
+                    onClick={() => canEdit && handleOpenDialog(guide)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
@@ -365,36 +404,38 @@ const Guides = () => {
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">{guide.id}</p>
                         <p className="text-sm text-muted-foreground">{guide.phone || 'No phone'}</p>
+                        {guide.languages.length > 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            {guide.languages.map((language) => language.name).join(', ')}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDialog(guide)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => duplicateMutation.mutate(guide.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this guide?')) {
-                              deleteMutation.mutate(guide.id);
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(guide)} className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canCreate && (
+                          <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(guide.id)} className="h-8 w-8 p-0">
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (!ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
+                              if (confirm('Are you sure you want to delete this guide?')) {
+                                deleteMutation.mutate(guide.id);
+                              }
+                            }}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -413,6 +454,7 @@ const Guides = () => {
           open={dialogOpen}
           onOpenChange={handleCloseDialog}
           guide={editingGuide}
+          languages={languages}
           onSubmit={editingGuide ? handleEdit : handleCreate}
         />
 
@@ -435,7 +477,7 @@ const Guides = () => {
           }}
         />
       </div>
-    </Layout>
+    </>
   );
 };
 

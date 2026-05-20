@@ -15,14 +15,17 @@ interface Option {
 interface StatsFilterBarProps {
   guides: Option[];
   companies: Option[];
+  landOperators: Option[];
   nationalities: Option[];
   months: string[];
   selectedGuide: string;
   selectedCompany: string;
+  selectedLandOperator: string;
   selectedNationality: string;
   selectedMonth: string;
   onGuideChange: (id: string) => void;
   onCompanyChange: (id: string) => void;
+  onLandOperatorChange: (id: string) => void;
   onNationalityChange: (id: string) => void;
   onMonthChange: (month: string) => void;
   onReset: () => void;
@@ -32,14 +35,17 @@ interface StatsFilterBarProps {
 export const StatsFilterBar = ({
   guides,
   companies,
+  landOperators,
   nationalities,
   months,
   selectedGuide,
   selectedCompany,
+  selectedLandOperator,
   selectedNationality,
   selectedMonth,
   onGuideChange,
   onCompanyChange,
+  onLandOperatorChange,
   onNationalityChange,
   onMonthChange,
   onReset,
@@ -47,9 +53,10 @@ export const StatsFilterBar = ({
 }: StatsFilterBarProps) => {
   return (
     <div className="rounded-lg border bg-card md:bg-transparent md:border-0 md:border-b md:rounded-none p-4 md:p-0 md:pb-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-6 md:gap-4">
         <FilterSelect label="Hướng dẫn viên" value={selectedGuide} onChange={onGuideChange} options={guides} allLabel="Tất cả HDV" />
         <FilterSelect label="Công ty" value={selectedCompany} onChange={onCompanyChange} options={companies} allLabel="Tất cả công ty" />
+        <FilterSelect label="Land operator" value={selectedLandOperator} onChange={onLandOperatorChange} options={landOperators} allLabel="Tất cả land op." />
         <FilterSelect label="Quốc tịch" value={selectedNationality} onChange={onNationalityChange} options={nationalities} allLabel="Tất cả quốc tịch" />
         <div className="flex flex-col">
           <label className="mb-1 text-xs font-medium text-muted-foreground">Tháng</label>

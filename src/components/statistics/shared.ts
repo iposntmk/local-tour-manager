@@ -28,6 +28,8 @@ export const BRIGHT_PALETTE = [
 
 export const UNKNOWN_GUIDE_ID = '__unknown_guide__';
 export const UNKNOWN_COMPANY_ID = '__unknown_company__';
+export const UNKNOWN_LAND_OPERATOR_ID = '__unknown_land_operator__';
+export const NO_LAND_OPERATOR_ID = '__no_land_operator__';
 export const UNKNOWN_NATIONALITY_ID = '__unknown_nationality__';
 export const UNKNOWN_MONTH = 'Unknown';
 export const REQUIRED_PIN = '0829101188';
@@ -42,6 +44,7 @@ export type TourStatsColumnKey =
   | 'client'
   | 'guide'
   | 'company'
+  | 'landOperator'
   | 'allowances'
   | 'guestTip'
   | 'companyTip'
@@ -58,6 +61,7 @@ export const tourStatsColumns: Array<{ key: TourStatsColumnKey; label: string }>
   { key: 'client', label: 'Client' },
   { key: 'guide', label: 'Guide' },
   { key: 'company', label: 'Company' },
+  { key: 'landOperator', label: 'Land operator' },
   { key: 'allowances', label: 'Allowances' },
   { key: 'guestTip', label: 'Guest Tip' },
   { key: 'companyTip', label: 'Company Tip' },
@@ -68,7 +72,7 @@ export const tourStatsColumns: Array<{ key: TourStatsColumnKey; label: string }>
   { key: 'finalTotal', label: 'Final Total' },
 ];
 
-export const tourStatsTextColumnKeys: TourStatsColumnKey[] = ['tour', 'date', 'client', 'guide', 'company'];
+export const tourStatsTextColumnKeys: TourStatsColumnKey[] = ['tour', 'date', 'client', 'guide', 'company', 'landOperator'];
 
 export const defaultTourStatsColumnVisibility: Record<TourStatsColumnKey, boolean> = {
   tour: true,
@@ -77,6 +81,7 @@ export const defaultTourStatsColumnVisibility: Record<TourStatsColumnKey, boolea
   client: false,
   guide: false,
   company: false,
+  landOperator: false,
   allowances: true,
   guestTip: true,
   companyTip: true,
@@ -208,10 +213,38 @@ export const normalizeCompany = (tour: Tour) => ({
   name: tour.companyRef?.nameAtBooking?.trim() || 'Unknown company',
 });
 
+export const normalizeLandOperator = (tour: Tour) => {
+  if (!tour.landOperatorRef?.id) {
+    return { id: NO_LAND_OPERATOR_ID, name: '— Không có —' };
+  }
+  return {
+    id: tour.landOperatorRef.id,
+    name: tour.landOperatorRef.nameAtBooking?.trim() || 'Unknown land operator',
+  };
+};
+
 export const normalizeNationality = (tour: Tour) => ({
   id: tour.clientNationalityRef?.id || UNKNOWN_NATIONALITY_ID,
   name: tour.clientNationalityRef?.nameAtBooking?.trim() || 'Unknown nationality',
 });
+
+export const getTourNationalities = (tour: Tour) => {
+  if (tour.clientNationalities?.length) {
+    return tour.clientNationalities.map((nationality) => ({
+      id: nationality.id || UNKNOWN_NATIONALITY_ID,
+      name: nationality.nameAtBooking?.trim() || 'Unknown nationality',
+      paxCount: Math.max(0, Number(nationality.paxCount) || 0),
+    }));
+  }
+
+  const nationality = normalizeNationality(tour);
+  return [
+    {
+      ...nationality,
+      paxCount: Math.max(tour.totalGuests || 0, 1),
+    },
+  ];
+};
 
 export interface GroupStatsRow {
   key: string;
@@ -235,6 +268,7 @@ export interface TourStatsRow {
   clientName: string;
   guideName: string;
   companyName: string;
+  landOperatorName: string;
   totalAllowances: number;
   totalCtpOnly: number;
   totalTipFromGuests: number;

@@ -22,16 +22,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Meal, Tour } from '@/types/tour';
-import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
+import { ExpenseCategoryDialog } from '@/components/expense-categories/ExpenseCategoryDialog';
+import type { DetailedExpense, ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
+import { TourRowLabel } from '@/components/tours/TourRowIcon';
 
 interface MealsTabProps {
   tourId?: string;
   meals: Meal[];
   onChange?: (meals: Meal[]) => void;
   tour?: Tour | null;
+  readOnly?: boolean;
 }
 
-export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
+export function MealsTab({ tourId, meals, onChange, tour, readOnly = false }: MealsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Meal>({ name: '', price: 0, date: '' });
   const [openMeal, setOpenMeal] = useState(false);
@@ -40,6 +44,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
   const [newMealPrice, setNewMealPrice] = useState(0);
   const [newMealCategoryId, setNewMealCategoryId] = useState('');
   const [openCategory, setOpenCategory] = useState(false);
+  const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
   const queryClient = useQueryClient();
 
   // Default guests for new rows in create mode when not editing
@@ -113,6 +118,21 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
     },
   });
 
+  const createCategoryMutation = useMutation({
+    mutationFn: (data: ExpenseCategoryInput) => store.createExpenseCategory(data),
+    onSuccess: (category) => {
+      queryClient.setQueryData<ExpenseCategory[]>(['expenseCategories'], (current) => upsertById(current, category));
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
+      setNewMealCategoryId(category.id);
+      setOpenCategory(false);
+      setShowNewCategoryDialog(false);
+      toast.success('Đã tạo nhóm chi phí');
+    },
+    onError: (error: Error) => {
+      toast.error(`Tạo nhóm chi phí thất bại: ${error.message}`);
+    },
+  });
+
   const createMealMutation = useMutation({
     mutationFn: ({ name, price, categoryId }: { name: string; price: number; categoryId: string }) => {
       const category = expenseCategories.find(c => c.id === categoryId);
@@ -129,6 +149,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
       });
     },
     onSuccess: (newMeal) => {
+      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses'], (current) => upsertById(current, newMeal));
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('Đã tạo bữa ăn chi tiết');
       setShowNewMealDialog(false);
@@ -143,8 +164,17 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
     },
   });
 
+  const handleCreateNewCategory = (data: ExpenseCategoryInput) => {
+    createCategoryMutation.mutate(data);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) {
+      toast.error('Bạn không có quyền sửa bữa ăn trong tour.');
+      return;
+    }
+
     // Validate required fields
     if (!formData.name || !formData.date) {
       toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
@@ -159,6 +189,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
   };
 
   const handleEdit = (index: number) => {
+    if (readOnly) return;
     setEditingIndex(index);
     setFormData(meals[index]);
     // Scroll to the form at the top
@@ -175,11 +206,13 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
   };
 
   const handleDuplicate = (index: number) => {
+    if (readOnly) return;
     const mealToDuplicate = meals[index];
     addMutation.mutate(mealToDuplicate);
   };
 
   const handleCreateNewMeal = () => {
+    if (readOnly) return;
     if (!newMealName.trim()) {
       toast.error('Vui lòng nhập tên bữa ăn');
       return;
@@ -201,6 +234,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
 
   return (
     <div className="space-y-6">
+      {!readOnly && (
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
           {editingIndex !== null ? 'Chỉnh sửa bữa ăn' : 'Thêm bữa ăn'}
@@ -211,6 +245,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
               <Popover open={openMeal} onOpenChange={setOpenMeal}>
                 <PopoverTrigger asChild>
                   <Button
+                    type="button"
                     variant="outline"
                     role="combobox"
                     aria-expanded={openMeal}
@@ -300,6 +335,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
           </div>
         </form>
       </div>
+      )}
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
@@ -351,7 +387,9 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
                   return (
                     <TableRow key={`${meal.originalIndex}-${meal.date}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
                       <TableCell className="font-medium p-1 sm:p-4">{rowIndex + 1}</TableCell>
-                      <TableCell className="font-medium p-1 sm:p-4">{meal.name}</TableCell>
+                      <TableCell className="font-medium p-1 sm:p-4">
+                        <TourRowLabel kind="meal" label={meal.name} />
+                      </TableCell>
                       <TableCell className={`p-1 sm:p-4 ${meal.price === 0 ? 'text-destructive font-semibold' : ''}`}>
                         {formatCurrency(meal.price)}
                         {meal.price === 0 && (
@@ -362,6 +400,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
                         <NumberInputMobile
                           value={meal.guests}
                           onChange={(val) => {
+                            if (readOnly) return;
                             if (val !== undefined && tourGuests && val > tourGuests) {
                               toast.warning(`Số khách không được vượt quá tổng khách của tour (${tourGuests}).`);
                               val = tourGuests;
@@ -377,12 +416,14 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
                           }}
                           min={0}
                           max={tourGuests}
+                          disabled={readOnly}
                           className="w-12 sm:w-24"
                         />
                       </TableCell>
                       <TableCell className="font-semibold p-1 sm:p-4">{formatCurrency(totalAmount)}</TableCell>
                       <TableCell className="p-1 sm:p-4">{formatDate(meal.date)}</TableCell>
                       <TableCell className="text-right p-1 sm:p-4">
+                        {!readOnly && (
                         <div className="sm:hidden">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -410,6 +451,8 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
+                        )}
+                        {!readOnly && (
                         <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                           <Button
                             variant="ghost"
@@ -439,6 +482,7 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -478,50 +522,65 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="meal-category">Nhóm chi phí</Label>
-              <Popover open={openCategory} onOpenChange={setOpenCategory}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="meal-category"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openCategory}
-                    className="justify-between w-full"
-                  >
-                    {newMealCategoryId
-                      ? expenseCategories.find((cat) => cat.id === newMealCategoryId)?.name
-                      : "Chọn nhóm chi phí..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Tìm nhóm chi phí..." />
-                    <CommandList>
-                      <CommandEmpty>Không tìm thấy nhóm chi phí.</CommandEmpty>
-                      <CommandGroup>
-                        {expenseCategories.map((cat) => (
-                          <CommandItem
-                            key={cat.id}
-                            value={cat.name}
-                            onSelect={() => {
-                              setNewMealCategoryId(cat.id);
-                              setOpenCategory(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                newMealCategoryId === cat.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {cat.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Popover open={openCategory} onOpenChange={setOpenCategory}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      id="meal-category"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openCategory}
+                      className="min-w-0 flex-1 justify-between"
+                    >
+                      <span className="truncate">
+                        {newMealCategoryId
+                          ? expenseCategories.find((cat) => cat.id === newMealCategoryId)?.name
+                          : "Chọn nhóm chi phí..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Tìm nhóm chi phí..." />
+                      <CommandList>
+                        <CommandEmpty>Không tìm thấy nhóm chi phí.</CommandEmpty>
+                        <CommandGroup>
+                          {expenseCategories.map((cat) => (
+                            <CommandItem
+                              key={cat.id}
+                              value={cat.name}
+                              onSelect={() => {
+                                setNewMealCategoryId(cat.id);
+                                setOpenCategory(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  newMealCategoryId === cat.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {cat.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Thêm nhóm chi phí"
+                  aria-label="Thêm nhóm chi phí"
+                  onClick={() => setShowNewCategoryDialog(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="new-meal-price">Giá mặc định (VND)</Label>
@@ -549,13 +608,19 @@ export function MealsTab({ tourId, meals, onChange, tour }: MealsTabProps) {
             <Button
               type="button"
               onClick={handleCreateNewMeal}
-              disabled={createMealMutation.isPending}
+              disabled={readOnly || createMealMutation.isPending}
             >
               {createMealMutation.isPending ? 'Đang tạo...' : 'Tạo'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExpenseCategoryDialog
+        open={showNewCategoryDialog}
+        onOpenChange={setShowNewCategoryDialog}
+        onSubmit={handleCreateNewCategory}
+      />
     </div>
   );
 }

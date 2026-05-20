@@ -1,4 +1,3 @@
-import { Layout } from '@/components/Layout';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
@@ -13,6 +12,8 @@ import type { Shopping, ShoppingInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { useAuth } from '@/contexts/AuthContext';
+import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
 
 const ShoppingPage = () => {
   const [search, setSearch] = useState('');
@@ -24,6 +25,12 @@ const ShoppingPage = () => {
   const [updatedFilter, setUpdatedFilter] = useState('');
 
   const queryClient = useQueryClient();
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canCreate = hasPermission('create_shopping');
+  const canEdit = hasPermission('edit_shopping');
+  const canDelete = hasPermission('delete_shopping');
+  const canImport = hasPermission('import_shopping');
+  const canExport = hasPermission('export_shopping');
 
   const { data: shoppings = [], isLoading } = useQuery({
     queryKey: ['shoppings', search],
@@ -95,10 +102,18 @@ const ShoppingPage = () => {
   });
 
   const handleCreate = (input: ShoppingInput) => {
+    if (!canCreate) {
+      toast.error('Bạn không có quyền tạo điểm mua sắm');
+      return;
+    }
     createMutation.mutate(input);
   };
 
   const handleEdit = (input: ShoppingInput) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa điểm mua sắm');
+      return;
+    }
     if (editingShopping) {
       updateMutation.mutate({
         id: editingShopping.id,
@@ -108,6 +123,9 @@ const ShoppingPage = () => {
   };
 
   const handleOpenDialog = (shopping?: Shopping) => {
+    if (shopping && !canEdit) return;
+    if (!shopping && !canCreate) return;
+    if (shopping && !ensureCanModifyOwnedEntity(shopping, user?.id, isAdmin)) return;
     setEditingShopping(shopping);
     setDialogOpen(true);
   };
@@ -118,16 +136,28 @@ const ShoppingPage = () => {
   };
 
   const handleDeleteAll = async () => {
+    if (!canDelete) {
+      toast.error('Bạn không có quyền xóa điểm mua sắm');
+      return;
+    }
     if (confirm('Are you sure you want to delete ALL shopping places? This action cannot be undone.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
 
   const handleBulkImport = async (items: { name: string }[]) => {
+    if (!canImport) {
+      toast.error('Bạn không có quyền import điểm mua sắm');
+      return;
+    }
     await bulkImportMutation.mutateAsync(items);
   };
 
   const handleExportTxt = () => {
+    if (!canExport) {
+      toast.error('Bạn không có quyền export điểm mua sắm');
+      return;
+    }
     if (filteredShoppings.length === 0) {
       toast.error('No shopping places to export');
       return;
@@ -163,7 +193,7 @@ const ShoppingPage = () => {
   const { classes: headerClasses } = useHeaderMode('shopping.headerMode');
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -172,34 +202,30 @@ const ShoppingPage = () => {
               <p className="text-muted-foreground">Manage shopping locations</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button
-                onClick={handleExportTxt}
-                variant="outline"
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export TXT
-              </Button>
-              <Button
-                onClick={() => setImportDialogOpen(true)}
-                variant="outline"
-                className="gap-2"
-              >
-                <Upload className="h-4 w-4" />
-                Import
-              </Button>
-              <Button
-                onClick={handleDeleteAll}
-                variant="outline"
-                className="gap-2 text-destructive hover:text-destructive"
-              >
-                <Trash className="h-4 w-4" />
-                Delete All
-              </Button>
-              <Button onClick={() => handleOpenDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Shopping
-              </Button>
+              {canExport && (
+                <Button onClick={handleExportTxt} variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Export TXT
+                </Button>
+              )}
+              {canImport && (
+                <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              )}
+              {canDelete && (
+                <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
+                  <Trash className="h-4 w-4" />
+                  Delete All
+                </Button>
+              )}
+              {canCreate && (
+                <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Shopping
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -265,7 +291,7 @@ const ShoppingPage = () => {
                     <tr
                       key={shopping.id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
-                      onClick={() => handleOpenDialog(shopping)}
+                      onClick={() => canEdit && handleOpenDialog(shopping)}
                     >
                       <td className="p-4 text-muted-foreground text-sm font-mono">{shopping.id}</td>
                       <td className="p-4 font-medium">{shopping.name}</td>
@@ -274,34 +300,31 @@ const ShoppingPage = () => {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenDialog(shopping)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => duplicateMutation.mutate(shopping.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this shopping location?')) {
-                                deleteMutation.mutate(shopping.id);
-                              }
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(shopping)} className="h-8 w-8 p-0">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canCreate && (
+                            <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(shopping.id)} className="h-8 w-8 p-0">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (!ensureCanModifyOwnedEntity(shopping, user?.id, isAdmin)) return;
+                                if (confirm('Are you sure you want to delete this shopping location?')) {
+                                  deleteMutation.mutate(shopping.id);
+                                }
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -316,7 +339,7 @@ const ShoppingPage = () => {
                 <div
                   key={shopping.id}
                   className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleOpenDialog(shopping)}
+                  onClick={() => canEdit && handleOpenDialog(shopping)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -327,34 +350,31 @@ const ShoppingPage = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(shopping)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => duplicateMutation.mutate(shopping.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this shopping location?')) {
-                            deleteMutation.mutate(shopping.id);
-                          }
-                        }}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(shopping)} className="h-8 w-8 p-0">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canCreate && (
+                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(shopping.id)} className="h-8 w-8 p-0">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!ensureCanModifyOwnedEntity(shopping, user?.id, isAdmin)) return;
+                            if (confirm('Are you sure you want to delete this shopping location?')) {
+                              deleteMutation.mutate(shopping.id);
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -392,7 +412,7 @@ Souk Marketplace"
           return null;
         }}
       />
-    </Layout>
+    </>
   );
 };
 

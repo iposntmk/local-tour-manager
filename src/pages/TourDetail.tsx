@@ -1,4 +1,3 @@
-import { Layout } from '@/components/Layout';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +17,8 @@ import { AllowancesTab } from '@/components/tours/AllowancesTab';
 import { SummaryTab } from '@/components/tours/SummaryTab';
 import { TourImagesTab } from '@/components/tours/TourImagesTab';
 import { CombinedTab } from '@/components/tours/CombinedTab';
+import { SettlementActionsBar } from '@/components/tours/SettlementActionsBar';
+import { SettlementHistoryPanel } from '@/components/tours/SettlementHistoryPanel';
 import { toast } from 'sonner';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { formatCurrency } from '@/lib/currency-utils';
@@ -36,6 +37,7 @@ import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, 
 import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { formatDate } from '@/lib/utils';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Helper function to clamp guests (same logic as SummaryTab)
 const clampGuests = (guestValue: number | undefined, tourGuests: number): number => {
@@ -89,6 +91,20 @@ const TourDetail = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<TourInput> | null>(null);
   const [activeTab, setActiveTab] = useState('info');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const { hasPermission } = useAuth();
+  const canCreateTour = hasPermission('create_tours');
+  const canEditTourInfo = hasPermission('edit_tour_info') || hasPermission('edit_tours');
+  const canEditDestinations = hasPermission('edit_tour_destinations') || hasPermission('edit_tours');
+  const canEditExpenses = hasPermission('edit_tour_expenses') || hasPermission('edit_tours');
+  const canEditMeals = hasPermission('edit_tour_meals') || hasPermission('edit_tours');
+  const canEditAllowances = hasPermission('edit_tour_allowances') || hasPermission('edit_tours');
+  const canEditShoppings = hasPermission('edit_tour_shoppings') || hasPermission('edit_tours');
+  const canEditSummary = hasPermission('edit_tour_summary') || hasPermission('edit_tours');
+  const canExportTour = hasPermission('export_tours');
+  const canDeleteTour = hasPermission('delete_tours');
+  const canUploadTourImages = hasPermission('upload_tour_images') || hasPermission('edit_tours');
+  const canDeleteTourImages = hasPermission('delete_tour_images') || hasPermission('edit_tours');
 
   // State for create mode (no tour ID)
   const [newTourData, setNewTourData] = useState<Partial<Tour>>({
@@ -203,6 +219,11 @@ const TourDetail = () => {
   });
 
   const handleInfoSave = (data: TourInput) => {
+    if ((isNewTour && !canCreateTour) || (!isNewTour && !canEditTourInfo)) {
+      toast.error('Bạn không có quyền lưu thông tin tour.');
+      return;
+    }
+
     if (isNewTour) {
       // For new tours, save to createMutation (totalDays calculated inside mutation)
       createMutation.mutate(data);
@@ -222,18 +243,30 @@ const TourDetail = () => {
   };
 
   const handleSummaryUpdate = (summary: TourSummary) => {
+    if (!canEditSummary) {
+      toast.error('Bạn không có quyền sửa tổng kết tour.');
+      return;
+    }
+
     if (id && !isNewTour) {
       updateMutation.mutate({ id, patch: { summary } });
     }
   };
 
   const handleDelete = () => {
+    if (!canDeleteTour) {
+      toast.error('Bạn không có quyền xóa tour.');
+      return;
+    }
+
     if (id && !isNewTour) {
       deleteMutation.mutate(id);
     }
   };
 
   const handleHeaderSave = () => {
+    if ((isNewTour && !canCreateTour) || (!isNewTour && !canEditTourInfo)) return;
+
     // Only Info tab needs header save button
     // Other tabs auto-save when adding/updating/deleting items
     if (activeTab === 'info') {
@@ -246,6 +279,11 @@ const TourDetail = () => {
   };
 
   const handleExportExcel = async () => {
+    if (!canExportTour) {
+      toast.error('Bạn không có quyền xuất Excel.');
+      return;
+    }
+
     if (!displayTour || isNewTour) {
       toast.error('Không thể xuất tour chưa được lưu');
       return;
@@ -284,17 +322,30 @@ const TourDetail = () => {
 
   if (isLoading && !isNewTour) {
     return (
-      <Layout>
+      <>
         <div className="space-y-6 animate-fade-in">
           <div className="h-8 w-48 bg-muted rounded animate-pulse" />
           <div className="h-[400px] bg-muted rounded animate-pulse" />
         </div>
-      </Layout>
+      </>
+    );
+  }
+
+  if (isNewTour && !canCreateTour) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="max-w-md rounded-lg border bg-card p-6 text-center shadow-sm">
+          <h1 className="text-xl font-semibold">Không có quyền tạo tour</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Tài khoản của bạn chưa được cấp quyền tạo tour mới.
+          </p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="animate-fade-in">
         {(isNewTour || tour) ? (
           <Tabs defaultValue="info" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -318,7 +369,7 @@ const TourDetail = () => {
                   </div>
 
                   <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
-                    {isNewTour && (
+                    {isNewTour && canCreateTour && (
                       <Button
                         variant="default"
                         size="sm"
@@ -330,7 +381,7 @@ const TourDetail = () => {
                         <span>Lưu tour</span>
                       </Button>
                     )}
-                    {!isNewTour && activeTab === 'info' && (
+                    {!isNewTour && activeTab === 'info' && canEditTourInfo && (
                       <Button
                         variant="default"
                         size="sm"
@@ -342,7 +393,7 @@ const TourDetail = () => {
                         <span className="hidden sm:inline">Lưu</span>
                       </Button>
                     )}
-                    {!isNewTour && (
+                    {!isNewTour && canExportTour && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -354,7 +405,7 @@ const TourDetail = () => {
                         <span className="hidden sm:inline">Xuất Excel</span>
                       </Button>
                     )}
-                    {!isNewTour && (
+                    {!isNewTour && canDeleteTour && (
                       <Button
                         variant="destructive"
                         size="sm"
@@ -393,6 +444,15 @@ const TourDetail = () => {
                       <span className="text-muted-foreground">Khách:</span>
                       <span className="font-semibold">{totalGuests}</span>
                     </div>
+                  </div>
+                )}
+
+                {!isNewTour && tour && (
+                  <div className="rounded-lg border bg-background/60 px-3 py-2">
+                    <SettlementActionsBar
+                      tour={tour}
+                      onShowHistory={() => setHistoryOpen(true)}
+                    />
                   </div>
                 )}
               </div>
@@ -517,6 +577,7 @@ const TourDetail = () => {
                 tourId={isNewTour ? undefined : id!}
                 destinations={displayTour?.destinations || []}
                 tour={displayTour}
+                readOnly={!canEditDestinations}
                 onChange={(dests) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, destinations: dests });
@@ -530,6 +591,7 @@ const TourDetail = () => {
                 tourId={isNewTour ? undefined : id!}
                 expenses={displayTour?.expenses || []}
                 tour={displayTour}
+                readOnly={!canEditExpenses}
                 onChange={(exps) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, expenses: exps });
@@ -558,6 +620,7 @@ const TourDetail = () => {
                 tourId={isNewTour ? undefined : id!}
                 meals={displayTour?.meals || []}
                 tour={displayTour}
+                readOnly={!canEditMeals}
                 onChange={(mls) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, meals: mls });
@@ -607,6 +670,7 @@ const TourDetail = () => {
                 tourId={isNewTour ? undefined : id!}
                 allowances={displayTour?.allowances || []}
                 tour={displayTour}
+                readOnly={!canEditAllowances}
                 onChange={(allows) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, allowances: allows });
@@ -633,6 +697,7 @@ const TourDetail = () => {
               )}
               <SummaryTab
                 tour={displayTour as Tour}
+                readOnly={!canEditSummary}
                 onSummaryUpdate={(summary) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, summary });
@@ -665,6 +730,7 @@ const TourDetail = () => {
                 tourId={isNewTour ? undefined : id!}
                 shoppings={displayTour?.shoppings || []}
                 tour={displayTour}
+                readOnly={!canEditShoppings}
                 onChange={(shops) => {
                   if (isNewTour) {
                     setNewTourData({ ...newTourData, shoppings: shops });
@@ -678,7 +744,14 @@ const TourDetail = () => {
                   Lưu tour trước để có thể upload hình ảnh.
                 </div>
               ) : (
-                tour && <TourImagesTab tourId={id!} tourCode={tour.tourCode} />
+                tour && (
+                  <TourImagesTab
+                    tourId={id!}
+                    tourCode={tour.tourCode}
+                    canUpload={canUploadTourImages}
+                    canDelete={canDeleteTourImages}
+                  />
+                )
               )}
             </TabsContent>
           </Tabs>
@@ -701,7 +774,11 @@ const TourDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
+
+      {!isNewTour && id && (
+        <SettlementHistoryPanel tourId={id} open={historyOpen} onOpenChange={setHistoryOpen} />
+      )}
+    </>
   );
 };
 

@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
@@ -15,6 +14,8 @@ import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Company, CompanyInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
+import { useAuth } from '@/contexts/AuthContext';
+import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
 
 const Companies = () => {
   const queryClient = useQueryClient();
@@ -26,6 +27,12 @@ const Companies = () => {
   const [contactFilter, setContactFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
   const [idFilter, setIdFilter] = useState('');
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canCreate = hasPermission('create_companies');
+  const canEdit = hasPermission('edit_companies');
+  const canDelete = hasPermission('delete_companies');
+  const canImport = hasPermission('import_companies');
+  const canExport = hasPermission('export_companies');
 
   const query: SearchQuery = {
     search,
@@ -102,10 +109,18 @@ const Companies = () => {
   });
 
   const handleCreate = async (data: CompanyInput) => {
+    if (!canCreate) {
+      toast.error('Bạn không có quyền tạo công ty');
+      return;
+    }
     await createMutation.mutateAsync(data);
   };
 
   const handleEdit = async (data: CompanyInput) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa công ty');
+      return;
+    }
     if (!editingCompany) return;
     await updateMutation.mutateAsync({
       id: editingCompany.id,
@@ -114,6 +129,9 @@ const Companies = () => {
   };
 
   const handleOpenDialog = (company?: Company) => {
+    if (company && !canEdit) return;
+    if (!company && !canCreate) return;
+    if (company && !ensureCanModifyOwnedEntity(company, user?.id, isAdmin)) return;
     setEditingCompany(company);
     setDialogOpen(true);
   };
@@ -124,12 +142,20 @@ const Companies = () => {
   };
 
   const handleDeleteAll = async () => {
+    if (!canDelete) {
+      toast.error('Bạn không có quyền xóa công ty');
+      return;
+    }
     if (confirm('Are you sure you want to delete ALL companies? This action cannot be undone.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
 
   const handleBulkImport = async (items: CompanyInput[]) => {
+    if (!canImport) {
+      toast.error('Bạn không có quyền import công ty');
+      return;
+    }
     await bulkImportMutation.mutateAsync(items);
   };
 
@@ -148,6 +174,10 @@ const Companies = () => {
   };
 
   const handleExportTxt = () => {
+    if (!canExport) {
+      toast.error('Bạn không có quyền export công ty');
+      return;
+    }
     if (filteredCompanies.length === 0) {
       toast.error('No companies to export');
       return;
@@ -186,6 +216,10 @@ const Companies = () => {
   }, [companies, nameFilter, contactFilter, phoneFilter, idFilter]);
 
   const handleSetDefaultCompany = async (company: Company, checked: boolean) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa công ty');
+      return;
+    }
     try {
       await updateMutation.mutateAsync({
         id: company.id,
@@ -199,7 +233,7 @@ const Companies = () => {
   const { classes: headerClasses } = useHeaderMode('companies.headerMode');
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -208,22 +242,30 @@ const Companies = () => {
               <p className="text-muted-foreground">Manage partner travel companies</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button onClick={handleExportTxt} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" />
-                Export TXT
-              </Button>
-              <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
-                <Upload className="h-4 w-4" />
-                Import
-              </Button>
-              <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
-                <Trash className="h-4 w-4" />
-                Delete All
-              </Button>
-              <Button onClick={() => handleOpenDialog()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Company
-              </Button>
+              {canExport && (
+                <Button onClick={handleExportTxt} variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Export TXT
+                </Button>
+              )}
+              {canImport && (
+                <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              )}
+              {canDelete && (
+                <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
+                  <Trash className="h-4 w-4" />
+                  Delete All
+                </Button>
+              )}
+              {canCreate && (
+                <Button onClick={() => handleOpenDialog()} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Company
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -307,7 +349,7 @@ const Companies = () => {
                       <TableRow
                         key={company.id}
                         className="cursor-pointer hover:bg-accent/50"
-                        onClick={() => handleOpenDialog(company)}
+                        onClick={() => canEdit && handleOpenDialog(company)}
                       >
                         <TableCell className="font-mono text-muted-foreground">{company.id}</TableCell>
                         <TableCell className="font-medium">{company.name}</TableCell>
@@ -317,40 +359,38 @@ const Companies = () => {
                           <Checkbox
                             checked={company.isDefault}
                             onCheckedChange={(checked) => handleSetDefaultCompany(company, checked === true)}
+                            disabled={!canEdit}
                             aria-label={`Set ${company.name} as default company`}
                           />
                         </TableCell>
                         <TableCell>{company.email || '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenDialog(company)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => duplicateMutation.mutate(company.id)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm('Are you sure you want to delete this company?')) {
-                                  deleteMutation.mutate(company.id);
-                                }
-                              }}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canEdit && (
+                              <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(company)} className="h-8 w-8 p-0">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canCreate && (
+                              <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(company.id)} className="h-8 w-8 p-0">
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (!ensureCanModifyOwnedEntity(company, user?.id, isAdmin)) return;
+                                  if (confirm('Are you sure you want to delete this company?')) {
+                                    deleteMutation.mutate(company.id);
+                                  }
+                                }}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -365,7 +405,7 @@ const Companies = () => {
                   <Card
                     key={company.id}
                     className="p-4 cursor-pointer hover:bg-accent/50"
-                    onClick={() => handleOpenDialog(company)}
+                    onClick={() => canEdit && handleOpenDialog(company)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
@@ -383,34 +423,31 @@ const Companies = () => {
                         </p>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDialog(company)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => duplicateMutation.mutate(company.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this company?')) {
-                              deleteMutation.mutate(company.id);
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(company)} className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canCreate && (
+                          <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(company.id)} className="h-8 w-8 p-0">
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (!ensureCanModifyOwnedEntity(company, user?.id, isAdmin)) return;
+                              if (confirm('Are you sure you want to delete this company?')) {
+                                deleteMutation.mutate(company.id);
+                              }
+                            }}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-2 text-sm">
@@ -449,7 +486,7 @@ ABC Travel,John Doe,123-456-7890,john@abc.com
 XYZ Tours,Jane Smith,098-765-4321"
         />
       </div>
-    </Layout>
+    </>
   );
 };
 

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Layout } from '@/components/Layout';
 import { store } from '@/lib/datastore';
 import { getSupabaseClient } from '@/lib/datastore/supabase-client';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
@@ -15,11 +14,12 @@ import {
   calculateTipTotal,
   calculateTourDateDiff,
   defaultTourStatsColumnVisibility,
+  getTourNationalities,
   getTourMonth,
   isCtpDetailedExpense,
   normalizeCompany,
   normalizeGuide,
-  normalizeNationality,
+  normalizeLandOperator,
   normalizeStatKey,
   type GroupStatsRow,
   type StatsTotals,
@@ -58,6 +58,7 @@ const Statistics = () => {
 
   const [selectedGuide, setSelectedGuide] = useState('all');
   const [selectedCompany, setSelectedCompany] = useState('all');
+  const [selectedLandOperator, setSelectedLandOperator] = useState('all');
   const [selectedNationality, setSelectedNationality] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [hasAppliedDefaultFilters, setHasAppliedDefaultFilters] = useState(false);
@@ -74,6 +75,9 @@ const Statistics = () => {
         queryClient.invalidateQueries({ queryKey: ['statistics', 'tours'] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tours' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['statistics', 'tours'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tour_nationalities' }, () => {
         queryClient.invalidateQueries({ queryKey: ['statistics', 'tours'] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'detailed_expenses' }, () => {
@@ -111,11 +115,21 @@ const Statistics = () => {
     return Array.from(m.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [tours]);
 
+  const availableLandOperators = useMemo(() => {
+    const m = new Map<string, string>();
+    tours.forEach((t) => {
+      const lo = normalizeLandOperator(t);
+      m.set(lo.id, lo.name);
+    });
+    return Array.from(m.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tours]);
+
   const availableNationalities = useMemo(() => {
     const m = new Map<string, string>();
     tours.forEach((t) => {
-      const n = normalizeNationality(t);
-      m.set(n.id, n.name);
+      getTourNationalities(t).forEach((n) => {
+        m.set(n.id, n.name);
+      });
     });
     return Array.from(m.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [tours]);
@@ -143,16 +157,18 @@ const Statistics = () => {
     return tours.filter((t) => {
       const g = normalizeGuide(t);
       const c = normalizeCompany(t);
-      const n = normalizeNationality(t);
+      const lo = normalizeLandOperator(t);
+      const nationalityIds = new Set(getTourNationalities(t).map((n) => n.id));
       const m = getTourMonth(t);
       return (
         (selectedGuide === 'all' || g.id === selectedGuide) &&
         (selectedCompany === 'all' || c.id === selectedCompany) &&
-        (selectedNationality === 'all' || n.id === selectedNationality) &&
+        (selectedLandOperator === 'all' || lo.id === selectedLandOperator) &&
+        (selectedNationality === 'all' || nationalityIds.has(selectedNationality)) &&
         (selectedMonth === 'all' || m === selectedMonth)
       );
     });
-  }, [tours, selectedGuide, selectedCompany, selectedNationality, selectedMonth]);
+  }, [tours, selectedGuide, selectedCompany, selectedLandOperator, selectedNationality, selectedMonth]);
 
   const totals = useMemo<StatsTotals>(() => {
     return filteredTours.reduce(
@@ -206,7 +222,7 @@ const Statistics = () => {
   }, [tours]);
 
   // Build group stats with a shared shape so tables can reuse one component.
-  const buildGroupStats = (key: 'guide' | 'company' | 'nationality' | 'month'): GroupStatsRow[] => {
+  const buildGroupStats = (key: 'guide' | 'company' | 'landOperator' | 'nationality' | 'month'): GroupStatsRow[] => {
     const map = new Map<string, GroupStatsRow>();
     filteredTours.forEach((tour) => {
       const allowances = calculateAllowanceTotal(tour);
@@ -215,6 +231,40 @@ const Statistics = () => {
       const shoppings = calculateShoppingTotal(tour);
       const ctpOnly = calculateCtpOnlyTotal(tour, ctpExpenseNames);
       const finalTotal = tour.summary?.finalTotal ?? 0;
+
+      if (key === 'nationality') {
+        const nationalities = getTourNationalities(tour);
+        const paxTotal = nationalities.reduce((sum, n) => sum + n.paxCount, 0);
+        nationalities.forEach((n) => {
+          const ratio = paxTotal > 0 ? n.paxCount / paxTotal : 1 / Math.max(nationalities.length, 1);
+          if (!map.has(n.id)) {
+            map.set(n.id, {
+              key: n.id,
+              label: n.name,
+              totalTours: 0,
+              totalAllowances: 0,
+              totalCtpOnly: 0,
+              totalIncomeWithoutCarHotel: 0,
+              totalTipFromGuests: 0,
+              totalCompanyTip: 0,
+              totalShoppings: 0,
+              totalShopTipAllow: 0,
+              finalTotal: 0,
+            });
+          }
+          const entry = map.get(n.id)!;
+          entry.totalTours += 1;
+          entry.totalAllowances += allowances * ratio;
+          entry.totalCtpOnly += ctpOnly * ratio;
+          entry.totalIncomeWithoutCarHotel += (tipFromGuests + shoppings + ctpOnly) * ratio;
+          entry.totalTipFromGuests += tipFromGuests * ratio;
+          entry.totalCompanyTip += companyTip * ratio;
+          entry.totalShoppings += shoppings * ratio;
+          entry.totalShopTipAllow += (allowances + tipFromGuests + companyTip + shoppings) * ratio;
+          entry.finalTotal += finalTotal * ratio;
+        });
+        return;
+      }
 
       let k: string;
       let label: string;
@@ -226,10 +276,10 @@ const Statistics = () => {
         const c = normalizeCompany(tour);
         k = c.id;
         label = c.name;
-      } else if (key === 'nationality') {
-        const n = normalizeNationality(tour);
-        k = n.id;
-        label = n.name;
+      } else if (key === 'landOperator') {
+        const lo = normalizeLandOperator(tour);
+        k = lo.id;
+        label = lo.name;
       } else {
         k = getTourMonth(tour);
         label = k;
@@ -277,8 +327,53 @@ const Statistics = () => {
 
   const guideStats = useMemo(() => buildGroupStats('guide'), [filteredTours, ctpExpenseNames]);
   const companyStats = useMemo(() => buildGroupStats('company'), [filteredTours, ctpExpenseNames]);
+  const landOperatorStats = useMemo(() => buildGroupStats('landOperator'), [filteredTours, ctpExpenseNames]);
   const nationalityStats = useMemo(() => buildGroupStats('nationality'), [filteredTours, ctpExpenseNames]);
   const monthlyStats = useMemo(() => buildGroupStats('month'), [filteredTours, ctpExpenseNames]);
+
+  const companyLandOperatorStats = useMemo<GroupStatsRow[]>(() => {
+    const map = new Map<string, GroupStatsRow>();
+    filteredTours.forEach((tour) => {
+      const allowances = calculateAllowanceTotal(tour);
+      const tipFromGuests = calculateTipTotal(tour);
+      const companyTip = calculateCompanyTip(tour);
+      const shoppings = calculateShoppingTotal(tour);
+      const ctpOnly = calculateCtpOnlyTotal(tour, ctpExpenseNames);
+      const finalTotal = tour.summary?.finalTotal ?? 0;
+
+      const c = normalizeCompany(tour);
+      const lo = normalizeLandOperator(tour);
+      const k = `${c.id}__${lo.id}`;
+      const label = `${c.name} → ${lo.name}`;
+
+      if (!map.has(k)) {
+        map.set(k, {
+          key: k,
+          label,
+          totalTours: 0,
+          totalAllowances: 0,
+          totalCtpOnly: 0,
+          totalIncomeWithoutCarHotel: 0,
+          totalTipFromGuests: 0,
+          totalCompanyTip: 0,
+          totalShoppings: 0,
+          totalShopTipAllow: 0,
+          finalTotal: 0,
+        });
+      }
+      const entry = map.get(k)!;
+      entry.totalTours += 1;
+      entry.totalAllowances += allowances;
+      entry.totalCtpOnly += ctpOnly;
+      entry.totalIncomeWithoutCarHotel += tipFromGuests + shoppings + ctpOnly;
+      entry.totalTipFromGuests += tipFromGuests;
+      entry.totalCompanyTip += companyTip;
+      entry.totalShoppings += shoppings;
+      entry.totalShopTipAllow += allowances + tipFromGuests + companyTip + shoppings;
+      entry.finalTotal += finalTotal;
+    });
+    return Array.from(map.values()).sort((a, b) => b.finalTotal - a.finalTotal);
+  }, [filteredTours, ctpExpenseNames]);
 
   const tourStats = useMemo<TourStatsRow[]>(() => {
     return filteredTours
@@ -296,6 +391,7 @@ const Statistics = () => {
           clientName: tour.clientName,
           guideName: normalizeGuide(tour).name,
           companyName: normalizeCompany(tour).name,
+          landOperatorName: normalizeLandOperator(tour).name,
           totalAllowances: allowances,
           totalCtpOnly: ctpOnly,
           totalTipFromGuests: tipFromGuests,
@@ -318,6 +414,7 @@ const Statistics = () => {
   const resetFilters = () => {
     setSelectedGuide('all');
     setSelectedCompany('all');
+    setSelectedLandOperator('all');
     setSelectedNationality('all');
     setSelectedMonth('all');
   };
@@ -327,14 +424,14 @@ const Statistics = () => {
 
   if (!isUnlocked) {
     return (
-      <Layout>
+      <>
         <PinGate onUnlock={() => setIsUnlocked(true)} />
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6 md:space-y-8">
         {/* Page heading */}
         <div className={headerClasses}>
@@ -350,14 +447,17 @@ const Statistics = () => {
         <StatsFilterBar
           guides={availableGuides}
           companies={availableCompanies}
+          landOperators={availableLandOperators}
           nationalities={availableNationalities}
           months={availableMonths}
           selectedGuide={selectedGuide}
           selectedCompany={selectedCompany}
+          selectedLandOperator={selectedLandOperator}
           selectedNationality={selectedNationality}
           selectedMonth={selectedMonth}
           onGuideChange={setSelectedGuide}
           onCompanyChange={setSelectedCompany}
+          onLandOperatorChange={setSelectedLandOperator}
           onNationalityChange={setSelectedNationality}
           onMonthChange={setSelectedMonth}
           onReset={resetFilters}
@@ -396,11 +496,13 @@ const Statistics = () => {
           isLoading={isLoading}
         />
         <GroupStatsTable title="Thống kê theo HDV" firstColumnLabel="Hướng dẫn viên" rows={guideStats} isLoading={isLoading} />
-        <GroupStatsTable title="Thống kê theo công ty" firstColumnLabel="Công ty" rows={companyStats} isLoading={isLoading} />
+        <GroupStatsTable title="Thống kê theo công ty (bán tour)" firstColumnLabel="Công ty" rows={companyStats} isLoading={isLoading} />
+        <GroupStatsTable title="Thống kê theo công ty land tour" firstColumnLabel="Land operator" rows={landOperatorStats} isLoading={isLoading} />
+        <GroupStatsTable title="Thống kê theo cặp Công ty mẹ × Land operator" firstColumnLabel="Công ty mẹ → Land" rows={companyLandOperatorStats} isLoading={isLoading} />
         <GroupStatsTable title="Thống kê theo tháng" firstColumnLabel="Tháng" rows={monthlyStats} isLoading={isLoading} />
         <GroupStatsTable title="Thống kê theo quốc tịch" firstColumnLabel="Quốc tịch" rows={nationalityStats} isLoading={isLoading} />
       </div>
-    </Layout>
+    </>
   );
 };
 

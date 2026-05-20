@@ -83,3 +83,43 @@ export function CanDelete({ children, fallback }: { children: ReactNode; fallbac
     </PermissionGuard>
   );
 }
+
+export function CanSubmitSettlement({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGuard permission="submit_settlement" fallback={fallback}>
+      {children}
+    </PermissionGuard>
+  );
+}
+
+export function CanReviewSettlement({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGuard permission="review_settlement_line" fallback={fallback}>
+      {children}
+    </PermissionGuard>
+  );
+}
+
+export function CanApproveSettlement({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGuard permission="approve_settlement" fallback={fallback}>
+      {children}
+    </PermissionGuard>
+  );
+}
+
+export function CanReopenSettlement({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGuard permission="reopen_settlement" fallback={fallback}>
+      {children}
+    </PermissionGuard>
+  );
+}
+
+export function CanMarkPayment({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGuard permission="mark_tour_paid" fallback={fallback}>
+      {children}
+    </PermissionGuard>
+  );
+}

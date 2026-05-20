@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +13,8 @@ import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Nationality, NationalityInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
+import { useAuth } from '@/contexts/AuthContext';
+import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
 
 const Nationalities = () => {
   const queryClient = useQueryClient();
@@ -24,6 +25,12 @@ const Nationalities = () => {
   const [nameFilter, setNameFilter] = useState('');
   const [iso2Filter, setIso2Filter] = useState('');
   const [idFilter, setIdFilter] = useState('');
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canCreate = hasPermission('create_nationalities');
+  const canEdit = hasPermission('edit_nationalities');
+  const canDelete = hasPermission('delete_nationalities');
+  const canImport = hasPermission('import_nationalities');
+  const canExport = hasPermission('export_nationalities');
 
   const query: SearchQuery = {
     search,
@@ -97,10 +104,18 @@ const Nationalities = () => {
   });
 
   const handleCreate = async (data: NationalityInput) => {
+    if (!canCreate) {
+      toast.error('Bạn không có quyền tạo quốc tịch');
+      return;
+    }
     await createMutation.mutateAsync(data);
   };
 
   const handleEdit = async (data: NationalityInput) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa quốc tịch');
+      return;
+    }
     if (!editingNationality) return;
     await updateMutation.mutateAsync({
       id: editingNationality.id,
@@ -109,6 +124,9 @@ const Nationalities = () => {
   };
 
   const handleOpenDialog = (nationality?: Nationality) => {
+    if (nationality && !canEdit) return;
+    if (!nationality && !canCreate) return;
+    if (nationality && !ensureCanModifyOwnedEntity(nationality, user?.id, isAdmin)) return;
     setEditingNationality(nationality);
     setDialogOpen(true);
   };
@@ -119,16 +137,28 @@ const Nationalities = () => {
   };
 
   const handleDeleteAll = async () => {
+    if (!canDelete) {
+      toast.error('Bạn không có quyền xóa quốc tịch');
+      return;
+    }
     if (confirm('Are you sure you want to delete ALL nationalities? This action cannot be undone.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
 
   const handleBulkImport = async (items: { name: string; iso2?: string; emoji?: string }[]) => {
+    if (!canImport) {
+      toast.error('Bạn không có quyền import quốc tịch');
+      return;
+    }
     await bulkImportMutation.mutateAsync(items);
   };
 
   const handleExportTxt = () => {
+    if (!canExport) {
+      toast.error('Bạn không có quyền export quốc tịch');
+      return;
+    }
     if (filteredNationalities.length === 0) {
       toast.error('No nationalities to export');
       return;
@@ -169,7 +199,7 @@ const Nationalities = () => {
   const { classes: headerClasses } = useHeaderMode('nationalities.headerMode');
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -178,34 +208,30 @@ const Nationalities = () => {
               <p className="text-muted-foreground">Manage client nationalities</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button
-                onClick={handleExportTxt}
-                variant="outline"
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export TXT
-              </Button>
-              <Button
-                onClick={() => setImportDialogOpen(true)}
-                variant="outline"
-                className="gap-2"
-              >
-                <Upload className="h-4 w-4" />
-                Import
-              </Button>
-              <Button
-                onClick={handleDeleteAll}
-                variant="outline"
-                className="gap-2 text-destructive hover:text-destructive"
-              >
-                <Trash className="h-4 w-4" />
-                Delete All
-              </Button>
-              <Button onClick={() => handleOpenDialog()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Nationality
-              </Button>
+              {canExport && (
+                <Button onClick={handleExportTxt} variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Export TXT
+                </Button>
+              )}
+              {canImport && (
+                <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              )}
+              {canDelete && (
+                <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
+                  <Trash className="h-4 w-4" />
+                  Delete All
+                </Button>
+              )}
+              {canCreate && (
+                <Button onClick={() => handleOpenDialog()} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Nationality
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -274,7 +300,7 @@ const Nationalities = () => {
                       <TableRow
                         key={nationality.id}
                         className="cursor-pointer hover:bg-accent/50"
-                        onClick={() => handleOpenDialog(nationality)}
+                        onClick={() => canEdit && handleOpenDialog(nationality)}
                       >
                         <TableCell className="font-mono text-muted-foreground">{nationality.id}</TableCell>
                         <TableCell className="font-medium">{nationality.name}</TableCell>
@@ -284,34 +310,31 @@ const Nationalities = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenDialog(nationality)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => duplicateMutation.mutate(nationality.id)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm('Are you sure you want to delete this nationality?')) {
-                                  deleteMutation.mutate(nationality.id);
-                                }
-                              }}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canEdit && (
+                              <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(nationality)} className="h-8 w-8 p-0">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canCreate && (
+                              <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(nationality.id)} className="h-8 w-8 p-0">
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (!ensureCanModifyOwnedEntity(nationality, user?.id, isAdmin)) return;
+                                  if (confirm('Are you sure you want to delete this nationality?')) {
+                                    deleteMutation.mutate(nationality.id);
+                                  }
+                                }}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -326,7 +349,7 @@ const Nationalities = () => {
                   <Card
                     key={nationality.id}
                     className="p-4 cursor-pointer hover:bg-accent/50"
-                    onClick={() => handleOpenDialog(nationality)}
+                    onClick={() => canEdit && handleOpenDialog(nationality)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-3 flex-1">
@@ -342,34 +365,31 @@ const Nationalities = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDialog(nationality)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => duplicateMutation.mutate(nationality.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this nationality?')) {
-                              deleteMutation.mutate(nationality.id);
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(nationality)} className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canCreate && (
+                          <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(nationality.id)} className="h-8 w-8 p-0">
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (!ensureCanModifyOwnedEntity(nationality, user?.id, isAdmin)) return;
+                              if (confirm('Are you sure you want to delete this nationality?')) {
+                                deleteMutation.mutate(nationality.id);
+                              }
+                            }}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -410,7 +430,7 @@ Germany,DE"
           }}
         />
       </div>
-    </Layout>
+    </>
   );
 };
 

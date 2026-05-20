@@ -1,5 +1,4 @@
-import { Layout } from '@/components/Layout';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,8 @@ import {
   FileDown,
   Copy,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown,
   ChevronUp,
   Filter,
@@ -73,7 +74,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
@@ -90,6 +91,10 @@ import {
   TOUR_REFERENCE_GC_TIME,
   TOUR_REFERENCE_STALE_TIME,
 } from '@/lib/query-cache';
+import { useAuth } from '@/contexts/AuthContext';
+import { PaymentStatusBadge } from '@/components/tours/PaymentStatusBadge';
+import { SettlementStatusBadge } from '@/components/tours/SettlementStatusBadge';
+import { isTourPaymentEligible } from '@/lib/payment-utils';
 
 
 // Truncate helper with ellipsis included in `max` length
@@ -109,6 +114,27 @@ const getTourDays = (tour: Tour) =>
   tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0);
 
 const getTourGuests = (tour: Tour) => tour.totalGuests || ((tour.adults || 0) + (tour.children || 0));
+
+const getTourNationalityIds = (tour: Tour) => {
+  const ids = new Set<string>();
+  if (tour.clientNationalityRef?.id) ids.add(tour.clientNationalityRef.id);
+  (tour.clientNationalities || []).forEach((nationality) => {
+    if (nationality.id) ids.add(nationality.id);
+  });
+  return ids;
+};
+
+const formatTourNationalities = (tour: Tour) => {
+  const nationalities = tour.clientNationalities?.length
+    ? tour.clientNationalities
+    : tour.clientNationalityRef?.id
+      ? [{ ...tour.clientNationalityRef, paxCount: getTourGuests(tour) }]
+      : [];
+
+  return nationalities
+    .map((nationality) => `${nationality.nameAtBooking}${nationality.paxCount ? ` (${nationality.paxCount}p)` : ''}`)
+    .join(', ');
+};
 
 const getAllowanceTotal = (tour: Tour) =>
   (tour.allowances || []).reduce((sum, allowance) => sum + (allowance.price * (allowance.quantity || 1)), 0);
@@ -147,17 +173,26 @@ const getTourWarningInfo = (tour: Tour) => {
 };
 
 type TourTableColumnKey =
+  | 'stt'
   | 'tourCode'
   | 'date'
   | 'days'
   | 'guests'
   | 'company'
+  | 'landOperator'
+  | 'guide'
+  | 'nationality'
+  | 'clientName'
+  | 'clientPhone'
+  | 'driverName'
   | 'ctp'
   | 'total'
+  | 'settlement'
+  | 'payment'
   | 'warning'
   | 'actions';
 
-type TourTableFilterKey = Exclude<TourTableColumnKey, 'actions'>;
+type TourTableFilterKey = Exclude<TourTableColumnKey, 'stt' | 'actions' | 'payment' | 'settlement'>;
 
 type TourTableFilters = Record<TourTableFilterKey, string> & {
   warning: 'all' | 'warning' | 'ok';
@@ -166,22 +201,32 @@ type TourTableFilters = Record<TourTableFilterKey, string> & {
 interface TourTableColumn {
   key: TourTableColumnKey;
   label: string;
+  width: number;
   headerClassName?: string;
   cellClassName?: string;
-  filterType: 'text' | 'date' | 'company' | 'warning' | 'none';
+  filterType: 'text' | 'date' | 'company' | 'landOperator' | 'warning' | 'none';
   filterPlaceholder?: string;
 }
 
 const TOUR_TABLE_COLUMNS: TourTableColumn[] = [
-  { key: 'tourCode', label: 'Mã tour', headerClassName: 'w-[160px] min-w-[160px]', cellClassName: 'max-w-[160px] font-semibold', filterType: 'text', filterPlaceholder: 'Lọc mã' },
-  { key: 'date', label: 'Ngày', headerClassName: 'w-[190px] min-w-[190px]', cellClassName: 'whitespace-nowrap', filterType: 'date' },
-  { key: 'days', label: 'Ngày đi', headerClassName: 'w-[100px] min-w-[100px]', cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số ngày' },
-  { key: 'guests', label: 'Khách', headerClassName: 'w-[100px] min-w-[100px]', cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số khách' },
-  { key: 'company', label: 'Công ty', headerClassName: 'min-w-[220px]', cellClassName: 'max-w-[240px]', filterType: 'company' },
-  { key: 'ctp', label: 'CTP', headerClassName: 'w-[130px] min-w-[130px] text-right', cellClassName: 'whitespace-nowrap text-right font-medium', filterType: 'text', filterPlaceholder: 'Lọc CTP' },
-  { key: 'total', label: 'Tổng', headerClassName: 'w-[130px] min-w-[130px] text-right', cellClassName: 'whitespace-nowrap text-right font-semibold text-primary', filterType: 'text', filterPlaceholder: 'Lọc tổng' },
-  { key: 'warning', label: 'Cờ cảnh báo', headerClassName: 'w-[150px] min-w-[150px]', cellClassName: 'whitespace-nowrap', filterType: 'warning' },
-  { key: 'actions', label: 'Hành động', headerClassName: 'w-[130px] min-w-[130px] text-right', filterType: 'none' },
+  { key: 'stt', label: 'STT', width: 52, headerClassName: 'text-center', cellClassName: 'text-center text-muted-foreground tabular-nums', filterType: 'none' },
+  { key: 'tourCode', label: 'Mã tour', width: 96, cellClassName: 'font-semibold', filterType: 'text', filterPlaceholder: 'Lọc mã' },
+  { key: 'date', label: 'Ngày', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'date' },
+  { key: 'days', label: 'Ngày đi', width: 70, cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số ngày' },
+  { key: 'guests', label: 'Khách', width: 72, cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số khách' },
+  { key: 'company', label: 'Công ty', width: 136, filterType: 'company' },
+  { key: 'landOperator', label: 'Land tour', width: 128, filterType: 'landOperator' },
+  { key: 'guide', label: 'HDV', width: 116, filterType: 'text', filterPlaceholder: 'Lọc HDV' },
+  { key: 'nationality', label: 'Quốc tịch', width: 136, filterType: 'text', filterPlaceholder: 'Lọc quốc tịch' },
+  { key: 'clientName', label: 'Khách hàng', width: 126, filterType: 'text', filterPlaceholder: 'Lọc khách' },
+  { key: 'clientPhone', label: 'SĐT khách', width: 110, filterType: 'text', filterPlaceholder: 'Lọc SĐT' },
+  { key: 'driverName', label: 'Tài xế', width: 110, filterType: 'text', filterPlaceholder: 'Lọc tài xế' },
+  { key: 'ctp', label: 'CTP', width: 92, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-medium', filterType: 'text', filterPlaceholder: 'Lọc CTP' },
+  { key: 'total', label: 'Tổng', width: 102, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-semibold text-primary', filterType: 'text', filterPlaceholder: 'Lọc tổng' },
+  { key: 'settlement', label: 'Quyết toán', width: 116, cellClassName: 'whitespace-nowrap', filterType: 'none' },
+  { key: 'payment', label: 'Thanh toán', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'none' },
+  { key: 'warning', label: 'Cờ cảnh báo', width: 108, cellClassName: 'whitespace-nowrap', filterType: 'warning' },
+  { key: 'actions', label: 'Hành động', width: 98, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right', filterType: 'none' },
 ];
 
 const TOUR_TABLE_COLUMN_KEYS = TOUR_TABLE_COLUMNS.map(column => column.key);
@@ -198,6 +243,12 @@ const createDefaultTourTableFilters = (): TourTableFilters => ({
   days: '',
   guests: '',
   company: '',
+  landOperator: '',
+  guide: '',
+  nationality: '',
+  clientName: '',
+  clientPhone: '',
+  driverName: '',
   ctp: '',
   total: '',
   warning: 'all',
@@ -231,6 +282,12 @@ const loadTourTableFilters = () => {
       days: parsed.days || '',
       guests: parsed.guests || '',
       company: parsed.company || '',
+      landOperator: parsed.landOperator || '',
+      guide: parsed.guide || '',
+      nationality: parsed.nationality || '',
+      clientName: parsed.clientName || '',
+      clientPhone: parsed.clientPhone || '',
+      driverName: parsed.driverName || '',
       ctp: parsed.ctp || '',
       total: parsed.total || '',
       warning: parsed.warning === 'warning' || parsed.warning === 'ok' ? parsed.warning : 'all',
@@ -319,6 +376,14 @@ const Tours = () => {
     const saved = localStorage.getItem('tours.nationalityFilter');
     return saved || 'all';
   });
+  const [settlementStatusFilter, setSettlementStatusFilter] = useState<string>(() => {
+    const saved = localStorage.getItem('tours.settlementStatusFilter');
+    return saved || 'all';
+  });
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>(() => {
+    const saved = localStorage.getItem('tours.paymentStatusFilter');
+    return saved || 'all';
+  });
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const saved = localStorage.getItem('tours.selectedMonth');
     return saved || 'all';
@@ -341,6 +406,10 @@ const Tours = () => {
   const [tableFilters, setTableFilters] = useState<TourTableFilters>(loadTourTableFilters);
   const [tableDateFilterOpen, setTableDateFilterOpen] = useState(false);
   const [tableCompanyFilterOpen, setTableCompanyFilterOpen] = useState(false);
+  const [tableLandOperatorFilterOpen, setTableLandOperatorFilterOpen] = useState(false);
+  const tourTableTopScrollRef = useRef<HTMLDivElement>(null);
+  const tourTableBottomScrollRef = useRef<HTMLDivElement>(null);
+  const syncingTourTableScrollRef = useRef(false);
   const [topCompanyFilterOpen, setTopCompanyFilterOpen] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(() => {
     const saved = localStorage.getItem('tours.filtersExpanded');
@@ -350,9 +419,21 @@ const Tours = () => {
     const saved = localStorage.getItem('tours.searchExpanded');
     return saved !== null ? JSON.parse(saved) : false;
   });
+  const [topControlsExpanded, setTopControlsExpanded] = useState(() => {
+    const saved = localStorage.getItem('tours.topControlsExpanded');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   // Pagination disabled; show all results
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+  const canCreateTours = hasPermission('create_tours');
+  const canDeleteTours = hasPermission('delete_tours');
+  const canDuplicateTours = hasPermission('duplicate_tours');
+  const canExportTours = hasPermission('export_tours');
+  const canImportTours = hasPermission('import_tours');
+  const canBackupData = hasPermission('backup_data');
+  const canDownloadAllTourImages = hasPermission('download_all_tour_images');
 
   // Save filter states to localStorage
   useEffect(() => { localStorage.setItem('tours.search.code', searchCode); }, [searchCode]);
@@ -393,6 +474,10 @@ const Tours = () => {
     localStorage.setItem('tours.searchExpanded', JSON.stringify(searchExpanded));
   }, [searchExpanded]);
 
+  useEffect(() => {
+    localStorage.setItem('tours.topControlsExpanded', JSON.stringify(topControlsExpanded));
+  }, [topControlsExpanded]);
+
   const baseTourQuery = useMemo((): TourQuery => {
     const query: TourQuery = {};
     const code = searchCode.trim();
@@ -418,6 +503,14 @@ const Tours = () => {
       query.nationalityId = nationalityFilter;
     }
 
+    if (settlementStatusFilter !== 'all') {
+      query.settlementStatus = settlementStatusFilter as TourQuery['settlementStatus'];
+    }
+
+    if (paymentStatusFilter !== 'all') {
+      query.paymentStatus = paymentStatusFilter as TourQuery['paymentStatus'];
+    }
+
     // Month and Year filter (only apply if no date range is selected)
     if (!dateRange?.from && !dateRange?.to && selectedMonth !== 'all' && selectedYear !== 'all') {
       const year = Number(selectedYear);
@@ -436,7 +529,7 @@ const Tours = () => {
     query.sortOrder = order as 'asc' | 'desc';
 
     return query;
-  }, [searchCode, dateRange, searchCompany, nationalityFilter, selectedMonth, selectedYear, sortBy]);
+  }, [searchCode, dateRange, searchCompany, nationalityFilter, settlementStatusFilter, paymentStatusFilter, selectedMonth, selectedYear, sortBy]);
 
   // Disable pagination entirely: always fetch ALL matching tours
 
@@ -468,6 +561,10 @@ const Tours = () => {
     () => TOUR_TABLE_COLUMNS.filter(column => tableColumnVisibility[column.key]),
     [tableColumnVisibility]
   );
+  const tourTableWidth = useMemo(
+    () => visibleTourTableColumns.reduce((sum, column) => sum + column.width, 0),
+    [visibleTourTableColumns]
+  );
 
   const tableCompanyOptions = useMemo(() => {
     const companies = new Set<string>();
@@ -475,11 +572,25 @@ const Tours = () => {
       const companyName = tour.companyRef?.nameAtBooking?.trim();
       if (companyName) companies.add(companyName);
     });
-    if (tableFilters.company.trim()) {
-      companies.add(tableFilters.company.trim());
+    const companyFilter = tableFilters.company?.trim();
+    if (companyFilter) {
+      companies.add(companyFilter);
     }
     return Array.from(companies).sort((a, b) => a.localeCompare(b));
   }, [tableFilters.company, tours]);
+
+  const tableLandOperatorOptions = useMemo(() => {
+    const landOperators = new Set<string>();
+    tours.forEach((tour) => {
+      const name = tour.landOperatorRef?.nameAtBooking?.trim();
+      if (name) landOperators.add(name);
+    });
+    const landOperatorFilter = tableFilters.landOperator?.trim();
+    if (landOperatorFilter) {
+      landOperators.add(landOperatorFilter);
+    }
+    return Array.from(landOperators).sort((a, b) => a.localeCompare(b));
+  }, [tableFilters.landOperator, tours]);
 
   const topCompanyOptions = useMemo(() => {
     const companyNames = new Set<string>();
@@ -517,6 +628,12 @@ const Tours = () => {
         includesTableFilter(`${totalDays} ${totalDays} ngày ${totalDays}d`, tableFilters.days) &&
         includesTableFilter(`${totalGuests} ${totalGuests}p ${tour.adults || 0} ${tour.children || 0}`, tableFilters.guests) &&
         includesTableFilter(tour.companyRef?.nameAtBooking, tableFilters.company) &&
+        includesTableFilter(tour.landOperatorRef?.nameAtBooking, tableFilters.landOperator) &&
+        includesTableFilter(tour.guideRef?.nameAtBooking, tableFilters.guide) &&
+        includesTableFilter(formatTourNationalities(tour), tableFilters.nationality) &&
+        includesTableFilter(tour.clientName, tableFilters.clientName) &&
+        includesTableFilter(tour.clientPhone, tableFilters.clientPhone) &&
+        includesTableFilter(tour.driverName, tableFilters.driverName) &&
         includesTableFilter(`${allowanceTotal} ${formatCurrency(allowanceTotal)}`, tableFilters.ctp) &&
         includesTableFilter(`${finalTotal} ${formatCurrency(finalTotal)}`, tableFilters.total)
       );
@@ -542,6 +659,36 @@ const Tours = () => {
 
   const toggleTourTableColumn = (key: TourTableColumnKey, visible: boolean) => {
     setTableColumnVisibility(prev => ({ ...prev, [key]: visible }));
+  };
+
+  const syncTourTableScroll = (source: 'top' | 'bottom') => {
+    if (syncingTourTableScrollRef.current) {
+      return;
+    }
+
+    const sourceElement = source === 'top' ? tourTableTopScrollRef.current : tourTableBottomScrollRef.current;
+    const targetElement = source === 'top' ? tourTableBottomScrollRef.current : tourTableTopScrollRef.current;
+
+    if (!sourceElement || !targetElement || targetElement.scrollLeft === sourceElement.scrollLeft) {
+      return;
+    }
+
+    syncingTourTableScrollRef.current = true;
+    targetElement.scrollLeft = sourceElement.scrollLeft;
+    requestAnimationFrame(() => {
+      syncingTourTableScrollRef.current = false;
+    });
+  };
+
+  const scrollTourTableHorizontally = (delta: number) => {
+    const topElement = tourTableTopScrollRef.current;
+    const bottomElement = tourTableBottomScrollRef.current;
+    const sourceElement = topElement || bottomElement;
+    if (!sourceElement) return;
+
+    const nextScrollLeft = Math.max(0, sourceElement.scrollLeft + delta);
+    if (topElement) topElement.scrollLeft = nextScrollLeft;
+    if (bottomElement) bottomElement.scrollLeft = nextScrollLeft;
   };
 
   // Calculate total final amount for filtered tours (current page)
@@ -663,6 +810,10 @@ const Tours = () => {
   const CORRECT_PIN = '0829101188';
 
   const handleDeleteAll = () => {
+    if (!canDeleteTours) {
+      toast.error('Bạn không có quyền xóa tour.');
+      return;
+    }
     setShowDeleteAllPinDialog(true);
   };
 
@@ -686,6 +837,11 @@ const Tours = () => {
   };
 
   const handleExportAll = async () => {
+    if (!canExportTours) {
+      toast.error('Bạn không có quyền xuất tour.');
+      return;
+    }
+
     if (totalTours === 0) {
       toast.error('No tours to export');
       return;
@@ -708,6 +864,11 @@ const Tours = () => {
   };
 
   const handleExportAllSingle = async () => {
+    if (!canExportTours) {
+      toast.error('Bạn không có quyền xuất tour.');
+      return;
+    }
+
     if (totalTours === 0) {
       toast.error('No tours to export');
       return;
@@ -731,6 +892,10 @@ const Tours = () => {
 
   const handleExportSingle = async (tour: Tour, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canExportTours) {
+      toast.error('Bạn không có quyền xuất tour.');
+      return;
+    }
 
     try {
       const detailedTour = await fetchDetailedTour(tour);
@@ -749,11 +914,19 @@ const Tours = () => {
 
   const handleDuplicate = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canDuplicateTours) {
+      toast.error('Bạn không có quyền nhân bản tour.');
+      return;
+    }
     duplicateMutation.mutate(id);
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canDeleteTours) {
+      toast.error('Bạn không có quyền xóa tour.');
+      return;
+    }
     setDeleteTourId(id);
   };
 
@@ -814,7 +987,7 @@ const Tours = () => {
           return false;
         }
 
-        if (query.nationalityId && tour.clientNationalityRef?.id !== query.nationalityId) {
+        if (query.nationalityId && !getTourNationalityIds(tour).has(query.nationalityId)) {
           return false;
         }
 
@@ -990,6 +1163,7 @@ const Tours = () => {
                   companyRef: tour.companyRef,
                   guideRef: tour.guideRef,
                   clientNationalityRef: tour.clientNationalityRef,
+                  clientNationalities: tour.clientNationalities,
                   clientName: tour.clientName!,
                   adults: tour.adults!,
                   children: tour.children!,
@@ -1072,10 +1246,19 @@ const Tours = () => {
   });
 
   const handleImport = (tours: Partial<Tour>[]) => {
+    if (!canImportTours) {
+      toast.error('Bạn không có quyền nhập tour.');
+      return;
+    }
     importMutation.mutate(tours);
   };
 
   const handleBackup = async () => {
+    if (!canBackupData) {
+      toast.error('Bạn không có quyền sao lưu dữ liệu.');
+      return;
+    }
+
     setIsBackingUp(true);
     try {
       toast.info('Generating SQL backup...');
@@ -1091,6 +1274,11 @@ const Tours = () => {
   };
 
   const handleDownloadAllImages = async () => {
+    if (!canDownloadAllTourImages) {
+      toast.error('Bạn không có quyền tải toàn bộ ảnh tour.');
+      return;
+    }
+
     setIsDownloadingImages(true);
     try {
       toast.info('Fetching all tour images...');
@@ -1160,6 +1348,9 @@ const Tours = () => {
   };
 
   const { classes: headerClasses } = useHeaderMode('tours.headerMode');
+  const topActionButtonClass =
+    'hover-scale flex h-10 min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-0.5 px-1 py-1 text-[9px] leading-tight sm:h-10 sm:flex-initial sm:basis-auto sm:px-3 sm:text-xs lg:flex-row lg:gap-1.5';
+  const topActionIconClass = 'h-4 w-4 shrink-0 lg:mr-1.5';
 
   const renderTourTableHeader = (column: TourTableColumn) => {
     const alignRight = column.headerClassName?.includes('text-right');
@@ -1260,6 +1451,52 @@ const Tours = () => {
             </PopoverContent>
           </Popover>
         )}
+        {column.filterType === 'landOperator' && (
+          <Popover open={tableLandOperatorFilterOpen} onOpenChange={setTableLandOperatorFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-7 w-full justify-start px-2 text-left text-xs font-normal"
+                title={tableFilters.landOperator || 'Tất cả land tour'}
+              >
+                <span className="truncate">{tableFilters.landOperator || 'Tất cả land tour'}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[260px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Tìm land tour..." />
+                <CommandList>
+                  <CommandEmpty>Không tìm thấy công ty land tour.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="__all_land_operators__"
+                      onSelect={() => {
+                        updateTableFilter('landOperator', '');
+                        setTableLandOperatorFilterOpen(false);
+                      }}
+                    >
+                      <Check className={`mr-2 h-4 w-4 ${tableFilters.landOperator ? 'opacity-0' : 'opacity-100'}`} />
+                      Tất cả land tour
+                    </CommandItem>
+                    {tableLandOperatorOptions.map((name) => (
+                      <CommandItem
+                        key={name}
+                        value={name}
+                        onSelect={() => {
+                          updateTableFilter('landOperator', name);
+                          setTableLandOperatorFilterOpen(false);
+                        }}
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${tableFilters.landOperator === name ? 'opacity-100' : 'opacity-0'}`} />
+                        <span className="truncate">{name}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        )}
         {column.filterType === 'warning' && (
           <Select value={tableFilters.warning} onValueChange={(value) => updateTableFilter('warning', value)}>
             <SelectTrigger className="h-7 px-2 text-xs font-normal">
@@ -1287,9 +1524,12 @@ const Tours = () => {
       allowanceTotal: number;
       finalTotal: number;
       hasChildren: boolean;
+      index: number;
     }
   ) => {
     switch (column.key) {
+      case 'stt':
+        return row.index + 1;
       case 'tourCode':
         return <span className="block truncate" title={tour.tourCode}>{tour.tourCode}</span>;
       case 'date':
@@ -1313,10 +1553,59 @@ const Tours = () => {
             {tour.companyRef?.nameAtBooking || '-'}
           </span>
         );
+      case 'landOperator':
+        return (
+          <span className="block truncate text-muted-foreground" title={tour.landOperatorRef?.nameAtBooking || ''}>
+            {tour.landOperatorRef?.nameAtBooking || '-'}
+          </span>
+        );
+      case 'guide':
+        return (
+          <span className="block truncate" title={tour.guideRef?.nameAtBooking || ''}>
+            {tour.guideRef?.nameAtBooking || '-'}
+          </span>
+        );
+      case 'nationality': {
+        const nationalities = formatTourNationalities(tour);
+        return (
+          <span className="block truncate" title={nationalities}>
+            {nationalities || '-'}
+          </span>
+        );
+      }
+      case 'clientName':
+        return (
+          <span className="block truncate" title={tour.clientName || ''}>
+            {tour.clientName || '-'}
+          </span>
+        );
+      case 'clientPhone':
+        return (
+          <span className="block truncate" title={tour.clientPhone || ''}>
+            {tour.clientPhone || '-'}
+          </span>
+        );
+      case 'driverName':
+        return (
+          <span className="block truncate" title={tour.driverName || ''}>
+            {tour.driverName || '-'}
+          </span>
+        );
       case 'ctp':
         return formatCurrency(row.allowanceTotal);
       case 'total':
         return formatCurrency(row.finalTotal);
+      case 'settlement':
+        return <SettlementStatusBadge status={tour.settlementStatus} />;
+      case 'payment':
+        return isTourPaymentEligible(tour) ? (
+          <PaymentStatusBadge
+            status={tour.paymentStatus}
+            method={tour.lastPaymentMethod}
+          />
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
       case 'warning':
         return row.warningInfo.showRedFlag ? (
           <Badge variant="destructive" className="gap-1" title={row.warningInfo.warningTitle}>
@@ -1329,34 +1618,40 @@ const Tours = () => {
       case 'actions':
         return (
           <div className="flex justify-end gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={(event) => handleExportSingle(tour, event)}
-              title="Export to Excel"
-            >
-              <FileDown className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={(event) => handleDuplicate(tour.id, event)}
-              title="Duplicate tour"
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-              onClick={(event) => handleDelete(tour.id, event)}
-              disabled={deleteMutation.isPending}
-              title="Delete tour"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {canExportTours && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={(event) => handleExportSingle(tour, event)}
+                title="Export to Excel"
+              >
+                <FileDown className="h-4 w-4" />
+              </Button>
+            )}
+            {canDuplicateTours && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={(event) => handleDuplicate(tour.id, event)}
+                title="Duplicate tour"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            )}
+            {canDeleteTours && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={(event) => handleDelete(tour.id, event)}
+                disabled={deleteMutation.isPending}
+                title="Delete tour"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         );
       default:
@@ -1365,7 +1660,7 @@ const Tours = () => {
   };
 
   const renderTourTableToolbar = () => (
-    <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-4 py-2">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-4 py-2">
       <div className="text-sm text-muted-foreground">
         Hiển thị <span className="font-semibold text-foreground">{tableFilteredTours.length}</span> / {tours.length} tour trong bảng
       </div>
@@ -1383,7 +1678,7 @@ const Tours = () => {
               Cột
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="max-h-[70vh] w-56 overflow-y-auto">
             <DropdownMenuLabel>Cột hiển thị</DropdownMenuLabel>
             <DropdownMenuItem
               onSelect={(event) => {
@@ -1419,72 +1714,94 @@ const Tours = () => {
   );
 
   return (
-    <Layout>
+    <>
       <div className="animate-fade-in">
         {/* Sticky Header - Always pinned to top */}
         <div className={`${headerClasses} border-b pb-4 pt-4 bg-gray-100 dark:bg-gray-900 z-40 space-y-4`}>
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
-            <div className="flex-shrink-0">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0 flex-shrink-0">
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Tour</h1>
             </div>
-            <div className="flex gap-1 items-center flex-shrink-0 flex-wrap">
+            <div className="flex w-full min-w-0 flex-nowrap items-center gap-1 overflow-hidden sm:w-auto sm:flex-shrink-0 sm:flex-wrap sm:justify-end sm:gap-1.5">
               <Button
-                onClick={handleBackup}
                 variant="outline"
                 size="sm"
-                disabled={isBackingUp}
-                className="hidden lg:flex hover-scale lg:h-10 lg:px-3 text-xs"
-                title="Tải bản sao SQL đầy đủ (schema + data)"
+                onClick={() => setTopControlsExpanded(!topControlsExpanded)}
+                className={topActionButtonClass}
               >
-                <Database className="h-4 w-4 lg:mr-1.5" />
-                <span className="hidden lg:inline">{isBackingUp ? 'Đang sao lưu...' : 'Sao lưu SQL'}</span>
+                {topControlsExpanded ? <ChevronUp className={topActionIconClass} /> : <ChevronDown className={topActionIconClass} />}
+                <span className="max-w-full truncate sm:hidden">{topControlsExpanded ? 'Ẩn' : 'Hiện'}</span>
+                <span className="hidden max-w-full truncate sm:inline">{topControlsExpanded ? 'Ẩn công cụ' : 'Hiện công cụ'}</span>
               </Button>
-              <Button
-                onClick={handleDownloadAllImages}
-                variant="outline"
-                size="sm"
-                disabled={isDownloadingImages}
-                className="hidden lg:flex hover-scale lg:h-10 lg:px-3 text-xs"
-                title="Tải tất cả ảnh từ tất cả tour"
-              >
-                <ImageIcon className="h-4 w-4 lg:mr-1.5" />
-                <span className="hidden lg:inline">{isDownloadingImages ? 'Đang tải...' : 'Tải tất cả ảnh'}</span>
-              </Button>
-              <ImportTourDialogEnhanced
-                onImport={handleImport}
-                trigger={
+              {topControlsExpanded && (
+                <>
+              {canBackupData && (
+                <Button
+                  onClick={handleBackup}
+                  variant="outline"
+                  size="sm"
+                  disabled={isBackingUp}
+                  className={cn(topActionButtonClass, 'hidden lg:flex')}
+                  title="Tải bản sao SQL đầy đủ (schema + data)"
+                >
+                  <Database className={topActionIconClass} />
+                      <span className="hidden max-w-full truncate lg:inline">{isBackingUp ? 'Đang sao lưu...' : 'Sao lưu SQL'}</span>
+                </Button>
+              )}
+              {canDownloadAllTourImages && (
+                <Button
+                  onClick={handleDownloadAllImages}
+                  variant="outline"
+                  size="sm"
+                  disabled={isDownloadingImages}
+                  className={cn(topActionButtonClass, 'hidden lg:flex')}
+                  title="Tải tất cả ảnh từ tất cả tour"
+                >
+                  <ImageIcon className={topActionIconClass} />
+                  <span className="hidden max-w-full truncate lg:inline">{isDownloadingImages ? 'Đang tải...' : 'Tải tất cả ảnh'}</span>
+                </Button>
+              )}
+              {canImportTours && (
+                <ImportTourDialogEnhanced
+                  onImport={handleImport}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(topActionButtonClass, 'text-green-600 hover:text-green-700 border-green-600 hover:border-green-700')}
+                    >
+                      <Upload className={topActionIconClass} />
+                      <span className="max-w-full truncate">Nhập</span>
+                    </Button>
+                  }
+                />
+              )}
+              {canExportTours && (
+                <>
                   <Button
+                    onClick={handleExportAll}
                     variant="outline"
                     size="sm"
-                    className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-green-600 hover:text-green-700 border-green-600 hover:border-green-700"
+                    className={cn(topActionButtonClass, 'text-blue-600 hover:text-blue-700 border-blue-600 hover:border-blue-700')}
+                    title="Xuất tất cả tour vào thư mục theo tháng (ZIP)"
                   >
-                    <Upload className="h-5 w-5 lg:mr-1.5" />
-                    <span className="text-[10px] lg:text-xs">Nhập</span>
+                    <FolderArchive className={topActionIconClass} />
+                    <span className="hidden max-w-full truncate sm:inline">Xuất tất cả → Thư mục</span>
+                    <span className="max-w-full truncate sm:hidden">ZIP</span>
                   </Button>
-                }
-              />
-              <Button
-                onClick={handleExportAll}
-                variant="outline"
-                size="sm"
-                className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-blue-600 hover:text-blue-700 border-blue-600 hover:border-blue-700"
-                title="Xuất tất cả tour vào thư mục theo tháng (ZIP)"
-              >
-                <FolderArchive className="h-5 w-5 lg:mr-1.5" />
-                <span className="text-[10px] lg:text-xs hidden sm:inline">Xuất tất cả → Thư mục</span>
-                <span className="text-[10px] lg:text-xs sm:hidden">Thư mục</span>
-              </Button>
-              <Button
-                onClick={handleExportAllSingle}
-                variant="outline"
-                size="sm"
-                className="hover-scale h-auto py-2 px-3 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs text-purple-600 hover:text-purple-700 border-purple-600 hover:border-purple-700"
-                title="Xuất tất cả tour vào 1 file Excel (1 trang với tổng lớn)"
-              >
-                <FileSpreadsheet className="h-5 w-5 lg:mr-1.5" />
-                <span className="text-[10px] lg:text-xs hidden sm:inline">Xuất tất cả → 1 trang</span>
-                <span className="text-[10px] lg:text-xs sm:hidden">1 trang</span>
-              </Button>
+                  <Button
+                    onClick={handleExportAllSingle}
+                    variant="outline"
+                    size="sm"
+                    className={cn(topActionButtonClass, 'text-purple-600 hover:text-purple-700 border-purple-600 hover:border-purple-700')}
+                    title="Xuất tất cả tour vào 1 file Excel (1 trang với tổng lớn)"
+                  >
+                    <FileSpreadsheet className={topActionIconClass} />
+                    <span className="hidden max-w-full truncate sm:inline">Xuất tất cả → 1 trang</span>
+                    <span className="max-w-full truncate sm:hidden">Excel</span>
+                  </Button>
+                </>
+              )}
               {/* <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -1561,64 +1878,74 @@ const Tours = () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog> */}
-              <AlertDialog open={showDeleteAllPinDialog} onOpenChange={setShowDeleteAllPinDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="hover-scale text-destructive hover:text-destructive h-auto py-2 px-2 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs"
-                  >
-                    <Trash className="h-5 w-5 lg:mr-1.5" />
-                    <span className="text-[9px] lg:text-xs">Xóa tất cả</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Xóa tất cả Tour - Yêu cầu mã PIN</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Hành động này không thể hoàn tác. Hành động này sẽ xóa vĩnh viễn tất cả tour khỏi cơ sở dữ liệu.
-                      <div className="mt-4 space-y-2">
-                        <Label htmlFor="delete-all-pin">Nhập mã PIN để xác nhận:</Label>
-                        <Input
-                          id="delete-all-pin"
-                          type="password"
-                          placeholder="Nhập mã PIN"
-                          value={deleteAllPinInput}
-                          onChange={(e) => setDeleteAllPinInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleDeleteAllConfirm();
-                            }
-                          }}
-                        />
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => {
-                      setDeleteAllPinInput('');
-                      setShowDeleteAllPinDialog(false);
-                    }}>Hủy</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteAllConfirm}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              {canDeleteTours && (
+                <AlertDialog open={showDeleteAllPinDialog} onOpenChange={setShowDeleteAllPinDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(topActionButtonClass, 'text-destructive hover:text-destructive')}
                     >
-                      Xóa tất cả Tour
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Button
-                onClick={() => navigate('/tours/new')}
-                size="sm"
-                className="hover-scale h-auto py-2 px-2 flex flex-col items-center gap-1 lg:flex-row lg:h-10 lg:px-3 text-xs"
-              >
-                <Plus className="h-5 w-5 lg:mr-1.5" />
-                <span className="text-[9px] lg:text-xs">Thêm Tour</span>
-              </Button>
+                      <Trash className={topActionIconClass} />
+                      <span className="max-w-full truncate sm:hidden">Xóa</span>
+                      <span className="hidden max-w-full truncate sm:inline">Xóa tất cả</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xóa tất cả Tour - Yêu cầu mã PIN</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Hành động này không thể hoàn tác. Hành động này sẽ xóa vĩnh viễn tất cả tour khỏi cơ sở dữ liệu.
+                        <div className="mt-4 space-y-2">
+                          <Label htmlFor="delete-all-pin">Nhập mã PIN để xác nhận:</Label>
+                          <Input
+                            id="delete-all-pin"
+                            type="password"
+                            placeholder="Nhập mã PIN"
+                            value={deleteAllPinInput}
+                            onChange={(e) => setDeleteAllPinInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleDeleteAllConfirm();
+                              }
+                            }}
+                          />
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => {
+                        setDeleteAllPinInput('');
+                        setShowDeleteAllPinDialog(false);
+                      }}>Hủy</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteAllConfirm}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Xóa tất cả Tour
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              {canCreateTours && (
+                <Button
+                  onClick={() => navigate('/tours/new')}
+                  size="sm"
+                  className={topActionButtonClass}
+                >
+                  <Plus className={topActionIconClass} />
+                  <span className="max-w-full truncate sm:hidden">Thêm</span>
+                  <span className="hidden max-w-full truncate sm:inline">Thêm Tour</span>
+                </Button>
+              )}
+                </>
+              )}
             </div>
           </div>
 
+          {topControlsExpanded ? (
+            <>
           {/* Search Area Header - Mobile Only */}
           <div className="flex items-center gap-2 sm:hidden mb-2">
             <h2 className="text-xs font-semibold flex items-center gap-1">
@@ -1755,6 +2082,54 @@ const Tours = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <Filter className="h-3 w-3" />
+                      Trạng thái QT
+                    </label>
+                    <Select
+                      value={settlementStatusFilter}
+                      onValueChange={(v) => {
+                        setSettlementStatusFilter(v);
+                        localStorage.setItem('tours.settlementStatusFilter', v);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 sm:h-10">
+                        <SelectValue placeholder="Tất cả trạng thái" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                        <SelectItem value="draft">Đang soạn</SelectItem>
+                        <SelectItem value="submitted">Đã gửi kế toán</SelectItem>
+                        <SelectItem value="need_changes">Cần bổ sung</SelectItem>
+                        <SelectItem value="approved">Đã duyệt</SelectItem>
+                        <SelectItem value="closed">Đã đóng</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Filter className="h-3 w-3" />
+                      Thanh toán
+                    </label>
+                    <Select
+                      value={paymentStatusFilter}
+                      onValueChange={(v) => {
+                        setPaymentStatusFilter(v);
+                        localStorage.setItem('tours.paymentStatusFilter', v);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 sm:h-10">
+                        <SelectValue placeholder="Tất cả thanh toán" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả thanh toán</SelectItem>
+                        <SelectItem value="pending">Chờ thanh toán</SelectItem>
+                        <SelectItem value="partial">Thanh toán một phần</SelectItem>
+                        <SelectItem value="paid">Đã thanh toán</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Filter className="h-3 w-3" />
                       Quốc tịch
                     </label>
                     <Select value={nationalityFilter} onValueChange={setNationalityFilter}>
@@ -1866,9 +2241,28 @@ const Tours = () => {
               </div>
             </div>
           </div>
+            </>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border bg-background/70 px-3 py-2 text-xs sm:text-sm">
+              <span className="font-medium">Đang ẩn khu vực tìm kiếm, lọc và thao tác.</span>
+              <span className="text-muted-foreground">
+                {tours.length} tour đang hiển thị
+              </span>
+              {hasActiveFilters && (
+                <Badge variant="secondary">Có bộ lọc đang áp dụng</Badge>
+              )}
+              {showToursBackgroundRefresh && (
+                <span className="ml-auto flex items-center gap-1.5 text-muted-foreground">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Đang cập nhật...
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Totals - Always Visible (Outside Filters Section) */}
+        {topControlsExpanded && (
         <div className="flex flex-wrap items-center justify-between gap-4 text-sm sm:text-base border-y py-3 bg-muted/30">
           {filteredToursTotal !== 0 && (
             <div>
@@ -1889,6 +2283,7 @@ const Tours = () => {
             </div>
           )}
         </div>
+        )}
 
         {showInitialToursSkeleton ? (
           <>
@@ -1898,7 +2293,7 @@ const Tours = () => {
               ))}
             </div>
             <div className="hidden md:block mt-6 rounded-lg border bg-card overflow-hidden">
-              <Table>
+              <Table className="min-w-[1350px]">
                 <TableHeader className="bg-muted/50">
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Mã tour</TableHead>
@@ -1941,51 +2336,104 @@ const Tours = () => {
                   Tất cả cột đang ẩn. Dùng nút Cột để hiện lại.
                 </div>
               ) : (
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow className="hover:bg-transparent">
-                      {visibleTourTableColumns.map((column) => (
-                        <TableHead key={column.key} className={column.headerClassName}>
-                          {renderTourTableHeader(column)}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tableFilteredTours.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={visibleTourTableColumns.length} className="h-24 text-center text-muted-foreground">
-                          Không có tour nào phù hợp với bộ lọc cột.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      tableFilteredTours.map((tour) => {
-                        const row = {
-                          warningInfo: getTourWarningInfo(tour),
-                          totalDays: getTourDays(tour),
-                          totalGuests: getTourGuests(tour),
-                          allowanceTotal: getAllowanceTotal(tour),
-                          finalTotal: tour.summary?.finalTotal ?? 0,
-                          hasChildren: (tour.children || 0) > 0,
-                        };
-
-                        return (
-                          <TableRow
-                            key={tour.id}
-                            className={`cursor-pointer ${row.warningInfo.showRedFlag ? 'bg-destructive/5 hover:bg-destructive/10' : ''}`}
-                            onClick={() => navigate(`/tours/${tour.id}`)}
-                          >
-                            {visibleTourTableColumns.map((column) => (
-                              <TableCell key={column.key} className={column.cellClassName}>
-                                {renderTourTableCellContent(column, tour, row)}
-                              </TableCell>
-                            ))}
+                <>
+                  <div className="flex items-center gap-1 border-b bg-muted/10 px-1 py-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 shrink-0 p-0"
+                      onClick={() => scrollTourTableHorizontally(-360)}
+                      aria-label="Cuộn bảng sang trái"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div
+                      ref={tourTableTopScrollRef}
+                      className="h-5 min-w-0 flex-1 overflow-x-scroll overflow-y-hidden"
+                      onScroll={() => syncTourTableScroll('top')}
+                      onWheel={(event) => {
+                        event.preventDefault();
+                        scrollTourTableHorizontally(event.deltaX + event.deltaY);
+                      }}
+                    >
+                      <div className="h-1" style={{ width: `${tourTableWidth}px`, minWidth: `${tourTableWidth}px` }} />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 shrink-0 p-0"
+                      onClick={() => scrollTourTableHorizontally(360)}
+                      aria-label="Cuộn bảng sang phải"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div
+                    ref={tourTableBottomScrollRef}
+                    className="w-full max-w-full overflow-x-scroll"
+                    onScroll={() => syncTourTableScroll('bottom')}
+                  >
+                    <Table
+                      className="table-fixed text-xs"
+                      style={{ width: tourTableWidth, minWidth: tourTableWidth }}
+                    >
+                      <TableHeader className="bg-muted/50">
+                        <TableRow className="hover:bg-transparent">
+                          {visibleTourTableColumns.map((column) => (
+                            <TableHead
+                              key={column.key}
+                              className={cn('px-2 py-2 align-top', column.headerClassName)}
+                              style={{ width: column.width, minWidth: column.width, maxWidth: column.width }}
+                            >
+                              {renderTourTableHeader(column)}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {tableFilteredTours.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={visibleTourTableColumns.length} className="h-24 text-center text-muted-foreground">
+                              Không có tour nào phù hợp với bộ lọc cột.
+                            </TableCell>
                           </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+                        ) : (
+                          tableFilteredTours.map((tour, index) => {
+                            const row = {
+                              warningInfo: getTourWarningInfo(tour),
+                              totalDays: getTourDays(tour),
+                              totalGuests: getTourGuests(tour),
+                              allowanceTotal: getAllowanceTotal(tour),
+                              finalTotal: tour.summary?.finalTotal ?? 0,
+                              hasChildren: (tour.children || 0) > 0,
+                              index,
+                            };
+
+                            return (
+                              <TableRow
+                                key={tour.id}
+                                className={`cursor-pointer ${row.warningInfo.showRedFlag ? 'bg-destructive/5 hover:bg-destructive/10' : ''}`}
+                                onClick={() => navigate(`/tours/${tour.id}`)}
+                              >
+                                {visibleTourTableColumns.map((column) => (
+                                  <TableCell
+                                    key={column.key}
+                                    className={cn('px-2 py-2 text-xs', column.cellClassName)}
+                                    style={{ width: column.width, minWidth: column.width, maxWidth: column.width }}
+                                  >
+                                    {renderTourTableCellContent(column, tour, row)}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </div>
 
@@ -2097,10 +2545,10 @@ const Tours = () => {
                           </p>
                         </div>
                         <div className="min-w-0 overflow-hidden">
-                          <p className="truncate" title={tour.clientNationalityRef.nameAtBooking}>
+                          <p className="truncate" title={formatTourNationalities(tour)}>
                             <span className="text-muted-foreground">Nationality: </span>
                             <span className="font-medium">
-                              {truncateText(tour.clientNationalityRef.nameAtBooking, 15)}
+                              {truncateText(formatTourNationalities(tour), 24)}
                             </span>
                           </p>
                         </div>
@@ -2108,34 +2556,40 @@ const Tours = () => {
                     </div>
 
                   <div className="flex gap-2 pt-2 border-t justify-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => handleExportSingle(tour, e)}
-                        title="Export to Excel"
-                      >
-                        <FileDown className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => handleDuplicate(tour.id, e)}
-                        title="Duplicate tour"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={(e) => handleDelete(tour.id, e)}
-                        disabled={deleteMutation.isPending}
-                        title="Delete tour"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canExportTours && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => handleExportSingle(tour, e)}
+                          title="Export to Excel"
+                        >
+                          <FileDown className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDuplicateTours && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => handleDuplicate(tour.id, e)}
+                          title="Duplicate tour"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDeleteTours && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={(e) => handleDelete(tour.id, e)}
+                          disabled={deleteMutation.isPending}
+                          title="Delete tour"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2173,7 +2627,7 @@ const Tours = () => {
         </AlertDialog>
         {/* Pagination removed */}
       </div>
-    </Layout>
+    </>
   );
 };
 

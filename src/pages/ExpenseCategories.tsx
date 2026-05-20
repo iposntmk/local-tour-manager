@@ -1,4 +1,3 @@
-import { Layout } from '@/components/Layout';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
@@ -12,6 +11,8 @@ import type { ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { useAuth } from '@/contexts/AuthContext';
+import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
 
 const ExpenseCategories = () => {
   const [search, setSearch] = useState('');
@@ -23,6 +24,12 @@ const ExpenseCategories = () => {
   const [updatedFilter, setUpdatedFilter] = useState('');
 
   const queryClient = useQueryClient();
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canCreate = hasPermission('create_expense_categories');
+  const canEdit = hasPermission('edit_expense_categories');
+  const canDelete = hasPermission('delete_expense_categories');
+  const canImport = hasPermission('import_expense_categories');
+  const canExport = hasPermission('export_expense_categories');
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['expenseCategories', search],
@@ -93,10 +100,18 @@ const ExpenseCategories = () => {
   });
 
   const handleCreate = (input: ExpenseCategoryInput) => {
+    if (!canCreate) {
+      toast.error('Bạn không có quyền tạo danh mục chi phí');
+      return;
+    }
     createMutation.mutate(input);
   };
 
   const handleEdit = (input: ExpenseCategoryInput) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa danh mục chi phí');
+      return;
+    }
     if (editingCategory) {
       updateMutation.mutate({
         id: editingCategory.id,
@@ -106,6 +121,9 @@ const ExpenseCategories = () => {
   };
 
   const handleOpenDialog = (category?: ExpenseCategory) => {
+    if (category && !canEdit) return;
+    if (!category && !canCreate) return;
+    if (category && !ensureCanModifyOwnedEntity(category, user?.id, isAdmin)) return;
     setEditingCategory(category);
     setDialogOpen(true);
   };
@@ -116,16 +134,28 @@ const ExpenseCategories = () => {
   };
 
   const handleDeleteAll = () => {
+    if (!canDelete) {
+      toast.error('Bạn không có quyền xóa danh mục chi phí');
+      return;
+    }
     if (confirm('Are you sure you want to delete ALL expense categories? This action cannot be undone.')) {
       deleteAllMutation.mutate();
     }
   };
 
   const handleBulkImport = async (items: ExpenseCategoryInput[]) => {
+    if (!canImport) {
+      toast.error('Bạn không có quyền import danh mục chi phí');
+      return;
+    }
     await bulkImportMutation.mutateAsync(items);
   };
 
   const handleExportTxt = () => {
+    if (!canExport) {
+      toast.error('Bạn không có quyền export danh mục chi phí');
+      return;
+    }
     if (filteredCategories.length === 0) {
       toast.error('No expense categories to export');
       return;
@@ -159,7 +189,7 @@ const ExpenseCategories = () => {
   const { classes: headerClasses } = useHeaderMode('expensecategories.headerMode');
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -168,22 +198,30 @@ const ExpenseCategories = () => {
               <p className="text-muted-foreground">Manage expense categories</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button variant="outline" onClick={handleExportTxt}>
-                <Download className="h-4 w-4 mr-2" />
-                Export TXT
-              </Button>
-              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Import
-              </Button>
-              <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
-                <Trash className="h-4 w-4" />
-                Delete All
-              </Button>
-              <Button onClick={() => handleOpenDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Category
-              </Button>
+              {canExport && (
+                <Button variant="outline" onClick={handleExportTxt}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export TXT
+                </Button>
+              )}
+              {canImport && (
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
+                  <Trash className="h-4 w-4" />
+                  Delete All
+                </Button>
+              )}
+              {canCreate && (
+                <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Category
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -249,7 +287,7 @@ const ExpenseCategories = () => {
                     <tr
                       key={category.id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
-                      onClick={() => handleOpenDialog(category)}
+                      onClick={() => canEdit && handleOpenDialog(category)}
                     >
                       <td className="p-4 text-muted-foreground text-sm font-mono">{category.id}</td>
                       <td className="p-4 font-medium">{category.name}</td>
@@ -258,34 +296,31 @@ const ExpenseCategories = () => {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenDialog(category)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => duplicateMutation.mutate(category.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this category?')) {
-                                deleteMutation.mutate(category.id);
-                              }
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(category)} className="h-8 w-8 p-0">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canCreate && (
+                            <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(category.id)} className="h-8 w-8 p-0">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (!ensureCanModifyOwnedEntity(category, user?.id, isAdmin)) return;
+                                if (confirm('Are you sure you want to delete this category?')) {
+                                  deleteMutation.mutate(category.id);
+                                }
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -300,7 +335,7 @@ const ExpenseCategories = () => {
                 <div
                   key={category.id}
                   className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleOpenDialog(category)}
+                  onClick={() => canEdit && handleOpenDialog(category)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -311,34 +346,31 @@ const ExpenseCategories = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(category)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => duplicateMutation.mutate(category.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this category?')) {
-                            deleteMutation.mutate(category.id);
-                          }
-                        }}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(category)} className="h-8 w-8 p-0">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canCreate && (
+                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(category.id)} className="h-8 w-8 p-0">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!ensureCanModifyOwnedEntity(category, user?.id, isAdmin)) return;
+                            if (confirm('Are you sure you want to delete this category?')) {
+                              deleteMutation.mutate(category.id);
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -372,7 +404,7 @@ const ExpenseCategories = () => {
           return null;
         }}
       />
-    </Layout>
+    </>
   );
 };
 

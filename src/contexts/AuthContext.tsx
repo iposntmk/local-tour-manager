@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { store } from '@/lib/datastore';
-import { UserProfile, UserRole, Permission, hasPermission as checkPermission } from '@/types/user';
+import { UserProfile, UserRole, Permission, profileHasPermission, isGuide as isGuideRole, isAccountant as isAccountantRole } from '@/types/user';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
@@ -14,6 +14,8 @@ interface AuthContextType {
   isAdmin: boolean;
   isEditor: boolean;
   isViewer: boolean;
+  isGuide: boolean;
+  isAccountant: boolean;
   refreshUserProfile: () => Promise<void>;
 }
 
@@ -74,19 +76,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const hasPermissionFn = (permission: Permission): boolean => {
+    if (user?.email === 'iposntmk@gmail.com' || userProfile?.email === 'iposntmk@gmail.com') return true;
     if (!userProfile || userProfile.status !== 'active') return false;
-    return checkPermission(userProfile.role, permission);
+    return profileHasPermission(userProfile, permission);
   };
 
   const hasAnyPermissionFn = (permissions: Permission[]): boolean => {
+    if (user?.email === 'iposntmk@gmail.com' || userProfile?.email === 'iposntmk@gmail.com') return true;
     if (!userProfile || userProfile.status !== 'active') return false;
-    return permissions.some((permission) => checkPermission(userProfile.role, permission));
+    return permissions.some((permission) => profileHasPermission(userProfile, permission));
   };
 
   const hasAllPermissionsFn = (permissions: Permission[]): boolean => {
+    if (user?.email === 'iposntmk@gmail.com' || userProfile?.email === 'iposntmk@gmail.com') return true;
     if (!userProfile || userProfile.status !== 'active') return false;
-    return permissions.every((permission) => checkPermission(userProfile.role, permission));
+    return permissions.every((permission) => profileHasPermission(userProfile, permission));
   };
+
+  const isMasterAdmin = user?.email === 'iposntmk@gmail.com' || userProfile?.email === 'iposntmk@gmail.com';
 
   const value: AuthContextType = {
     user,
@@ -95,9 +102,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasPermission: hasPermissionFn,
     hasAnyPermission: hasAnyPermissionFn,
     hasAllPermissions: hasAllPermissionsFn,
-    isAdmin: userProfile?.role === 'admin' && userProfile?.status === 'active',
-    isEditor: userProfile?.role === 'editor' && userProfile?.status === 'active',
-    isViewer: userProfile?.role === 'viewer' && userProfile?.status === 'active',
+    isAdmin: isMasterAdmin || (userProfile?.role === 'admin' && userProfile?.status === 'active'),
+    isEditor: !isMasterAdmin && userProfile?.role === 'editor' && userProfile?.status === 'active',
+    isViewer: !isMasterAdmin && userProfile?.role === 'viewer' && userProfile?.status === 'active',
+    isGuide: !isMasterAdmin && !!userProfile && userProfile.status === 'active' && isGuideRole(userProfile),
+    isAccountant: !isMasterAdmin && !!userProfile && userProfile.status === 'active' && isAccountantRole(userProfile),
     refreshUserProfile,
   };
 

@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import type {
   Guide,
+  Language,
   Company,
   Nationality,
   Province,
@@ -12,6 +13,7 @@ import type {
   ExpenseCategory,
   DetailedExpense,
   GuideInput,
+  LanguageInput,
   CompanyInput,
   NationalityInput,
   ProvinceInput,
@@ -41,9 +43,18 @@ import type {
   Shopping as TourShopping,
   TourQuery,
   EntityRef,
+  TourNationality,
   TourInput,
   TourSummary,
   TourListResult,
+  LineStatus,
+  LineType,
+  SettlementStatus,
+  SubmissionHistoryEvent,
+  TourPayment,
+  TourPaymentInput,
+  PaymentMethod,
+  PaymentStatus,
 } from '@/types/tour';
 import { generateSearchKeywords } from '@/lib/string-utils';
 import { differenceInDays } from 'date-fns';
@@ -51,6 +62,8 @@ import { enrichTourWithSummary, enrichToursWithSummaries } from '@/lib/tour-util
 
 type GuideRow = Database['public']['Tables']['guides']['Row'];
 type GuideUpdate = Database['public']['Tables']['guides']['Update'];
+type LanguageRow = Database['public']['Tables']['languages']['Row'];
+type LanguageUpdate = Database['public']['Tables']['languages']['Update'];
 type CompanyRow = Database['public']['Tables']['companies']['Row'];
 type CompanyUpdate = Database['public']['Tables']['companies']['Update'];
 type NationalityRow = Database['public']['Tables']['nationalities']['Row'];
@@ -84,6 +97,14 @@ type TourExpenseRow = Database['public']['Tables']['tour_expenses']['Row'];
 type TourMealRow = Database['public']['Tables']['tour_meals']['Row'];
 type TourAllowanceRow = Database['public']['Tables']['tour_allowances']['Row'];
 type TourShoppingRow = Database['public']['Tables']['tour_shoppings']['Row'];
+type TourNationalityRow = Database['public']['Tables']['tour_nationalities']['Row'];
+type TourPaymentRow = Database['public']['Tables']['tour_payments']['Row'];
+type TourPaymentInsert = Database['public']['Tables']['tour_payments']['Insert'];
+type TourPaymentUpdateRow = Database['public']['Tables']['tour_payments']['Update'];
+
+type GuideRowWithLanguages = GuideRow & {
+  languages?: Language[];
+};
 
 type TourRowWithDetails = TourRow & {
   tour_destinations?: TourDestinationRow[] | null;
@@ -91,6 +112,8 @@ type TourRowWithDetails = TourRow & {
   tour_meals?: TourMealRow[] | null;
   tour_allowances?: TourAllowanceRow[] | null;
   tour_shoppings?: TourShoppingRow[] | null;
+  tour_nationalities?: TourNationalityRow[] | null;
+  tour_payments?: TourPaymentRow[] | null;
 };
 
 type TourRowWithAllowances = TourRow & {
@@ -99,6 +122,7 @@ type TourRowWithAllowances = TourRow & {
 
 interface ExportSnapshot {
   guides: Guide[];
+  languages: Language[];
   companies: Company[];
   nationalities: Nationality[];
   provinces: Province[];
@@ -117,18 +141,98 @@ export class SupabaseStore implements DataStore {
   }
 
   // Helper to map database rows to app types
-  private mapGuide(row: GuideRow): Guide {
+  private mapLanguage(row: LanguageRow): Language {
+    return {
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      nativeName: row.native_name || undefined,
+      status: row.status,
+      searchKeywords: row.search_keywords || [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      createdBy: row.created_by ?? undefined,
+    };
+  }
+
+  private mapGuide(row: GuideRowWithLanguages): Guide {
     return {
       id: row.id,
       name: row.name,
       phone: row.phone || '',
       note: row.note || '',
+      languages: row.languages || [],
       isDefault: row.is_default || false,
       status: row.status,
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     };
+  }
+
+  private isMissingLanguageSchemaError(error: { code?: string; message?: string; details?: string; hint?: string } | null): boolean {
+    const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+    return (
+      text.includes('guide_languages') ||
+      text.includes('languages') ||
+      text.includes('nationality_languages') ||
+      text.includes('could not find a relationship') ||
+      text.includes('schema cache')
+    );
+  }
+
+  private async attachGuideLanguages(guides: GuideRow[]): Promise<Guide[]> {
+    if (guides.length === 0) {
+      return [];
+    }
+
+    const guideIds = guides.map((guide) => guide.id);
+    const { data: guideLanguages, error: guideLanguagesError } = await this.supabase
+      .from('guide_languages')
+      .select('guide_id, language_id')
+      .in('guide_id', guideIds);
+
+    if (guideLanguagesError) {
+      if (this.isMissingLanguageSchemaError(guideLanguagesError)) {
+        return guides.map((guide) => this.mapGuide({ ...guide, languages: [] }));
+      }
+      throw guideLanguagesError;
+    }
+
+    const languageIds = Array.from(new Set((guideLanguages || []).map((item) => item.language_id)));
+    if (languageIds.length === 0) {
+      return guides.map((guide) => this.mapGuide({ ...guide, languages: [] }));
+    }
+
+    const { data: languages, error: languagesError } = await this.supabase
+      .from('languages')
+      .select('*')
+      .in('id', languageIds);
+
+    if (languagesError) {
+      if (this.isMissingLanguageSchemaError(languagesError)) {
+        return guides.map((guide) => this.mapGuide({ ...guide, languages: [] }));
+      }
+      throw languagesError;
+    }
+
+    const languagesById = new Map((languages || []).map((language) => [language.id, this.mapLanguage(language)]));
+    const languageIdsByGuideId = new Map<string, string[]>();
+    (guideLanguages || []).forEach((item) => {
+      const existing = languageIdsByGuideId.get(item.guide_id) || [];
+      existing.push(item.language_id);
+      languageIdsByGuideId.set(item.guide_id, existing);
+    });
+
+    return guides.map((guide) => {
+      const guideLanguageIds = languageIdsByGuideId.get(guide.id) || [];
+      const guideLanguagesValue = guideLanguageIds
+        .map((languageId) => languagesById.get(languageId))
+        .filter((language): language is Language => Boolean(language));
+
+      return this.mapGuide({ ...guide, languages: guideLanguagesValue });
+    });
   }
 
   private mapCompany(row: CompanyRow): Company {
@@ -144,6 +248,7 @@ export class SupabaseStore implements DataStore {
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     };
   }
 
@@ -157,6 +262,7 @@ export class SupabaseStore implements DataStore {
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     };
   }
 
@@ -168,6 +274,7 @@ export class SupabaseStore implements DataStore {
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     };
   }
 
@@ -184,6 +291,7 @@ export class SupabaseStore implements DataStore {
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     };
   }
 
@@ -196,6 +304,7 @@ export class SupabaseStore implements DataStore {
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     };
   }
 
@@ -207,6 +316,7 @@ export class SupabaseStore implements DataStore {
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     };
   }
 
@@ -223,6 +333,7 @@ export class SupabaseStore implements DataStore {
       searchKeywords: row.search_keywords || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     };
   }
 
@@ -332,6 +443,12 @@ export class SupabaseStore implements DataStore {
         id: row.company_id || '',
         nameAtBooking: row.company_name_at_booking || '',
       },
+      landOperatorRef: row.land_operator_id
+        ? {
+            id: row.land_operator_id,
+            nameAtBooking: row.land_operator_name_at_booking || '',
+          }
+        : undefined,
       guideRef: {
         id: row.guide_id || '',
         nameAtBooking: row.guide_name_at_booking || '',
@@ -340,6 +457,7 @@ export class SupabaseStore implements DataStore {
         id: row.nationality_id || '',
         nameAtBooking: row.nationality_name_at_booking || '',
       },
+      clientNationalities: [],
       clientName: row.client_name || '',
       adults: row.adults || 0,
       children: row.children || 0,
@@ -352,6 +470,16 @@ export class SupabaseStore implements DataStore {
       notes: row.notes || '',
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      settlementStatus: ((row as any).settlement_status as Tour['settlementStatus']) || 'draft',
+      submittedAt: (row as any).submitted_at ?? undefined,
+      approvedAt: (row as any).approved_at ?? undefined,
+      approvedBy: (row as any).approved_by ?? undefined,
+      lockedAt: (row as any).locked_at ?? undefined,
+      submissionCount: Number((row as any).submission_count) || 0,
+      paymentStatus: (((row as any).payment_status as PaymentStatus) || 'pending'),
+      paymentTotal: Number((row as any).payment_total) || 0,
+      lastPaidAt: (row as any).last_paid_at ?? undefined,
+      lastPaymentMethod: ((row as any).last_payment_method as PaymentMethod | null) ?? undefined,
       destinations: [],
       expenses: [],
       meals: [],
@@ -367,6 +495,152 @@ export class SupabaseStore implements DataStore {
         totalAfterCollections: Number(row.total_after_collections) || 0,
         finalTotal: Number(row.final_total) || 0,
       },
+    };
+  }
+
+  private mapTourNationality(row: TourNationalityRow): TourNationality {
+    return {
+      id: row.nationality_id,
+      nameAtBooking: row.nationality_name_at_booking || '',
+      paxCount: Number(row.pax_count) || 0,
+    };
+  }
+
+  private mapTourPayment(row: TourPaymentRow): TourPayment {
+    return {
+      id: row.id,
+      tourId: row.tour_id,
+      amount: Number(row.amount) || 0,
+      method: (row.payment_method as PaymentMethod) || 'cash',
+      paidAt: row.paid_at,
+      paidBy: row.paid_by ?? undefined,
+      note: row.note ?? undefined,
+      createdAt: row.created_at ?? undefined,
+      updatedAt: row.updated_at ?? undefined,
+    };
+  }
+
+  private applyTourNationalities(tour: Tour, rows?: TourNationalityRow[] | null): Tour {
+    const nationalities = (rows || [])
+      .map((row) => this.mapTourNationality(row))
+      .filter((nationality) => nationality.id);
+
+    if (nationalities.length > 0) {
+      tour.clientNationalities = nationalities;
+      tour.clientNationalityRef = {
+        id: nationalities[0].id,
+        nameAtBooking: nationalities[0].nameAtBooking,
+      };
+      return tour;
+    }
+
+    if (tour.clientNationalityRef.id) {
+      tour.clientNationalities = [
+        {
+          ...tour.clientNationalityRef,
+          paxCount: Math.max(tour.totalGuests || 0, 1),
+        },
+      ];
+    }
+
+    return tour;
+  }
+
+  private normalizeTourNationalitiesForWrite(
+    tour: { clientNationalityRef?: EntityRef; clientNationalities?: TourNationality[] },
+    totalGuests: number
+  ): TourNationality[] {
+    const source = tour.clientNationalities?.length
+      ? tour.clientNationalities
+      : tour.clientNationalityRef?.id
+        ? [{ ...tour.clientNationalityRef, paxCount: Math.max(totalGuests, 1) }]
+        : [];
+
+    const byId = new Map<string, TourNationality>();
+    source.forEach((nationality) => {
+      if (!nationality.id) return;
+      byId.set(nationality.id, {
+        id: nationality.id,
+        nameAtBooking: nationality.nameAtBooking || '',
+        paxCount: Math.max(1, Math.floor(Number(nationality.paxCount) || 0)),
+      });
+    });
+
+    return Array.from(byId.values());
+  }
+
+  private validateTourNationalities(nationalities: TourNationality[], totalGuests: number): void {
+    if (nationalities.length === 0) {
+      throw new Error('Vui lòng chọn ít nhất một quốc tịch.');
+    }
+
+    const totalNationalityPax = nationalities.reduce((sum, nationality) => sum + nationality.paxCount, 0);
+    if (totalGuests > 0 && totalNationalityPax !== totalGuests) {
+      throw new Error('Tổng pax theo quốc tịch phải bằng tổng khách.');
+    }
+  }
+
+  private async replaceTourNationalities(tourId: string, nationalities: TourNationality[]): Promise<void> {
+    const { error: deleteError } = await this.supabase
+      .from('tour_nationalities')
+      .delete()
+      .eq('tour_id', tourId);
+    if (deleteError) throw deleteError;
+
+    if (nationalities.length === 0) {
+      return;
+    }
+
+    const records = nationalities.map((nationality) => ({
+      tour_id: tourId,
+      nationality_id: nationality.id,
+      nationality_name_at_booking: nationality.nameAtBooking,
+      pax_count: nationality.paxCount,
+    }));
+
+    const { error: insertError } = await this.supabase
+      .from('tour_nationalities')
+      .insert(records);
+    if (insertError) throw insertError;
+  }
+
+  private async replaceGuideLanguages(guideId: string, languageIds: string[]): Promise<void> {
+    const { error: deleteError } = await this.supabase
+      .from('guide_languages')
+      .delete()
+      .eq('guide_id', guideId);
+    if (deleteError) throw deleteError;
+
+    const uniqueLanguageIds = Array.from(new Set(languageIds.filter(Boolean)));
+    if (uniqueLanguageIds.length === 0) {
+      return;
+    }
+
+    const records = uniqueLanguageIds.map((languageId) => ({
+      guide_id: guideId,
+      language_id: languageId,
+      proficiency: 'working',
+    }));
+
+    const { error: insertError } = await this.supabase
+      .from('guide_languages')
+      .insert(records);
+    if (insertError) throw insertError;
+  }
+
+  private mapLineReviewFields(row: any): {
+    id?: string;
+    lineStatus?: Tour['destinations'][number]['lineStatus'];
+    lineComment?: string;
+    reviewedBy?: string;
+    reviewedAt?: string;
+  } {
+    return {
+      id: row?.id,
+      lineStatus: (row?.line_status as any) ?? 'unchecked',
+      lineComment: row?.line_comment ?? undefined,
+      reviewedBy: row?.reviewed_by ?? undefined,
+      reviewedAt: row?.reviewed_at ?? undefined,
     };
   }
 
@@ -391,7 +665,7 @@ export class SupabaseStore implements DataStore {
 
     const { data, error } = await primaryQuery;
     if (!error) {
-      return (data || []).map(this.mapGuide);
+      return this.attachGuideLanguages(data || []);
     }
 
     const isMissingDefaultColumn =
@@ -412,13 +686,15 @@ export class SupabaseStore implements DataStore {
 
     const { data: fallbackData, error: fallbackError } = await fallbackQuery;
     if (fallbackError) throw fallbackError;
-    return (fallbackData || []).map(this.mapGuide);
+    return this.attachGuideLanguages(fallbackData || []);
   }
 
   async getGuide(id: string): Promise<Guide | null> {
     const { data, error } = await this.supabase.from('guides').select('*').eq('id', id).single();
     if (error) return null;
-    return data ? this.mapGuide(data) : null;
+    if (!data) return null;
+    const [guide] = await this.attachGuideLanguages([data]);
+    return guide || null;
   }
 
   async createGuide(guide: GuideInput): Promise<Guide> {
@@ -457,10 +733,16 @@ export class SupabaseStore implements DataStore {
       .single();
 
     if (error) throw error;
-    return this.mapGuide(data);
+    if (guide.languageIds !== undefined) {
+      await this.replaceGuideLanguages(data.id, guide.languageIds);
+    }
+
+    const created = await this.getGuide(data.id);
+    if (!created) throw new Error('Guide was created but could not be loaded');
+    return created;
   }
 
-  async updateGuide(id: string, guide: Partial<Guide>): Promise<void> {
+  async updateGuide(id: string, guide: Partial<GuideInput>): Promise<void> {
     const { data: existingGuide, error: guideLookupError } = await this.supabase
       .from('guides')
       .select('id, name')
@@ -494,7 +776,8 @@ export class SupabaseStore implements DataStore {
     if (guide.isDefault !== undefined) updates.is_default = guide.isDefault;
 
     const hasUpdates = Object.keys(updates).length > 0;
-    if (!hasUpdates) {
+    const hasLanguageUpdates = guide.languageIds !== undefined;
+    if (!hasUpdates && !hasLanguageUpdates) {
       throw new Error('No changes to save');
     }
 
@@ -508,16 +791,24 @@ export class SupabaseStore implements DataStore {
       if (clearDefaultError) throw clearDefaultError;
     }
 
-    const { data: updatedGuide, error } = await this.supabase
-      .from('guides')
-      .update(updates)
-      .eq('id', id)
-      .select('id')
-      .maybeSingle();
+    let updatedGuide: { id: string } | null = existingGuide;
+    if (hasUpdates) {
+      const { data, error } = await this.supabase
+        .from('guides')
+        .update(updates)
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
-    if (error) throw error;
+      if (error) throw error;
+      updatedGuide = data;
+    }
     if (!updatedGuide) {
       throw new Error(`Guide "${existingGuide.name}" was not updated. Refresh and try again.`);
+    }
+
+    if (hasLanguageUpdates) {
+      await this.replaceGuideLanguages(id, guide.languageIds || []);
     }
   }
 
@@ -562,6 +853,7 @@ export class SupabaseStore implements DataStore {
       name: `${original.name} (Copy)`,
       phone: original.phone,
       note: original.note,
+      languageIds: original.languages.map((language) => language.id),
       isDefault: false,
     });
   }
@@ -621,8 +913,128 @@ export class SupabaseStore implements DataStore {
   async toggleGuideStatus(id: string): Promise<void> {
     throw new Error('Status toggling is disabled');
   }
+
+  // Languages
+  async listLanguages(query?: SearchQuery): Promise<Language[]> {
+    let queryBuilder = this.supabase
+      .from('languages')
+      .select('*')
+      .order('name');
+
+    if (query?.status) queryBuilder = queryBuilder.eq('status', query.status);
+    if (query?.search) queryBuilder = queryBuilder.ilike('name', `%${query.search}%`);
+
+    const { data, error } = await queryBuilder;
+    if (error) {
+      if (this.isMissingLanguageSchemaError(error)) {
+        return [];
+      }
+      throw error;
+    }
+    return (data || []).map(this.mapLanguage);
+  }
+
+  async getLanguage(id: string): Promise<Language | null> {
+    const { data, error } = await this.supabase.from('languages').select('*').eq('id', id).single();
+    if (error) return null;
+    return data ? this.mapLanguage(data) : null;
+  }
+
+  async createLanguage(language: LanguageInput): Promise<Language> {
+    const code = language.code.trim().toLowerCase();
+    const name = language.name.trim();
+    const { data: existing } = await this.supabase
+      .from('languages')
+      .select('id')
+      .ilike('code', code)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error('A language with this code already exists');
+    }
+
+    const { data, error } = await this.supabase
+      .from('languages')
+      .insert({
+        code,
+        name,
+        native_name: language.nativeName || null,
+        status: 'active',
+        search_keywords: generateSearchKeywords(`${name} ${code} ${language.nativeName || ''}`),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.mapLanguage(data);
+  }
+
+  async updateLanguage(id: string, language: Partial<Language>): Promise<void> {
+    const updates: LanguageUpdate = {};
+    if (language.code !== undefined) updates.code = language.code.trim().toLowerCase();
+    if (language.name !== undefined) {
+      updates.name = language.name.trim();
+      updates.search_keywords = generateSearchKeywords(`${language.name} ${language.code || ''} ${language.nativeName || ''}`);
+    }
+    if (language.nativeName !== undefined) updates.native_name = language.nativeName || null;
+
+    if (Object.keys(updates).length === 0) {
+      throw new Error('No changes to save');
+    }
+
+    const { error } = await this.supabase
+      .from('languages')
+      .update(updates)
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  async duplicateLanguage(id: string): Promise<Language> {
+    const original = await this.getLanguage(id);
+    if (!original) throw new Error('Language not found');
+    return this.createLanguage({
+      code: `${original.code}-copy`,
+      name: `${original.name} (Copy)`,
+      nativeName: original.nativeName,
+    });
+  }
+
+  async deleteLanguage(id: string): Promise<void> {
+    const { error } = await this.supabase.from('languages').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async deleteAllLanguages(): Promise<void> {
+    const { error } = await this.supabase.from('languages').delete().gte('created_at', '1970-01-01');
+    if (error) throw error;
+  }
+
+  async bulkCreateLanguages(inputs: LanguageInput[]): Promise<Language[]> {
+    const records = inputs.map((input) => {
+      const code = input.code.trim().toLowerCase();
+      const name = input.name.trim();
+      return {
+        code,
+        name,
+        native_name: input.nativeName || null,
+        status: 'active',
+        search_keywords: generateSearchKeywords(`${name} ${code} ${input.nativeName || ''}`),
+      };
+    });
+
+    const { data, error } = await this.supabase
+      .from('languages')
+      .insert(records)
+      .select();
+    if (error) throw error;
+    return (data || []).map(this.mapLanguage);
+  }
   
   async toggleCompanyStatus(id: string): Promise<void> {
+    throw new Error('Status toggling is disabled');
+  }
+
+  async toggleLanguageStatus(id: string): Promise<void> {
     throw new Error('Status toggling is disabled');
   }
   
@@ -646,10 +1058,6 @@ export class SupabaseStore implements DataStore {
     throw new Error('Status toggling is disabled');
   }
   
-  async toggleDetailedExpenseStatus(id: string): Promise<void> {
-    throw new Error('Status toggling is disabled');
-  }
-
   // Companies
   async listCompanies(query?: SearchQuery): Promise<Company[]> {
     const applyFilters = <T extends { ilike: (...args: any[]) => any }>(queryBuilder: T) => {
@@ -2342,9 +2750,10 @@ export class SupabaseStore implements DataStore {
         tour_expenses(*),
         tour_meals(*),
         tour_allowances(*),
-        tour_shoppings(*)
+        tour_shoppings(*),
+        tour_nationalities(*)
       `
-          : `*, tour_allowances(price, quantity)`,
+          : `*, tour_allowances(price, quantity), tour_nationalities(*)`,
         { count: 'exact' }
       );
 
@@ -2386,6 +2795,11 @@ export class SupabaseStore implements DataStore {
       queryBuilder = queryBuilder.ilike('company_name_at_booking', like);
     }
 
+    if (query?.landOperatorNameLike) {
+      const like = `%${query.landOperatorNameLike.trim()}%`;
+      queryBuilder = queryBuilder.ilike('land_operator_name_at_booking', like);
+    }
+
     if (query?.dateLike || query?.dateLike2 || query?.dateRawLike) {
       const like1 = query?.dateLike ? `%${query.dateLike.trim()}%` : undefined;
       const like2 = query?.dateLike2 ? `%${query.dateLike2.trim()}%` : undefined;
@@ -2404,10 +2818,26 @@ export class SupabaseStore implements DataStore {
     }
     if (query?.clientName) queryBuilder = queryBuilder.ilike('client_name', `%${query.clientName}%`);
     if (query?.companyId) queryBuilder = queryBuilder.eq('company_id', query.companyId);
+    if (query?.landOperatorId) queryBuilder = queryBuilder.eq('land_operator_id', query.landOperatorId);
     if (query?.guideId) queryBuilder = queryBuilder.eq('guide_id', query.guideId);
     if (query?.startDate) queryBuilder = queryBuilder.gte('end_date', query.startDate);
     if (query?.endDate) queryBuilder = queryBuilder.lte('start_date', query.endDate);
-    if (query?.nationalityId) queryBuilder = queryBuilder.eq('nationality_id', query.nationalityId);
+    if (query?.nationalityId) {
+      const { data: nationalityTourRows, error: nationalityFilterError } = await this.supabase
+        .from('tour_nationalities')
+        .select('tour_id')
+        .eq('nationality_id', query.nationalityId);
+      if (nationalityFilterError) throw nationalityFilterError;
+
+      const tourIds = Array.from(new Set((nationalityTourRows || []).map((row) => row.tour_id)));
+      if (tourIds.length > 0) {
+        queryBuilder = queryBuilder.or(`nationality_id.eq.${query.nationalityId},id.in.(${tourIds.join(',')})`);
+      } else {
+        queryBuilder = queryBuilder.eq('nationality_id', query.nationalityId);
+      }
+    }
+    if (query?.settlementStatus) queryBuilder = queryBuilder.eq('settlement_status', query.settlementStatus);
+    if (query?.paymentStatus) queryBuilder = queryBuilder.eq('payment_status', query.paymentStatus);
 
     const limit = typeof query?.limit === 'number' ? query.limit : undefined;
     const offset = typeof query?.offset === 'number' ? query.offset : undefined;
@@ -2428,24 +2858,28 @@ export class SupabaseStore implements DataStore {
     const tours = (data || []).map((row) => {
       const typedRow = row as TourRowWithDetails;
       const tour = this.mapTour(row);
+      this.applyTourNationalities(tour, typedRow.tour_nationalities);
       if (includeDetails) {
         tour.destinations = (typedRow.tour_destinations || []).map((d) => ({
           name: d.name,
           price: Number(d.price) || 0,
           date: d.date,
           guests: d.guests !== null && d.guests !== undefined ? Number(d.guests) : undefined,
+          ...this.mapLineReviewFields(d),
         }));
         tour.expenses = (typedRow.tour_expenses || []).map((e) => ({
           name: e.name,
           price: Number(e.price) || 0,
           date: e.date,
           guests: e.guests !== null && e.guests !== undefined ? Number(e.guests) : undefined,
+          ...this.mapLineReviewFields(e),
         }));
         tour.meals = (typedRow.tour_meals || []).map((m) => ({
           name: m.name,
           price: Number(m.price) || 0,
           date: m.date,
           guests: m.guests !== null && m.guests !== undefined ? Number(m.guests) : undefined,
+          ...this.mapLineReviewFields(m),
         }));
         tour.allowances = (typedRow.tour_allowances || []).map((a) => ({
           date: a.date,
@@ -2453,11 +2887,13 @@ export class SupabaseStore implements DataStore {
           price: Number(a.price) || 0,
           quantity: a.quantity || 1,
           categoryId: a.category_id ?? undefined,
+          ...this.mapLineReviewFields(a),
         }));
         tour.shoppings = (typedRow.tour_shoppings || []).map((s) => ({
           name: s.name,
           price: Number(s.price) || 0,
           date: s.date,
+          ...this.mapLineReviewFields(s),
         }));
       } else {
         // When not including full details, still map allowances for total calculation
@@ -2490,7 +2926,9 @@ export class SupabaseStore implements DataStore {
         tour_expenses(*),
         tour_meals(*),
         tour_allowances(*),
-        tour_shoppings(*)
+        tour_shoppings(*),
+        tour_nationalities(*),
+        tour_payments(*)
       `)
       .eq('id', id)
       .order('date', { foreignTable: 'tour_destinations' })
@@ -2498,6 +2936,7 @@ export class SupabaseStore implements DataStore {
       .order('date', { foreignTable: 'tour_meals' })
       .order('date', { foreignTable: 'tour_allowances' })
       .order('date', { foreignTable: 'tour_shoppings' })
+      .order('paid_at', { foreignTable: 'tour_payments', ascending: false })
       .single();
 
     if (error) return null;
@@ -2505,23 +2944,28 @@ export class SupabaseStore implements DataStore {
 
     const tour = this.mapTour(data as any);
     const row: any = data;
+    this.applyTourNationalities(tour, row.tour_nationalities);
+    tour.payments = (row.tour_payments || []).map((p: TourPaymentRow) => this.mapTourPayment(p));
     tour.destinations = (row.tour_destinations || []).map((d: any) => ({
       name: d.name,
       price: Number(d.price) || 0,
       date: d.date,
       guests: d.guests !== null && d.guests !== undefined ? Number(d.guests) : undefined,
+      ...this.mapLineReviewFields(d),
     }));
     tour.expenses = (row.tour_expenses || []).map((e: any) => ({
       name: e.name,
       price: Number(e.price) || 0,
       date: e.date,
       guests: e.guests !== null && e.guests !== undefined ? Number(e.guests) : undefined,
+      ...this.mapLineReviewFields(e),
     }));
     tour.meals = (row.tour_meals || []).map((m: any) => ({
       name: m.name,
       price: Number(m.price) || 0,
       date: m.date,
       guests: m.guests !== null && m.guests !== undefined ? Number(m.guests) : undefined,
+      ...this.mapLineReviewFields(m),
     }));
     tour.allowances = (row.tour_allowances || []).map((a: any) => ({
       date: a.date,
@@ -2529,11 +2973,13 @@ export class SupabaseStore implements DataStore {
       price: Number(a.price) || 0,
       quantity: a.quantity || 1,
       categoryId: a.category_id ?? undefined,
+      ...this.mapLineReviewFields(a),
     }));
     tour.shoppings = (row.tour_shoppings || []).map((s: any) => ({
       name: s.name,
       price: Number(s.price) || 0,
       date: s.date,
+      ...this.mapLineReviewFields(s),
     }));
 
     // Enrich tour with calculated summary
@@ -2555,6 +3001,9 @@ export class SupabaseStore implements DataStore {
     const totalGuests = (tour.adults || 0) + (tour.children || 0);
     // Total Days = (end date - start date) + 1 (inclusive, counting both start and end days)
     const totalDays = Math.max(1, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1);
+    const nationalityEntries = this.normalizeTourNationalitiesForWrite(tour, totalGuests);
+    this.validateTourNationalities(nationalityEntries, totalGuests);
+    const primaryNationality = nationalityEntries[0];
 
     const { data, error } = await this.supabase
       .from('tours')
@@ -2562,10 +3011,12 @@ export class SupabaseStore implements DataStore {
         tour_code: tour.tourCode,
         company_id: tour.companyRef.id,
         company_name_at_booking: tour.companyRef.nameAtBooking,
+        land_operator_id: tour.landOperatorRef?.id || null,
+        land_operator_name_at_booking: tour.landOperatorRef?.nameAtBooking || null,
         guide_id: tour.guideRef.id,
         guide_name_at_booking: tour.guideRef.nameAtBooking,
-        nationality_id: tour.clientNationalityRef.id,
-        nationality_name_at_booking: tour.clientNationalityRef.nameAtBooking,
+        nationality_id: primaryNationality.id,
+        nationality_name_at_booking: primaryNationality.nameAtBooking,
         client_name: tour.clientName,
         adults: tour.adults,
         children: tour.children,
@@ -2620,7 +3071,8 @@ export class SupabaseStore implements DataStore {
         throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
       }
     }
-    
+
+    await this.replaceTourNationalities(data.id, nationalityEntries);
     const createdTour = await this.getTour(data.id) as Tour;
 
     // Add subcollections if provided
@@ -2687,13 +3139,30 @@ export class SupabaseStore implements DataStore {
       updates.company_id = tour.companyRef.id;
       updates.company_name_at_booking = tour.companyRef.nameAtBooking;
     }
+    if (tour.landOperatorRef !== undefined) {
+      updates.land_operator_id = tour.landOperatorRef?.id || null;
+      updates.land_operator_name_at_booking = tour.landOperatorRef?.nameAtBooking || null;
+    }
     if (tour.guideRef !== undefined) {
       updates.guide_id = tour.guideRef.id;
       updates.guide_name_at_booking = tour.guideRef.nameAtBooking;
     }
-    if (tour.clientNationalityRef !== undefined) {
-      updates.nationality_id = tour.clientNationalityRef.id;
-      updates.nationality_name_at_booking = tour.clientNationalityRef.nameAtBooking;
+    let nextNationalityEntries: TourNationality[] | undefined;
+    if (tour.clientNationalities !== undefined || tour.clientNationalityRef !== undefined) {
+      let totalGuestsForNationalities = tour.totalGuests;
+      if (totalGuestsForNationalities === undefined && tour.adults !== undefined && tour.children !== undefined) {
+        totalGuestsForNationalities = (tour.adults || 0) + (tour.children || 0);
+      }
+      if (totalGuestsForNationalities === undefined) {
+        const currentTour = await this.getTour(id);
+        totalGuestsForNationalities = currentTour?.totalGuests || 0;
+      }
+
+      nextNationalityEntries = this.normalizeTourNationalitiesForWrite(tour, totalGuestsForNationalities);
+      this.validateTourNationalities(nextNationalityEntries, totalGuestsForNationalities);
+      const primaryNationality = nextNationalityEntries[0];
+      updates.nationality_id = primaryNationality.id;
+      updates.nationality_name_at_booking = primaryNationality.nameAtBooking;
     }
     if (tour.clientName !== undefined) updates.client_name = tour.clientName;
     if (tour.adults !== undefined) updates.adults = tour.adults;
@@ -2718,6 +3187,10 @@ export class SupabaseStore implements DataStore {
 
     const { error } = await this.supabase.from('tours').update(updates).eq('id', id);
     if (error) throw error;
+
+    if (nextNationalityEntries) {
+      await this.replaceTourNationalities(id, nextNationalityEntries);
+    }
 
     // Auto-update water expense when totalGuests or totalDays changes
     const guestsChanged = tour.totalGuests !== undefined || tour.adults !== undefined || tour.children !== undefined;
@@ -2793,8 +3266,10 @@ export class SupabaseStore implements DataStore {
     return this.createTour({
       tourCode: newTourCode,
       companyRef: original.companyRef,
+      landOperatorRef: original.landOperatorRef,
       guideRef: original.guideRef,
       clientNationalityRef: original.clientNationalityRef,
+      clientNationalities: original.clientNationalities,
       clientName: original.clientName,
       clientPhone: original.clientPhone,
       adults: original.adults,
@@ -3113,10 +3588,247 @@ export class SupabaseStore implements DataStore {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Settlement workflow
+  // ---------------------------------------------------------------------
+
+  private lineTypeToTable(lineType: LineType): string {
+    switch (lineType) {
+      case 'destination': return 'tour_destinations';
+      case 'expense': return 'tour_expenses';
+      case 'meal': return 'tour_meals';
+      case 'allowance': return 'tour_allowances';
+      case 'shopping': return 'tour_shoppings';
+    }
+  }
+
+  private async insertSubmissionHistory(
+    tourId: string,
+    event: 'submitted' | 'returned' | 'approved' | 'reopened',
+    note?: string
+  ): Promise<void> {
+    const { data: authUser } = await this.supabase.auth.getUser();
+    const actorId = authUser.user?.id;
+    let actorRole: string | undefined;
+    if (actorId) {
+      const { data: profile } = await this.supabase
+        .from('user_profiles')
+        .select('role, settlement_role')
+        .eq('id', actorId)
+        .maybeSingle();
+      if (profile) {
+        actorRole = (profile as any).settlement_role || (profile as any).role || undefined;
+      }
+    }
+    const { error } = await this.supabase.from('tour_submission_history').insert({
+      tour_id: tourId,
+      event,
+      actor_id: actorId ?? null,
+      actor_role: actorRole ?? null,
+      note: note ?? null,
+    });
+    if (error) throw error;
+  }
+
+  async submitTourSettlement(tourId: string, note?: string): Promise<Tour> {
+    const { data: current, error: fetchError } = await this.supabase
+      .from('tours')
+      .select('settlement_status, submission_count')
+      .eq('id', tourId)
+      .single();
+    if (fetchError) throw fetchError;
+    const status = (current as any)?.settlement_status as string;
+    if (status === 'approved' || status === 'closed') {
+      throw new Error('Hồ sơ đã được duyệt hoặc đã đóng — không thể gửi lại.');
+    }
+    const nextCount = (Number((current as any)?.submission_count) || 0) + 1;
+    const { error } = await this.supabase
+      .from('tours')
+      .update({
+        settlement_status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        submission_count: nextCount,
+      } as any)
+      .eq('id', tourId);
+    if (error) throw error;
+    await this.insertSubmissionHistory(tourId, 'submitted', note);
+    const tour = await this.getTour(tourId);
+    if (!tour) throw new Error('Không tìm thấy tour sau khi cập nhật.');
+    return tour;
+  }
+
+  async returnTourSettlement(tourId: string, note?: string): Promise<Tour> {
+    const { data: current, error: fetchError } = await this.supabase
+      .from('tours')
+      .select('settlement_status')
+      .eq('id', tourId)
+      .single();
+    if (fetchError) throw fetchError;
+    const status = (current as any)?.settlement_status as string;
+    if (status !== 'submitted') {
+      throw new Error('Chỉ có thể trả lại hồ sơ ở trạng thái "Đã gửi".');
+    }
+    const { error } = await this.supabase
+      .from('tours')
+      .update({ settlement_status: 'need_changes' } as any)
+      .eq('id', tourId);
+    if (error) throw error;
+    await this.insertSubmissionHistory(tourId, 'returned', note);
+    const tour = await this.getTour(tourId);
+    if (!tour) throw new Error('Không tìm thấy tour sau khi cập nhật.');
+    return tour;
+  }
+
+  async approveTourSettlement(tourId: string, note?: string): Promise<Tour> {
+    const { data: current, error: fetchError } = await this.supabase
+      .from('tours')
+      .select('settlement_status')
+      .eq('id', tourId)
+      .single();
+    if (fetchError) throw fetchError;
+    const status = (current as any)?.settlement_status as string;
+    if (status !== 'submitted') {
+      throw new Error('Chỉ duyệt được hồ sơ ở trạng thái "Đã gửi".');
+    }
+    const { data: authUser } = await this.supabase.auth.getUser();
+    const now = new Date().toISOString();
+    const { error } = await this.supabase
+      .from('tours')
+      .update({
+        settlement_status: 'approved',
+        approved_at: now,
+        approved_by: authUser.user?.id ?? null,
+        locked_at: now,
+      } as any)
+      .eq('id', tourId);
+    if (error) throw error;
+    await this.insertSubmissionHistory(tourId, 'approved', note);
+    const tour = await this.getTour(tourId);
+    if (!tour) throw new Error('Không tìm thấy tour sau khi duyệt.');
+    return tour;
+  }
+
+  async reopenTourSettlement(tourId: string, note?: string): Promise<Tour> {
+    const { error } = await this.supabase
+      .from('tours')
+      .update({
+        settlement_status: 'draft',
+        approved_at: null,
+        approved_by: null,
+        locked_at: null,
+      } as any)
+      .eq('id', tourId);
+    if (error) throw error;
+    await this.insertSubmissionHistory(tourId, 'reopened', note);
+    const tour = await this.getTour(tourId);
+    if (!tour) throw new Error('Không tìm thấy tour sau khi mở khóa.');
+    return tour;
+  }
+
+  async updateLineReview(
+    tourId: string,
+    lineType: LineType,
+    lineId: string,
+    review: { lineStatus: LineStatus; lineComment?: string }
+  ): Promise<void> {
+    const table = this.lineTypeToTable(lineType);
+    const { data: authUser } = await this.supabase.auth.getUser();
+    const { error } = await (this.supabase as any)
+      .from(table)
+      .update({
+        line_status: review.lineStatus,
+        line_comment: review.lineComment ?? null,
+        reviewed_by: authUser.user?.id ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', lineId)
+      .eq('tour_id', tourId);
+    if (error) throw error;
+  }
+
+  async listSubmissionHistory(tourId: string): Promise<SubmissionHistoryEvent[]> {
+    const { data, error } = await this.supabase
+      .from('tour_submission_history')
+      .select('*')
+      .eq('tour_id', tourId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      tourId: row.tour_id,
+      event: row.event,
+      actorId: row.actor_id ?? undefined,
+      actorRole: row.actor_role ?? undefined,
+      note: row.note ?? undefined,
+      createdAt: row.created_at,
+    }));
+  }
+
+  async countToursBySettlementStatus(statuses: SettlementStatus[]): Promise<number> {
+    if (!statuses.length) return 0;
+    const { count, error } = await this.supabase
+      .from('tours')
+      .select('id', { count: 'exact', head: true })
+      .in('settlement_status', statuses);
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  // Payment tracking
+  async listTourPayments(tourId: string): Promise<TourPayment[]> {
+    const { data, error } = await this.supabase
+      .from('tour_payments')
+      .select('*')
+      .eq('tour_id', tourId)
+      .order('paid_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((row) => this.mapTourPayment(row));
+  }
+
+  async addTourPayment(tourId: string, input: TourPaymentInput): Promise<TourPayment> {
+    const insert: TourPaymentInsert = {
+      tour_id: tourId,
+      amount: input.amount,
+      payment_method: input.method,
+      paid_at: input.paidAt,
+      note: input.note ?? null,
+    };
+    const { data, error } = await this.supabase
+      .from('tour_payments')
+      .insert(insert)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return this.mapTourPayment(data);
+  }
+
+  async updateTourPayment(id: string, patch: Partial<TourPaymentInput>): Promise<void> {
+    const update: TourPaymentUpdateRow = {};
+    if (patch.amount !== undefined) update.amount = patch.amount;
+    if (patch.method !== undefined) update.payment_method = patch.method;
+    if (patch.paidAt !== undefined) update.paid_at = patch.paidAt;
+    if (patch.note !== undefined) update.note = patch.note ?? null;
+    if (Object.keys(update).length === 0) return;
+    const { error } = await this.supabase
+      .from('tour_payments')
+      .update(update)
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  async deleteTourPayment(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('tour_payments')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  }
+
   // Data Import/Export
   async exportData(): Promise<any> {
-    const [guides, companies, nationalities, provinces, destinations, shoppings, categories, expenses, tourResult] = await Promise.all([
+    const [guides, languages, companies, nationalities, provinces, destinations, shoppings, categories, expenses, tourResult] = await Promise.all([
       this.listGuides(),
+      this.listLanguages(),
       this.listCompanies(),
       this.listNationalities(),
       this.listProvinces(),
@@ -3129,6 +3841,7 @@ export class SupabaseStore implements DataStore {
 
     return {
       guides,
+      languages,
       companies,
       nationalities,
       provinces,
@@ -3141,10 +3854,19 @@ export class SupabaseStore implements DataStore {
   }
 
   async importData(data: any): Promise<void> {
+    if (data.languages) {
+      for (const language of data.languages) {
+        const { id, createdAt, updatedAt, createdBy, searchKeywords, ...rest } = language;
+        await this.createLanguage(rest);
+      }
+    }
     if (data.guides) {
       for (const guide of data.guides) {
-        const { id, createdAt, updatedAt, ...rest } = guide;
-        await this.createGuide(rest);
+        const { id, createdAt, updatedAt, createdBy, searchKeywords, languages, ...rest } = guide;
+        await this.createGuide({
+          ...rest,
+          languageIds: Array.isArray(languages) ? languages.map((language: Language) => language.id) : undefined,
+        });
       }
     }
     if (data.companies) {

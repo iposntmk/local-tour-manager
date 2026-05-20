@@ -27,24 +27,36 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign, Calculator, ShoppingBag } from 'lucide-react';
-import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary } from '@/types/tour';
+import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary, TourNationality } from '@/types/tour';
+import { TourNationalitiesPicker } from '@/components/tours/TourNationalitiesPicker';
 
 interface TourFormProps {
   initialData?: Tour;
   onSubmit: (data: TourInput & { destinations: Destination[]; expenses: Expense[]; meals: Meal[]; allowances: Allowance[]; shoppings: Shopping[]; summary: TourSummary }) => void;
 }
 
+const getInitialTourNationalities = (initialData?: Tour): TourNationality[] => {
+  if (!initialData) return [];
+  if (initialData.clientNationalities?.length) return initialData.clientNationalities;
+  if (!initialData.clientNationalityRef?.id) return [];
+  return [
+    {
+      ...initialData.clientNationalityRef,
+      paxCount: Math.max(initialData.totalGuests || 0, 1),
+    },
+  ];
+};
+
 export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const [companyOpen, setCompanyOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
-  const [nationalityOpen, setNationalityOpen] = useState(false);
   const [destinationOpen, setDestinationOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [mealOpen, setMealOpen] = useState(false);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState(initialData?.companyRef.id || '');
   const [selectedGuideId, setSelectedGuideId] = useState(initialData?.guideRef.id || '');
-  const [selectedNationalityId, setSelectedNationalityId] = useState(initialData?.clientNationalityRef.id || '');
+  const [selectedNationalities, setSelectedNationalities] = useState<TourNationality[]>(() => getInitialTourNationalities(initialData));
 
   // States for creating new master data
   const [showNewDestinationDialog, setShowNewDestinationDialog] = useState(false);
@@ -95,6 +107,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
       companyRef: initialData.companyRef,
       guideRef: initialData.guideRef,
       clientNationalityRef: initialData.clientNationalityRef,
+      clientNationalities: getInitialTourNationalities(initialData),
       clientName: initialData.clientName,
       adults: initialData.adults,
       children: initialData.children,
@@ -320,7 +333,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
     if (!selectedGuideId) {
       missingFields.push('Guide');
     }
-    if (!selectedNationalityId) {
+    if (selectedNationalities.length === 0) {
       missingFields.push('Nationality');
     }
 
@@ -329,11 +342,18 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
       return;
     }
 
+    const nationalityPaxTotal = selectedNationalities.reduce((sum, item) => sum + (Number(item.paxCount) || 0), 0);
+    const formTotalGuests = (data.adults || 0) + (data.children || 0);
+    if (formTotalGuests > 0 && nationalityPaxTotal !== formTotalGuests) {
+      toast.error('Nationality pax total must equal total guests');
+      return;
+    }
+
     const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
     const selectedGuide = guides.find((g) => g.id === selectedGuideId);
-    const selectedNationality = nationalities.find((n) => n.id === selectedNationalityId);
+    const primaryNationality = selectedNationalities[0];
 
-    if (!selectedCompany || !selectedGuide || !selectedNationality) {
+    if (!selectedCompany || !selectedGuide || !primaryNationality) {
       toast.error('Please select valid Company, Guide, and Nationality');
       return;
     }
@@ -342,7 +362,8 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
       ...data,
       companyRef: { id: selectedCompany.id, nameAtBooking: selectedCompany.name },
       guideRef: { id: selectedGuide.id, nameAtBooking: selectedGuide.name },
-      clientNationalityRef: { id: selectedNationality.id, nameAtBooking: selectedNationality.name },
+      clientNationalityRef: { id: primaryNationality.id, nameAtBooking: primaryNationality.nameAtBooking },
+      clientNationalities: selectedNationalities,
       destinations,
       expenses,
       meals,
@@ -414,7 +435,6 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
 
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
   const selectedGuide = guides.find((g) => g.id === selectedGuideId);
-  const selectedNationality = nationalities.find((n) => n.id === selectedNationalityId);
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
@@ -594,50 +614,14 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
             {/* Nationality */}
             <div className="space-y-2">
               <Label>Nationality *</Label>
-              <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className={cn("w-full justify-between", getRequiredFieldClasses(!selectedNationalityId))}
-                  >
-                    {selectedNationality ? (
-                      <span>
-                        {selectedNationality.emoji} {selectedNationality.name}
-                      </span>
-                    ) : (
-                      'Select nationality...'
-                    )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search nationality..." />
-                    <CommandEmpty>No nationality found.</CommandEmpty>
-                    <CommandGroup>
-                      {nationalities.map((nationality) => (
-                        <CommandItem
-                          key={nationality.id}
-                          value={nationality.name}
-                          onSelect={() => {
-                            setSelectedNationalityId(nationality.id);
-                            setNationalityOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              'mr-2 h-4 w-4',
-                              selectedNationalityId === nationality.id ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          {nationality.emoji} {nationality.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <TourNationalitiesPicker
+                nationalities={nationalities}
+                value={selectedNationalities}
+                onChange={setSelectedNationalities}
+                totalGuests={totalGuests}
+                required
+                placeholder="Select nationality..."
+              />
             </div>
 
             {/* Adults */}

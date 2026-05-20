@@ -22,16 +22,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Destination, Tour } from '@/types/tour';
-import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
+import { ProvinceDialog } from '@/components/provinces/ProvinceDialog';
+import type { Province, ProvinceInput, TouristDestination } from '@/types/master';
+import { TourRowLabel } from '@/components/tours/TourRowIcon';
 
 interface DestinationsTabProps {
   tourId?: string;
   destinations: Destination[];
   onChange?: (destinations: Destination[]) => void;
   tour?: Tour | null;
+  readOnly?: boolean;
 }
 
-export function DestinationsTab({ tourId, destinations, onChange, tour }: DestinationsTabProps) {
+export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly = false }: DestinationsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Destination>({ name: '', price: 0, date: '' });
   const [openDestination, setOpenDestination] = useState(false);
@@ -40,6 +44,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
   const [newDestinationPrice, setNewDestinationPrice] = useState(0);
   const [newDestinationProvinceId, setNewDestinationProvinceId] = useState('');
   const [openProvince, setOpenProvince] = useState(false);
+  const [showNewProvinceDialog, setShowNewProvinceDialog] = useState(false);
   const queryClient = useQueryClient();
 
   // Default guests for new rows = tour totalGuests
@@ -139,6 +144,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
   });
 
   const handleEdit = (index: number) => {
+    if (readOnly) return;
     setEditingIndex(index);
     setFormData(destinations[index]);
     // Scroll to the form at the top
@@ -194,7 +200,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
           <TableRow key={`${groupName}-${destination.originalIndex}-${destination.date}`} className={`animate-fade-in ${isDupName || isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
             <TableCell className="font-medium">{idx + 1}</TableCell>
             <TableCell className="font-medium">
-              {destination.name}
+              <TourRowLabel kind="destination" label={destination.name} />
               {(isDupName) && (
                 <span className="ml-2 text-destructive" title="Tên điểm đến trùng">⚑</span>
               )}
@@ -209,6 +215,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
               <NumberInputMobile
                 value={destination.guests}
                 onChange={(val) => {
+                  if (readOnly) return;
                   if (val !== undefined && tourGuests && val > tourGuests) {
                     toast.warning(`Số khách không được vượt quá tổng khách của tour (${tourGuests}).`);
                     val = tourGuests;
@@ -224,6 +231,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
                 }}
                 min={0}
                 max={tourGuests}
+                disabled={readOnly}
                 className="w-16 sm:w-24"
               />
             </TableCell>
@@ -231,6 +239,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
             <TableCell>{formatDate(destination.date)}</TableCell>
             <TableCell className="text-right">
               {/* Responsive actions: dropdown on small screens, buttons on larger screens */}
+              {!readOnly && (
               <div className="sm:hidden">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -254,6 +263,8 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+              )}
+              {!readOnly && (
               <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                 <Button
                   variant="ghost"
@@ -274,6 +285,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+              )}
             </TableCell>
           </TableRow>
         );
@@ -282,11 +294,26 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
     });
 
     return rows;
-  }, [destinations, nameToProvince, tour?.totalGuests, duplicateDestinationNames, tourId, updateMutation, onChange]);
+  }, [destinations, nameToProvince, tour?.totalGuests, duplicateDestinationNames, tourId, updateMutation, onChange, readOnly]);
 
   const { data: provinces = [] } = useQuery({
     queryKey: ['provinces'],
     queryFn: () => store.listProvinces({ status: 'active' }),
+  });
+
+  const createProvinceMutation = useMutation({
+    mutationFn: (data: ProvinceInput) => store.createProvince(data),
+    onSuccess: (province) => {
+      queryClient.setQueryData<Province[]>(['provinces'], (current) => upsertById(current, province));
+      queryClient.invalidateQueries({ queryKey: ['provinces'] });
+      setNewDestinationProvinceId(province.id);
+      setOpenProvince(false);
+      setShowNewProvinceDialog(false);
+      toast.success('Đã tạo tỉnh/thành');
+    },
+    onError: (error: Error) => {
+      toast.error(`Tạo tỉnh/thành thất bại: ${error.message}`);
+    },
   });
 
   const createDestinationMutation = useMutation({
@@ -305,6 +332,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
       });
     },
     onSuccess: (newDestination) => {
+      queryClient.setQueryData<TouristDestination[]>(['touristDestinations'], (current) => upsertById(current, newDestination));
       queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
       toast.success('Đã tạo điểm tham quan');
       setShowNewDestinationDialog(false);
@@ -319,8 +347,16 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
     },
   });
 
+  const handleCreateNewProvince = (data: ProvinceInput) => {
+    createProvinceMutation.mutate(data);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) {
+      toast.error('Bạn không có quyền sửa điểm đến trong tour.');
+      return;
+    }
     
     // Validate required fields
     if (!formData.name || !formData.date) {
@@ -358,6 +394,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
   };
 
   const handleCreateNewDestination = () => {
+    if (readOnly) return;
     if (!newDestinationName.trim()) {
       toast.error('Vui lòng nhập tên điểm đến');
       return;
@@ -386,6 +423,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
 
   return (
     <div className="space-y-6">
+      {!readOnly && (
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
           {editingIndex !== null ? 'Chỉnh sửa điểm đến' : 'Thêm điểm đến'}
@@ -396,10 +434,12 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
               <Popover open={openDestination} onOpenChange={setOpenDestination}>
                 <PopoverTrigger asChild>
                   <Button
+                    type="button"
                     variant="outline"
                     role="combobox"
                     aria-expanded={openDestination}
                     className="flex-1 justify-between"
+                    disabled={readOnly}
                   >
                     {formData.name || "Chọn điểm đến..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -447,6 +487,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
                 variant="outline"
                 size="icon"
                 onClick={() => setShowNewDestinationDialog(true)}
+                disabled={readOnly}
                 title="Thêm điểm đến mới"
               >
                 <Plus className="h-4 w-4" />
@@ -456,11 +497,13 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
               placeholder="Giá (VND)"
               value={formData.price}
               onChange={(price) => setFormData({ ...formData, price })}
+              disabled={readOnly}
             />
             <DateInput
               value={formData.date}
               onChange={(date) => setFormData({ ...formData, date })}
               required
+              disabled={readOnly}
             />
             <NumberInputMobile
               value={formData.guests}
@@ -476,11 +519,12 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
               min={0}
               max={tour?.totalGuests || 0}
               placeholder="Số khách"
+              disabled={readOnly}
               className="w-full"
             />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" className="hover-scale">
+            <Button type="submit" className="hover-scale" disabled={readOnly}>
               <Plus className="h-4 w-4 mr-2" />
               {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
             </Button>
@@ -492,6 +536,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
           </div>
         </form>
       </div>
+      )}
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
@@ -562,50 +607,65 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
             </div>
             <div className="space-y-2">
               <Label htmlFor="destination-province">Tỉnh/Thành phố</Label>
-              <Popover open={openProvince} onOpenChange={setOpenProvince}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="destination-province"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openProvince}
-                    className="justify-between w-full"
-                  >
-                    {newDestinationProvinceId
-                      ? provinces.find((prov) => prov.id === newDestinationProvinceId)?.name
-                      : "Chọn tỉnh/thành..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Tìm tỉnh/thành..." />
-                    <CommandList>
-                      <CommandEmpty>Không tìm thấy tỉnh/thành.</CommandEmpty>
-                      <CommandGroup>
-                        {provinces.map((prov) => (
-                          <CommandItem
-                            key={prov.id}
-                            value={prov.name}
-                            onSelect={() => {
-                              setNewDestinationProvinceId(prov.id);
-                              setOpenProvince(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                newDestinationProvinceId === prov.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {prov.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Popover open={openProvince} onOpenChange={setOpenProvince}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      id="destination-province"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openProvince}
+                      className="min-w-0 flex-1 justify-between"
+                    >
+                      <span className="truncate">
+                        {newDestinationProvinceId
+                          ? provinces.find((prov) => prov.id === newDestinationProvinceId)?.name
+                          : "Chọn tỉnh/thành..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Tìm tỉnh/thành..." />
+                      <CommandList>
+                        <CommandEmpty>Không tìm thấy tỉnh/thành.</CommandEmpty>
+                        <CommandGroup>
+                          {provinces.map((prov) => (
+                            <CommandItem
+                              key={prov.id}
+                              value={prov.name}
+                              onSelect={() => {
+                                setNewDestinationProvinceId(prov.id);
+                                setOpenProvince(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  newDestinationProvinceId === prov.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {prov.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Thêm tỉnh/thành"
+                  aria-label="Thêm tỉnh/thành"
+                  onClick={() => setShowNewProvinceDialog(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="new-destination-price">Giá mặc định (VND)</Label>
@@ -633,13 +693,19 @@ export function DestinationsTab({ tourId, destinations, onChange, tour }: Destin
             <Button
               type="button"
               onClick={handleCreateNewDestination}
-              disabled={createDestinationMutation.isPending}
+              disabled={readOnly || createDestinationMutation.isPending}
             >
               {createDestinationMutation.isPending ? 'Đang tạo...' : 'Tạo'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ProvinceDialog
+        open={showNewProvinceDialog}
+        onOpenChange={setShowNewProvinceDialog}
+        onSubmit={handleCreateNewProvince}
+      />
     </div>
   );
 }

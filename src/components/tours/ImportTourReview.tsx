@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Fuse from 'fuse.js';
 import type { Tour, EntityRef } from '@/types/tour';
-import type { Company, Guide, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
+import type { Company, Guide, GuideInput, Language, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
@@ -46,6 +46,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
   const [companies, setCompanies] = useState<Company[]>(preloadedEntities?.companies ?? []);
   const [guides, setGuides] = useState<Guide[]>(preloadedEntities?.guides ?? []);
   const [nationalities, setNationalities] = useState<Nationality[]>(preloadedEntities?.nationalities ?? []);
+  const [languages, setLanguages] = useState<Language[]>([]);
   const [destinations, setDestinations] = useState<TouristDestination[]>([]);
   const [expenses, setExpenses] = useState<DetailedExpense[]>([]);
   const [shoppings, setShoppings] = useState<Shopping[]>([]);
@@ -64,10 +65,11 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
   useEffect(() => {
     const load = async () => {
       try {
-        const [c, g, n, d, e, s, p] = await Promise.all([
+        const [c, g, n, l, d, e, s, p] = await Promise.all([
           preloadedEntities?.companies ? Promise.resolve(preloadedEntities.companies) : store.listCompanies({}),
           preloadedEntities?.guides ? Promise.resolve(preloadedEntities.guides) : store.listGuides({}),
           preloadedEntities?.nationalities ? Promise.resolve(preloadedEntities.nationalities) : store.listNationalities({}),
+          store.listLanguages({ status: 'active' }),
           store.listTouristDestinations({}),
           store.listDetailedExpenses({}),
           store.listShoppings({}),
@@ -76,6 +78,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
         setCompanies(c);
         setGuides(g);
         setNationalities(n);
+        setLanguages(l);
         setDestinations(d);
         setExpenses(e);
         setShoppings(s);
@@ -251,7 +254,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
     }
   };
 
-  const handleCreateGuide = async (data: { name: string; phone?: string; note?: string }) => {
+  const handleCreateGuide = async (data: GuideInput) => {
     try {
       const created = await store.createGuide({
         name: data.name,
@@ -753,7 +756,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
 
       {/* Create dialogs */}
       <CompanyDialog open={openCompanyDialog} onOpenChange={setOpenCompanyDialog} onSubmit={handleCreateCompany} />
-      <GuideDialog open={openGuideDialog} onOpenChange={setOpenGuideDialog} onSubmit={handleCreateGuide} />
+      <GuideDialog open={openGuideDialog} onOpenChange={setOpenGuideDialog} languages={languages} onSubmit={handleCreateGuide} />
       <NationalityDialog open={openNationalityDialog} onOpenChange={setOpenNationalityDialog} onSubmit={handleCreateNationality} />
       <DestinationDialog open={openDestinationDialog} onOpenChange={setOpenDestinationDialog} onSubmit={handleCreateDestination} />
       <DetailedExpenseDialog open={openExpenseDialog} onOpenChange={setOpenExpenseDialog} onSubmit={handleCreateExpense} />

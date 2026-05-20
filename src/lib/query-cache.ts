@@ -19,3 +19,11 @@ export const invalidateTourAggregateCaches = (
     queryClient.invalidateQueries({ queryKey: TOUR_GRAND_TOTAL_QUERY_KEY, refetchType }),
     queryClient.invalidateQueries({ queryKey: ['statistics', 'tours'], refetchType }),
   ]);
+
+export const upsertById = <T extends { id: string }>(items: T[] | undefined, nextItem: T): T[] => {
+  if (!items) return [nextItem];
+  const exists = items.some((item) => item.id === nextItem.id);
+  return exists
+    ? items.map((item) => (item.id === nextItem.id ? nextItem : item))
+    : [...items, nextItem];
+};

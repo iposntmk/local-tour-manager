@@ -38,6 +38,7 @@
 ## Agent-Specific Notes
 - Prefer npm over other managers (a Bun lockfile exists, but `package-lock.json` governs).
 - Keep changes minimal and cohesive; update related types, tests, and migrations together.
+- Khi thêm tính năng mới, phải cập nhật phân quyền tương ứng trong `src/types/user.ts` và thêm node vào cây checkbox ở `src/lib/permissions.ts`. Test `src/lib/__tests__/permissions.test.ts` phải pass để bảo đảm không thiếu permission trong UI phân quyền.
 ## output: 
 - không hiển thị code ra màn hình
 - chỉ hiển thị ngôn ngữ tự nhiên (vietnamese) và các từ khoá chuyên ngành dev thì giữ nguyên

@@ -1,4 +1,4 @@
-import type { Guide, GuideInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput, DiaryType, DiaryTypeInput, TourDiary, TourDiaryInput, Restaurant, RestaurantInput, ShopPlace, ShopPlaceInput, Hotel, HotelInput } from './master';
+import type { Guide, GuideInput, Language, LanguageInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput, DiaryType, DiaryTypeInput, TourDiary, TourDiaryInput, Restaurant, RestaurantInput, ShopPlace, ShopPlaceInput, Hotel, HotelInput } from './master';
 import type {
   Tour,
   TourInput,
@@ -10,6 +10,12 @@ import type {
   Shopping as TourShopping,
   TourSummary,
   TourListResult,
+  LineStatus,
+  LineType,
+  SettlementStatus,
+  SubmissionHistoryEvent,
+  TourPayment,
+  TourPaymentInput,
 } from './tour';
 import type { UserProfile, UserProfileInput } from './user';
 
@@ -25,12 +31,23 @@ export interface DataStore {
   listGuides(query?: SearchQuery): Promise<Guide[]>;
   getGuide(id: string): Promise<Guide | undefined>;
   createGuide(input: GuideInput): Promise<Guide>;
-  updateGuide(id: string, patch: Partial<Guide>): Promise<void>;
+  updateGuide(id: string, patch: Partial<GuideInput>): Promise<void>;
   toggleGuideStatus(id: string): Promise<void>;
   duplicateGuide(id: string): Promise<Guide>;
   deleteGuide(id: string): Promise<void>;
   deleteAllGuides(): Promise<void>;
   bulkCreateGuides(inputs: GuideInput[]): Promise<Guide[]>;
+
+  // Languages
+  listLanguages(query?: SearchQuery): Promise<Language[]>;
+  getLanguage(id: string): Promise<Language | undefined>;
+  createLanguage(input: LanguageInput): Promise<Language>;
+  updateLanguage(id: string, patch: Partial<Language>): Promise<void>;
+  toggleLanguageStatus(id: string): Promise<void>;
+  duplicateLanguage(id: string): Promise<Language>;
+  deleteLanguage(id: string): Promise<void>;
+  deleteAllLanguages(): Promise<void>;
+  bulkCreateLanguages(inputs: LanguageInput[]): Promise<Language[]>;
 
   // Companies
   listCompanies(query?: SearchQuery): Promise<Company[]>;
@@ -191,7 +208,27 @@ export interface DataStore {
   addTourShopping(tourId: string, shopping: TourShopping): Promise<void>;
   updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void>;
   removeTourShopping(tourId: string, index: number): Promise<void>;
-  
+
+  // Settlement workflow
+  submitTourSettlement(tourId: string, note?: string): Promise<Tour>;
+  returnTourSettlement(tourId: string, note?: string): Promise<Tour>;
+  approveTourSettlement(tourId: string, note?: string): Promise<Tour>;
+  reopenTourSettlement(tourId: string, note?: string): Promise<Tour>;
+  updateLineReview(
+    tourId: string,
+    lineType: LineType,
+    lineId: string,
+    review: { lineStatus: LineStatus; lineComment?: string }
+  ): Promise<void>;
+  listSubmissionHistory(tourId: string): Promise<SubmissionHistoryEvent[]>;
+  countToursBySettlementStatus(statuses: SettlementStatus[]): Promise<number>;
+
+  // Payment tracking
+  listTourPayments(tourId: string): Promise<TourPayment[]>;
+  addTourPayment(tourId: string, input: TourPaymentInput): Promise<TourPayment>;
+  updateTourPayment(id: string, patch: Partial<TourPaymentInput>): Promise<void>;
+  deleteTourPayment(id: string): Promise<void>;
+
   // Data management
   exportData(): Promise<any>;
   importData(data: any): Promise<void>;

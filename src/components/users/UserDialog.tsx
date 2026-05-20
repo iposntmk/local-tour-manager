@@ -8,9 +8,16 @@ import {
   UserProfileInput,
   UserRole,
   UserStatus,
+  SettlementRole,
   USER_ROLE_LABELS,
   USER_STATUS_LABELS,
+  SETTLEMENT_ROLE_LABELS,
+  Permission,
+  getDefaultPermissionsForProfile,
+  normalizePermissions,
+  ALL_PERMISSIONS,
 } from '@/types/user';
+import { PermissionTree } from '@/components/users/PermissionTree';
 import {
   Dialog,
   DialogContent,
@@ -44,6 +51,8 @@ interface FormData {
   fullName: string;
   role: UserRole;
   status: UserStatus;
+  settlementRole: SettlementRole;
+  permissions: Permission[];
 }
 
 export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
@@ -66,11 +75,25 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
       fullName: '',
       role: 'viewer',
       status: 'active',
+      settlementRole: 'none',
+      permissions: getDefaultPermissionsForProfile({ role: 'viewer', settlementRole: 'none' }),
     },
   });
 
   const role = watch('role');
   const status = watch('status');
+  const settlementRole = watch('settlementRole');
+  const permissions = watch('permissions') || [];
+  const isEditingSelf = !!user && user.id === currentUserProfile?.id;
+  const protectedPermissions: Permission[] = isEditingSelf ? ['manage_users'] : [];
+
+  const applyRolePreset = (nextRole = role, nextSettlementRole = settlementRole) => {
+    setValue(
+      'permissions',
+      getDefaultPermissionsForProfile({ role: nextRole, settlementRole: nextSettlementRole }),
+      { shouldDirty: true }
+    );
+  };
 
   useEffect(() => {
     if (user) {
@@ -80,6 +103,11 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         fullName: user.fullName || '',
         role: user.role,
         status: user.status,
+        settlementRole: user.settlementRole ?? 'none',
+        permissions: user.permissions ?? getDefaultPermissionsForProfile({
+          role: user.role,
+          settlementRole: user.settlementRole ?? 'none',
+        }),
       });
     } else {
       reset({
@@ -88,6 +116,8 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         fullName: '',
         role: 'viewer',
         status: 'active',
+        settlementRole: 'none',
+        permissions: getDefaultPermissionsForProfile({ role: 'viewer', settlementRole: 'none' }),
       });
     }
   }, [user, reset]);
@@ -114,6 +144,8 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         fullName: data.fullName,
         role: data.role,
         status: data.status,
+        settlementRole: data.settlementRole,
+        permissions: normalizePermissions(data.permissions),
       };
 
       await store.updateUserProfile(authData.user.id, profileInput);
@@ -147,6 +179,8 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         fullName: data.fullName,
         role: data.role,
         status: data.status,
+        settlementRole: data.settlementRole,
+        permissions: normalizePermissions(data.permissions),
       };
 
       await store.updateUserProfile(user.id, profileInput);
@@ -190,6 +224,15 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
   });
 
   const onSubmit = async (data: FormData) => {
+    if (isEditingSelf && !data.permissions.includes('manage_users')) {
+      toast({
+        title: 'Không thể lưu',
+        description: 'Bạn không thể tự gỡ quyền quản lý người dùng khỏi tài khoản đang đăng nhập.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (isEdit) {
       updateMutation.mutate(data);
     } else {
@@ -207,7 +250,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[760px]">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Chỉnh sửa người dùng' : 'Tạo người dùng mới'}</DialogTitle>
           <DialogDescription>
@@ -262,7 +305,13 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
             <Label htmlFor="role">
               Vai trò <span className="text-destructive">*</span>
             </Label>
-            <Select value={role} onValueChange={(value: UserRole) => setValue('role', value)}>
+            <Select
+              value={role}
+              onValueChange={(value: UserRole) => {
+                setValue('role', value);
+                applyRolePreset(value, settlementRole);
+              }}
+            >
               <SelectTrigger id="role">
                 <SelectValue />
               </SelectTrigger>
@@ -295,6 +344,68 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                 <SelectItem value="inactive">{USER_STATUS_LABELS.inactive}</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="settlementRole">Vai trò quyết toán</Label>
+            <Select
+              value={settlementRole}
+              onValueChange={(value: SettlementRole) => {
+                setValue('settlementRole', value);
+                applyRolePreset(role, value);
+              }}
+            >
+              <SelectTrigger id="settlementRole">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{SETTLEMENT_ROLE_LABELS.none}</SelectItem>
+                <SelectItem value="guide">{SETTLEMENT_ROLE_LABELS.guide}</SelectItem>
+                <SelectItem value="accountant">{SETTLEMENT_ROLE_LABELS.accountant}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {settlementRole === 'none' && 'Không tham gia luồng quyết toán tour.'}
+              {settlementRole === 'guide' && 'HDV: nhập và gửi quyết toán cho kế toán kiểm tra.'}
+              {settlementRole === 'accountant' && 'Kế toán: review từng dòng chi phí và duyệt quyết toán.'}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label>Phân quyền tính năng</Label>
+                <p className="text-xs text-muted-foreground">
+                  Tick theo từng nhóm chức năng; nhóm cha sẽ chọn hoặc bỏ chọn toàn bộ quyền con.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => applyRolePreset()}>
+                  Theo vai trò
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setValue('permissions', ALL_PERMISSIONS, { shouldDirty: true })}
+                >
+                  Chọn tất cả
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setValue('permissions', protectedPermissions, { shouldDirty: true })}
+                >
+                  Bỏ chọn
+                </Button>
+              </div>
+            </div>
+            <PermissionTree
+              value={permissions}
+              onChange={(nextPermissions) => setValue('permissions', nextPermissions, { shouldDirty: true })}
+              disabledPermissions={protectedPermissions}
+            />
           </div>
 
           <DialogFooter>

@@ -15,9 +15,10 @@ export default defineConfig(({ mode }) => {
   return {
     base: normalizedBasePath,
     server: {
-      host: true,
+      host: "0.0.0.0",
       port: 8080,
-      open: true,
+      strictPort: true,
+      open: false,
     },
     plugins: [
       react(),
@@ -26,68 +27,69 @@ export default defineConfig(({ mode }) => {
           open: true,
           gzipSize: true,
           filename: "dist/stats.html",
-        }),
-      VitePWA({
-        registerType: "autoUpdate",
-        includeAssets: ["favicon.ico", "placeholder.svg"],
-        manifest: {
-          name: "Tour Manager - Local-First Tour Management",
-          short_name: "Tour Manager",
-          description: "Local-first tour management system for organizing tours, guides, companies, and itineraries",
-          theme_color: "#ffffff",
-          background_color: "#ffffff",
-          display: "standalone",
-          scope: normalizedBasePath,
-          start_url: normalizedBasePath,
-          icons: [
-            {
-              src: "/placeholder.svg",
-              sizes: "192x192",
-              type: "image/svg+xml",
-              purpose: "any maskable",
-            },
-            {
-              src: "/placeholder.svg",
-              sizes: "512x512",
-              type: "image/svg+xml",
-              purpose: "any maskable",
-            },
-          ],
-        },
-        workbox: {
-          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: "CacheFirst",
-              options: {
-                cacheName: "google-fonts-cache",
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-              handler: "CacheFirst",
-              options: {
-                cacheName: "gstatic-fonts-cache",
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-          ],
-        },
       }),
+      mode !== "development" &&
+        VitePWA({
+          registerType: "autoUpdate",
+          includeAssets: ["favicon.ico", "placeholder.svg"],
+          manifest: {
+            name: "Tour Manager - Local-First Tour Management",
+            short_name: "Tour Manager",
+            description: "Local-first tour management system for organizing tours, guides, companies, and itineraries",
+            theme_color: "#ffffff",
+            background_color: "#ffffff",
+            display: "standalone",
+            scope: normalizedBasePath,
+            start_url: normalizedBasePath,
+            icons: [
+              {
+                src: "/placeholder.svg",
+                sizes: "192x192",
+                type: "image/svg+xml",
+                purpose: "any maskable",
+              },
+              {
+                src: "/placeholder.svg",
+                sizes: "512x512",
+                type: "image/svg+xml",
+                purpose: "any maskable",
+              },
+            ],
+          },
+          workbox: {
+            globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+            runtimeCaching: [
+              {
+                urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+                handler: "CacheFirst",
+                options: {
+                  cacheName: "google-fonts-cache",
+                  expiration: {
+                    maxEntries: 10,
+                    maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                  },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
+              {
+                urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+                handler: "CacheFirst",
+                options: {
+                  cacheName: "gstatic-fonts-cache",
+                  expiration: {
+                    maxEntries: 10,
+                    maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                  },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
+            ],
+          },
+        }),
     ].filter(Boolean),
     resolve: {
       alias: {

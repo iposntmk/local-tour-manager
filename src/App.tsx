@@ -7,8 +7,12 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Index from "./pages/Index";
+import { useAuth } from "@/contexts/AuthContext";
+import { Layout } from "@/components/Layout";
+import { InactiveUserBanner } from "@/components/auth/InactiveUserBanner";
+import type { Permission } from "@/types/user";
 import Guides from "./pages/Guides";
+import Languages from "./pages/Languages";
 import Companies from "./pages/Companies";
 import Nationalities from "./pages/Nationalities";
 import Provinces from "./pages/Provinces";
@@ -36,6 +40,39 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function AccessDenied() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="max-w-md rounded-lg border bg-card p-6 text-center shadow-sm">
+        <h1 className="text-xl font-semibold">Không có quyền truy cập</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Tài khoản của bạn chưa được cấp quyền cho tính năng này.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RequirePermissionRoute({
+  permission,
+  children,
+}: {
+  permission: Permission;
+  children: React.ReactNode;
+}) {
+  const { loading, hasPermission } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  return hasPermission(permission) ? <>{children}</> : <AccessDenied />;
+}
 
 const App = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -81,22 +118,26 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <InactiveUserBanner />
           <HashRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
             <Routes>
               <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/" />} />
-              <Route path="/" element={user ? <Tours /> : <Navigate to="/auth" />} />
-              <Route path="/guides" element={user ? <Guides /> : <Navigate to="/auth" />} />
-              <Route path="/companies" element={user ? <Companies /> : <Navigate to="/auth" />} />
-              <Route path="/nationalities" element={user ? <Nationalities /> : <Navigate to="/auth" />} />
-              <Route path="/provinces" element={user ? <Provinces /> : <Navigate to="/auth" />} />
-              <Route path="/destinations" element={user ? <Destinations /> : <Navigate to="/auth" />} />
-              <Route path="/shopping" element={user ? <Shopping /> : <Navigate to="/auth" />} />
-              <Route path="/expense-categories" element={user ? <ExpenseCategories /> : <Navigate to="/auth" />} />
-              <Route path="/detailed-expenses" element={user ? <DetailedExpenses /> : <Navigate to="/auth" />} />
-              <Route path="/tours" element={user ? <Tours /> : <Navigate to="/auth" />} />
-              <Route path="/tours/:id" element={user ? <TourDetail /> : <Navigate to="/auth" />} />
-              <Route path="/statistics" element={user ? <Statistics /> : <Navigate to="/auth" />} />
-              <Route path="/users" element={user ? <Users /> : <Navigate to="/auth" />} />
+              <Route element={user ? <Layout /> : <Navigate to="/auth" />}>
+                <Route index element={<RequirePermissionRoute permission="view_tours"><Tours /></RequirePermissionRoute>} />
+                <Route path="guides" element={<RequirePermissionRoute permission="view_guides"><Guides /></RequirePermissionRoute>} />
+                <Route path="languages" element={<RequirePermissionRoute permission="view_languages"><Languages /></RequirePermissionRoute>} />
+                <Route path="companies" element={<RequirePermissionRoute permission="view_companies"><Companies /></RequirePermissionRoute>} />
+                <Route path="nationalities" element={<RequirePermissionRoute permission="view_nationalities"><Nationalities /></RequirePermissionRoute>} />
+                <Route path="provinces" element={<RequirePermissionRoute permission="view_provinces"><Provinces /></RequirePermissionRoute>} />
+                <Route path="destinations" element={<RequirePermissionRoute permission="view_tourist_destinations"><Destinations /></RequirePermissionRoute>} />
+                <Route path="shopping" element={<RequirePermissionRoute permission="view_shopping"><Shopping /></RequirePermissionRoute>} />
+                <Route path="expense-categories" element={<RequirePermissionRoute permission="view_expense_categories"><ExpenseCategories /></RequirePermissionRoute>} />
+                <Route path="detailed-expenses" element={<RequirePermissionRoute permission="view_detailed_expenses"><DetailedExpenses /></RequirePermissionRoute>} />
+                <Route path="tours" element={<RequirePermissionRoute permission="view_tours"><Tours /></RequirePermissionRoute>} />
+                <Route path="tours/:id" element={<RequirePermissionRoute permission="view_tours"><TourDetail /></RequirePermissionRoute>} />
+                <Route path="statistics" element={<RequirePermissionRoute permission="view_statistics"><Statistics /></RequirePermissionRoute>} />
+                <Route path="users" element={<RequirePermissionRoute permission="manage_users"><Users /></RequirePermissionRoute>} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </HashRouter>

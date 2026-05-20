@@ -6,13 +6,15 @@ import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import type { Tour, TourSummary } from '@/types/tour';
 import { useState, useEffect } from 'react';
+import { TourPaymentsPanel } from './TourPaymentsPanel';
 
 interface SummaryTabProps {
   tour: Tour;
   onSummaryUpdate?: (summary: TourSummary) => void;
+  readOnly?: boolean;
 }
 
-export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
+export function SummaryTab({ tour, onSummaryUpdate, readOnly = false }: SummaryTabProps) {
   // Tính tổng giống như các cột "Total Amount" của từng tab (không dựa vào totalGuests toàn tour)
   const tourGuests = tour.totalGuests || 0;
   const clampGuests = (g: number | undefined) => {
@@ -88,6 +90,8 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
   }, [summary.totalTabs, summary.advancePayment, summary.companyTip, summary.collectionsForCompany]);
 
   const handleInputChange = (field: keyof TourSummary, value: number) => {
+    if (readOnly) return;
+
     const updated = { ...summary, [field]: value };
 
     // Recalculate dependent values
@@ -131,6 +135,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
               id="advancePayment"
               value={summary.advancePayment || 0}
               onChange={(value) => handleInputChange('advancePayment', value)}
+              disabled={readOnly}
             />
           </div>
 
@@ -146,6 +151,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
               id="collectionsForCompany"
               value={summary.collectionsForCompany || 0}
               onChange={(value) => handleInputChange('collectionsForCompany', value)}
+              disabled={readOnly}
             />
           </div>
 
@@ -161,6 +167,7 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
               id="companyTip"
               value={summary.companyTip || 0}
               onChange={(value) => handleInputChange('companyTip', value)}
+              disabled={readOnly}
             />
           </div>
 
@@ -176,6 +183,8 @@ export function SummaryTab({ tour, onSummaryUpdate }: SummaryTabProps) {
           </div>
         </CardContent>
       </Card>
+
+      <TourPaymentsPanel tour={tour} />
     </div>
   );
 }

@@ -34,6 +34,18 @@ interface TourSheetBuildResult {
   finalTotalCell: string;
 }
 
+const formatTourNationalities = (tour: Tour) => {
+  const nationalities = tour.clientNationalities?.length
+    ? tour.clientNationalities
+    : tour.clientNationalityRef?.id
+      ? [{ ...tour.clientNationalityRef, paxCount: tour.totalGuests ?? tour.adults + tour.children }]
+      : [];
+
+  return nationalities
+    .map((nationality) => `${nationality.nameAtBooking}${nationality.paxCount ? ` (${nationality.paxCount}p)` : ''}`)
+    .join(', ');
+};
+
 // Simple validation to catch invalid numeric inputs that would lead to Excel formula errors
 const validateTourNumbers = (tour: Tour): string[] => {
   const issues: string[] = [];
@@ -140,9 +152,18 @@ const downloadWorkbook = async (workbook: Workbook, filename: string) => {
   window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 };
 
+const isTourDraftForExport = (tour: Tour): boolean =>
+  tour.settlementStatus !== 'approved' && tour.settlementStatus !== 'closed';
+
 const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResult => {
-  const sheetName = ensureUniqueSheetName(workbook, tour.tourCode || 'Tour');
+  const isDraft = isTourDraftForExport(tour);
+  const baseName = tour.tourCode || 'Tour';
+  const sheetName = ensureUniqueSheetName(workbook, isDraft ? `[NHÁP] ${baseName}` : baseName);
   const worksheet = workbook.addWorksheet(sheetName);
+  if (isDraft) {
+    worksheet.headerFooter.oddHeader = '&C&"Arial,Bold"&14&Kff0000BẢN NHÁP — CHƯA DUYỆT';
+    worksheet.headerFooter.evenHeader = worksheet.headerFooter.oddHeader;
+  }
 
   worksheet.properties.defaultRowHeight = 20;
   worksheet.columns = [
@@ -647,7 +668,7 @@ const populateOverviewSheet = (
     const row = worksheet.addRow([
       tour.tourCode,
       tour.clientName,
-      tour.clientNationalityRef?.nameAtBooking,
+      formatTourNationalities(tour),
       tour.companyRef?.nameAtBooking,
       formatDateDisplay(tour.startDate),
       formatDateDisplay(tour.endDate),
@@ -704,7 +725,14 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   workbook.calcProperties.fullCalcOnLoad = true;
 
   // Create single sheet with all tours
-  const worksheet = workbook.addWorksheet('All Tours');
+  const hasUnapproved = tours.some(isTourDraftForExport);
+  const worksheet = workbook.addWorksheet(
+    ensureUniqueSheetName(workbook, hasUnapproved ? 'NHÁP All Tours' : 'All Tours'),
+  );
+  if (hasUnapproved) {
+    worksheet.headerFooter.oddHeader = '&C&"Arial,Bold"&14&Kff0000BẢN NHÁP — CHƯA DUYỆT';
+    worksheet.headerFooter.evenHeader = worksheet.headerFooter.oddHeader;
+  }
 
   worksheet.properties.defaultRowHeight = 20;
   worksheet.columns = [

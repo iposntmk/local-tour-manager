@@ -22,16 +22,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Expense, Tour } from '@/types/tour';
-import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
+import { ExpenseCategoryDialog } from '@/components/expense-categories/ExpenseCategoryDialog';
+import type { DetailedExpense, ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
+import { TourRowLabel } from '@/components/tours/TourRowIcon';
 
 interface ExpensesTabProps {
   tourId?: string;
   expenses: Expense[];
   onChange?: (expenses: Expense[]) => void;
   tour?: Tour | null;
+  readOnly?: boolean;
 }
 
-export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabProps) {
+export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false }: ExpensesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Expense>({ name: '', price: 0, date: '' });
   const [openExpense, setOpenExpense] = useState(false);
@@ -40,6 +44,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
   const [newExpensePrice, setNewExpensePrice] = useState(0);
   const [newExpenseCategoryId, setNewExpenseCategoryId] = useState('');
   const [openCategory, setOpenCategory] = useState(false);
+  const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
   const [editingGuestsIndex, setEditingGuestsIndex] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
@@ -111,6 +116,21 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
     },
   });
 
+  const createCategoryMutation = useMutation({
+    mutationFn: (data: ExpenseCategoryInput) => store.createExpenseCategory(data),
+    onSuccess: (category) => {
+      queryClient.setQueryData<ExpenseCategory[]>(['expenseCategories'], (current) => upsertById(current, category));
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
+      setNewExpenseCategoryId(category.id);
+      setOpenCategory(false);
+      setShowNewCategoryDialog(false);
+      toast.success('Đã tạo nhóm chi phí');
+    },
+    onError: (error: Error) => {
+      toast.error(`Tạo nhóm chi phí thất bại: ${error.message}`);
+    },
+  });
+
   const createExpenseMutation = useMutation({
     mutationFn: ({ name, price, categoryId }: { name: string; price: number; categoryId: string }) => {
       const category = expenseCategories.find(c => c.id === categoryId);
@@ -127,6 +147,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
       });
     },
     onSuccess: (newExpense) => {
+      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses'], (current) => upsertById(current, newExpense));
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('Đã tạo chi phí chi tiết');
       setShowNewExpenseDialog(false);
@@ -141,8 +162,17 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
     },
   });
 
+  const handleCreateNewCategory = (data: ExpenseCategoryInput) => {
+    createCategoryMutation.mutate(data);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) {
+      toast.error('Bạn không có quyền sửa chi phí trong tour.');
+      return;
+    }
+
     // Validate required fields
     if (!formData.name || !formData.date) {
       toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
@@ -157,6 +187,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
   };
 
   const handleEdit = (index: number) => {
+    if (readOnly) return;
     setEditingIndex(index);
     setFormData(expenses[index]);
     // Scroll to the form at the top
@@ -173,11 +204,13 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
   };
 
   const handleDuplicate = (index: number) => {
+    if (readOnly) return;
     const expenseToDuplicate = expenses[index];
     addMutation.mutate(expenseToDuplicate);
   };
 
   const handleGuestsUpdate = (index: number, newGuests: number) => {
+    if (readOnly) return;
     const totalGuests = tour?.totalGuests || 0;
 
     if (newGuests > totalGuests) {
@@ -200,6 +233,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
   };
 
   const handleCreateNewExpense = () => {
+    if (readOnly) return;
     if (!newExpenseName.trim()) {
       toast.error('Vui lòng nhập tên chi phí');
       return;
@@ -249,6 +283,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
           </div>
         </div>
       )}
+      {!readOnly && (
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
           {editingIndex !== null ? 'Chỉnh sửa chi phí' : 'Thêm chi phí'}
@@ -259,6 +294,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
               <Popover open={openExpense} onOpenChange={setOpenExpense}>
                 <PopoverTrigger asChild>
                   <Button
+                    type="button"
                     variant="outline"
                     role="combobox"
                     aria-expanded={openExpense}
@@ -341,6 +377,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
           </div>
         </form>
       </div>
+      )}
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
@@ -426,7 +463,9 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
                     return (
                       <TableRow key={`${expense.originalIndex}-${expense.date}-${expense.merged ? 'merged' : 'row'}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
                         <TableCell className="font-medium">{rowIndex + 1}</TableCell>
-                        <TableCell className="font-medium">{expense.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <TourRowLabel kind="expense" label={expense.name} />
+                        </TableCell>
                       <TableCell className={expense.price === 0 ? 'text-destructive font-semibold' : ''}>
                         {formatCurrency(expense.price)}
                         {expense.price === 0 && (
@@ -437,6 +476,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
                           <NumberInputMobile
                             value={expense.guests}
                             onChange={(val) => {
+                              if (readOnly) return;
                               if (expense.merged) return;
                               const updated = { ...expense, guests: val } as Expense;
                               // Remove helper field before saving
@@ -444,13 +484,14 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
                               updateMutation.mutate({ index: expense.originalIndex, expense: clean as Expense });
                             }}
                             min={0}
-                            disabled={!!expense.merged}
+                            disabled={readOnly || !!expense.merged}
                             className="w-16 sm:w-24"
                           />
                         </TableCell>
                         <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>{formatDate(expense.date)}</TableCell>
                         <TableCell className="text-right">
+                          {!readOnly && (
                           <div className="sm:hidden">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -478,6 +519,8 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
+                          )}
+                          {!readOnly && (
                           <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                             <Button
                               variant="ghost"
@@ -507,6 +550,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -546,50 +590,65 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
             </div>
             <div className="space-y-2">
               <Label htmlFor="expense-category">Nhóm chi phí</Label>
-              <Popover open={openCategory} onOpenChange={setOpenCategory}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="expense-category"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openCategory}
-                    className="justify-between w-full"
-                  >
-                    {newExpenseCategoryId
-                      ? expenseCategories.find((cat) => cat.id === newExpenseCategoryId)?.name
-                      : "Chọn nhóm chi phí..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Tìm nhóm chi phí..." />
-                    <CommandList>
-                      <CommandEmpty>Không tìm thấy nhóm chi phí.</CommandEmpty>
-                      <CommandGroup>
-                        {expenseCategories.map((cat) => (
-                          <CommandItem
-                            key={cat.id}
-                            value={cat.name}
-                            onSelect={() => {
-                              setNewExpenseCategoryId(cat.id);
-                              setOpenCategory(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                newExpenseCategoryId === cat.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {cat.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Popover open={openCategory} onOpenChange={setOpenCategory}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      id="expense-category"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openCategory}
+                      className="min-w-0 flex-1 justify-between"
+                    >
+                      <span className="truncate">
+                        {newExpenseCategoryId
+                          ? expenseCategories.find((cat) => cat.id === newExpenseCategoryId)?.name
+                          : "Chọn nhóm chi phí..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Tìm nhóm chi phí..." />
+                      <CommandList>
+                        <CommandEmpty>Không tìm thấy nhóm chi phí.</CommandEmpty>
+                        <CommandGroup>
+                          {expenseCategories.map((cat) => (
+                            <CommandItem
+                              key={cat.id}
+                              value={cat.name}
+                              onSelect={() => {
+                                setNewExpenseCategoryId(cat.id);
+                                setOpenCategory(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  newExpenseCategoryId === cat.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {cat.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Thêm nhóm chi phí"
+                  aria-label="Thêm nhóm chi phí"
+                  onClick={() => setShowNewCategoryDialog(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="expense-price">Giá mặc định (VND)</Label>
@@ -617,13 +676,19 @@ export function ExpensesTab({ tourId, expenses, onChange, tour }: ExpensesTabPro
             <Button
               type="button"
               onClick={handleCreateNewExpense}
-              disabled={createExpenseMutation.isPending}
+              disabled={readOnly || createExpenseMutation.isPending}
             >
               {createExpenseMutation.isPending ? 'Đang tạo...' : 'Tạo'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExpenseCategoryDialog
+        open={showNewCategoryDialog}
+        onOpenChange={setShowNewCategoryDialog}
+        onSubmit={handleCreateNewCategory}
+      />
     </div>
   );
 }

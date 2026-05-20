@@ -1,4 +1,3 @@
-import { Layout } from '@/components/Layout';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
@@ -12,6 +11,8 @@ import type { Province, ProvinceInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { useAuth } from '@/contexts/AuthContext';
+import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
 
 const Provinces = () => {
   const [search, setSearch] = useState('');
@@ -23,6 +24,12 @@ const Provinces = () => {
   const [updatedFilter, setUpdatedFilter] = useState('');
 
   const queryClient = useQueryClient();
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canCreate = hasPermission('create_provinces');
+  const canEdit = hasPermission('edit_provinces');
+  const canDelete = hasPermission('delete_provinces');
+  const canImport = hasPermission('import_provinces');
+  const canExport = hasPermission('export_provinces');
 
   const { data: provinces = [], isLoading } = useQuery({
     queryKey: ['provinces', search],
@@ -94,10 +101,18 @@ const Provinces = () => {
   });
 
   const handleCreate = (input: ProvinceInput) => {
+    if (!canCreate) {
+      toast.error('Bạn không có quyền tạo tỉnh thành');
+      return;
+    }
     createMutation.mutate(input);
   };
 
   const handleEdit = (input: ProvinceInput) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa tỉnh thành');
+      return;
+    }
     if (editingProvince) {
       updateMutation.mutate({
         id: editingProvince.id,
@@ -107,6 +122,9 @@ const Provinces = () => {
   };
 
   const handleOpenDialog = (province?: Province) => {
+    if (province && !canEdit) return;
+    if (!province && !canCreate) return;
+    if (province && !ensureCanModifyOwnedEntity(province, user?.id, isAdmin)) return;
     setEditingProvince(province);
     setDialogOpen(true);
   };
@@ -117,16 +135,28 @@ const Provinces = () => {
   };
 
   const handleDeleteAll = () => {
+    if (!canDelete) {
+      toast.error('Bạn không có quyền xóa tỉnh thành');
+      return;
+    }
     if (confirm('Are you sure you want to delete ALL provinces? This action cannot be undone.')) {
       deleteAllMutation.mutate();
     }
   };
 
   const handleBulkImport = async (items: ProvinceInput[]) => {
+    if (!canImport) {
+      toast.error('Bạn không có quyền import tỉnh thành');
+      return;
+    }
     await bulkImportMutation.mutateAsync(items);
   };
 
   const handleExportTxt = () => {
+    if (!canExport) {
+      toast.error('Bạn không có quyền export tỉnh thành');
+      return;
+    }
     if (filteredProvinces.length === 0) {
       toast.error('No provinces to export');
       return;
@@ -160,7 +190,7 @@ const Provinces = () => {
   const { classes: headerClasses } = useHeaderMode('provinces.headerMode');
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -169,31 +199,30 @@ const Provinces = () => {
               <p className="text-muted-foreground">Manage provinces and cities</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button
-                variant="outline"
-                onClick={handleExportTxt}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export TXT
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setImportDialogOpen(true)}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Import
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleDeleteAll}
-              >
-                <Trash className="h-4 w-4 mr-2" />
-                Delete All
-              </Button>
-              <Button onClick={() => handleOpenDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Province
-              </Button>
+              {canExport && (
+                <Button variant="outline" onClick={handleExportTxt}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export TXT
+                </Button>
+              )}
+              {canImport && (
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="outline" onClick={handleDeleteAll}>
+                  <Trash className="h-4 w-4 mr-2" />
+                  Delete All
+                </Button>
+              )}
+              {canCreate && (
+                <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Province
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -259,7 +288,7 @@ const Provinces = () => {
                     <tr
                       key={province.id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
-                      onClick={() => handleOpenDialog(province)}
+                      onClick={() => canEdit && handleOpenDialog(province)}
                     >
                       <td className="p-4 text-muted-foreground text-sm font-mono">{province.id}</td>
                       <td className="p-4 font-medium">{province.name}</td>
@@ -268,34 +297,31 @@ const Provinces = () => {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenDialog(province)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => duplicateMutation.mutate(province.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this province?')) {
-                                deleteMutation.mutate(province.id);
-                              }
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(province)} className="h-8 w-8 p-0">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canCreate && (
+                            <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(province.id)} className="h-8 w-8 p-0">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (!ensureCanModifyOwnedEntity(province, user?.id, isAdmin)) return;
+                                if (confirm('Are you sure you want to delete this province?')) {
+                                  deleteMutation.mutate(province.id);
+                                }
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -310,7 +336,7 @@ const Provinces = () => {
                 <div
                   key={province.id}
                   className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleOpenDialog(province)}
+                  onClick={() => canEdit && handleOpenDialog(province)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -321,34 +347,31 @@ const Provinces = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(province)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => duplicateMutation.mutate(province.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this province?')) {
-                            deleteMutation.mutate(province.id);
-                          }
-                        }}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(province)} className="h-8 w-8 p-0">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canCreate && (
+                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(province.id)} className="h-8 w-8 p-0">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!ensureCanModifyOwnedEntity(province, user?.id, isAdmin)) return;
+                            if (confirm('Are you sure you want to delete this province?')) {
+                              deleteMutation.mutate(province.id);
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -382,7 +405,7 @@ const Provinces = () => {
           return null;
         }}
       />
-    </Layout>
+    </>
   );
 };
 

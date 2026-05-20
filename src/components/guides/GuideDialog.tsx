@@ -7,20 +7,23 @@ import { Label } from '@/components/ui/label';
 import { TextareaWithSave } from '@/components/ui/textarea-with-save';
 import { toast } from 'sonner';
 import { CopyIdRow } from '@/components/master/CopyIdRow';
-import type { Guide, GuideInput } from '@/types/master';
+import { GuideLanguagesPicker } from '@/components/guides/GuideLanguagesPicker';
+import type { Guide, GuideInput, Language } from '@/types/master';
 
 interface GuideDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   guide?: Guide;
+  languages: Language[];
   onSubmit: (data: GuideInput) => Promise<void>;
 }
 
-export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialogProps) {
+export function GuideDialog({ open, onOpenChange, guide, languages, onSubmit }: GuideDialogProps) {
   const [formData, setFormData] = useState<GuideInput>({
     name: guide?.name || '',
     phone: guide?.phone || '',
     note: guide?.note || '',
+    languageIds: guide?.languages?.map((language) => language.id) || [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ name?: boolean }>({});
@@ -32,6 +35,7 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
       name: guide?.name || '',
       phone: guide?.phone || '',
       note: guide?.note || '',
+      languageIds: guide?.languages?.map((language) => language.id) || [],
       isDefault: guide?.isDefault || false,
     });
     setErrors({});
@@ -60,7 +64,7 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
     try {
       await onSubmit(formData);
       onOpenChange(false);
-      setFormData({ name: '', phone: '', note: '' });
+      setFormData({ name: '', phone: '', note: '', languageIds: [] });
     } catch (error) {
       // Error handled by parent
     } finally {
@@ -108,13 +112,22 @@ export function GuideDialog({ open, onOpenChange, guide, onSubmit }: GuideDialog
             </div>
 
             <div className="grid gap-2">
+              <Label>Languages</Label>
+              <GuideLanguagesPicker
+                languages={languages}
+                value={formData.languageIds || []}
+                onChange={(languageIds) => setFormData({ ...formData, languageIds })}
+              />
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="note">Note</Label>
               <TextareaWithSave
                 id="note"
                 storageKey={guide ? `guide-note-edit-${guide.id}` : 'guide-note-create'}
                 value={formData.note}
                 onValueChange={(value) => setFormData({ ...formData, note: value })}
-                placeholder="Languages, specialties, etc."
+                placeholder="Specialties, availability, etc."
                 rows={3}
               />
             </div>

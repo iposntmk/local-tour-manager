@@ -1,4 +1,3 @@
-import { Layout } from '@/components/Layout';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
@@ -14,6 +13,8 @@ import type { DetailedExpense, DetailedExpenseInput } from '@/types/master';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { useAuth } from '@/contexts/AuthContext';
+import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
 
 const DetailedExpenses = () => {
   const [search, setSearch] = useState('');
@@ -25,6 +26,12 @@ const DetailedExpenses = () => {
   const [priceFilter, setPriceFilter] = useState('');
 
   const queryClient = useQueryClient();
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canCreate = hasPermission('create_detailed_expenses');
+  const canEdit = hasPermission('edit_detailed_expenses');
+  const canDelete = hasPermission('delete_detailed_expenses');
+  const canImport = hasPermission('import_detailed_expenses');
+  const canExport = hasPermission('export_detailed_expenses');
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ['detailedExpenses', search],
@@ -128,10 +135,18 @@ const DetailedExpenses = () => {
   });
 
   const handleCreate = (input: DetailedExpenseInput) => {
+    if (!canCreate) {
+      toast.error('Bạn không có quyền tạo chi phí chi tiết');
+      return;
+    }
     createMutation.mutate(input);
   };
 
   const handleEdit = (input: DetailedExpenseInput) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa chi phí chi tiết');
+      return;
+    }
     if (editingExpense) {
       updateMutation.mutate({
         id: editingExpense.id,
@@ -141,6 +156,9 @@ const DetailedExpenses = () => {
   };
 
   const handleOpenDialog = (expense?: DetailedExpense) => {
+    if (expense && !canEdit) return;
+    if (!expense && !canCreate) return;
+    if (expense && !ensureCanModifyOwnedEntity(expense, user?.id, isAdmin)) return;
     setEditingExpense(expense);
     setDialogOpen(true);
   };
@@ -151,16 +169,28 @@ const DetailedExpenses = () => {
   };
 
   const handleDeleteAll = () => {
+    if (!canDelete) {
+      toast.error('Bạn không có quyền xóa chi phí chi tiết');
+      return;
+    }
     if (confirm('Are you sure you want to delete ALL detailed expenses? This action cannot be undone.')) {
       deleteAllMutation.mutate();
     }
   };
 
   const handleBulkImport = async (items: { name: string; price: number }[]) => {
+    if (!canImport) {
+      toast.error('Bạn không có quyền import chi phí chi tiết');
+      return;
+    }
     await bulkImportMutation.mutateAsync(items);
   };
 
   const handleExportTxt = () => {
+    if (!canExport) {
+      toast.error('Bạn không có quyền export chi phí chi tiết');
+      return;
+    }
     if (filteredExpenses.length === 0) {
       toast.error('No detailed expenses to export');
       return;
@@ -195,7 +225,7 @@ const DetailedExpenses = () => {
   const { classes: headerClasses } = useHeaderMode('detailedexpenses.headerMode');
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -204,22 +234,30 @@ const DetailedExpenses = () => {
               <p className="text-muted-foreground">Manage detailed expenses</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button variant="outline" onClick={handleExportTxt}>
-                <Download className="h-4 w-4 mr-2" />
-                Export TXT
-              </Button>
-              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Import
-              </Button>
-              <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
-                <Trash className="h-4 w-4" />
-                Delete All
-              </Button>
-              <Button onClick={() => handleOpenDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Expense
-              </Button>
+              {canExport && (
+                <Button variant="outline" onClick={handleExportTxt}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export TXT
+                </Button>
+              )}
+              {canImport && (
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
+                  <Trash className="h-4 w-4" />
+                  Delete All
+                </Button>
+              )}
+              {canCreate && (
+                <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Expense
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -297,7 +335,7 @@ const DetailedExpenses = () => {
                     <tr
                       key={expense.id}
                       className={`border-t hover:bg-muted/50 cursor-pointer ${expense.status === 'inactive' ? 'opacity-50 bg-muted/30' : ''}`}
-                      onClick={() => handleOpenDialog(expense)}
+                      onClick={() => canEdit && handleOpenDialog(expense)}
                     >
                       <td className="p-4 font-medium">
                         {expense.name}
@@ -314,47 +352,46 @@ const DetailedExpenses = () => {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenDialog(expense)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => duplicateMutation.mutate(expense.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleStatusMutation.mutate(expense.id)}
-                            className="h-8 w-8 p-0"
-                            title={expense.status === 'active' ? 'Hide expense' : 'Show expense'}
-                          >
-                            {expense.status === 'active' ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to hide this expense?')) {
-                                deleteMutation.mutate(expense.id);
-                              }
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(expense)} className="h-8 w-8 p-0">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canCreate && (
+                            <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(expense.id)} className="h-8 w-8 p-0">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleStatusMutation.mutate(expense.id)}
+                              className="h-8 w-8 p-0"
+                              title={expense.status === 'active' ? 'Hide expense' : 'Show expense'}
+                            >
+                              {expense.status === 'active' ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (!ensureCanModifyOwnedEntity(expense, user?.id, isAdmin)) return;
+                                if (confirm('Are you sure you want to hide this expense?')) {
+                                  deleteMutation.mutate(expense.id);
+                                }
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -369,7 +406,7 @@ const DetailedExpenses = () => {
                 <div
                   key={expense.id}
                   className={`rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50 ${expense.status === 'inactive' ? 'opacity-50 bg-muted/30' : ''}`}
-                  onClick={() => handleOpenDialog(expense)}
+                  onClick={() => canEdit && handleOpenDialog(expense)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -387,47 +424,46 @@ const DetailedExpenses = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(expense)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => duplicateMutation.mutate(expense.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleStatusMutation.mutate(expense.id)}
-                        className="h-8 w-8 p-0"
-                        title={expense.status === 'active' ? 'Hide expense' : 'Show expense'}
-                      >
-                        {expense.status === 'active' ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to hide this expense?')) {
-                            deleteMutation.mutate(expense.id);
-                          }
-                        }}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(expense)} className="h-8 w-8 p-0">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canCreate && (
+                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(expense.id)} className="h-8 w-8 p-0">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleStatusMutation.mutate(expense.id)}
+                          className="h-8 w-8 p-0"
+                          title={expense.status === 'active' ? 'Hide expense' : 'Show expense'}
+                        >
+                          {expense.status === 'active' ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!ensureCanModifyOwnedEntity(expense, user?.id, isAdmin)) return;
+                            if (confirm('Are you sure you want to hide this expense?')) {
+                              deleteMutation.mutate(expense.id);
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -463,7 +499,7 @@ const DetailedExpenses = () => {
           return null;
         }}
       />
-    </Layout>
+    </>
   );
 };
 

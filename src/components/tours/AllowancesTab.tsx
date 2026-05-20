@@ -19,14 +19,19 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import type { Allowance, Tour } from '@/types/tour';
-import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
+import type { DetailedExpense } from '@/types/master';
+import { TourRowLabel } from '@/components/tours/TourRowIcon';
 
 interface AllowancesTabProps {
   tourId?: string;
   allowances: Allowance[];
   onChange?: (allowances: Allowance[]) => void;
   tour?: Tour | null;
+  readOnly?: boolean;
 }
 
 // Order matters: index = sort priority (CTP first, then Tiền ngủ).
@@ -35,26 +40,32 @@ const ALLOWANCE_CATEGORY_IDS = [
   '1401bdaf-42cf-4d71-af0b-e3246f6e0486',
 ];
 
-export function AllowancesTab({ tourId, allowances, onChange, tour }: AllowancesTabProps) {
+export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = false }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0, quantity: 1 });
-  const [openProvince, setOpenProvince] = useState(false);
   const [openExpense, setOpenExpense] = useState(false);
+  const [showNewAllowanceDialog, setShowNewAllowanceDialog] = useState(false);
+  const [newAllowanceName, setNewAllowanceName] = useState('');
+  const [newAllowancePrice, setNewAllowancePrice] = useState(0);
+  const [newAllowanceCategoryId, setNewAllowanceCategoryId] = useState('');
+  const [openAllowanceCategory, setOpenAllowanceCategory] = useState(false);
   const queryClient = useQueryClient();
-
-  const { data: provinces = [] } = useQuery({
-    queryKey: ['provinces'],
-    queryFn: () => store.listProvinces({ status: 'active' }),
-  });
 
   const { data: allDetailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses'],
     queryFn: () => store.listDetailedExpenses({ status: 'active' }),
   });
 
+  const { data: expenseCategories = [] } = useQuery({
+    queryKey: ['expenseCategories'],
+    queryFn: () => store.listExpenseCategories({ status: 'active' }),
+  });
+
   const detailedExpenses = allDetailedExpenses.filter(
     exp => exp.categoryRef?.id && ALLOWANCE_CATEGORY_IDS.includes(exp.categoryRef.id)
   );
+
+  const allowanceCategories = expenseCategories.filter(category => ALLOWANCE_CATEGORY_IDS.includes(category.id));
 
   // Lookup: allowance.name → categoryId (so we can sort/group existing
   // allowances by category even though only `name` is persisted).
@@ -135,8 +146,53 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     },
   });
 
+  const createAllowanceExpenseMutation = useMutation({
+    mutationFn: ({ name, price, categoryId }: { name: string; price: number; categoryId: string }) => {
+      const category = expenseCategories.find(c => c.id === categoryId);
+      if (!category) {
+        throw new Error('Không tìm thấy nhóm CTP');
+      }
+
+      return store.createDetailedExpense({
+        name,
+        price,
+        categoryRef: {
+          id: category.id,
+          nameAtBooking: category.name,
+        },
+      });
+    },
+    onSuccess: (newExpense) => {
+      const today = new Date().toISOString().split('T')[0];
+      const defaultDate = tour?.startDate || today;
+
+      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses'], (current) => upsertById(current, newExpense));
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success('Đã tạo CTP');
+      setShowNewAllowanceDialog(false);
+      setNewAllowanceName('');
+      setNewAllowancePrice(0);
+      setNewAllowanceCategoryId('');
+      setFormData({
+        ...formData,
+        name: newExpense.name,
+        price: newExpense.price,
+        date: formData.date || defaultDate,
+        quantity: formData.quantity || 1,
+        categoryId: newExpense.categoryRef?.id,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(`Tạo CTP thất bại: ${error.message}`);
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) {
+      toast.error('Bạn không có quyền sửa CTP trong tour.');
+      return;
+    }
 
     console.log('Submitting allowance:', formData);
 
@@ -154,6 +210,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
   };
 
   const handleEdit = (index: number) => {
+    if (readOnly) return;
     setEditingIndex(index);
     setFormData(allowances[index]);
     // Scroll to the form at the top
@@ -169,6 +226,33 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
     setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
   };
 
+  const handleOpenNewAllowanceDialog = () => {
+    setNewAllowanceCategoryId(allowanceCategories[0]?.id || '');
+    setShowNewAllowanceDialog(true);
+  };
+
+  const handleCreateNewAllowance = () => {
+    if (readOnly) return;
+    if (!newAllowanceName.trim()) {
+      toast.error('Vui lòng nhập tên CTP');
+      return;
+    }
+    if (newAllowancePrice <= 0) {
+      toast.error('Vui lòng nhập giá hợp lệ');
+      return;
+    }
+    if (!newAllowanceCategoryId) {
+      toast.error('Vui lòng chọn nhóm CTP');
+      return;
+    }
+
+    createAllowanceExpenseMutation.mutate({
+      name: newAllowanceName.trim(),
+      price: newAllowancePrice,
+      categoryId: newAllowanceCategoryId,
+    });
+  };
+
   useEffect(() => {
     if (!formData.date && tour?.startDate) {
       setFormData(prev => ({ ...prev, date: tour.startDate! }));
@@ -176,6 +260,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
   }, [tour?.startDate]);
 
   const handleCopy = (index: number) => {
+    if (readOnly) return;
     const allowanceToCopy = allowances[index];
     addMutation.mutate({ ...allowanceToCopy });
   };
@@ -184,70 +269,84 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
 
   return (
     <div className="space-y-6">
+      {!readOnly && (
       <div className="rounded-lg border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">
           {editingIndex !== null ? 'Chỉnh sửa CTP' : 'Thêm CTP'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
-            <Popover open={openExpense} onOpenChange={setOpenExpense}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openExpense}
-                  className="justify-between w-full"
-                >
-                  {formData.name || "Chọn CTP..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Tìm CTP..." />
-                  <CommandList>
-                    <CommandEmpty>Không tìm thấy CTP.</CommandEmpty>
-                    <CommandGroup>
-                      {detailedExpenses.map((exp) => {
-                        const categoryLabel = exp.categoryRef?.nameAtBooking || 'Khác';
-                        return (
-                          <CommandItem
-                            key={exp.id}
-                            value={`${exp.name} ${categoryLabel}`}
-                            onSelect={() => {
-                              const today = new Date().toISOString().split('T')[0];
-                              const defaultDate = tour?.startDate || today;
-                              setFormData({
-                                ...formData,
-                                name: exp.name,
-                                price: exp.price,
-                                date: formData.date || defaultDate,
-                                quantity: formData.quantity || 1,
-                                categoryId: exp.categoryRef?.id,
-                              });
-                              setOpenExpense(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.name === exp.name ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                              <span className="truncate">{exp.name}</span>
-                              <span className="shrink-0 text-xs text-muted-foreground">
-                                {categoryLabel} · {formatCurrency(exp.price)}
+            <div className="flex gap-2">
+              <Popover open={openExpense} onOpenChange={setOpenExpense}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openExpense}
+                    className="min-w-0 flex-1 justify-between"
+                  >
+                    <span className="truncate">{formData.name || "Chọn CTP..."}</span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Tìm CTP..." />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy CTP.</CommandEmpty>
+                      <CommandGroup>
+                        {detailedExpenses.map((exp) => {
+                          const categoryLabel = exp.categoryRef?.nameAtBooking || 'Khác';
+                          return (
+                            <CommandItem
+                              key={exp.id}
+                              value={`${exp.name} ${categoryLabel}`}
+                              onSelect={() => {
+                                const today = new Date().toISOString().split('T')[0];
+                                const defaultDate = tour?.startDate || today;
+                                setFormData({
+                                  ...formData,
+                                  name: exp.name,
+                                  price: exp.price,
+                                  date: formData.date || defaultDate,
+                                  quantity: formData.quantity || 1,
+                                  categoryId: exp.categoryRef?.id,
+                                });
+                                setOpenExpense(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.name === exp.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                                <span className="truncate">{exp.name}</span>
+                                <span className="shrink-0 text-xs text-muted-foreground">
+                                  {categoryLabel} · {formatCurrency(exp.price)}
+                                </span>
                               </span>
-                            </span>
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title="Thêm CTP"
+                aria-label="Thêm CTP"
+                onClick={handleOpenNewAllowanceDialog}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <CurrencyInput
               placeholder="Giá (VND)"
               value={formData.price}
@@ -279,6 +378,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
           </div>
         </form>
       </div>
+      )}
 
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-muted/50">
@@ -340,7 +440,9 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                       )}
                       <TableRow key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`} className={`animate-fade-in ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : ''}`}>
                       <TableCell className="font-medium">{rowIndex + 1}</TableCell>
-                      <TableCell className="font-medium">{allowance.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <TourRowLabel kind="allowance" label={allowance.name} />
+                      </TableCell>
                       <TableCell className={allowance.price === 0 ? 'text-destructive font-semibold' : ''}>
                         {formatCurrency(allowance.price)}
                         {allowance.price === 0 && (
@@ -351,6 +453,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                       <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
                       <TableCell>{formatDate(allowance.date)}</TableCell>
                       <TableCell className="text-right">
+                        {!readOnly && (
                         <div className="sm:hidden">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -378,6 +481,8 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
+                        )}
+                        {!readOnly && (
                         <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                           <Button
                             variant="ghost"
@@ -407,6 +512,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
+                        )}
                       </TableCell>
                     </TableRow>
                     </>
@@ -426,6 +532,106 @@ export function AllowancesTab({ tourId, allowances, onChange, tour }: Allowances
           </Table>
         )}
       </div>
+
+      <Dialog open={showNewAllowanceDialog} onOpenChange={setShowNewAllowanceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thêm CTP mới</DialogTitle>
+            <DialogDescription>
+              Tạo CTP trong master detailed expense để dùng lại cho các tour khác.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-allowance-name">Tên CTP</Label>
+              <Input
+                id="new-allowance-name"
+                placeholder="ví dụ: CTP Hà Nội, Tiền ngủ Huế"
+                value={newAllowanceName}
+                onChange={(e) => setNewAllowanceName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="allowance-category">Nhóm CTP</Label>
+              <Popover open={openAllowanceCategory} onOpenChange={setOpenAllowanceCategory}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    id="allowance-category"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openAllowanceCategory}
+                    className="w-full justify-between"
+                  >
+                    {newAllowanceCategoryId
+                      ? allowanceCategories.find((cat) => cat.id === newAllowanceCategoryId)?.name
+                      : "Chọn nhóm CTP..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Tìm nhóm CTP..." />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy nhóm CTP.</CommandEmpty>
+                      <CommandGroup>
+                        {allowanceCategories.map((category) => (
+                          <CommandItem
+                            key={category.id}
+                            value={category.name}
+                            onSelect={() => {
+                              setNewAllowanceCategoryId(category.id);
+                              setOpenAllowanceCategory(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                newAllowanceCategoryId === category.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {category.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-allowance-price">Giá mặc định (VND)</Label>
+              <CurrencyInput
+                id="new-allowance-price"
+                placeholder="Giá mặc định"
+                value={newAllowancePrice}
+                onChange={setNewAllowancePrice}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNewAllowanceDialog(false);
+                setNewAllowanceName('');
+                setNewAllowancePrice(0);
+                setNewAllowanceCategoryId('');
+              }}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateNewAllowance}
+              disabled={readOnly || createAllowanceExpenseMutation.isPending}
+            >
+              {createAllowanceExpenseMutation.isPending ? 'Đang tạo...' : 'Tạo'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

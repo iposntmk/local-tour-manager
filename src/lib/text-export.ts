@@ -34,6 +34,18 @@ const appendSection = (lines: string[], title: string, items: string[]) => {
   items.forEach(item => lines.push(`- ${item}`));
 };
 
+const formatTourNationalities = (tour: Tour, totalGuests: number) => {
+  const nationalities = tour.clientNationalities?.length
+    ? tour.clientNationalities
+    : tour.clientNationalityRef?.id
+      ? [{ ...tour.clientNationalityRef, paxCount: totalGuests }]
+      : [];
+
+  return nationalities
+    .map((nationality) => `${nationality.nameAtBooking}${nationality.paxCount ? ` (${nationality.paxCount}p)` : ''}`)
+    .join(', ') || 'N/A';
+};
+
 export const exportTourToTxt = (tour: Tour) => {
   const lines: string[] = [];
 
@@ -42,7 +54,7 @@ export const exportTourToTxt = (tour: Tour) => {
 
   lines.push(`Tour Code: ${tour.tourCode}`);
   lines.push(`Client: ${tour.clientName}`);
-  lines.push(`Nationality: ${tour.clientNationalityRef?.nameAtBooking ?? 'N/A'}`);
+  lines.push(`Nationality: ${formatTourNationalities(tour, totalGuests)}`);
   lines.push(`Company: ${tour.companyRef?.nameAtBooking ?? 'N/A'}`);
   lines.push(`Guide: ${tour.guideRef?.nameAtBooking ?? 'N/A'}`);
   lines.push(`Driver: ${tour.driverName || 'N/A'}`);

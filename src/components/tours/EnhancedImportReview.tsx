@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import Fuse from 'fuse.js';
 import type { Tour, EntityRef } from '@/types/tour';
-import type { Company, Guide, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
+import type { Company, Guide, Language, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -679,6 +679,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   const [companies, setCompanies] = useState<Company[]>(preloadedEntities?.companies ?? []);
   const [guides, setGuides] = useState<Guide[]>(preloadedEntities?.guides ?? []);
   const [nationalities, setNationalities] = useState<Nationality[]>(preloadedEntities?.nationalities ?? []);
+  const [languages, setLanguages] = useState<Language[]>([]);
   const [destinations, setDestinations] = useState<TouristDestination[]>([]);
   const [expenses, setExpenses] = useState<DetailedExpense[]>([]);
   const [shoppings, setShoppings] = useState<Shopping[]>([]);
@@ -714,10 +715,11 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     const load = async () => {
       try {
         // Use preloaded entities if available to avoid redundant API calls
-        const [c, g, n, d, e, s, p] = await Promise.all([
+        const [c, g, n, l, d, e, s, p] = await Promise.all([
           preloadedEntities?.companies ? Promise.resolve(preloadedEntities.companies) : store.listCompanies({}),
           preloadedEntities?.guides ? Promise.resolve(preloadedEntities.guides) : store.listGuides({}),
           preloadedEntities?.nationalities ? Promise.resolve(preloadedEntities.nationalities) : store.listNationalities({}),
+          store.listLanguages({ status: 'active' }),
           store.listTouristDestinations({}),
           store.listDetailedExpenses({}),
           store.listShoppings({}),
@@ -726,6 +728,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         setCompanies(c);
         setGuides(g);
         setNationalities(n);
+        setLanguages(l);
         setDestinations(d);
         setExpenses(e);
         setShoppings(s);
@@ -1671,6 +1674,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         open={openGuideDialog}
         onOpenChange={setOpenGuideDialog}
         guide={initialEntityName ? { id: '', name: initialEntityName, createdAt: '', updatedAt: '' } as any : undefined}
+        languages={languages}
         onSubmit={handleCreateGuide}
       />
       <NationalityDialog

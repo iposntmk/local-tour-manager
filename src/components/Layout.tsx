@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Users,
   Building2,
@@ -12,14 +12,17 @@ import {
   Home,
   BarChart3,
   Settings,
-  ChevronDown,
   LogOut,
   UserCog,
+  Languages,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
 import { SupabaseHealthBanner } from '@/components/SupabaseHealthBanner';
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { store } from '@/lib/datastore';
+import type { SettlementStatus } from '@/types/tour';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,48 +34,88 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Permission } from '@/types/user';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 interface NavItem {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  adminOnly?: boolean;
+  permission?: Permission;
 }
 
 const masterDataItems: NavItem[] = [
-  { to: '/guides', icon: Users, label: 'Hướng dẫn viên' },
-  { to: '/companies', icon: Building2, label: 'Công ty' },
-  { to: '/nationalities', icon: Globe, label: 'Quốc tịch' },
-  { to: '/provinces', icon: MapPin, label: 'Tỉnh thành' },
-  { to: '/destinations', icon: Map, label: 'Điểm đến' },
-  { to: '/shopping', icon: ShoppingBag, label: 'Mua sắm' },
-  { to: '/expense-categories', icon: Tag, label: 'Danh mục' },
-  { to: '/detailed-expenses', icon: Receipt, label: 'Chi phí' },
+  { to: '/guides', icon: Users, label: 'Hướng dẫn viên', permission: 'view_guides' },
+  { to: '/languages', icon: Languages, label: 'Ngôn ngữ', permission: 'view_languages' },
+  { to: '/companies', icon: Building2, label: 'Công ty', permission: 'view_companies' },
+  { to: '/nationalities', icon: Globe, label: 'Quốc tịch', permission: 'view_nationalities' },
+  { to: '/provinces', icon: MapPin, label: 'Tỉnh thành', permission: 'view_provinces' },
+  { to: '/destinations', icon: Map, label: 'Điểm đến', permission: 'view_tourist_destinations' },
+  { to: '/shopping', icon: ShoppingBag, label: 'Mua sắm', permission: 'view_shopping' },
+  { to: '/expense-categories', icon: Tag, label: 'Danh mục', permission: 'view_expense_categories' },
+  { to: '/detailed-expenses', icon: Receipt, label: 'Chi phí', permission: 'view_detailed_expenses' },
 ];
 
 const mainNavItems: NavItem[] = [
-  { to: '/tours', icon: Plane, label: 'Tour' },
-  { to: '/statistics', icon: BarChart3, label: 'Thống kê' },
-  { to: '/users', icon: UserCog, label: 'Người dùng', adminOnly: true },
+  { to: '/tours', icon: Plane, label: 'Tour', permission: 'view_tours' },
+  { to: '/statistics', icon: BarChart3, label: 'Thống kê', permission: 'view_statistics' },
 ];
+
+const userManagementItem: NavItem = { to: '/users', icon: UserCog, label: 'Người dùng', permission: 'manage_users' };
+
+function usePendingSettlementCount(): { count: number; enabled: boolean } {
+  const { hasPermission } = useAuth();
+  let statuses: SettlementStatus[] = [];
+  if (hasPermission('approve_settlement')) statuses = ['submitted'];
+  else if (hasPermission('submit_settlement')) statuses = ['need_changes'];
+
+  const enabled = statuses.length > 0;
+
+  const { data } = useQuery({
+    queryKey: ['settlement-pending-count', statuses],
+    queryFn: () => store.countToursBySettlementStatus(statuses),
+    enabled,
+    refetchInterval: enabled ? 60_000 : false,
+    refetchOnWindowFocus: enabled,
+    staleTime: 30_000,
+  });
+
+  return { count: data ?? 0, enabled };
+}
+
+function NavBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
 
 const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; user: User | null; onLogout: () => void }) => {
   const location = useLocation();
   const [masterDataOpen, setMasterDataOpen] = useState(false);
-  const { isAdmin, userProfile } = useAuth();
+  const { hasPermission } = useAuth();
+  const { count: pendingCount } = usePendingSettlementCount();
 
-  // Debug logging
-  console.log('[Layout] isAdmin:', isAdmin, 'userProfile:', userProfile);
+  const canShowItem = (item: NavItem) => !item.permission || hasPermission(item.permission);
+  const visibleMainNavItems = mainNavItems.filter(canShowItem);
+  const visibleUserManagementItem = canShowItem(userManagementItem) ? userManagementItem : null;
+  const visibleMasterDataItems = masterDataItems.filter(canShowItem);
 
-  const isMasterDataActive = masterDataItems.some(item => location.pathname.startsWith(item.to));
+  const settingsItems = [
+    ...(visibleUserManagementItem ? [visibleUserManagementItem] : []),
+    ...visibleMasterDataItems,
+  ];
+
+  const isSettingsActive = settingsItems.some(item => location.pathname.startsWith(item.to));
 
   const navLinkClass = (isActive: boolean) => cn(
-    'flex flex-col items-center py-1 rounded-lg font-medium transition-colors',
-    isMobile ? 'flex-1 px-1 min-w-0 gap-0.5 text-xs' : 'flex-shrink-0 px-2 gap-0.5 text-xs whitespace-nowrap',
+    'flex flex-col items-center rounded-lg font-medium transition-colors',
+    isMobile ? 'h-12 flex-1 justify-center px-1 min-w-0 gap-0.5 text-[11px]' : 'flex-shrink-0 px-2 py-1 gap-0.5 text-xs whitespace-nowrap',
     isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
   );
 
@@ -88,15 +131,17 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           <span className="text-center truncate w-full">Trang chủ</span>
         </NavLink>
 
-        {mainNavItems
-          .filter((item) => !item.adminOnly || isAdmin)
+        {visibleMainNavItems
           .map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) => navLinkClass(isActive)}
             >
-              <item.icon className="h-5 w-5" />
+              <span className="relative">
+                <item.icon className="h-5 w-5" />
+                {item.to === '/tours' && <NavBadge count={pendingCount} />}
+              </span>
               <span className="text-center truncate w-full">{item.label}</span>
             </NavLink>
           ))}
@@ -106,15 +151,21 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                'flex flex-col items-center gap-0.5 py-2 rounded-lg text-xs font-medium transition-colors flex-1 px-1 min-w-0',
-                isMasterDataActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
+                'flex h-12 flex-1 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors',
+                isSettingsActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
               )}
+              aria-label="Mở cài đặt"
             >
               <Settings className="h-5 w-5" />
               <span className="text-center truncate w-full">Cài đặt</span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="w-56 mb-2">
+          <DropdownMenuContent
+            align="end"
+            side="top"
+            collisionPadding={8}
+            className="mb-3 max-h-[70vh] w-[calc(100vw-1rem)] max-w-sm overflow-y-auto"
+          >
             {user && (
               <>
                 <div className="px-2 py-2 text-sm">
@@ -124,7 +175,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
                 <DropdownMenuSeparator />
               </>
             )}
-            {masterDataItems.map((item) => (
+            {settingsItems.map((item) => (
               <DropdownMenuItem key={item.to} asChild>
                 <NavLink
                   to={item.to}
@@ -162,21 +213,33 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
         <span className="text-center">Home</span>
       </NavLink>
 
-      {mainNavItems
-        .filter((item) => !item.adminOnly || isAdmin)
+      {visibleMainNavItems
         .map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) => navLinkClass(isActive)}
           >
-            <item.icon className="h-4 w-4" />
+            <span className="relative">
+              <item.icon className="h-4 w-4" />
+              {item.to === '/tours' && <NavBadge count={pendingCount} />}
+            </span>
             <span className="text-center">{item.label}</span>
-          </NavLink>
-        ))}
+        </NavLink>
+      ))}
+
+      {visibleUserManagementItem && (
+        <NavLink
+          to={visibleUserManagementItem.to}
+          className={({ isActive }) => navLinkClass(isActive)}
+        >
+          <visibleUserManagementItem.icon className="h-4 w-4" />
+          <span className="text-center">{visibleUserManagementItem.label}</span>
+        </NavLink>
+      )}
 
       {/* Master Data Items - Desktop only (show all) */}
-      {masterDataItems.map((item) => (
+      {visibleMasterDataItems.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -191,7 +254,9 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
 };
 
 export function Layout({ children }: LayoutProps) {
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
+  const isTourListRoute = location.pathname === '/' || location.pathname === '/tours';
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -230,18 +295,26 @@ export function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* Bottom Navigation - mobile only */}
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-card z-50 shadow-lg md:hidden">
-        <div className="flex items-stretch justify-evenly px-1 py-1.5">
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 border-t bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80 md:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="mx-auto flex min-h-16 max-w-md items-stretch justify-evenly px-1 py-2">
           <NavLinks isMobile={true} user={user} onLogout={handleLogout} />
         </div>
       </div>
 
       {/* Main Content */}
       <main className="flex-1 w-full">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-24 pt-4 md:pb-12 md:pt-0">
+        <div
+          className={cn(
+            'mx-auto w-full px-4 sm:px-6 lg:px-8 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 md:pb-12 md:pt-0',
+            isTourListRoute ? 'max-w-[100rem]' : 'max-w-7xl',
+          )}
+        >
           <SupabaseStatusBanner />
           <SupabaseHealthBanner />
-          {children}
+          {children ?? <Outlet />}
         </div>
       </main>
     </div>

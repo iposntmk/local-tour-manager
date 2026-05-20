@@ -5,18 +5,39 @@ export interface Guide {
   name: string;
   phone: string;
   note: string;
+  languages: Language[];
   isDefault: boolean;
   status: EntityStatus;
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface GuideInput {
   name: string;
   phone?: string;
   note?: string;
+  languageIds?: string[];
   isDefault?: boolean;
+}
+
+export interface Language {
+  id: string;
+  code: string;
+  name: string;
+  nativeName?: string;
+  status: EntityStatus;
+  searchKeywords: string[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+}
+
+export interface LanguageInput {
+  code: string;
+  name: string;
+  nativeName?: string;
 }
 
 export interface Company {
@@ -31,6 +52,7 @@ export interface Company {
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface CompanyInput {
@@ -51,6 +73,7 @@ export interface Nationality {
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface NationalityInput {
@@ -66,6 +89,7 @@ export interface Province {
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface ProvinceInput {
@@ -84,6 +108,7 @@ export interface TouristDestination {
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface TouristDestinationInput {
@@ -103,6 +128,7 @@ export interface Shopping {
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface ShoppingInput {
@@ -117,6 +143,7 @@ export interface ExpenseCategory {
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface ExpenseCategoryInput {
@@ -135,6 +162,7 @@ export interface DetailedExpense {
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface DetailedExpenseInput {

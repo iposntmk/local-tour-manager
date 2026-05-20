@@ -27,9 +27,11 @@ interface TourImage {
 interface TourImagesTabProps {
   tourId: string;
   tourCode: string;
+  canUpload?: boolean;
+  canDelete?: boolean;
 }
 
-export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
+export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = true }: TourImagesTabProps) {
   const generateStoragePath = (file: File) => {
     const safeTourCode = tourCode.replace(/[^a-zA-Z0-9-_]/g, '_') || 'tour';
     const rawBaseName = file.name.replace(/\.[^/.]+$/, '');
@@ -139,6 +141,12 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
   });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canUpload) {
+      toast.error('Bạn không có quyền upload ảnh tour.');
+      e.target.value = '';
+      return;
+    }
+
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -329,33 +337,37 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
                 )}
               </Button>
             )}
-            <input
-              type="file"
-              id="tour-image-upload"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              multiple
-              className="hidden"
-              onChange={handleFileSelect}
-              disabled={uploading}
-            />
-            <Button
-              onClick={() => document.getElementById('tour-image-upload')?.click()}
-              disabled={uploading}
-              size="sm"
-              className="hover-scale w-full sm:w-auto"
-            >
-              {uploading ? (
-                <>
-                  <Upload className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Upload Images
-                </>
-              )}
-            </Button>
+            {canUpload && (
+              <>
+                <input
+                  type="file"
+                  id="tour-image-upload"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                  disabled={uploading}
+                />
+                <Button
+                  onClick={() => document.getElementById('tour-image-upload')?.click()}
+                  disabled={uploading}
+                  size="sm"
+                  className="hover-scale w-full sm:w-auto"
+                >
+                  {uploading ? (
+                    <>
+                      <Upload className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Upload Images
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -380,6 +392,7 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
                     onClick={() => handleImageSelect(image)}
                   />
                   {/* Delete button - always visible on mobile, hover on desktop */}
+                  {canDelete && (
                   <div className="absolute top-2 right-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="destructive"
@@ -393,6 +406,7 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                  )}
                   <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
                     <p className="text-white text-xs truncate">{image.file_name}</p>
                     <p className="text-white/60 text-xs">
@@ -500,18 +514,20 @@ export function TourImagesTab({ tourId, tourCode }: TourImagesTabProps) {
                   >
                     Open in New Tab
                   </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      deleteMutation.mutate(selectedImage);
-                      handleImageClose();
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
+                  {canDelete && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        deleteMutation.mutate(selectedImage);
+                        handleImageClose();
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </div>
             </>

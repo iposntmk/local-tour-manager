@@ -1,4 +1,3 @@
-import { Layout } from '@/components/Layout';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
@@ -14,6 +13,8 @@ import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { useAuth } from '@/contexts/AuthContext';
+import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
 
 const Destinations = () => {
   const [search, setSearch] = useState('');
@@ -25,6 +26,12 @@ const Destinations = () => {
   const [priceFilter, setPriceFilter] = useState('');
 
   const queryClient = useQueryClient();
+  const { hasPermission, user, isAdmin } = useAuth();
+  const canCreate = hasPermission('create_tourist_destinations');
+  const canEdit = hasPermission('edit_tourist_destinations');
+  const canDelete = hasPermission('delete_tourist_destinations');
+  const canImport = hasPermission('import_tourist_destinations');
+  const canExport = hasPermission('export_tourist_destinations');
 
   const { data: destinations = [], isLoading } = useQuery({
     queryKey: ['touristDestinations', search],
@@ -105,10 +112,18 @@ const Destinations = () => {
   });
 
   const handleCreate = (input: TouristDestinationInput) => {
+    if (!canCreate) {
+      toast.error('Bạn không có quyền tạo điểm đến');
+      return;
+    }
     createMutation.mutate(input);
   };
 
   const handleEdit = (input: TouristDestinationInput) => {
+    if (!canEdit) {
+      toast.error('Bạn không có quyền sửa điểm đến');
+      return;
+    }
     if (editingDestination) {
       updateMutation.mutate({
         id: editingDestination.id,
@@ -118,6 +133,9 @@ const Destinations = () => {
   };
 
   const handleOpenDialog = (destination?: TouristDestination) => {
+    if (destination && !canEdit) return;
+    if (!destination && !canCreate) return;
+    if (destination && !ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
     setEditingDestination(destination);
     setDialogOpen(true);
   };
@@ -128,16 +146,28 @@ const Destinations = () => {
   };
 
   const handleDeleteAll = () => {
+    if (!canDelete) {
+      toast.error('Bạn không có quyền xóa điểm đến');
+      return;
+    }
     if (confirm('Are you sure you want to delete ALL destinations? This action cannot be undone.')) {
       deleteAllMutation.mutate();
     }
   };
 
   const handleBulkImport = async (items: { name: string; price: number }[]) => {
+    if (!canImport) {
+      toast.error('Bạn không có quyền import điểm đến');
+      return;
+    }
     await bulkImportMutation.mutateAsync(items);
   };
 
   const handleExportTxt = () => {
+    if (!canExport) {
+      toast.error('Bạn không có quyền export điểm đến');
+      return;
+    }
     if (filteredDestinations.length === 0) {
       toast.error('No destinations to export');
       return;
@@ -172,7 +202,7 @@ const Destinations = () => {
   const { classes: headerClasses } = useHeaderMode('destinations.headerMode');
 
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -181,22 +211,30 @@ const Destinations = () => {
               <p className="text-muted-foreground">Manage tourist destinations</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button variant="outline" onClick={handleExportTxt}>
-                <Download className="h-4 w-4 mr-2" />
-                Export TXT
-              </Button>
-              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Import
-              </Button>
-              <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
-                <Trash className="h-4 w-4" />
-                Delete All
-              </Button>
-              <Button onClick={() => handleOpenDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Destination
-              </Button>
+              {canExport && (
+                <Button variant="outline" onClick={handleExportTxt}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export TXT
+                </Button>
+              )}
+              {canImport && (
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
+                  <Trash className="h-4 w-4" />
+                  Delete All
+                </Button>
+              )}
+              {canCreate && (
+                <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Destination
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -271,7 +309,7 @@ const Destinations = () => {
                     <tr
                       key={destination.id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
-                      onClick={() => handleOpenDialog(destination)}
+                      onClick={() => canEdit && handleOpenDialog(destination)}
                     >
                       <td className="p-4 font-medium">{destination.name}</td>
                       <td className="p-4 text-muted-foreground">{destination.provinceRef.nameAtBooking}</td>
@@ -283,34 +321,31 @@ const Destinations = () => {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenDialog(destination)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => duplicateMutation.mutate(destination.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this destination?')) {
-                                deleteMutation.mutate(destination.id);
-                              }
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(destination)} className="h-8 w-8 p-0">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canCreate && (
+                            <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(destination.id)} className="h-8 w-8 p-0">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
+                                if (confirm('Are you sure you want to delete this destination?')) {
+                                  deleteMutation.mutate(destination.id);
+                                }
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -325,7 +360,7 @@ const Destinations = () => {
                 <div
                   key={destination.id}
                   className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleOpenDialog(destination)}
+                  onClick={() => canEdit && handleOpenDialog(destination)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -338,34 +373,31 @@ const Destinations = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(destination)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => duplicateMutation.mutate(destination.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this destination?')) {
-                            deleteMutation.mutate(destination.id);
-                          }
-                        }}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(destination)} className="h-8 w-8 p-0">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canCreate && (
+                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(destination.id)} className="h-8 w-8 p-0">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
+                            if (confirm('Are you sure you want to delete this destination?')) {
+                              deleteMutation.mutate(destination.id);
+                            }
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -401,7 +433,7 @@ const Destinations = () => {
           return null;
         }}
       />
-    </Layout>
+    </>
   );
 };
 

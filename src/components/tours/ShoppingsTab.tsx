@@ -22,7 +22,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Shopping, Tour } from '@/types/tour';
-import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
+import type { Shopping as MasterShopping } from '@/types/master';
+import { TourRowLabel } from '@/components/tours/TourRowIcon';
 
 const REQUIRED_PIN = '0829101188';
 
@@ -31,9 +33,10 @@ interface ShoppingsTabProps {
   shoppings: Shopping[];
   onChange?: (shoppings: Shopping[]) => void;
   tour?: Tour | null;
+  readOnly?: boolean;
 }
 
-export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTabProps) {
+export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = false }: ShoppingsTabProps) {
   const [isUnlocked, setIsUnlocked] = useState(() => {
     const saved = sessionStorage.getItem('shopping.unlocked');
     return saved === 'true';
@@ -124,6 +127,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
   const createShoppingMutation = useMutation({
     mutationFn: (name: string) => store.createShopping({ name }),
     onSuccess: (newShopping) => {
+      queryClient.setQueryData<MasterShopping[]>(['shoppings'], (current) => upsertById(current, newShopping));
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
       toast.success('Đã tạo mục mua sắm');
       setShowNewShoppingDialog(false);
@@ -138,6 +142,11 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) {
+      toast.error('Bạn không có quyền sửa mua sắm trong tour.');
+      return;
+    }
+
     // Validate required fields
     if (!formData.name || !formData.date) {
       toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
@@ -152,6 +161,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
   };
 
   const handleEdit = (index: number) => {
+    if (readOnly) return;
     setEditingIndex(index);
     setFormData(shoppings[index]);
     // Scroll to the form at the top
@@ -163,6 +173,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
   };
 
   const handleDelete = (index: number) => {
+    if (readOnly) return;
     if (confirm('Bạn có chắc chắn muốn xóa mục mua sắm này không?')) {
       deleteMutation.mutate(index);
     }
@@ -174,6 +185,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
   };
 
   const handleCreateNewShopping = () => {
+    if (readOnly) return;
     if (!newShoppingName.trim()) {
       toast.error('Vui lòng nhập tên mục mua sắm');
       return;
@@ -245,6 +257,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
   return (
     <div className="space-y-6">
       {/* Add Shopping Form */}
+      {!readOnly && (
       <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-semibold mb-4">
           {editingIndex !== null ? 'Chỉnh sửa mục mua sắm' : 'Thêm mục mua sắm'}
@@ -256,6 +269,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
               <Popover open={openShopping} onOpenChange={setOpenShopping}>
                 <PopoverTrigger asChild>
                   <Button
+                    type="button"
                     variant="outline"
                     role="combobox"
                     className="flex-1 justify-between"
@@ -340,6 +354,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
           )}
         </div>
       </form>
+      )}
 
       {/* Shoppings List */}
       <div className="rounded-lg border">
@@ -368,7 +383,9 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
             ) : (
               shoppings.map((shopping, index) => (
                 <TableRow key={index} className={`${(shopping.price ?? 0) === 0 ? 'bg-red-50 dark:bg-red-950' : ''}`}>
-                  <TableCell className="font-medium">{shopping.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <TourRowLabel kind="shopping" label={shopping.name} />
+                  </TableCell>
                   <TableCell className={shopping.price === 0 ? 'text-destructive font-semibold' : ''}>
                     {formatCurrency(shopping.price)}
                     {shopping.price === 0 && (
@@ -377,6 +394,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
                   </TableCell>
                   <TableCell>{formatDate(shopping.date)}</TableCell>
                   <TableCell className="text-right">
+                    {!readOnly && (
                     <div className="sm:hidden">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -400,6 +418,8 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    )}
+                    {!readOnly && (
                     <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                       <Button
                         variant="ghost"
@@ -420,6 +440,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -480,7 +501,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour }: ShoppingsTab
             <Button
               type="button"
               onClick={handleCreateNewShopping}
-              disabled={createShoppingMutation.isPending}
+              disabled={readOnly || createShoppingMutation.isPending}
             >
               {createShoppingMutation.isPending ? 'Đang tạo...' : 'Tạo'}
             </Button>
