@@ -50,17 +50,36 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { SearchInput } from '@/components/master/SearchInput';
-
-// Define ProcessResult type for bulk import
-type ProcessResult = 
-  | { success: true; tour: Tour }
-  | { success: false; skipped: true; tourCode?: string; error: string }
-  | { success: false; skipped?: false; error: string };
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { exportTourToExcel, exportAllToursToMonthlyZip, exportAllToursToExcel } from '@/lib/excel-utils';
 import { ImportTourDialogEnhanced } from '@/components/tours/ImportTourDialogEnhanced';
-import { handleImportError, validateTourData, createImportError } from '@/lib/error-utils';
+import {
+  truncateText,
+  WATER_EXPENSE_NAMES,
+  getTourDays,
+  getTourGuests,
+  getTourNationalityIds,
+  formatTourNationalities,
+  getAllowanceTotal,
+  getTourWarningInfo,
+  TourTableColumnKey,
+  TourTableFilterKey,
+  TourTableFilters,
+  TourTableColumn,
+  TOUR_TABLE_COLUMNS,
+  TOUR_TABLE_COLUMN_KEYS,
+  createDefaultTourTableColumnVisibility,
+  createDefaultTourTableFilters,
+  loadTourTableColumnVisibility,
+  loadTourTableFilters,
+  includesTableFilter,
+  parseTableDateFilter,
+  serializeTableDateFilter,
+  formatTableDateFilterLabel,
+  tourMatchesTableDateFilter,
+} from '@/pages/tours/tour-table-config';
+import { useTourImport } from '@/hooks/useTourImport';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -79,7 +98,6 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour, TourListResult, TourQuery } from '@/types/tour';
-import Fuse from 'fuse.js';
 import { generateFullSQLBackup, downloadSQLBackup } from '@/lib/sql-backup';
 import {
   invalidateTourAggregateCaches,
@@ -96,263 +114,6 @@ import { PaymentStatusBadge } from '@/components/tours/PaymentStatusBadge';
 import { SettlementStatusBadge } from '@/components/tours/SettlementStatusBadge';
 import { isTourPaymentEligible } from '@/lib/payment-utils';
 
-
-// Truncate helper with ellipsis included in `max` length
-const truncateText = (text: string | undefined | null, max = 15): string => {
-  if (!text) return '';
-  if (text.length <= max) return text;
-  if (max <= 3) return text.slice(0, max);
-  return text.slice(0, max - 3) + '...';
-};
-
-const WATER_EXPENSE_NAMES = [
-  'nước uống cho khách 10k/1 khách / 1 ngày',
-  'nước uống cho khách 15k/1 khách / 1 ngày',
-];
-
-const getTourDays = (tour: Tour) =>
-  tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0);
-
-const getTourGuests = (tour: Tour) => tour.totalGuests || ((tour.adults || 0) + (tour.children || 0));
-
-const getTourNationalityIds = (tour: Tour) => {
-  const ids = new Set<string>();
-  if (tour.clientNationalityRef?.id) ids.add(tour.clientNationalityRef.id);
-  (tour.clientNationalities || []).forEach((nationality) => {
-    if (nationality.id) ids.add(nationality.id);
-  });
-  return ids;
-};
-
-const formatTourNationalities = (tour: Tour) => {
-  const nationalities = tour.clientNationalities?.length
-    ? tour.clientNationalities
-    : tour.clientNationalityRef?.id
-      ? [{ ...tour.clientNationalityRef, paxCount: getTourGuests(tour) }]
-      : [];
-
-  return nationalities
-    .map((nationality) => `${nationality.nameAtBooking}${nationality.paxCount ? ` (${nationality.paxCount}p)` : ''}`)
-    .join(', ');
-};
-
-const getAllowanceTotal = (tour: Tour) =>
-  (tour.allowances || []).reduce((sum, allowance) => sum + (allowance.price * (allowance.quantity || 1)), 0);
-
-const getTourWarningInfo = (tour: Tour) => {
-  const hasZeroPrice = !!(
-    (tour.destinations || []).some(d => (d.price ?? 0) === 0) ||
-    (tour.expenses || []).some(e => (e.price ?? 0) === 0) ||
-    (tour.meals || []).some(m => (m.price ?? 0) === 0) ||
-    (tour.allowances || []).some(a => (a.price ?? 0) === 0)
-  );
-
-  const destNames = (tour.destinations || []).map(d => (d.name || '').trim().toLowerCase()).filter(Boolean);
-  const nameCount = new Map<string, number>();
-  for (const name of destNames) nameCount.set(name, (nameCount.get(name) || 0) + 1);
-  const hasDuplicateDestNames = Array.from(nameCount.values()).some(count => count > 1);
-
-  const hasWaterExpense = (tour.expenses || []).some(expense =>
-    WATER_EXPENSE_NAMES.includes((expense.name || '').trim().toLowerCase())
-  );
-  const missingWaterExpense = !hasWaterExpense;
-
-  const warningTitle = [
-    hasDuplicateDestNames && 'Tên điểm đến trùng lặp',
-    hasZeroPrice && 'Có mục giá 0',
-    missingWaterExpense && 'Thiếu chi phí nước uống'
-  ].filter(Boolean).join(' • ') || 'Cần kiểm tra';
-
-  return {
-    hasZeroPrice,
-    hasDuplicateDestNames,
-    missingWaterExpense,
-    showRedFlag: hasZeroPrice || hasDuplicateDestNames || missingWaterExpense,
-    warningTitle,
-  };
-};
-
-type TourTableColumnKey =
-  | 'stt'
-  | 'tourCode'
-  | 'date'
-  | 'days'
-  | 'guests'
-  | 'company'
-  | 'landOperator'
-  | 'guide'
-  | 'nationality'
-  | 'clientName'
-  | 'clientPhone'
-  | 'driverName'
-  | 'ctp'
-  | 'total'
-  | 'settlement'
-  | 'payment'
-  | 'warning'
-  | 'actions';
-
-type TourTableFilterKey = Exclude<TourTableColumnKey, 'stt' | 'actions' | 'payment' | 'settlement'>;
-
-type TourTableFilters = Record<TourTableFilterKey, string> & {
-  warning: 'all' | 'warning' | 'ok';
-};
-
-interface TourTableColumn {
-  key: TourTableColumnKey;
-  label: string;
-  width: number;
-  headerClassName?: string;
-  cellClassName?: string;
-  filterType: 'text' | 'date' | 'company' | 'landOperator' | 'warning' | 'none';
-  filterPlaceholder?: string;
-}
-
-const TOUR_TABLE_COLUMNS: TourTableColumn[] = [
-  { key: 'stt', label: 'STT', width: 52, headerClassName: 'text-center', cellClassName: 'text-center text-muted-foreground tabular-nums', filterType: 'none' },
-  { key: 'tourCode', label: 'Mã tour', width: 96, cellClassName: 'font-semibold', filterType: 'text', filterPlaceholder: 'Lọc mã' },
-  { key: 'date', label: 'Ngày', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'date' },
-  { key: 'days', label: 'Ngày đi', width: 70, cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số ngày' },
-  { key: 'guests', label: 'Khách', width: 72, cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số khách' },
-  { key: 'company', label: 'Công ty', width: 136, filterType: 'company' },
-  { key: 'landOperator', label: 'Land tour', width: 128, filterType: 'landOperator' },
-  { key: 'guide', label: 'HDV', width: 116, filterType: 'text', filterPlaceholder: 'Lọc HDV' },
-  { key: 'nationality', label: 'Quốc tịch', width: 136, filterType: 'text', filterPlaceholder: 'Lọc quốc tịch' },
-  { key: 'clientName', label: 'Khách hàng', width: 126, filterType: 'text', filterPlaceholder: 'Lọc khách' },
-  { key: 'clientPhone', label: 'SĐT khách', width: 110, filterType: 'text', filterPlaceholder: 'Lọc SĐT' },
-  { key: 'driverName', label: 'Tài xế', width: 110, filterType: 'text', filterPlaceholder: 'Lọc tài xế' },
-  { key: 'ctp', label: 'CTP', width: 92, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-medium', filterType: 'text', filterPlaceholder: 'Lọc CTP' },
-  { key: 'total', label: 'Tổng', width: 102, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-semibold text-primary', filterType: 'text', filterPlaceholder: 'Lọc tổng' },
-  { key: 'settlement', label: 'Quyết toán', width: 116, cellClassName: 'whitespace-nowrap', filterType: 'none' },
-  { key: 'payment', label: 'Thanh toán', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'none' },
-  { key: 'warning', label: 'Cờ cảnh báo', width: 108, cellClassName: 'whitespace-nowrap', filterType: 'warning' },
-  { key: 'actions', label: 'Hành động', width: 98, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right', filterType: 'none' },
-];
-
-const TOUR_TABLE_COLUMN_KEYS = TOUR_TABLE_COLUMNS.map(column => column.key);
-
-const createDefaultTourTableColumnVisibility = () =>
-  TOUR_TABLE_COLUMN_KEYS.reduce((visibility, key) => {
-    visibility[key] = true;
-    return visibility;
-  }, {} as Record<TourTableColumnKey, boolean>);
-
-const createDefaultTourTableFilters = (): TourTableFilters => ({
-  tourCode: '',
-  date: '',
-  days: '',
-  guests: '',
-  company: '',
-  landOperator: '',
-  guide: '',
-  nationality: '',
-  clientName: '',
-  clientPhone: '',
-  driverName: '',
-  ctp: '',
-  total: '',
-  warning: 'all',
-});
-
-const loadTourTableColumnVisibility = () => {
-  const saved = localStorage.getItem('tours.table.columnVisibility');
-  if (!saved) return createDefaultTourTableColumnVisibility();
-
-  try {
-    const parsed = JSON.parse(saved) as Partial<Record<TourTableColumnKey, boolean>>;
-    return TOUR_TABLE_COLUMN_KEYS.reduce((visibility, key) => {
-      visibility[key] = typeof parsed[key] === 'boolean' ? parsed[key]! : true;
-      return visibility;
-    }, {} as Record<TourTableColumnKey, boolean>);
-  } catch (error) {
-    console.warn('Invalid tour table column visibility settings', error);
-    return createDefaultTourTableColumnVisibility();
-  }
-};
-
-const loadTourTableFilters = () => {
-  const saved = localStorage.getItem('tours.table.filters');
-  if (!saved) return createDefaultTourTableFilters();
-
-  try {
-    const parsed = JSON.parse(saved) as Partial<Record<TourTableFilterKey, string>>;
-    return {
-      tourCode: parsed.tourCode || '',
-      date: parsed.date || '',
-      days: parsed.days || '',
-      guests: parsed.guests || '',
-      company: parsed.company || '',
-      landOperator: parsed.landOperator || '',
-      guide: parsed.guide || '',
-      nationality: parsed.nationality || '',
-      clientName: parsed.clientName || '',
-      clientPhone: parsed.clientPhone || '',
-      driverName: parsed.driverName || '',
-      ctp: parsed.ctp || '',
-      total: parsed.total || '',
-      warning: parsed.warning === 'warning' || parsed.warning === 'ok' ? parsed.warning : 'all',
-    };
-  } catch (error) {
-    console.warn('Invalid tour table filter settings', error);
-    return createDefaultTourTableFilters();
-  }
-};
-
-const normalizeTableFilterText = (value: string | number | undefined | null) =>
-  String(value ?? '').trim().toLowerCase();
-
-const includesTableFilter = (value: string | number | undefined | null, filter: string) => {
-  const normalizedFilter = normalizeTableFilterText(filter);
-  if (!normalizedFilter) return true;
-  return normalizeTableFilterText(value).includes(normalizedFilter);
-};
-
-const parseTableDateFilter = (value: string): DateRange | undefined => {
-  if (!value.includes('|')) return undefined;
-
-  const [fromValue, toValue] = value.split('|');
-  const from = fromValue ? new Date(fromValue) : undefined;
-  const to = toValue ? new Date(toValue) : undefined;
-
-  return {
-    from: from && !Number.isNaN(from.getTime()) ? from : undefined,
-    to: to && !Number.isNaN(to.getTime()) ? to : undefined,
-  };
-};
-
-const serializeTableDateFilter = (range: DateRange | undefined) => {
-  if (!range?.from && !range?.to) return '';
-  return `${range?.from ? format(range.from, 'yyyy-MM-dd') : ''}|${range?.to ? format(range.to, 'yyyy-MM-dd') : ''}`;
-};
-
-const formatTableDateFilterLabel = (value: string) => {
-  const selected = parseTableDateFilter(value);
-  if (!selected?.from && !selected?.to) {
-    return value || 'Chọn ngày';
-  }
-
-  if (selected.from && selected.to) {
-    return `${format(selected.from, 'dd/MM/yyyy')} - ${format(selected.to, 'dd/MM/yyyy')}`;
-  }
-
-  const singleDate = selected.from || selected.to;
-  return singleDate ? format(singleDate, 'dd/MM/yyyy') : 'Chọn ngày';
-};
-
-const tourMatchesTableDateFilter = (tour: Tour, value: string) => {
-  const selected = parseTableDateFilter(value);
-  if (!selected?.from && !selected?.to) {
-    return includesTableFilter(`${tour.startDate} ${tour.endDate} ${formatDateRangeDisplay(tour.startDate, tour.endDate)}`, value);
-  }
-
-  const from = selected.from || selected.to;
-  const to = selected.to || selected.from;
-  if (!from || !to) return true;
-
-  const filterStart = format(from, 'yyyy-MM-dd');
-  const filterEnd = format(to, 'yyyy-MM-dd');
-  return tour.startDate <= filterEnd && tour.endDate >= filterStart;
-};
 
 const Tours = () => {
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -930,327 +691,14 @@ const Tours = () => {
     setDeleteTourId(id);
   };
 
-  // Normalize dates to YYYY-MM-DD for DB
-  const normalizeDate = (input?: string) => {
-    if (!input) return input as any;
-    const s = input.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-    if (s.includes('/')) {
-      const [a, b, c] = s.split('/');
-      if (a && b && c) {
-        if (a.length === 4) {
-          // YYYY/MM/DD
-          return `${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;
-        }
-        if (c.length === 4) {
-          // DD/MM/YYYY or MM/DD/YYYY -> infer by month > 12
-          const nb = parseInt(b, 10);
-          const na = parseInt(a, 10);
-          const mm = nb > 12 ? a : b;
-          const dd = nb > 12 ? b : a;
-          return `${c}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-        }
-      }
-    }
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth()+1).padStart(2,'0');
-      const day = String(d.getDate()).padStart(2,'0');
-      return `${y}-${m}-${day}`;
-    }
-    return s; // fallback
-  };
-
-  const importMutation = useMutation({
-    mutationFn: async (tours: Partial<Tour>[]) => {
-      const results = [];
-      const errors = [];
-      const skipped: string[] = [];
-
-      const matchesQueryFilters = (query: TourQuery | undefined, tour: Tour) => {
-        if (!query) return true;
-
-        if (query.tourCode && !tour.tourCode.toLowerCase().includes(query.tourCode.toLowerCase())) {
-          return false;
-        }
-
-        if (query.clientName && !tour.clientName.toLowerCase().includes(query.clientName.toLowerCase())) {
-          return false;
-        }
-
-        if (query.companyId && tour.companyRef?.id !== query.companyId) {
-          return false;
-        }
-
-        if (query.guideId && tour.guideRef?.id !== query.guideId) {
-          return false;
-        }
-
-        if (query.nationalityId && !getTourNationalityIds(tour).has(query.nationalityId)) {
-          return false;
-        }
-
-        if (query.startDate && tour.startDate < query.startDate) {
-          return false;
-        }
-
-        if (query.endDate && tour.endDate > query.endDate) {
-          return false;
-        }
-
-        return true;
-      };
-
-      const appendTourToCache = (newTour: Tour) => {
-        const queries = queryClient.getQueriesData<TourListResult>({ queryKey: ['tours'] });
-
-        queries.forEach(([queryKey, data]) => {
-          if (!data) return;
-          if (!Array.isArray(queryKey)) return;
-
-          const baseQuery = (queryKey[1] ?? undefined) as TourQuery | undefined;
-          if (!matchesQueryFilters(baseQuery, newTour)) {
-            return;
-          }
-          const updatedTotal = data.total + 1;
-          const dedupedTours = data.tours.filter(tourItem => tourItem.id !== newTour.id);
-          const orderedTours = [...dedupedTours, newTour].sort((a, b) =>
-            (b.startDate ?? '').localeCompare(a.startDate ?? '')
-          );
-
-          queryClient.setQueryData(queryKey, {
-            tours: orderedTours,
-            total: updatedTotal,
-          });
-        });
-      };
-
-      type ProcessResult =
-        | { success: true; tour: Tour }
-        | { success: false; error: string; skipped?: false }
-        | { success: false; skipped: true; tourCode?: string; error: string };
-
-      let processedCount = 0;
-      let successCount = 0;
-      let skippedCount = 0;
-      let progressToastId: string | number | undefined;
-
-      const updateProgressToast = () => {
-        if (tours.length <= 10) return;
-        const progress = Math.round((processedCount / tours.length) * 100);
-        const descriptionParts = [`${successCount}/${tours.length} imported`];
-        if (skippedCount > 0) {
-          descriptionParts.push(`${skippedCount} skipped`);
-        }
-
-        progressToastId = toast.message(`Importing tours... ${progress}%`, {
-          id: progressToastId,
-          description: descriptionParts.join(' • '),
-          duration: 1000,
-        });
-      };
-
-      // Load existing tours to check for duplicates
-      const { tours: existingTours } = await store.listTours({});
-      const existingTourCodes = new Set(existingTours.map(t => t.tourCode.toLowerCase()));
-
-      // Load master data once for auto-matching fallback
-      const [masterDestinations, masterExpenses, masterShoppings] = await Promise.all([
-        store.listTouristDestinations({}),
-        store.listDetailedExpenses({}),
-        store.listShoppings({}),
-      ]);
-      // Create lookup maps for faster matching (much faster than Fuse.js for exact matches)
-      const destMap = new Map(masterDestinations.map(d => [d.name.toLowerCase(), d]));
-      const expMap = new Map(masterExpenses.map(e => [e.name.toLowerCase(), e]));
-      const mealMap = new Map(masterShoppings.map(m => [m.name.toLowerCase(), m]));
-      
-      const autoMatch = (name: string, map: Map<string, any>) => {
-        if (!name?.trim()) return null;
-        return map.get(name.toLowerCase()) || null;
-      };
-
-      // Process all tours in parallel with concurrency limit
-      const concurrencyLimit = 10; // Process 10 tours at a time
-      const processWithConcurrency = async (toursToProcess: Partial<Tour>[], limit: number) => {
-        const aggregatedResults: ProcessResult[] = [];
-
-        const recordResult = <T extends ProcessResult>(result: T): T => {
-          aggregatedResults.push(result);
-          processedCount += 1;
-          if (result.success) {
-            successCount += 1;
-          } else if ('skipped' in result && result.skipped) {
-            skippedCount += 1;
-          }
-          updateProgressToast();
-          return result;
-        };
-
-        for (let i = 0; i < toursToProcess.length; i += limit) {
-          const batch = toursToProcess.slice(i, i + limit);
-          await Promise.all(
-            batch.map(async (tour, batchIndex) => {
-              const globalIndex = i + batchIndex;
-
-              // Check for duplicate tour code
-              if (tour.tourCode && existingTourCodes.has(tour.tourCode.toLowerCase())) {
-                return recordResult({
-                  success: false,
-                  skipped: true,
-                  tourCode: tour.tourCode,
-                  error: `Tour with tour code "${tour.tourCode}" already exists`,
-                });
-              }
-
-              try {
-                // Validate tour data before attempting to create
-                const validation = validateTourData(tour);
-                if (!validation.valid) {
-                  throw new Error(validation.errors.join(', '));
-                }
-
-                // Clean matched properties and normalize dates + apply auto-match fallback
-                const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => {
-                  const normalized = { ...dest, date: normalizeDate(dest.date) } as any;
-                  if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                    const m = autoMatch(normalized.name, destMap);
-                    if (m) {
-                      normalized.name = m.name;
-                      normalized.price = Number(m.price) || 0;
-                    }
-                  }
-                  return normalized;
-                });
-                const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => {
-                  const normalized = { ...exp, date: normalizeDate(exp.date) } as any;
-                  if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                    const m = autoMatch(normalized.name, expMap);
-                    if (m) {
-                      normalized.name = m.name;
-                      normalized.price = Number(m.price) || 0;
-                    }
-                  }
-                  return normalized;
-                });
-                const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => {
-                  const normalized = { ...meal, date: normalizeDate(meal.date) } as any;
-                  if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                    const m = autoMatch(normalized.name, mealMap);
-                    if (m) {
-                      normalized.name = m.name;
-                      normalized.price = Number(m.price) || 0;
-                    }
-                  }
-                  return normalized;
-                });
-                const cleanAllowances = tour.allowances?.map(({ matchedId, matchedPrice, ...allow }: any) => {
-                  const normalized = { ...allow, date: normalizeDate(allow.date) } as any;
-                  if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                    const m = autoMatch(normalized.name, expMap);
-                    if (m) {
-                      normalized.name = m.name;
-                      normalized.price = Number(m.price) || 0;
-                    }
-                  }
-                  return normalized;
-                });
-
-                // Create the tour with all subcollections in one call
-                const createdTour = await store.createTour({
-                  tourCode: tour.tourCode!,
-                  companyRef: tour.companyRef,
-                  guideRef: tour.guideRef,
-                  clientNationalityRef: tour.clientNationalityRef,
-                  clientNationalities: tour.clientNationalities,
-                  clientName: tour.clientName!,
-                  adults: tour.adults!,
-                  children: tour.children!,
-                  driverName: tour.driverName,
-                  clientPhone: tour.clientPhone,
-                  startDate: normalizeDate(tour.startDate!)!,
-                  endDate: normalizeDate(tour.endDate!)!,
-                  destinations: cleanDestinations,
-                  expenses: cleanExpenses,
-                  meals: cleanMeals,
-                  allowances: cleanAllowances,
-                  summary: tour.summary,
-                });
-
-                appendTourToCache(createdTour);
-                if (tour.tourCode) {
-                  existingTourCodes.add(tour.tourCode.toLowerCase());
-                }
-
-                return recordResult({ success: true, tour: createdTour });
-              } catch (error) {
-                const tourCode = tour.tourCode || `Tour ${globalIndex + 1}`;
-                const context = {
-                  operation: 'importTour',
-                  tourCode,
-                  tourIndex: globalIndex,
-                  data: tour,
-                  timestamp: new Date().toISOString(),
-                };
-
-                const errorMsg = handleImportError(error, context);
-                return recordResult({ success: false, error: `${tourCode}: ${errorMsg}` });
-              }
-            })
-          );
-        }
-
-        return aggregatedResults;
-      };
-
-      const allResults = await processWithConcurrency(tours, concurrencyLimit);
-
-      // Separate successes, errors, and skipped tours
-      allResults.forEach(result => {
-        if (result.success) {
-          results.push(result.tour);
-        } else if ('skipped' in result && result.skipped) {
-          skipped.push(('tourCode' in result ? result.tourCode : undefined) || 'Unknown');
-        } else if (!result.success && 'error' in result) {
-          errors.push(result.error);
-        }
-      });
-
-      if (errors.length > 0) {
-        throw new Error(errors.join('\n'));
-      }
-
-      return { imported: results, skipped };
-    },
-    onSuccess: async (result, tours) => {
-      const { imported, skipped } = result;
-
-      await invalidateTourAggregateCaches(queryClient);
-
-      // Show success message with details
-      if (skipped.length > 0) {
-        toast.success(
-          `${imported.length} tour(s) imported successfully. ${skipped.length} tour(s) skipped (already exist): ${skipped.join(', ')}`,
-          { duration: 8000 }
-        );
-      } else {
-        toast.success(`${imported.length} tour(s) imported successfully`);
-      }
-    },
-    onError: (error) => {
-      console.error('Import error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to import tours';
-      toast.error(errorMessage, { duration: 5000 });
-    },
-  });
+  const { handleImport: handleImportFromHook } = useTourImport(queryClient, baseTourQuery);
 
   const handleImport = (tours: Partial<Tour>[]) => {
     if (!canImportTours) {
       toast.error('Bạn không có quyền nhập tour.');
       return;
     }
-    importMutation.mutate(tours);
+    handleImportFromHook(tours);
   };
 
   const handleBackup = async () => {
@@ -2454,12 +1902,8 @@ const Tours = () => {
               const hasDuplicateDestNames = Array.from(nameCount.values()).some(c => c > 1);
 
               // Check if water expense exists
-              const waterExpenseNames = [
-                'nước uống cho khách 10k/1 khách / 1 ngày',
-                'nước uống cho khách 15k/1 khách / 1 ngày',
-              ];
               const hasWaterExpense = (tour.expenses || []).some(exp =>
-                waterExpenseNames.includes((exp.name || '').trim().toLowerCase())
+                WATER_EXPENSE_NAMES.includes((exp.name || '').trim().toLowerCase())
               );
               const missingWaterExpense = !hasWaterExpense;
 
