@@ -1,38 +1,25 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import Fuse from 'fuse.js';
-import type { Tour, EntityRef } from '@/types/tour';
+import type { Tour } from '@/types/tour';
 import type { Company, Guide, Language, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { CurrencyInput } from '@/components/ui/currency-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { formatDate } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, Check, X, Plus, Trash2, AlertCircle, MapPin, Receipt, Utensils, DollarSign, ChevronsUpDown } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Search, Trash2, AlertCircle, MapPin, Receipt, Utensils, DollarSign } from 'lucide-react';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { GuideDialog } from '@/components/guides/GuideDialog';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
 import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
+import { SubcollectionSection } from './SubcollectionSection';
+import { EntitySelector } from './EntitySelector';
 
 export interface ReviewItem {
   tour: Partial<Tour>;
@@ -63,616 +50,6 @@ interface SearchableEntity {
   id: string;
   name: string;
   type: 'company' | 'guide' | 'nationality';
-}
-
-// Subcollection Section Component
-interface SubcollectionSectionProps {
-  title: string;
-  icon: React.ReactNode;
-  items: any[];
-  tourIndex: number;
-  sectionKey: string;
-  onUpdate: (index: number, field: string, value: any) => void;
-  onRemove: (index: number) => void;
-  matchFunction: ((name: string) => any) | null;
-  matchType: string;
-  masterData?: any[];
-  rawData?: any[];
-}
-
-function SubcollectionSection({
-  title,
-  icon,
-  items,
-  tourIndex,
-  sectionKey,
-  onUpdate,
-  onRemove,
-  matchFunction,
-  matchType,
-  masterData = [],
-  rawData = []
-}: SubcollectionSectionProps) {
-  const [openCombobox, setOpenCombobox] = useState<{ [key: number]: boolean }>({});
-
-  const renderItem = (item: any, index: number) => {
-    if (matchType === 'summary') {
-      const rawItem = rawData && rawData[index];
-
-      return (
-        <div key={index} className="border rounded-lg p-4 bg-gray-50">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Read-only field */}
-            <div>
-              <Label className="text-xs font-medium">
-                Total Tabs
-                {rawItem?.totalTabs !== undefined && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: {rawItem.totalTabs})
-                  </span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                value={item.totalTabs || 0}
-                readOnly
-                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
-              />
-            </div>
-
-            {/* Editable field */}
-            <div>
-              <Label className="text-xs font-medium">
-                Advance Payment
-                {rawItem?.advancePayment !== undefined && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: {rawItem.advancePayment})
-                  </span>
-                )}
-              </Label>
-              <CurrencyInput
-                value={item.advancePayment || 0}
-                onChange={(value) => onUpdate(index, 'advancePayment', value)}
-                size="compact"
-              />
-            </div>
-
-            {/* Editable field */}
-            <div>
-              <Label className="text-xs font-medium">
-                Total After Advance
-                {rawItem?.totalAfterAdvance !== undefined && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: {rawItem.totalAfterAdvance})
-                  </span>
-                )}
-              </Label>
-              <CurrencyInput
-                value={item.totalAfterAdvance || 0}
-                onChange={(value) => onUpdate(index, 'totalAfterAdvance', value)}
-                size="compact"
-              />
-            </div>
-
-            {/* Editable field */}
-            <div>
-              <Label className="text-xs font-medium">
-                Company Tip
-                {rawItem?.companyTip !== undefined && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: {rawItem.companyTip})
-                  </span>
-                )}
-              </Label>
-              <CurrencyInput
-                value={item.companyTip || 0}
-                onChange={(value) => onUpdate(index, 'companyTip', value)}
-                size="compact"
-              />
-            </div>
-
-            {/* Read-only field */}
-            <div>
-              <Label className="text-xs font-medium">
-                Total After Tip
-                {rawItem?.totalAfterTip !== undefined && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: {rawItem.totalAfterTip})
-                  </span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                value={item.totalAfterTip || 0}
-                readOnly
-                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
-              />
-            </div>
-
-            {/* Read-only field */}
-            <div>
-              <Label className="text-xs font-medium">
-                Collections For Company
-                {rawItem?.collectionsForCompany !== undefined && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: {rawItem.collectionsForCompany})
-                  </span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                value={item.collectionsForCompany || 0}
-                readOnly
-                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
-              />
-            </div>
-
-            {/* Read-only field */}
-            <div>
-              <Label className="text-xs font-medium">
-                Total After Collections
-                {rawItem?.totalAfterCollections !== undefined && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: {rawItem.totalAfterCollections})
-                  </span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                value={item.totalAfterCollections || 0}
-                readOnly
-                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
-              />
-            </div>
-
-            {/* Read-only field */}
-            <div>
-              <Label className="text-xs font-medium">
-                Final Total
-                {rawItem?.finalTotal !== undefined && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: {rawItem.finalTotal})
-                  </span>
-                )}
-              </Label>
-              <Input
-                type="number"
-                value={item.finalTotal || 0}
-                readOnly
-                className="h-8 text-sm mt-1 bg-gray-100 cursor-not-allowed"
-              />
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const matchedItem = matchFunction && item.name ? matchFunction(item.name) : null;
-    const hasMatch = matchedItem !== null;
-    const rawItem = rawData && rawData[index];
-
-    // For destinations, use combobox with master data
-    const useCombobox = matchType === 'destination' && masterData.length > 0;
-
-    return (
-      <div key={index} className="p-3 bg-gray-50 rounded-md">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {matchType} {index + 1}
-            </Badge>
-            {hasMatch && (
-              <Badge variant="default" className="text-xs bg-green-100 text-green-800">
-                <Check className="h-3 w-3 mr-1" />
-                Matched
-              </Badge>
-            )}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onRemove(index)}
-            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">
-              Name
-              {rawItem?.name && (
-                <span className="text-xs text-muted-foreground ml-1">
-                  (JSON: "{rawItem.name}")
-                </span>
-              )}
-            </Label>
-            {useCombobox ? (
-              <Popover open={openCombobox[index]} onOpenChange={(open) => setOpenCombobox({ ...openCombobox, [index]: open })}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openCombobox[index]}
-                    className="h-7 justify-between text-xs w-full"
-                  >
-                    {item.name || "Select..."}
-                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search..." className="h-7 text-xs" />
-                    <CommandList>
-                      <CommandEmpty>No item found.</CommandEmpty>
-                      <CommandGroup>
-                        {masterData.map((dest: any) => (
-                          <CommandItem
-                            key={dest.id}
-                            value={dest.name}
-                            onSelect={() => {
-                              onUpdate(index, 'name', dest.name);
-                              onUpdate(index, 'price', dest.price);
-                              setOpenCombobox({ ...openCombobox, [index]: false });
-                            }}
-                            className="text-xs"
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-3 w-3",
-                                item.name === dest.name ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {dest.name} ({dest.price?.toLocaleString()} ₫)
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <Input
-                value={item.name || ''}
-                onChange={(e) => onUpdate(index, 'name', e.target.value)}
-                className="h-7 text-xs"
-              />
-            )}
-          </div>
-          <div>
-            <Label className="text-xs">
-              Price
-              {rawItem?.price !== undefined && (
-                <span className="text-xs text-muted-foreground ml-1">
-                  (JSON: {rawItem.price})
-                </span>
-              )}
-            </Label>
-            <CurrencyInput
-              value={item.price || 0}
-              onChange={(value) => onUpdate(index, 'price', value)}
-              size="compact"
-            />
-          </div>
-          {matchType !== 'allowance' && (
-            <div className="col-span-2">
-              <Label className="text-xs">
-                Date
-                {rawItem?.date && (
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (JSON: "{rawItem.date}")
-                  </span>
-                )}
-              </Label>
-              <Input
-                type="date"
-                value={item.date || ''}
-                onChange={(e) => onUpdate(index, 'date', e.target.value)}
-                className="h-7 text-xs"
-              />
-            </div>
-          )}
-        </div>
-
-        {hasMatch && (
-          <div className="mt-2 p-2 bg-green-50 rounded text-xs text-green-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <strong>Matched:</strong> {matchedItem.name} (Price: {matchedItem.price})
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Apply matched data to the item
-                  onUpdate(index, 'price', matchedItem.price);
-                  if (matchedItem.id) {
-                    onUpdate(index, 'id', matchedItem.id);
-                  }
-                }}
-                className="h-5 px-2 text-xs bg-green-100 hover:bg-green-200"
-              >
-                Apply Match
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderTableRow = (item: any, index: number) => {
-    const matchedItem = matchFunction && item.name ? matchFunction(item.name) : null;
-    const hasMatch = matchedItem !== null;
-    const rawItem = rawData && rawData[index];
-    const useCombobox = (matchType === 'destination' || matchType === 'expense' || matchType === 'meal' || matchType === 'allowance') && masterData.length > 0;
-
-    // Render allowance row with Name/Price/Date structure (same as expenses)
-    if (matchType === 'allowance') {
-      const matchedAllowance = matchFunction ? matchFunction(item.name) : null;
-      const hasAllowanceMatch = matchedAllowance !== null;
-
-      return (
-        <TableRow key={index}>
-          <TableCell className="text-xs font-medium">{index + 1}</TableCell>
-          <TableCell className="text-xs">
-            <div className="space-y-1">
-              {useCombobox ? (
-                <Popover open={openCombobox[index]} onOpenChange={(open) => setOpenCombobox({ ...openCombobox, [index]: open })}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openCombobox[index]}
-                      className={cn(
-                        "h-7 justify-between text-xs w-full",
-                        hasAllowanceMatch ? "border-green-500 bg-green-50" : "border-yellow-500 bg-yellow-50"
-                      )}
-                    >
-                      {item.name || "Select allowance..."}
-                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search allowance..." className="h-7 text-xs" />
-                      <CommandList>
-                        <CommandEmpty>No allowance found.</CommandEmpty>
-                        <CommandGroup>
-                          {masterData.map((allowance: any) => (
-                            <CommandItem
-                              key={allowance.id}
-                              value={allowance.name}
-                              onSelect={() => {
-                                onUpdate(index, 'name', allowance.name);
-                                onUpdate(index, 'price', allowance.price);
-                                setOpenCombobox({ ...openCombobox, [index]: false });
-                              }}
-                              className="text-xs"
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-3 w-3",
-                                  item.name === allowance.name ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {allowance.name} ({allowance.price.toLocaleString()} ₫)
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Input
-                  value={item.name || ''}
-                  onChange={(e) => onUpdate(index, 'name', e.target.value)}
-                  className={cn(
-                    "h-7 text-xs",
-                    hasAllowanceMatch ? "border-green-500 bg-green-50" : "border-yellow-500 bg-yellow-50"
-                  )}
-                />
-              )}
-              {rawItem?.name && (
-                <div className="text-xs text-muted-foreground">JSON: "{rawItem.name}"</div>
-              )}
-              {hasAllowanceMatch && (
-                <div className="flex items-center gap-1 text-xs text-green-600">
-                  <Check className="h-3 w-3" />
-                  Matched: {matchedAllowance.name}
-                </div>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-xs">
-            <div className="space-y-1">
-              <CurrencyInput
-                value={item.price || 0}
-                onChange={(value) => onUpdate(index, 'price', value)}
-                size="compact"
-              />
-              {rawItem?.price !== undefined && (
-                <div className="text-xs text-muted-foreground">JSON: {rawItem.price}</div>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-xs">
-            <div className="space-y-1">
-              <Input
-                type="date"
-                value={item.date || ''}
-                onChange={(e) => onUpdate(index, 'date', e.target.value)}
-                className="h-7 text-xs"
-              />
-              {rawItem?.date && (
-                <div className="text-xs text-muted-foreground">JSON: "{rawItem.date}"</div>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-right">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onRemove(index)}
-              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </TableCell>
-        </TableRow>
-      );
-    }
-
-    // Render normal row for destinations, expenses, meals
-    return (
-      <TableRow key={index}>
-        <TableCell className="text-xs font-medium">{index + 1}</TableCell>
-        <TableCell className="text-xs">
-          <div className="space-y-1">
-            {useCombobox ? (
-              <Popover open={openCombobox[index]} onOpenChange={(open) => setOpenCombobox({ ...openCombobox, [index]: open })}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openCombobox[index]}
-                    className={cn(
-                      "h-7 justify-between text-xs w-full",
-                      hasMatch ? "border-green-500 bg-green-50" : "border-yellow-500 bg-yellow-50"
-                    )}
-                  >
-                    {item.name || "Select..."}
-                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search..." className="h-7 text-xs" />
-                    <CommandList>
-                      <CommandEmpty>No item found.</CommandEmpty>
-                      <CommandGroup>
-                        {masterData.map((dest: any) => (
-                          <CommandItem
-                            key={dest.id}
-                            value={dest.name}
-                            onSelect={() => {
-                              onUpdate(index, 'name', dest.name);
-                              onUpdate(index, 'price', dest.price);
-                              setOpenCombobox({ ...openCombobox, [index]: false });
-                            }}
-                            className="text-xs"
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-3 w-3",
-                                item.name === dest.name ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {dest.name} ({dest.price?.toLocaleString()} ₫)
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <Input
-                value={item.name || ''}
-                onChange={(e) => onUpdate(index, 'name', e.target.value)}
-                className={cn(
-                  "h-7 text-xs",
-                  hasMatch ? "border-green-500 bg-green-50" : "border-yellow-500 bg-yellow-50"
-                )}
-              />
-            )}
-            {rawItem?.name && (
-              <div className="text-xs text-muted-foreground">JSON: "{rawItem.name}"</div>
-            )}
-            {hasMatch && (
-              <Badge variant="default" className="text-xs bg-green-100 text-green-800">
-                <Check className="h-3 w-3 mr-1" />
-                Matched: {matchedItem.name}
-              </Badge>
-            )}
-          </div>
-        </TableCell>
-        <TableCell className="text-xs">
-          <div className="space-y-1">
-            <CurrencyInput
-              value={item.price || 0}
-              onChange={(value) => onUpdate(index, 'price', value)}
-              size="compact"
-            />
-            {rawItem?.price !== undefined && (
-              <div className="text-xs text-muted-foreground">JSON: {rawItem.price}</div>
-            )}
-            {hasMatch && matchedItem.price && (
-              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                Master: {matchedItem.price.toLocaleString()} ₫
-              </Badge>
-            )}
-          </div>
-        </TableCell>
-        <TableCell className="text-xs">
-          <div className="space-y-1">
-            <Input
-              type="date"
-              value={item.date || ''}
-              onChange={(e) => onUpdate(index, 'date', e.target.value)}
-              className="h-7 text-xs"
-            />
-            {rawItem?.date && (
-              <div className="text-xs text-muted-foreground">JSON: "{rawItem.date}"</div>
-            )}
-          </div>
-        </TableCell>
-        <TableCell className="text-right">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onRemove(index)}
-            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </TableCell>
-      </TableRow>
-    );
-  };
-
-  return (
-    <div>
-      {items.length === 0 ? (
-        <div className="text-sm text-gray-500 text-center py-8 border rounded-lg">
-          No {title.toLowerCase()} found
-        </div>
-      ) : matchType === 'summary' ? (
-        <div className="space-y-2">
-          {items.map((item, index) => renderItem(item, index))}
-        </div>
-      ) : (
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px] text-xs">#</TableHead>
-                <TableHead className="text-xs">Name / JSON</TableHead>
-                <TableHead className="text-xs">Price / JSON</TableHead>
-                <TableHead className="text-xs">Date / JSON</TableHead>
-                <TableHead className="text-xs w-[80px] text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item, index) => renderTableRow(item, index))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEntities }: EnhancedImportReviewProps) {
@@ -967,7 +344,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   // Validation - only show warnings, not block import
   const validationWarnings = useMemo(() => {
     const warnings: { [key: number]: string[] } = {};
-    
+
     draft.forEach((item, index) => {
       const tourWarnings: string[] = [];
       const tour = item.tour;
@@ -991,7 +368,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         warnings[index] = tourWarnings;
       }
     });
-    
+
     return warnings;
   }, [draft]);
 
@@ -1038,11 +415,11 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
   // Final validation for import
   const validateForImport = (): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
-    
+
     draft.forEach((item, index) => {
       const tour = item.tour;
       const tourName = tour.tourCode || `Tour ${index + 1}`;
-      
+
       if (!tour.tourCode) errors.push(`${tourName}: Tour code is required`);
       if (!tour.clientName) errors.push(`${tourName}: Client name is required`);
       if (!tour.startDate) errors.push(`${tourName}: Start date is required`);
@@ -1051,14 +428,14 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
       if (!tour.guideRef?.id) errors.push(`${tourName}: Guide is required`);
       if (!tour.clientNationalityRef?.id) errors.push(`${tourName}: Nationality is required`);
     });
-    
+
     return { valid: errors.length === 0, errors };
   };
 
   // Entity search functions
   const searchEntities = (query: string, type: 'company' | 'guide' | 'nationality') => {
     if (!query.trim()) return [];
-    
+
     let entities: SearchableEntity[] = [];
     if (type === 'company') {
       entities = companies.map(c => ({ id: c.id, name: c.name, type: 'company' as const }));
@@ -1067,7 +444,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
     } else {
       entities = nationalities.map(n => ({ id: n.id, name: n.name, type: 'nationality' as const }));
     }
-    
+
     const fuse = new Fuse(entities, {
       keys: ['name'],
       threshold: 0.5,
@@ -1193,8 +570,8 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
   // Update tour field
   const updateTourField = (index: number, field: string, value: any) => {
-    setDraft(prev => prev.map((item, i) => 
-      i === index 
+    setDraft(prev => prev.map((item, i) =>
+      i === index
         ? { ...item, tour: { ...item.tour, [field]: value } }
         : item
     ));
@@ -1202,12 +579,12 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
   // Update entity reference
   const updateEntityRef = (index: number, entityType: 'companyRef' | 'guideRef' | 'clientNationalityRef', entity: any) => {
-    setDraft(prev => prev.map((item, i) => 
-      i === index 
-        ? { 
-            ...item, 
-            tour: { 
-              ...item.tour, 
+    setDraft(prev => prev.map((item, i) =>
+      i === index
+        ? {
+            ...item,
+            tour: {
+              ...item.tour,
               [entityType]: { id: entity.id, nameAtBooking: entity.name }
             }
           }
@@ -1604,7 +981,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button 
+        <Button
           onClick={() => {
             try {
               const validation = validateForImport();
@@ -1615,7 +992,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
               // Apply matched values and clean metadata before saving
               const finalTours = draft.map(d => {
                 const tour = { ...d.tour };
-                
+
                 // Apply matched prices to destinations then strip metadata
                 if (tour.destinations) {
                   tour.destinations = tour.destinations.map(({ matchedId, matchedPrice, ...dest }) => ({
@@ -1623,7 +1000,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                     price: matchedPrice !== undefined ? matchedPrice : dest.price,
                   }));
                 }
-                
+
                 // Apply matched prices to expenses then strip metadata
                 if (tour.expenses) {
                   tour.expenses = tour.expenses.map(({ matchedId, matchedPrice, ...exp }) => ({
@@ -1631,7 +1008,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                     price: matchedPrice !== undefined ? matchedPrice : exp.price,
                   }));
                 }
-                
+
                 // Apply matched prices to meals then strip metadata
                 if (tour.meals) {
                   tour.meals = tour.meals.map(({ matchedId, matchedPrice, ...meal }) => ({
@@ -1650,7 +1027,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
                 return tour;
               });
-              
+
               onConfirm(finalTours);
             } catch (error) {
               console.error('Import confirmation error:', error);
@@ -1686,81 +1063,6 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
       <DestinationDialog open={openDestinationDialog} onOpenChange={setOpenDestinationDialog} onSubmit={handleCreateDestination} />
       <DetailedExpenseDialog open={openExpenseDialog} onOpenChange={setOpenExpenseDialog} onSubmit={handleCreateExpense} />
       <ShoppingDialog open={openShoppingDialog} onOpenChange={setOpenShoppingDialog} onSubmit={handleCreateShopping} />
-    </div>
-  );
-}
-
-
-// Entity Selector Component
-interface EntitySelectorProps {
-  entities: any[];
-  selected: EntityRef | undefined;
-  onSelect: (entity: any) => void;
-  onCreateNew: () => void;
-  placeholder: string;
-}
-
-function EntitySelector({ entities, selected, onSelect, onCreateNew, placeholder }: EntitySelectorProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-
-  const filteredEntities = useMemo(() => {
-    if (!searchQuery.trim()) return entities;
-    
-    const fuse = new Fuse(entities, {
-      keys: ['name'],
-      threshold: 0.4,
-      includeScore: true,
-    });
-    
-    return fuse.search(searchQuery).map(result => result.item);
-  }, [entities, searchQuery]);
-
-  return (
-    <div className="flex items-center gap-1">
-      <Select
-        value={selected?.id || undefined}
-        onValueChange={(value) => {
-          const entity = entities.find(e => e.id === value);
-          if (entity) onSelect(entity);
-        }}
-        onOpenChange={setIsOpen}
-      >
-        <SelectTrigger className="h-7 flex-1 text-xs">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          <div className="p-1">
-            <Input
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-7 text-xs"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-          <Separator />
-          {filteredEntities.map((entity) => (
-            <SelectItem key={entity.id} value={entity.id} className="text-xs">
-              {entity.name}
-            </SelectItem>
-          ))}
-          {filteredEntities.length === 0 && (
-            <div className="p-1 text-xs text-muted-foreground text-center">
-              No results found
-            </div>
-          )}
-        </SelectContent>
-      </Select>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onCreateNew}
-        className="h-7 w-7 p-0"
-      >
-        <Plus className="h-3 w-3" />
-      </Button>
     </div>
   );
 }
