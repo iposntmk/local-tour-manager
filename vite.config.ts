@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const rawBasePath = env.VITE_APP_BASE_PATH?.trim();
   const normalizedBasePath = rawBasePath
-    ? `${rawBasePath.startsWith("/") ? "" : "/"}${rawBasePath.replace(/(^\/+|\/+$)/g, "")}/`
+    ? `/${rawBasePath.replace(/(^\/+|\/+$)/g, "")}/`
     : "/";
 
   return {
