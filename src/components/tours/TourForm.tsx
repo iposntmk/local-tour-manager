@@ -1,14 +1,12 @@
-import { formatDate, cn, getRequiredFieldClasses } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { NumberInput } from '@/components/ui/number-input';
 import { DateInput } from '@/components/ui/date-input';
 import {
   Command,
@@ -23,12 +21,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Check, ChevronsUpDown, Save, Plus, Trash2, Info, Map, Receipt, Utensils, DollarSign, Calculator, ShoppingBag } from 'lucide-react';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Check, ChevronsUpDown, Save, Plus, Trash2 } from 'lucide-react';
 import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary, TourNationality } from '@/types/tour';
-import { TourNationalitiesPicker } from '@/components/tours/TourNationalitiesPicker';
+import { TourFormCreateDialogs } from '@/components/tours/TourFormCreateDialogs';
+import { TourFormInfoTab } from '@/components/tours/TourFormInfoTab';
+import { TourFormTabsList } from '@/components/tours/TourFormTabsList';
 
 interface TourFormProps {
   initialData?: Tour;
@@ -433,285 +431,59 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
     });
   };
 
-  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
-  const selectedGuide = guides.find((g) => g.id === selectedGuideId);
+  const resetDestinationDialog = () => {
+    setShowNewDestinationDialog(false);
+    setNewDestinationName('');
+    setNewDestinationPrice(0);
+    setNewDestinationProvinceId('');
+  };
+
+  const resetExpenseDialog = () => {
+    setShowNewExpenseDialog(false);
+    setNewExpenseName('');
+    setNewExpensePrice(0);
+    setNewExpenseCategoryId('');
+  };
+
+  const resetMealDialog = () => {
+    setShowNewMealDialog(false);
+    setNewMealName('');
+    setNewMealPrice(0);
+    setNewMealCategoryId('');
+  };
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="grid w-full grid-cols-7 h-auto">
-          <TabsTrigger value="info" className="flex-col sm:flex-row gap-1 py-2">
-            <Info className="h-4 w-4" />
-            <span className="hidden sm:inline">Tour Info</span>
-          </TabsTrigger>
-          <TabsTrigger value="destinations" className="flex-col sm:flex-row gap-1 py-2 relative">
-            <Map className="h-4 w-4" />
-            <span className="hidden sm:inline">Destinations</span>
-            {destinations.length > 0 && (
-              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
-                {destinations.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="expenses" className="flex-col sm:flex-row gap-1 py-2 relative">
-            <Receipt className="h-4 w-4" />
-            <span className="hidden sm:inline">Expenses</span>
-            {expenses.length > 0 && (
-              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
-                {expenses.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="meals" className="flex-col sm:flex-row gap-1 py-2 relative">
-            <Utensils className="h-4 w-4" />
-            <span className="hidden sm:inline">Meals</span>
-            {meals.length > 0 && (
-              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
-                {meals.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="shoppings" className="flex-col sm:flex-row gap-1 py-2 relative">
-            <ShoppingBag className="h-4 w-4" />
-            <span className="hidden sm:inline">Shopping</span>
-            {shoppings.length > 0 && (
-              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
-                {shoppings.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="allowances" className="flex-col sm:flex-row gap-1 py-2 relative">
-            <DollarSign className="h-4 w-4" />
-            <span className="hidden sm:inline">Allowances</span>
-            {allowances.length > 0 && (
-              <Badge variant="secondary" className="absolute -top-1 -right-1 sm:relative sm:top-0 sm:right-0 h-5 min-w-[20px] px-1 text-xs">
-                {allowances.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="summary" className="flex-col sm:flex-row gap-1 py-2">
-            <Calculator className="h-4 w-4" />
-            <span className="hidden sm:inline">Summary</span>
-          </TabsTrigger>
-        </TabsList>
+        <TourFormTabsList
+          destinationCount={destinations.length}
+          expenseCount={expenses.length}
+          mealCount={meals.length}
+          shoppingCount={shoppings.length}
+          allowanceCount={allowances.length}
+        />
 
         <TabsContent value="info" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            {/* Tour Code */}
-            <div className="space-y-2">
-              <Label htmlFor="tourCode">Tour Code *</Label>
-              <Input
-                id="tourCode"
-                {...register('tourCode', { required: 'Tour code is required' })}
-                placeholder="e.g., AT-250901"
-                className={cn(getRequiredFieldClasses(!!errors.tourCode))}
-              />
-              {errors.tourCode && (
-                <p className="text-sm text-destructive">{errors.tourCode.message}</p>
-              )}
-            </div>
-
-            {/* Company */}
-            <div className="space-y-2">
-              <Label>Company *</Label>
-              <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className={cn("w-full justify-between", getRequiredFieldClasses(!selectedCompanyId))}
-                  >
-                    {selectedCompany ? selectedCompany.name : 'Select company...'}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search company..." />
-                    <CommandEmpty>No company found.</CommandEmpty>
-                    <CommandGroup>
-                      {companies.map((company) => (
-                        <CommandItem
-                          key={company.id}
-                          value={company.name}
-                          onSelect={() => {
-                            setSelectedCompanyId(company.id);
-                            setCompanyOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              'mr-2 h-4 w-4',
-                              selectedCompanyId === company.id ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          {company.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Guide */}
-            <div className="space-y-2">
-              <Label>Guide *</Label>
-              <Popover open={guideOpen} onOpenChange={setGuideOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between"
-                  >
-                    {selectedGuide ? selectedGuide.name : 'Select guide...'}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search guide..." />
-                    <CommandEmpty>No guide found.</CommandEmpty>
-                    <CommandGroup>
-                      {guides.map((guide) => (
-                        <CommandItem
-                          key={guide.id}
-                          value={guide.name}
-                          onSelect={() => {
-                            setSelectedGuideId(guide.id);
-                            setGuideOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              'mr-2 h-4 w-4',
-                              selectedGuideId === guide.id ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          {guide.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Client Name */}
-            <div className="space-y-2">
-              <Label htmlFor="clientName">Client Name *</Label>
-              <Input
-                id="clientName"
-                {...register('clientName', { required: 'Client name is required' })}
-                placeholder="e.g., Mrs. Matilde Lamura"
-                className={cn(getRequiredFieldClasses(!!errors.clientName))}
-              />
-              {errors.clientName && (
-                <p className="text-sm text-destructive">{errors.clientName.message}</p>
-              )}
-            </div>
-
-            {/* Nationality */}
-            <div className="space-y-2">
-              <Label>Nationality *</Label>
-              <TourNationalitiesPicker
-                nationalities={nationalities}
-                value={selectedNationalities}
-                onChange={setSelectedNationalities}
-                totalGuests={totalGuests}
-                required
-                placeholder="Select nationality..."
-              />
-            </div>
-
-            {/* Adults */}
-            <div className="space-y-2">
-              <Label htmlFor="adults">Adults *</Label>
-              <NumberInput
-                id="adults"
-                value={watch('adults')}
-                onChange={(value) => setValue('adults', value)}
-                min={0}
-              />
-            </div>
-
-            {/* Children */}
-            <div className="space-y-2">
-              <Label htmlFor="children">Children</Label>
-              <NumberInput
-                id="children"
-                value={watch('children')}
-                onChange={(value) => setValue('children', value)}
-                min={0}
-              />
-            </div>
-
-            {/* Total Guests (display only) */}
-            <div className="space-y-2">
-              <Label>Total Guests</Label>
-              <Input value={totalGuests} disabled className="bg-muted" />
-            </div>
-
-            {/* Driver Name */}
-            <div className="space-y-2">
-              <Label htmlFor="driverName">Driver Name</Label>
-              <Input
-                id="driverName"
-                {...register('driverName')}
-                placeholder="e.g., Mr Đức"
-              />
-            </div>
-
-            {/* Client Phone */}
-            <div className="space-y-2">
-              <Label htmlFor="clientPhone">Client Phone</Label>
-              <Input
-                id="clientPhone"
-                {...register('clientPhone')}
-                placeholder="e.g., +39 348 470 4413"
-              />
-            </div>
-
-            {/* Start Date */}
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date *</Label>
-              <DateInput
-                id="startDate"
-                value={watch('startDate')}
-                onChange={(value) => setValue('startDate', value)}
-                className={cn(getRequiredFieldClasses(!!errors.startDate))}
-              />
-              {errors.startDate && (
-                <p className="text-sm text-destructive">{errors.startDate.message}</p>
-              )}
-            </div>
-
-            {/* End Date */}
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date *</Label>
-              <DateInput
-                id="endDate"
-                value={watch('endDate')}
-                onChange={(value) => setValue('endDate', value)}
-                className={cn(getRequiredFieldClasses(!!errors.endDate))}
-              />
-              {errors.endDate && (
-                <p className="text-sm text-destructive">{errors.endDate.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Notes - Full width */}
-          <div className="space-y-2 mt-4">
-            <Label htmlFor="notes">Notes</Label>
-            <textarea
-              id="notes"
-              {...register('notes')}
-              placeholder="Add any additional notes about this tour..."
-              rows={4}
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-            />
-          </div>
+          <TourFormInfoTab
+            register={register}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+            companies={companies}
+            guides={guides}
+            nationalities={nationalities}
+            companyOpen={companyOpen}
+            guideOpen={guideOpen}
+            selectedCompanyId={selectedCompanyId}
+            selectedGuideId={selectedGuideId}
+            selectedNationalities={selectedNationalities}
+            totalGuests={totalGuests}
+            setCompanyOpen={setCompanyOpen}
+            setGuideOpen={setGuideOpen}
+            setSelectedCompanyId={setSelectedCompanyId}
+            setSelectedGuideId={setSelectedGuideId}
+            setSelectedNationalities={setSelectedNationalities}
+          />
         </TabsContent>
 
         <TabsContent value="destinations" className="space-y-4 mt-6">
@@ -1109,308 +881,49 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog for creating new destination */}
-      <Dialog open={showNewDestinationDialog} onOpenChange={setShowNewDestinationDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Tourist Destination</DialogTitle>
-            <DialogDescription>
-              Create a new tourist destination that can be reused across tours.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-destination-name">Destination Name</Label>
-              <Input
-                id="new-destination-name"
-                placeholder="e.g., Ha Long Bay, Hoi An"
-                value={newDestinationName}
-                onChange={(e) => setNewDestinationName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="destination-province">Province</Label>
-              <Popover open={openProvince} onOpenChange={setOpenProvince}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="destination-province"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openProvince}
-                    className="justify-between w-full"
-                    type="button"
-                  >
-                    {newDestinationProvinceId
-                      ? provinces.find((prov) => prov.id === newDestinationProvinceId)?.name
-                      : "Select province..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search province..." />
-                    <CommandList>
-                      <CommandEmpty>No province found.</CommandEmpty>
-                      <CommandGroup>
-                        {provinces.map((prov) => (
-                          <CommandItem
-                            key={prov.id}
-                            value={prov.name}
-                            onSelect={() => {
-                              setNewDestinationProvinceId(prov.id);
-                              setOpenProvince(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                newDestinationProvinceId === prov.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {prov.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-destination-price">Default Price (VND)</Label>
-              <CurrencyInput
-                id="new-destination-price"
-                placeholder="Default price"
-                value={newDestinationPrice}
-                onChange={setNewDestinationPrice}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowNewDestinationDialog(false);
-                setNewDestinationName('');
-                setNewDestinationPrice(0);
-                setNewDestinationProvinceId('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCreateNewDestination}
-              disabled={createDestinationMutation.isPending}
-            >
-              {createDestinationMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for creating new expense */}
-      <Dialog open={showNewExpenseDialog} onOpenChange={setShowNewExpenseDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Detailed Expense</DialogTitle>
-            <DialogDescription>
-              Create a new detailed expense that can be reused across tours.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-expense-name">Expense Name</Label>
-              <Input
-                id="new-expense-name"
-                placeholder="e.g., Hotel, Transport, Food"
-                value={newExpenseName}
-                onChange={(e) => setNewExpenseName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="expense-category">Expense Category</Label>
-              <Popover open={openExpenseCategory} onOpenChange={setOpenExpenseCategory}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="expense-category"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openExpenseCategory}
-                    className="justify-between w-full"
-                    type="button"
-                  >
-                    {newExpenseCategoryId
-                      ? expenseCategories.find((cat) => cat.id === newExpenseCategoryId)?.name
-                      : "Select category..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search category..." />
-                    <CommandList>
-                      <CommandEmpty>No category found.</CommandEmpty>
-                      <CommandGroup>
-                        {expenseCategories.map((cat) => (
-                          <CommandItem
-                            key={cat.id}
-                            value={cat.name}
-                            onSelect={() => {
-                              setNewExpenseCategoryId(cat.id);
-                              setOpenExpenseCategory(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                newExpenseCategoryId === cat.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {cat.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-expense-price">Default Price (VND)</Label>
-              <CurrencyInput
-                id="new-expense-price"
-                placeholder="Default price"
-                value={newExpensePrice}
-                onChange={setNewExpensePrice}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowNewExpenseDialog(false);
-                setNewExpenseName('');
-                setNewExpensePrice(0);
-                setNewExpenseCategoryId('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCreateNewExpense}
-              disabled={createExpenseMutation.isPending}
-            >
-              {createExpenseMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for creating new meal */}
-      <Dialog open={showNewMealDialog} onOpenChange={setShowNewMealDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Detailed Meal</DialogTitle>
-            <DialogDescription>
-              Create a new detailed meal that can be reused across tours.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-meal-name">Meal Name</Label>
-              <Input
-                id="new-meal-name"
-                placeholder="e.g., Breakfast, Lunch, Dinner"
-                value={newMealName}
-                onChange={(e) => setNewMealName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="meal-category">Expense Category</Label>
-              <Popover open={openMealCategory} onOpenChange={setOpenMealCategory}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="meal-category"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openMealCategory}
-                    className="justify-between w-full"
-                    type="button"
-                  >
-                    {newMealCategoryId
-                      ? expenseCategories.find((cat) => cat.id === newMealCategoryId)?.name
-                      : "Select category..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search category..." />
-                    <CommandList>
-                      <CommandEmpty>No category found.</CommandEmpty>
-                      <CommandGroup>
-                        {expenseCategories.map((cat) => (
-                          <CommandItem
-                            key={cat.id}
-                            value={cat.name}
-                            onSelect={() => {
-                              setNewMealCategoryId(cat.id);
-                              setOpenMealCategory(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                newMealCategoryId === cat.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {cat.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-meal-price">Default Price (VND)</Label>
-              <CurrencyInput
-                id="new-meal-price"
-                placeholder="Default price"
-                value={newMealPrice}
-                onChange={setNewMealPrice}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowNewMealDialog(false);
-                setNewMealName('');
-                setNewMealPrice(0);
-                setNewMealCategoryId('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCreateNewMeal}
-              disabled={createMealMutation.isPending}
-            >
-              {createMealMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TourFormCreateDialogs
+        showNewDestinationDialog={showNewDestinationDialog}
+        setShowNewDestinationDialog={setShowNewDestinationDialog}
+        newDestinationName={newDestinationName}
+        setNewDestinationName={setNewDestinationName}
+        newDestinationPrice={newDestinationPrice}
+        setNewDestinationPrice={setNewDestinationPrice}
+        newDestinationProvinceId={newDestinationProvinceId}
+        setNewDestinationProvinceId={setNewDestinationProvinceId}
+        openProvince={openProvince}
+        setOpenProvince={setOpenProvince}
+        provinces={provinces}
+        isCreatingDestination={createDestinationMutation.isPending}
+        handleCreateNewDestination={handleCreateNewDestination}
+        resetDestinationDialog={resetDestinationDialog}
+        showNewExpenseDialog={showNewExpenseDialog}
+        setShowNewExpenseDialog={setShowNewExpenseDialog}
+        newExpenseName={newExpenseName}
+        setNewExpenseName={setNewExpenseName}
+        newExpensePrice={newExpensePrice}
+        setNewExpensePrice={setNewExpensePrice}
+        newExpenseCategoryId={newExpenseCategoryId}
+        setNewExpenseCategoryId={setNewExpenseCategoryId}
+        openExpenseCategory={openExpenseCategory}
+        setOpenExpenseCategory={setOpenExpenseCategory}
+        expenseCategories={expenseCategories}
+        isCreatingExpense={createExpenseMutation.isPending}
+        handleCreateNewExpense={handleCreateNewExpense}
+        resetExpenseDialog={resetExpenseDialog}
+        showNewMealDialog={showNewMealDialog}
+        setShowNewMealDialog={setShowNewMealDialog}
+        newMealName={newMealName}
+        setNewMealName={setNewMealName}
+        newMealPrice={newMealPrice}
+        setNewMealPrice={setNewMealPrice}
+        newMealCategoryId={newMealCategoryId}
+        setNewMealCategoryId={setNewMealCategoryId}
+        openMealCategory={openMealCategory}
+        setOpenMealCategory={setOpenMealCategory}
+        isCreatingMeal={createMealMutation.isPending}
+        handleCreateNewMeal={handleCreateNewMeal}
+        resetMealDialog={resetMealDialog}
+      />
 
       <div className="flex justify-end">
         <Button type="submit" className="hover-scale">

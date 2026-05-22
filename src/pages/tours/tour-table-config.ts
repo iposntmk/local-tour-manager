@@ -176,7 +176,7 @@ export const loadTourTableColumnVisibility = () => {
   }
 };
 
-export const loadTourTableFilters = () => {
+export const loadTourTableFilters = (): TourTableFilters => {
   const saved = localStorage.getItem('tours.table.filters');
   if (!saved) return createDefaultTourTableFilters();
 
