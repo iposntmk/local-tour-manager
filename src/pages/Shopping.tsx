@@ -41,7 +41,7 @@ const ShoppingPage = () => {
     mutationFn: (input: ShoppingInput) => store.createShopping(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
-      toast.success('Shopping created successfully');
+      toast.success('Tạo điểm mua sắm thành công');
       setDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -54,7 +54,7 @@ const ShoppingPage = () => {
       store.updateShopping(id, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
-      toast.success('Shopping updated successfully');
+      toast.success('Cập nhật điểm mua sắm thành công');
       setDialogOpen(false);
       setEditingShopping(undefined);
     },
@@ -67,7 +67,7 @@ const ShoppingPage = () => {
     mutationFn: (id: string) => store.duplicateShopping(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
-      toast.success('Shopping duplicated successfully');
+      toast.success('Nhân bản điểm mua sắm thành công');
     },
   });
 
@@ -75,7 +75,7 @@ const ShoppingPage = () => {
     mutationFn: (id: string) => store.deleteShopping(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
-      toast.success('Shopping deleted successfully');
+      toast.success('Xóa điểm mua sắm thành công');
     },
   });
 
@@ -83,10 +83,10 @@ const ShoppingPage = () => {
     mutationFn: () => store.deleteAllShoppings(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
-      toast.success('All shopping places deleted successfully');
+      toast.success('Đã xóa tất cả điểm mua sắm');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete all shopping places');
+      toast.error(error.message || 'Xóa tất cả điểm mua sắm thất bại');
     },
   });
 
@@ -94,10 +94,10 @@ const ShoppingPage = () => {
     mutationFn: (items: { name: string }[]) => store.bulkCreateShoppings(items),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
-      toast.success('Shopping places imported successfully');
+      toast.success('Import điểm mua sắm thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to import shopping places');
+      toast.error(error.message || 'Import điểm mua sắm thất bại');
     },
   });
 
@@ -140,7 +140,7 @@ const ShoppingPage = () => {
       toast.error('Bạn không có quyền xóa điểm mua sắm');
       return;
     }
-    if (confirm('Are you sure you want to delete ALL shopping places? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa TẤT CẢ điểm mua sắm? Hành động này không thể hoàn tác.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
@@ -159,7 +159,7 @@ const ShoppingPage = () => {
       return;
     }
     if (filteredShoppings.length === 0) {
-      toast.error('No shopping places to export');
+      toast.error('Không có điểm mua sắm nào để xuất');
       return;
     }
 
@@ -176,7 +176,7 @@ const ShoppingPage = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredShoppings.length} shopping places`);
+    toast.success(`Đã xuất ${filteredShoppings.length} điểm mua sắm`);
   };
 
   const filteredShoppings = useMemo(() => {
@@ -198,32 +198,32 @@ const ShoppingPage = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Shopping</h1>
-              <p className="text-muted-foreground">Manage shopping locations</p>
+              <h1 className="text-3xl font-bold">Mua sắm</h1>
+              <p className="text-muted-foreground">Quản lý điểm mua sắm</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button onClick={handleExportTxt} variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
                   <Upload className="h-4 w-4" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
                   <Trash className="h-4 w-4" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Shopping
+                  Thêm mua sắm
                 </Button>
               )}
             </div>
@@ -235,16 +235,16 @@ const ShoppingPage = () => {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search shopping..."
+              placeholder="Tìm mua sắm..."
             />
           </div>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12">Đang tải...</div>
         ) : shoppings.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No shopping locations found. Create your first shopping location to get started.
+            Không tìm thấy điểm mua sắm nào. Hãy tạo điểm mua sắm đầu tiên.
           </div>
         ) : (
           <>
@@ -254,14 +254,14 @@ const ShoppingPage = () => {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-4 font-medium">ID</th>
-                    <th className="text-left p-4 font-medium">Name</th>
-                    <th className="text-left p-4 font-medium">Updated</th>
-                    <th className="text-right p-4 font-medium">Actions</th>
+                    <th className="text-left p-4 font-medium">Tên</th>
+                    <th className="text-left p-4 font-medium">Cập nhật</th>
+                    <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr>
                     <th className="text-left p-4">
                       <Input
-                        placeholder="Filter by ID..."
+                        placeholder="Lọc theo ID..."
                         value={idFilter}
                         onChange={(e) => setIdFilter(e.target.value)}
                         className="h-8"
@@ -269,7 +269,7 @@ const ShoppingPage = () => {
                     </th>
                     <th className="text-left p-4">
                       <Input
-                        placeholder="Filter by name..."
+                        placeholder="Lọc theo tên..."
                         value={nameFilter}
                         onChange={(e) => setNameFilter(e.target.value)}
                         className="h-8"
@@ -277,7 +277,7 @@ const ShoppingPage = () => {
                     </th>
                     <th className="text-left p-4">
                       <Input
-                        placeholder="Filter by date..."
+                        placeholder="Lọc theo ngày..."
                         value={updatedFilter}
                         onChange={(e) => setUpdatedFilter(e.target.value)}
                         className="h-8"
@@ -316,7 +316,7 @@ const ShoppingPage = () => {
                               size="sm"
                               onClick={() => {
                                 if (!ensureCanModifyOwnedEntity(shopping, user?.id, isAdmin)) return;
-                                if (confirm('Are you sure you want to delete this shopping location?')) {
+                                if (confirm('Bạn có chắc chắn muốn xóa điểm mua sắm này?')) {
                                   deleteMutation.mutate(shopping.id);
                                 }
                               }}
@@ -346,7 +346,7 @@ const ShoppingPage = () => {
                       <h3 className="font-medium">{shopping.name}</h3>
                       <p className="text-sm text-muted-foreground font-mono">ID: {shopping.id}</p>
                       <p className="text-sm text-muted-foreground">
-                        Updated {formatDate(shopping.updatedAt.split("T")[0])}
+                        Cập nhật {formatDate(shopping.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -366,7 +366,7 @@ const ShoppingPage = () => {
                           size="sm"
                           onClick={() => {
                             if (!ensureCanModifyOwnedEntity(shopping, user?.id, isAdmin)) return;
-                            if (confirm('Are you sure you want to delete this shopping location?')) {
+                            if (confirm('Bạn có chắc chắn muốn xóa điểm mua sắm này?')) {
                               deleteMutation.mutate(shopping.id);
                             }
                           }}
@@ -396,13 +396,13 @@ const ShoppingPage = () => {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleBulkImport}
-        title="Import Shopping Places"
-        description="Upload or paste shopping place names"
-        placeholder="Enter shopping place names (one per line or comma-separated)
-Example:
-Central Market
-Grand Shopping Mall
-Souk Marketplace"
+        title="Import điểm mua sắm"
+        description="Tải lên hoặc dán tên điểm mua sắm"
+        placeholder="Nhập tên điểm mua sắm (mỗi dòng một tên hoặc cách nhau bằng dấu phẩy)
+Ví dụ:
+Chợ Bến Thành
+Vincom Center
+Big C"
         parseItem={(parts: string[]) => {
           if (parts.length >= 1 && parts[0].trim()) {
             return {

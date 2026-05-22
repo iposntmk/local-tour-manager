@@ -47,7 +47,7 @@ const DetailedExpenses = () => {
     mutationFn: (input: DetailedExpenseInput) => store.createDetailedExpense(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Detailed expense created successfully');
+      toast.success('Tạo chi phí chi tiết thành công');
       setDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -60,7 +60,7 @@ const DetailedExpenses = () => {
       store.updateDetailedExpense(id, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Detailed expense updated successfully');
+      toast.success('Cập nhật chi phí chi tiết thành công');
       setDialogOpen(false);
       setEditingExpense(undefined);
     },
@@ -73,7 +73,7 @@ const DetailedExpenses = () => {
     mutationFn: (id: string) => store.duplicateDetailedExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Detailed expense duplicated successfully');
+      toast.success('Nhân bản chi phí chi tiết thành công');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -84,7 +84,7 @@ const DetailedExpenses = () => {
     mutationFn: (id: string) => store.deleteDetailedExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Detailed expense hidden successfully');
+      toast.success('Đã ẩn chi phí chi tiết');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -95,7 +95,7 @@ const DetailedExpenses = () => {
     mutationFn: (id: string) => store.toggleDetailedExpenseStatus(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('Status updated successfully');
+      toast.success('Cập nhật trạng thái thành công');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -106,7 +106,7 @@ const DetailedExpenses = () => {
     mutationFn: () => store.deleteAllDetailedExpenses(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
-      toast.success('All detailed expenses deleted successfully');
+      toast.success('Đã xóa tất cả chi phí chi tiết');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -173,7 +173,7 @@ const DetailedExpenses = () => {
       toast.error('Bạn không có quyền xóa chi phí chi tiết');
       return;
     }
-    if (confirm('Are you sure you want to delete ALL detailed expenses? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa TẤT CẢ chi phí chi tiết? Hành động này không thể hoàn tác.')) {
       deleteAllMutation.mutate();
     }
   };
@@ -192,7 +192,7 @@ const DetailedExpenses = () => {
       return;
     }
     if (filteredExpenses.length === 0) {
-      toast.error('No detailed expenses to export');
+      toast.error('Không có chi phí chi tiết nào để xuất');
       return;
     }
 
@@ -209,7 +209,7 @@ const DetailedExpenses = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredExpenses.length} detailed expenses`);
+    toast.success(`Đã xuất ${filteredExpenses.length} chi phí chi tiết`);
   };
 
   // Filter expenses based on column filters
@@ -230,32 +230,32 @@ const DetailedExpenses = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Detailed Expenses</h1>
-              <p className="text-muted-foreground">Manage detailed expenses</p>
+              <h1 className="text-3xl font-bold">Chi phí chi tiết</h1>
+              <p className="text-muted-foreground">Quản lý chi phí chi tiết</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button variant="outline" onClick={handleExportTxt}>
                   <Download className="h-4 w-4 mr-2" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
                   <Trash className="h-4 w-4" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Expense
+                  Thêm chi phí
                 </Button>
               )}
             </div>
@@ -267,16 +267,16 @@ const DetailedExpenses = () => {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search expenses..."
+              placeholder="Tìm chi phí..."
             />
           </div>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12">Đang tải...</div>
         ) : expenses.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No detailed expenses found. Create your first expense to get started.
+            Không tìm thấy chi phí chi tiết nào. Hãy tạo chi phí đầu tiên.
           </div>
         ) : (
           <>
@@ -285,16 +285,16 @@ const DetailedExpenses = () => {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="text-left p-4 font-medium">Name</th>
-                    <th className="text-left p-4 font-medium">Category</th>
-                    <th className="text-left p-4 font-medium">Price</th>
-                    <th className="text-left p-4 font-medium">Updated</th>
-                    <th className="text-right p-4 font-medium">Actions</th>
+                    <th className="text-left p-4 font-medium">Tên</th>
+                    <th className="text-left p-4 font-medium">Danh mục</th>
+                    <th className="text-left p-4 font-medium">Đơn giá</th>
+                    <th className="text-left p-4 font-medium">Cập nhật</th>
+                    <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr>
                     <th className="p-2">
                       <Input
-                        placeholder="Filter name..."
+                        placeholder="Lọc theo tên..."
                         value={nameFilter}
                         onChange={(e) => setNameFilter(e.target.value)}
                         className="h-8"
@@ -306,10 +306,10 @@ const DetailedExpenses = () => {
                         onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
                       >
                         <SelectTrigger className="h-8">
-                          <SelectValue placeholder="All Categories" />
+                          <SelectValue placeholder="Tất cả danh mục" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="all">Tất cả</SelectItem>
                           {expenseCategories.map((category) => (
                             <SelectItem key={category.id} value={category.name}>
                               {category.name}
@@ -320,7 +320,7 @@ const DetailedExpenses = () => {
                     </th>
                     <th className="p-2">
                       <Input
-                        placeholder="Filter price..."
+                        placeholder="Lọc theo giá..."
                         value={priceFilter}
                         onChange={(e) => setPriceFilter(e.target.value)}
                         className="h-8"
@@ -340,7 +340,7 @@ const DetailedExpenses = () => {
                       <td className="p-4 font-medium">
                         {expense.name}
                         {expense.status === 'inactive' && (
-                          <span className="ml-2 text-xs text-muted-foreground">(Hidden)</span>
+                          <span className="ml-2 text-xs text-muted-foreground">(Đã ẩn)</span>
                         )}
                       </td>
                       <td className="p-4 text-muted-foreground">{expense.categoryRef.nameAtBooking}</td>
@@ -368,7 +368,7 @@ const DetailedExpenses = () => {
                               size="sm"
                               onClick={() => toggleStatusMutation.mutate(expense.id)}
                               className="h-8 w-8 p-0"
-                              title={expense.status === 'active' ? 'Hide expense' : 'Show expense'}
+                              title={expense.status === 'active' ? 'Ẩn chi phí' : 'Hiện chi phí'}
                             >
                               {expense.status === 'active' ? (
                                 <EyeOff className="h-4 w-4" />
@@ -383,7 +383,7 @@ const DetailedExpenses = () => {
                               size="sm"
                               onClick={() => {
                                 if (!ensureCanModifyOwnedEntity(expense, user?.id, isAdmin)) return;
-                                if (confirm('Are you sure you want to hide this expense?')) {
+                                if (confirm('Bạn có chắc chắn muốn ẩn chi phí này?')) {
                                   deleteMutation.mutate(expense.id);
                                 }
                               }}
@@ -413,14 +413,14 @@ const DetailedExpenses = () => {
                       <h3 className="font-medium">
                         {expense.name}
                         {expense.status === 'inactive' && (
-                          <span className="ml-2 text-xs text-muted-foreground">(Hidden)</span>
+                          <span className="ml-2 text-xs text-muted-foreground">(Đã ẩn)</span>
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {expense.categoryRef.nameAtBooking} • {formatCurrency(expense.price)}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Updated {formatDate(expense.updatedAt.split("T")[0])}
+                        Cập nhật {formatDate(expense.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -440,7 +440,7 @@ const DetailedExpenses = () => {
                           size="sm"
                           onClick={() => toggleStatusMutation.mutate(expense.id)}
                           className="h-8 w-8 p-0"
-                          title={expense.status === 'active' ? 'Hide expense' : 'Show expense'}
+                          title={expense.status === 'active' ? 'Ẩn chi phí' : 'Hiện chi phí'}
                         >
                           {expense.status === 'active' ? (
                             <EyeOff className="h-4 w-4" />
@@ -455,7 +455,7 @@ const DetailedExpenses = () => {
                           size="sm"
                           onClick={() => {
                             if (!ensureCanModifyOwnedEntity(expense, user?.id, isAdmin)) return;
-                            if (confirm('Are you sure you want to hide this expense?')) {
+                            if (confirm('Bạn có chắc chắn muốn ẩn chi phí này?')) {
                               deleteMutation.mutate(expense.id);
                             }
                           }}
@@ -485,9 +485,9 @@ const DetailedExpenses = () => {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleBulkImport}
-        title="Import Detailed Expenses"
-        description="Import detailed expenses from a text file or paste data. Each line should have: name,price"
-        placeholder="Enter expenses (one per line, format: name,price)&#10;Example:&#10;Airport Transfer,500000&#10;Hotel Booking,3000000&#10;Tour Guide Fee,800000"
+        title="Import chi phí chi tiết"
+        description="Import chi phí chi tiết từ file hoặc dán dữ liệu. Mỗi dòng gồm: tên,đơn giá"
+        placeholder="Nhập chi phí (mỗi dòng một chi phí, định dạng: tên,đơn giá)&#10;Ví dụ:&#10;Xe đón sân bay,500000&#10;Đặt phòng khách sạn,3000000&#10;Phí HDV,800000"
         parseItem={(parts: string[]) => {
           if (parts.length >= 2 && parts[0].trim()) {
             const name = parts[0].trim();

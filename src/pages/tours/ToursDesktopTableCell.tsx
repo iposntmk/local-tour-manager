@@ -110,12 +110,12 @@ export const ToursDesktopTableCellContent = ({
       return (
         <div className="flex justify-end gap-1">
           {canExportTours && (
-            <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={(event) => onExportSingle(tour, event)} title="Export to Excel">
+            <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={(event) => onExportSingle(tour, event)} title="Xuất Excel">
               <FileDown className="h-4 w-4" />
             </Button>
           )}
           {canDuplicateTours && (
-            <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={(event) => onDuplicate(tour.id, event)} title="Duplicate tour">
+            <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={(event) => onDuplicate(tour.id, event)} title="Nhân bản tour">
               <Copy className="h-4 w-4" />
             </Button>
           )}
@@ -126,7 +126,7 @@ export const ToursDesktopTableCellContent = ({
               className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
               onClick={(event) => onDelete(tour.id, event)}
               disabled={deletePending}
-              title="Delete tour"
+              title="Xóa tour"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

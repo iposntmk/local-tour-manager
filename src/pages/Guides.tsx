@@ -53,10 +53,10 @@ const Guides = () => {
     mutationFn: (data: GuideInput) => store.createGuide(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Guide created successfully');
+      toast.success('Tạo HDV thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create guide');
+      toast.error(error.message || 'Tạo HDV thất bại');
     },
   });
 
@@ -65,10 +65,10 @@ const Guides = () => {
       store.updateGuide(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Guide updated successfully');
+      toast.success('Cập nhật HDV thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update guide');
+      toast.error(error.message || 'Cập nhật HDV thất bại');
     },
   });
 
@@ -76,7 +76,7 @@ const Guides = () => {
     mutationFn: (id: string) => store.duplicateGuide(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Guide duplicated successfully');
+      toast.success('Nhân bản HDV thành công');
     },
   });
 
@@ -84,10 +84,10 @@ const Guides = () => {
     mutationFn: (id: string) => store.deleteGuide(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Guide deleted successfully');
+      toast.success('Xóa HDV thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete guide');
+      toast.error(error.message || 'Xóa HDV thất bại');
     },
   });
 
@@ -95,10 +95,10 @@ const Guides = () => {
     mutationFn: () => store.deleteAllGuides(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('All guides deleted successfully');
+      toast.success('Đã xóa tất cả HDV');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete all guides');
+      toast.error(error.message || 'Xóa tất cả HDV thất bại');
     },
   });
 
@@ -106,10 +106,10 @@ const Guides = () => {
     mutationFn: (inputs: GuideInput[]) => store.bulkCreateGuides(inputs),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Guides imported successfully');
+      toast.success('Import HDV thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to import guides');
+      toast.error(error.message || 'Import HDV thất bại');
     },
   });
 
@@ -151,7 +151,7 @@ const Guides = () => {
       toast.error('Bạn không có quyền xóa hướng dẫn viên');
       return;
     }
-    if (confirm('Are you sure you want to delete all guides? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa tất cả HDV? Hành động này không thể hoàn tác.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
@@ -170,7 +170,7 @@ const Guides = () => {
       return;
     }
     if (filteredGuides.length === 0) {
-      toast.error('No guides to export');
+      toast.error('Không có HDV nào để xuất');
       return;
     }
 
@@ -193,7 +193,7 @@ const Guides = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredGuides.length} guides`);
+    toast.success(`Đã xuất ${filteredGuides.length} HDV`);
   };
 
   const filteredGuides = useMemo(() => {
@@ -228,32 +228,32 @@ const Guides = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Guides</h1>
-              <p className="text-muted-foreground">Manage your tour guides</p>
+              <h1 className="text-3xl font-bold">Hướng dẫn viên</h1>
+              <p className="text-muted-foreground">Quản lý hướng dẫn viên</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button onClick={handleExportTxt} variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
                   <Upload className="h-4 w-4" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
                   <Trash className="h-4 w-4" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Add Guide
+                  Thêm HDV
                 </Button>
               )}
             </div>
@@ -266,20 +266,20 @@ const Guides = () => {
               <SearchInput
                 value={search}
                 onChange={setSearch}
-                placeholder="Search guides..."
+                placeholder="Tìm HDV..."
               />
             </div>
           </div>
 
           {guidesError ? (
             <div className="text-center py-8 text-destructive">
-              {guidesError instanceof Error ? guidesError.message : 'Failed to load guides'}
+              {guidesError instanceof Error ? guidesError.message : 'Tải danh sách HDV thất bại'}
             </div>
           ) : isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
           ) : guides.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No guides found. Create your first guide!
+              Không tìm thấy HDV nào. Hãy tạo HDV đầu tiên!
             </div>
           ) : (
             <>
@@ -289,17 +289,17 @@ const Guides = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Languages</TableHead>
-                      <TableHead>Default</TableHead>
-                      <TableHead>Note</TableHead>
+                      <TableHead>Tên</TableHead>
+                      <TableHead>Điện thoại</TableHead>
+                      <TableHead>Ngôn ngữ</TableHead>
+                      <TableHead>Mặc định</TableHead>
+                      <TableHead>Ghi chú</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
                       <TableHead>
                         <Input
-                          placeholder="Filter by ID..."
+                          placeholder="Lọc theo ID..."
                           value={idFilter}
                           onChange={(e) => setIdFilter(e.target.value)}
                           className="h-8"
@@ -307,7 +307,7 @@ const Guides = () => {
                       </TableHead>
                       <TableHead>
                         <Input
-                          placeholder="Filter by name..."
+                          placeholder="Lọc theo tên..."
                           value={nameFilter}
                           onChange={(e) => setNameFilter(e.target.value)}
                           className="h-8"
@@ -315,7 +315,7 @@ const Guides = () => {
                       </TableHead>
                       <TableHead>
                         <Input
-                          placeholder="Filter by phone..."
+                          placeholder="Lọc theo điện thoại..."
                           value={phoneFilter}
                           onChange={(e) => setPhoneFilter(e.target.value)}
                           className="h-8"
@@ -345,7 +345,7 @@ const Guides = () => {
                             checked={guide.isDefault}
                             onCheckedChange={(checked) => handleSetDefaultGuide(guide, checked === true)}
                             disabled={!canEdit}
-                            aria-label={`Set ${guide.name} as default guide`}
+                            aria-label={`${guide.name} là HDV mặc định`}
                           />
                         </TableCell>
                         <TableCell className="max-w-xs truncate">{guide.note || '-'}</TableCell>
@@ -367,7 +367,7 @@ const Guides = () => {
                                 size="sm"
                                 onClick={() => {
                                   if (!ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
-                                  if (confirm('Are you sure you want to delete this guide?')) {
+                                  if (confirm('Bạn có chắc chắn muốn xóa HDV này?')) {
                                     deleteMutation.mutate(guide.id);
                                   }
                                 }}
@@ -398,12 +398,12 @@ const Guides = () => {
                           <h3 className="font-semibold">{guide.name}</h3>
                           {guide.isDefault && (
                             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                              Default
+                              Mặc định
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">{guide.id}</p>
-                        <p className="text-sm text-muted-foreground">{guide.phone || 'No phone'}</p>
+                        <p className="text-sm text-muted-foreground">{guide.phone || 'Không có điện thoại'}</p>
                         {guide.languages.length > 0 && (
                           <p className="text-sm text-muted-foreground">
                             {guide.languages.map((language) => language.name).join(', ')}
@@ -427,7 +427,7 @@ const Guides = () => {
                             size="sm"
                             onClick={() => {
                               if (!ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
-                              if (confirm('Are you sure you want to delete this guide?')) {
+                              if (confirm('Bạn có chắc chắn muốn xóa HDV này?')) {
                                 deleteMutation.mutate(guide.id);
                               }
                             }}
@@ -462,9 +462,13 @@ const Guides = () => {
           open={importDialogOpen}
           onOpenChange={setImportDialogOpen}
           onImport={handleBulkImport}
-          title="Import Guides"
-          description="Import multiple guides at once. Format: Guide Name[,Phone,Note] (phone and note are optional)"
-          placeholder="Enter guides (one per line, format: Guide Name[,Phone,Note])\nExample:\nJohn Smith\nJane Doe,0987654321,Speaks English and French\nBob Wilson,0111222333"
+          title="Import HDV"
+          description="Import nhiều HDV cùng lúc. Định dạng: Tên HDV[,Điện thoại,Ghi chú] (điện thoại, ghi chú không bắt buộc)"
+          placeholder="Nhập HDV (mỗi dòng một HDV, định dạng: Tên HDV[,Điện thoại,Ghi chú])
+Ví dụ:
+Nguyễn Văn An
+Trần Thị Bình,0987654321,Nói được tiếng Anh
+Lê Văn Cường,0111222333"
           parseItem={(parts: string[]) => {
             if (parts.length >= 1 && parts[0].trim()) {
               return {

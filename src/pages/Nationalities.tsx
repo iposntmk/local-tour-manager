@@ -45,10 +45,10 @@ const Nationalities = () => {
     mutationFn: (data: NationalityInput) => store.createNationality(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nationalities'] });
-      toast.success('Nationality created successfully');
+      toast.success('Tạo quốc tịch thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create nationality');
+      toast.error(error.message || 'Tạo quốc tịch thất bại');
     },
   });
 
@@ -57,10 +57,10 @@ const Nationalities = () => {
       store.updateNationality(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nationalities'] });
-      toast.success('Nationality updated successfully');
+      toast.success('Cập nhật quốc tịch thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update nationality');
+      toast.error(error.message || 'Cập nhật quốc tịch thất bại');
     },
   });
 
@@ -68,7 +68,7 @@ const Nationalities = () => {
     mutationFn: (id: string) => store.duplicateNationality(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nationalities'] });
-      toast.success('Nationality duplicated successfully');
+      toast.success('Nhân bản quốc tịch thành công');
     },
   });
 
@@ -76,7 +76,7 @@ const Nationalities = () => {
     mutationFn: (id: string) => store.deleteNationality(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nationalities'] });
-      toast.success('Nationality deleted successfully');
+      toast.success('Xóa quốc tịch thành công');
     },
   });
 
@@ -84,10 +84,10 @@ const Nationalities = () => {
     mutationFn: () => store.deleteAllNationalities(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nationalities'] });
-      toast.success('All nationalities deleted successfully');
+      toast.success('Đã xóa tất cả quốc tịch');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete all nationalities');
+      toast.error(error.message || 'Xóa tất cả quốc tịch thất bại');
     },
   });
 
@@ -96,10 +96,10 @@ const Nationalities = () => {
       store.bulkCreateNationalities(items),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nationalities'] });
-      toast.success('Nationalities imported successfully');
+      toast.success('Import quốc tịch thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to import nationalities');
+      toast.error(error.message || 'Import quốc tịch thất bại');
     },
   });
 
@@ -141,7 +141,7 @@ const Nationalities = () => {
       toast.error('Bạn không có quyền xóa quốc tịch');
       return;
     }
-    if (confirm('Are you sure you want to delete ALL nationalities? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa TẤT CẢ quốc tịch? Hành động này không thể hoàn tác.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
@@ -160,7 +160,7 @@ const Nationalities = () => {
       return;
     }
     if (filteredNationalities.length === 0) {
-      toast.error('No nationalities to export');
+      toast.error('Không có quốc tịch nào để xuất');
       return;
     }
 
@@ -182,7 +182,7 @@ const Nationalities = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredNationalities.length} nationalities`);
+    toast.success(`Đã xuất ${filteredNationalities.length} quốc tịch`);
   };
 
   const filteredNationalities = useMemo(() => {
@@ -204,32 +204,32 @@ const Nationalities = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Nationalities</h1>
-              <p className="text-muted-foreground">Manage client nationalities</p>
+              <h1 className="text-3xl font-bold">Quốc tịch</h1>
+              <p className="text-muted-foreground">Quản lý quốc tịch khách hàng</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button onClick={handleExportTxt} variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
                   <Upload className="h-4 w-4" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
                   <Trash className="h-4 w-4" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Add Nationality
+                  Thêm quốc tịch
                 </Button>
               )}
             </div>
@@ -242,16 +242,16 @@ const Nationalities = () => {
               <SearchInput
                 value={search}
                 onChange={setSearch}
-                placeholder="Search nationalities..."
+                placeholder="Tìm quốc tịch..."
               />
             </div>
           </div>
 
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
           ) : nationalities.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No nationalities found. Create your first nationality!
+              Không tìm thấy quốc tịch nào. Hãy tạo quốc tịch đầu tiên!
             </div>
           ) : (
             <>
@@ -261,15 +261,15 @@ const Nationalities = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
-                      <TableHead>Country</TableHead>
-                      <TableHead>ISO Code</TableHead>
-                      <TableHead>Flag</TableHead>
+                      <TableHead>Quốc gia</TableHead>
+                      <TableHead>Mã ISO</TableHead>
+                      <TableHead>Cờ</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
                       <TableHead>
                         <Input
-                          placeholder="Filter by ID..."
+                          placeholder="Lọc theo ID..."
                           value={idFilter}
                           onChange={(e) => setIdFilter(e.target.value)}
                           className="h-8"
@@ -277,7 +277,7 @@ const Nationalities = () => {
                       </TableHead>
                       <TableHead>
                         <Input
-                          placeholder="Filter by name..."
+                          placeholder="Lọc theo tên..."
                           value={nameFilter}
                           onChange={(e) => setNameFilter(e.target.value)}
                           className="h-8"
@@ -285,7 +285,7 @@ const Nationalities = () => {
                       </TableHead>
                       <TableHead>
                         <Input
-                          placeholder="Filter by ISO2..."
+                          placeholder="Lọc theo mã ISO..."
                           value={iso2Filter}
                           onChange={(e) => setIso2Filter(e.target.value)}
                           className="h-8"
@@ -326,7 +326,7 @@ const Nationalities = () => {
                                 size="sm"
                                 onClick={() => {
                                   if (!ensureCanModifyOwnedEntity(nationality, user?.id, isAdmin)) return;
-                                  if (confirm('Are you sure you want to delete this nationality?')) {
+                                  if (confirm('Bạn có chắc chắn muốn xóa quốc tịch này?')) {
                                     deleteMutation.mutate(nationality.id);
                                   }
                                 }}
@@ -360,7 +360,7 @@ const Nationalities = () => {
                             {nationality.id}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {nationality.iso2 || 'No ISO code'}
+                            {nationality.iso2 || 'Không có mã ISO'}
                           </p>
                         </div>
                       </div>
@@ -381,7 +381,7 @@ const Nationalities = () => {
                             size="sm"
                             onClick={() => {
                               if (!ensureCanModifyOwnedEntity(nationality, user?.id, isAdmin)) return;
-                              if (confirm('Are you sure you want to delete this nationality?')) {
+                              if (confirm('Bạn có chắc chắn muốn xóa quốc tịch này?')) {
                                 deleteMutation.mutate(nationality.id);
                               }
                             }}
@@ -410,14 +410,13 @@ const Nationalities = () => {
           open={importDialogOpen}
           onOpenChange={setImportDialogOpen}
           onImport={handleBulkImport}
-          title="Import Nationalities"
-          description="Upload or paste nationality data in CSV format"
-          placeholder="Enter nationalities (one per line, format: Country Name[,ISO2,Emoji])
-Example:
-United States
-United Kingdom,GB,🇬🇧
-France,FR,🇫🇷
-Germany,DE"
+          title="Import quốc tịch"
+          description="Tải lên hoặc dán dữ liệu quốc tịch theo định dạng CSV"
+          placeholder="Nhập quốc tịch (mỗi dòng một quốc tịch, định dạng: Tên quốc gia[,Mã ISO,Emoji])
+Ví dụ:
+Việt Nam,VN,🇻🇳
+Hoa Kỳ,US,🇺🇸
+Pháp,FR,🇫🇷"
           parseItem={(parts: string[]) => {
             if (parts.length >= 1 && parts[0].trim()) {
               return {

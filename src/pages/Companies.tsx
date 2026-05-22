@@ -48,10 +48,10 @@ const Companies = () => {
     mutationFn: (data: CompanyInput) => store.createCompany(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      toast.success('Company created successfully');
+      toast.success('Tạo công ty thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create company');
+      toast.error(error.message || 'Tạo công ty thất bại');
     },
   });
 
@@ -60,10 +60,10 @@ const Companies = () => {
       store.updateCompany(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      toast.success('Company updated successfully');
+      toast.success('Cập nhật công ty thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update company');
+      toast.error(error.message || 'Cập nhật công ty thất bại');
     },
   });
 
@@ -71,7 +71,7 @@ const Companies = () => {
     mutationFn: (id: string) => store.duplicateCompany(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      toast.success('Company duplicated successfully');
+      toast.success('Nhân bản công ty thành công');
     },
   });
 
@@ -79,10 +79,10 @@ const Companies = () => {
     mutationFn: (id: string) => store.deleteCompany(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      toast.success('Company deleted successfully');
+      toast.success('Xóa công ty thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete company');
+      toast.error(error.message || 'Xóa công ty thất bại');
     },
   });
 
@@ -90,10 +90,10 @@ const Companies = () => {
     mutationFn: () => store.deleteAllCompanies(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      toast.success('All companies deleted successfully');
+      toast.success('Đã xóa tất cả công ty');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete all companies');
+      toast.error(error.message || 'Xóa tất cả công ty thất bại');
     },
   });
 
@@ -101,10 +101,10 @@ const Companies = () => {
     mutationFn: (inputs: CompanyInput[]) => store.bulkCreateCompanies(inputs),
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      toast.success(`Successfully imported ${count} companies`);
+      toast.success(`Đã import ${count} công ty`);
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to import companies');
+      toast.error(error.message || 'Import công ty thất bại');
     },
   });
 
@@ -146,7 +146,7 @@ const Companies = () => {
       toast.error('Bạn không có quyền xóa công ty');
       return;
     }
-    if (confirm('Are you sure you want to delete ALL companies? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa TẤT CẢ công ty? Hành động này không thể hoàn tác.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
@@ -179,7 +179,7 @@ const Companies = () => {
       return;
     }
     if (filteredCompanies.length === 0) {
-      toast.error('No companies to export');
+      toast.error('Không có công ty nào để xuất');
       return;
     }
 
@@ -202,7 +202,7 @@ const Companies = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredCompanies.length} companies`);
+    toast.success(`Đã xuất ${filteredCompanies.length} công ty`);
   };
 
   const filteredCompanies = useMemo(() => {
@@ -238,32 +238,32 @@ const Companies = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Companies</h1>
-              <p className="text-muted-foreground">Manage partner travel companies</p>
+              <h1 className="text-3xl font-bold">Công ty</h1>
+              <p className="text-muted-foreground">Quản lý công ty đối tác</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button onClick={handleExportTxt} variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
                   <Upload className="h-4 w-4" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
                   <Trash className="h-4 w-4" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Add Company
+                  Thêm công ty
                 </Button>
               )}
             </div>
@@ -276,20 +276,20 @@ const Companies = () => {
               <SearchInput
                 value={search}
                 onChange={setSearch}
-                placeholder="Search companies..."
+                placeholder="Tìm công ty..."
               />
             </div>
           </div>
 
           {companiesError ? (
             <div className="text-center py-8 text-destructive">
-              {companiesError instanceof Error ? companiesError.message : 'Failed to load companies'}
+              {companiesError instanceof Error ? companiesError.message : 'Tải danh sách công ty thất bại'}
             </div>
           ) : isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
           ) : companies.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No companies found. Create your first company!
+              Không tìm thấy công ty nào. Hãy tạo công ty đầu tiên!
             </div>
           ) : (
             <>
@@ -299,17 +299,17 @@ const Companies = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
-                      <TableHead>Company Name</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Default</TableHead>
+                      <TableHead>Tên công ty</TableHead>
+                      <TableHead>Liên hệ</TableHead>
+                      <TableHead>Điện thoại</TableHead>
+                      <TableHead>Mặc định</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
                       <TableHead>
                         <Input
-                          placeholder="Filter by ID..."
+                          placeholder="Lọc theo ID..."
                           value={idFilter}
                           onChange={(e) => setIdFilter(e.target.value)}
                           className="h-8"
@@ -317,7 +317,7 @@ const Companies = () => {
                       </TableHead>
                       <TableHead>
                         <Input
-                          placeholder="Filter by name..."
+                          placeholder="Lọc theo tên..."
                           value={nameFilter}
                           onChange={(e) => setNameFilter(e.target.value)}
                           className="h-8"
@@ -325,7 +325,7 @@ const Companies = () => {
                       </TableHead>
                       <TableHead>
                         <Input
-                          placeholder="Filter by contact..."
+                          placeholder="Lọc theo liên hệ..."
                           value={contactFilter}
                           onChange={(e) => setContactFilter(e.target.value)}
                           className="h-8"
@@ -333,7 +333,7 @@ const Companies = () => {
                       </TableHead>
                       <TableHead>
                         <Input
-                          placeholder="Filter by phone..."
+                          placeholder="Lọc theo điện thoại..."
                           value={phoneFilter}
                           onChange={(e) => setPhoneFilter(e.target.value)}
                           className="h-8"
@@ -360,7 +360,7 @@ const Companies = () => {
                             checked={company.isDefault}
                             onCheckedChange={(checked) => handleSetDefaultCompany(company, checked === true)}
                             disabled={!canEdit}
-                            aria-label={`Set ${company.name} as default company`}
+                            aria-label={`${company.name} là công ty mặc định`}
                           />
                         </TableCell>
                         <TableCell>{company.email || '-'}</TableCell>
@@ -382,7 +382,7 @@ const Companies = () => {
                                 size="sm"
                                 onClick={() => {
                                   if (!ensureCanModifyOwnedEntity(company, user?.id, isAdmin)) return;
-                                  if (confirm('Are you sure you want to delete this company?')) {
+                                  if (confirm('Bạn có chắc chắn muốn xóa công ty này?')) {
                                     deleteMutation.mutate(company.id);
                                   }
                                 }}
@@ -413,13 +413,13 @@ const Companies = () => {
                           <h3 className="font-semibold">{company.name}</h3>
                           {company.isDefault && (
                             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                              Default
+Mặc định
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">{company.id}</p>
                         <p className="text-sm text-muted-foreground">
-                          {company.contactName || 'No contact'}
+                          {company.contactName || 'Không có liên hệ'}
                         </p>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -439,7 +439,7 @@ const Companies = () => {
                             size="sm"
                             onClick={() => {
                               if (!ensureCanModifyOwnedEntity(company, user?.id, isAdmin)) return;
-                              if (confirm('Are you sure you want to delete this company?')) {
+                              if (confirm('Bạn có chắc chắn muốn xóa công ty này?')) {
                                 deleteMutation.mutate(company.id);
                               }
                             }}
@@ -477,13 +477,13 @@ const Companies = () => {
           onOpenChange={setImportDialogOpen}
           onImport={handleBulkImport}
           parseItem={parseCompanyItem}
-          title="Import Companies"
-          description="Import multiple companies at once. Format: Company Name[,Contact,Phone,Email] (contact, phone, email are optional)"
-          placeholder="Enter companies (one per line, format: Company Name[,Contact,Phone,Email])
-Example:
-Company A
-ABC Travel,John Doe,123-456-7890,john@abc.com
-XYZ Tours,Jane Smith,098-765-4321"
+          title="Import công ty"
+          description="Import nhiều công ty cùng lúc. Định dạng: Tên công ty[,Liên hệ,Điện thoại,Email] (liên hệ, điện thoại, email không bắt buộc)"
+          placeholder="Nhập công ty (mỗi dòng một công ty, định dạng: Tên công ty[,Liên hệ,Điện thoại,Email])
+Ví dụ:
+Công ty A
+ABC Travel,Nguyễn Văn A,0123-456-789,abc@example.com
+XYZ Tours,Trần Thị B,0987-654-321"
         />
       </div>
     </>

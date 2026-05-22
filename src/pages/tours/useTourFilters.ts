@@ -24,18 +24,18 @@ const loadDateRange = (): DateRange | undefined => {
 };
 
 export const TOUR_MONTHS = [
-  { value: '1', label: 'January' },
-  { value: '2', label: 'February' },
-  { value: '3', label: 'March' },
-  { value: '4', label: 'April' },
-  { value: '5', label: 'May' },
-  { value: '6', label: 'June' },
-  { value: '7', label: 'July' },
-  { value: '8', label: 'August' },
-  { value: '9', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
+  { value: '1', label: 'Tháng 1' },
+  { value: '2', label: 'Tháng 2' },
+  { value: '3', label: 'Tháng 3' },
+  { value: '4', label: 'Tháng 4' },
+  { value: '5', label: 'Tháng 5' },
+  { value: '6', label: 'Tháng 6' },
+  { value: '7', label: 'Tháng 7' },
+  { value: '8', label: 'Tháng 8' },
+  { value: '9', label: 'Tháng 9' },
+  { value: '10', label: 'Tháng 10' },
+  { value: '11', label: 'Tháng 11' },
+  { value: '12', label: 'Tháng 12' },
 ];
 
 export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {

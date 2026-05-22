@@ -60,7 +60,7 @@ export const ToursHeaderControls = ({
 }: ToursHeaderControlsProps) => (
   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
     <div className="min-w-0 flex-shrink-0">
-      <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Tour</h1>
+      <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Danh sách tour</h1>
     </div>
     <div className="flex w-full min-w-0 flex-nowrap items-center gap-1 overflow-hidden sm:w-auto sm:flex-shrink-0 sm:flex-wrap sm:justify-end sm:gap-1.5">
       <Button variant="outline" size="sm" onClick={onToggleTopControls} className={topActionButtonClass}>

@@ -47,7 +47,7 @@ const Destinations = () => {
     mutationFn: (input: TouristDestinationInput) => store.createTouristDestination(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
-      toast.success('Destination created successfully');
+      toast.success('Tạo điểm đến thành công');
       setDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -60,7 +60,7 @@ const Destinations = () => {
       store.updateTouristDestination(id, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
-      toast.success('Destination updated successfully');
+      toast.success('Cập nhật điểm đến thành công');
       setDialogOpen(false);
       setEditingDestination(undefined);
     },
@@ -73,7 +73,7 @@ const Destinations = () => {
     mutationFn: (id: string) => store.duplicateTouristDestination(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
-      toast.success('Destination duplicated successfully');
+      toast.success('Nhân bản điểm đến thành công');
     },
   });
 
@@ -81,7 +81,7 @@ const Destinations = () => {
     mutationFn: (id: string) => store.deleteTouristDestination(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
-      toast.success('Destination deleted successfully');
+      toast.success('Xóa điểm đến thành công');
     },
   });
 
@@ -89,7 +89,7 @@ const Destinations = () => {
     mutationFn: () => store.deleteAllTouristDestinations(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
-      toast.success('All destinations deleted successfully');
+      toast.success('Đã xóa tất cả điểm đến');
     },
   });
 
@@ -150,7 +150,7 @@ const Destinations = () => {
       toast.error('Bạn không có quyền xóa điểm đến');
       return;
     }
-    if (confirm('Are you sure you want to delete ALL destinations? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa TẤT CẢ điểm đến? Hành động này không thể hoàn tác.')) {
       deleteAllMutation.mutate();
     }
   };
@@ -169,7 +169,7 @@ const Destinations = () => {
       return;
     }
     if (filteredDestinations.length === 0) {
-      toast.error('No destinations to export');
+      toast.error('Không có điểm đến nào để xuất');
       return;
     }
 
@@ -186,7 +186,7 @@ const Destinations = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredDestinations.length} destinations`);
+    toast.success(`Đã xuất ${filteredDestinations.length} điểm đến`);
   };
 
   // Filter destinations based on column filters
@@ -207,32 +207,32 @@ const Destinations = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Destinations</h1>
-              <p className="text-muted-foreground">Manage tourist destinations</p>
+              <h1 className="text-3xl font-bold">Điểm đến</h1>
+              <p className="text-muted-foreground">Quản lý điểm đến du lịch</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button variant="outline" onClick={handleExportTxt}>
                   <Download className="h-4 w-4 mr-2" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
                   <Trash className="h-4 w-4" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Destination
+                  Thêm điểm đến
                 </Button>
               )}
             </div>
@@ -244,16 +244,16 @@ const Destinations = () => {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search destinations..."
+              placeholder="Tìm điểm đến..."
             />
           </div>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12">Đang tải...</div>
         ) : destinations.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No destinations found. Create your first destination to get started.
+            Không tìm thấy điểm đến nào. Hãy tạo điểm đến đầu tiên.
           </div>
         ) : (
           <>
@@ -262,16 +262,16 @@ const Destinations = () => {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="text-left p-4 font-medium">Name</th>
-                    <th className="text-left p-4 font-medium">Province</th>
-                    <th className="text-left p-4 font-medium">Price</th>
-                    <th className="text-left p-4 font-medium">Updated</th>
-                    <th className="text-right p-4 font-medium">Actions</th>
+                    <th className="text-left p-4 font-medium">Tên</th>
+                    <th className="text-left p-4 font-medium">Tỉnh</th>
+                    <th className="text-left p-4 font-medium">Đơn giá</th>
+                    <th className="text-left p-4 font-medium">Cập nhật</th>
+                    <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr>
                     <th className="p-2">
                       <Input
-                        placeholder="Filter name..."
+                        placeholder="Lọc theo tên..."
                         value={nameFilter}
                         onChange={(e) => setNameFilter(e.target.value)}
                         className="h-8"
@@ -280,10 +280,10 @@ const Destinations = () => {
                     <th className="p-2">
                       <Select value={provinceFilter} onValueChange={setProvinceFilter}>
                         <SelectTrigger className="h-8">
-                          <SelectValue placeholder="All Provinces" />
+                          <SelectValue placeholder="Tất cả tỉnh" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="all">Tất cả</SelectItem>
                           {provinces.map((province) => (
                             <SelectItem key={province.id} value={province.name}>
                               {province.name}
@@ -294,7 +294,7 @@ const Destinations = () => {
                     </th>
                     <th className="p-2">
                       <Input
-                        placeholder="Filter price..."
+                        placeholder="Lọc theo giá..."
                         value={priceFilter}
                         onChange={(e) => setPriceFilter(e.target.value)}
                         className="h-8"
@@ -337,7 +337,7 @@ const Destinations = () => {
                               size="sm"
                               onClick={() => {
                                 if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
-                                if (confirm('Are you sure you want to delete this destination?')) {
+                                if (confirm('Bạn có chắc chắn muốn xóa điểm đến này?')) {
                                   deleteMutation.mutate(destination.id);
                                 }
                               }}
@@ -369,7 +369,7 @@ const Destinations = () => {
                         {destination.provinceRef.nameAtBooking} • {formatCurrency(destination.price)}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Updated {formatDate(destination.updatedAt.split("T")[0])}
+                        Cập nhật {formatDate(destination.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -389,7 +389,7 @@ const Destinations = () => {
                           size="sm"
                           onClick={() => {
                             if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
-                            if (confirm('Are you sure you want to delete this destination?')) {
+                            if (confirm('Bạn có chắc chắn muốn xóa điểm đến này?')) {
                               deleteMutation.mutate(destination.id);
                             }
                           }}
@@ -419,9 +419,9 @@ const Destinations = () => {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleBulkImport}
-        title="Import Destinations"
-        description="Import destinations from a text file or paste data. Each line should have: name,price"
-        placeholder="Enter destinations (one per line, format: name,price)&#10;Example:&#10;Ha Long Bay,1500000&#10;Sapa Trek,2000000&#10;Hoi An Ancient Town,800000"
+        title="Import điểm đến"
+        description="Import điểm đến từ file hoặc dán dữ liệu. Mỗi dòng gồm: tên,đơn giá"
+        placeholder="Nhập điểm đến (mỗi dòng một điểm, định dạng: tên,đơn giá)&#10;Ví dụ:&#10;Vịnh Hạ Long,1500000&#10;Sa Pa,2000000&#10;Phố cổ Hội An,800000"
         parseItem={(parts: string[]) => {
           if (parts.length >= 2 && parts[0].trim()) {
             const name = parts[0].trim();

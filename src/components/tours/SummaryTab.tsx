@@ -120,17 +120,17 @@ export function SummaryTab({ tour, onSummaryUpdate, readOnly = false }: SummaryT
     <div className="space-y-6">
       <Card className="animate-fade-in">
         <CardHeader>
-          <CardTitle>Financial Summary</CardTitle>
+          <CardTitle>Tổng kết tài chính</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center py-2 bg-primary/10 px-3 rounded">
-            <span className="font-medium">Total Tabs (Auto-calculated)</span>
+            <span className="font-medium">Tổng các tab (Tự động tính)</span>
             <span className="font-bold text-primary">{formatCurrency(summary.totalTabs)}</span>
           </div>
           <Separator />
 
           <div className="space-y-2">
-            <Label htmlFor="advancePayment" className="text-red-600 font-semibold">- Advance Payment (Input)</Label>
+            <Label htmlFor="advancePayment" className="text-red-600 font-semibold">- Tạm ứng (Nhập)</Label>
             <CurrencyInput
               id="advancePayment"
               value={summary.advancePayment || 0}
@@ -140,13 +140,13 @@ export function SummaryTab({ tour, onSummaryUpdate, readOnly = false }: SummaryT
           </div>
 
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
-            <span className="font-medium">Total After Advance</span>
+            <span className="font-medium">Còn lại sau tạm ứng</span>
             <span className="font-bold">{formatCurrency(summary.totalAfterAdvance)}</span>
           </div>
           <Separator />
 
           <div className="space-y-2">
-            <Label htmlFor="collectionsForCompany" className="text-red-600 font-semibold">- Collections for Company (Input)</Label>
+            <Label htmlFor="collectionsForCompany" className="text-red-600 font-semibold">- Thu hộ công ty (Nhập)</Label>
             <CurrencyInput
               id="collectionsForCompany"
               value={summary.collectionsForCompany || 0}
@@ -156,13 +156,13 @@ export function SummaryTab({ tour, onSummaryUpdate, readOnly = false }: SummaryT
           </div>
 
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
-            <span className="font-medium">Total After Collections</span>
+            <span className="font-medium">Còn lại sau thu hộ</span>
             <span className="font-bold">{formatCurrency(summary.totalAfterCollections)}</span>
           </div>
           <Separator />
 
           <div className="space-y-2">
-            <Label htmlFor="companyTip" className="text-blue-600 font-semibold">+ Company Tip (Input)</Label>
+            <Label htmlFor="companyTip" className="text-blue-600 font-semibold">+ Tip công ty (Nhập)</Label>
             <CurrencyInput
               id="companyTip"
               value={summary.companyTip || 0}
@@ -172,13 +172,13 @@ export function SummaryTab({ tour, onSummaryUpdate, readOnly = false }: SummaryT
           </div>
 
           <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
-            <span className="font-medium">Total After Tip</span>
+            <span className="font-medium">Tổng sau tip</span>
             <span className="font-bold">{formatCurrency(summary.totalAfterTip)}</span>
           </div>
           <Separator />
 
           <div className="flex justify-between items-center py-3 bg-primary/10 px-4 rounded-lg mt-4">
-            <span className="text-lg font-bold">Final Total</span>
+            <span className="text-lg font-bold">Tổng kết cuối</span>
             <span className="text-lg font-bold text-primary">{formatCurrency(summary.finalTotal)}</span>
           </div>
         </CardContent>

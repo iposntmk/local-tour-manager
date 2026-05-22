@@ -40,7 +40,7 @@ const Provinces = () => {
     mutationFn: (input: ProvinceInput) => store.createProvince(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provinces'] });
-      toast.success('Province created successfully');
+      toast.success('Tạo tỉnh thành thành công');
       setDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -53,7 +53,7 @@ const Provinces = () => {
       store.updateProvince(id, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provinces'] });
-      toast.success('Province updated successfully');
+      toast.success('Cập nhật tỉnh thành thành công');
       setDialogOpen(false);
       setEditingProvince(undefined);
     },
@@ -66,7 +66,7 @@ const Provinces = () => {
     mutationFn: (id: string) => store.duplicateProvince(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provinces'] });
-      toast.success('Province duplicated successfully');
+      toast.success('Nhân bản tỉnh thành thành công');
     },
   });
 
@@ -74,7 +74,7 @@ const Provinces = () => {
     mutationFn: (id: string) => store.deleteProvince(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provinces'] });
-      toast.success('Province deleted successfully');
+      toast.success('Xóa tỉnh thành thành công');
     },
   });
 
@@ -82,7 +82,7 @@ const Provinces = () => {
     mutationFn: () => store.deleteAllProvinces(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provinces'] });
-      toast.success('All provinces deleted successfully');
+      toast.success('Đã xóa tất cả tỉnh thành');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -93,7 +93,7 @@ const Provinces = () => {
     mutationFn: (items: ProvinceInput[]) => store.bulkCreateProvinces(items),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provinces'] });
-      toast.success('Provinces imported successfully');
+      toast.success('Import tỉnh thành thành công');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -139,7 +139,7 @@ const Provinces = () => {
       toast.error('Bạn không có quyền xóa tỉnh thành');
       return;
     }
-    if (confirm('Are you sure you want to delete ALL provinces? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa TẤT CẢ tỉnh thành? Hành động này không thể hoàn tác.')) {
       deleteAllMutation.mutate();
     }
   };
@@ -158,7 +158,7 @@ const Provinces = () => {
       return;
     }
     if (filteredProvinces.length === 0) {
-      toast.error('No provinces to export');
+      toast.error('Không có tỉnh thành nào để xuất');
       return;
     }
 
@@ -175,7 +175,7 @@ const Provinces = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredProvinces.length} provinces`);
+    toast.success(`Đã xuất ${filteredProvinces.length} tỉnh thành`);
   };
 
   const filteredProvinces = useMemo(() => {
@@ -195,32 +195,32 @@ const Provinces = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Provinces</h1>
-              <p className="text-muted-foreground">Manage provinces and cities</p>
+              <h1 className="text-3xl font-bold">Tỉnh thành</h1>
+              <p className="text-muted-foreground">Quản lý tỉnh thành</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button variant="outline" onClick={handleExportTxt}>
                   <Download className="h-4 w-4 mr-2" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button variant="outline" onClick={handleDeleteAll}>
                   <Trash className="h-4 w-4 mr-2" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Province
+                  Thêm tỉnh thành
                 </Button>
               )}
             </div>
@@ -232,16 +232,16 @@ const Provinces = () => {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search provinces..."
+              placeholder="Tìm tỉnh thành..."
             />
           </div>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12">Đang tải...</div>
         ) : provinces.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No provinces found. Create your first province to get started.
+            Không tìm thấy tỉnh thành nào. Hãy tạo tỉnh thành đầu tiên.
           </div>
         ) : (
           <>
@@ -251,14 +251,14 @@ const Provinces = () => {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-4 font-medium">ID</th>
-                    <th className="text-left p-4 font-medium">Name</th>
-                    <th className="text-left p-4 font-medium">Updated</th>
-                    <th className="text-right p-4 font-medium">Actions</th>
+                    <th className="text-left p-4 font-medium">Tên</th>
+                    <th className="text-left p-4 font-medium">Cập nhật</th>
+                    <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr className="border-t">
                     <th className="p-2">
                       <Input
-                        placeholder="Filter by ID..."
+                        placeholder="Lọc theo ID..."
                         value={idFilter}
                         onChange={(e) => setIdFilter(e.target.value)}
                         className="h-8"
@@ -266,7 +266,7 @@ const Provinces = () => {
                     </th>
                     <th className="p-2">
                       <Input
-                        placeholder="Filter by name..."
+                        placeholder="Lọc theo tên..."
                         value={nameFilter}
                         onChange={(e) => setNameFilter(e.target.value)}
                         className="h-8"
@@ -274,7 +274,7 @@ const Provinces = () => {
                     </th>
                     <th className="p-2">
                       <Input
-                        placeholder="Filter by date..."
+                        placeholder="Lọc theo ngày..."
                         value={updatedFilter}
                         onChange={(e) => setUpdatedFilter(e.target.value)}
                         className="h-8"
@@ -313,7 +313,7 @@ const Provinces = () => {
                               size="sm"
                               onClick={() => {
                                 if (!ensureCanModifyOwnedEntity(province, user?.id, isAdmin)) return;
-                                if (confirm('Are you sure you want to delete this province?')) {
+                                if (confirm('Bạn có chắc chắn muốn xóa tỉnh thành này?')) {
                                   deleteMutation.mutate(province.id);
                                 }
                               }}
@@ -343,7 +343,7 @@ const Provinces = () => {
                       <h3 className="font-medium">{province.name}</h3>
                       <p className="text-sm text-muted-foreground font-mono">ID: {province.id}</p>
                       <p className="text-sm text-muted-foreground">
-                        Updated {formatDate(province.updatedAt.split("T")[0])}
+                        Cập nhật {formatDate(province.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -363,7 +363,7 @@ const Provinces = () => {
                           size="sm"
                           onClick={() => {
                             if (!ensureCanModifyOwnedEntity(province, user?.id, isAdmin)) return;
-                            if (confirm('Are you sure you want to delete this province?')) {
+                            if (confirm('Bạn có chắc chắn muốn xóa tỉnh thành này?')) {
                               deleteMutation.mutate(province.id);
                             }
                           }}
@@ -393,9 +393,9 @@ const Provinces = () => {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleBulkImport}
-        title="Import Provinces"
-        description="Import multiple provinces at once. Enter one province name per line or use comma format."
-        placeholder="Enter province names (one per line)&#10;Example:&#10;Ha Noi&#10;Ho Chi Minh&#10;Da Nang&#10;&#10;Or comma format:&#10;Ha Noi,Ho Chi Minh,Da Nang"
+        title="Import tỉnh thành"
+        description="Import nhiều tỉnh thành cùng lúc. Nhập mỗi dòng một tên tỉnh hoặc dùng định dạng dấu phẩy."
+        placeholder="Nhập tên tỉnh thành (mỗi dòng một tên)&#10;Ví dụ:&#10;Hà Nội&#10;TP. Hồ Chí Minh&#10;Đà Nẵng&#10;&#10;Hoặc định dạng dấu phẩy:&#10;Hà Nội,TP. Hồ Chí Minh,Đà Nẵng"
         parseItem={(parts) => {
           // Support both single name format and comma-separated format
           const name = parts[0];

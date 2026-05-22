@@ -44,23 +44,23 @@ export function CombinedTab({ tour }: CombinedTabProps) {
       {/* Destinations Section */}
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-blue-50 dark:bg-blue-950">
-          <h3 className="font-semibold text-lg">Destinations</h3>
+          <h3 className="font-semibold text-lg">Điểm đến</h3>
         </div>
         {destinations.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            No destinations added yet
+            Chưa có điểm đến nào
           </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Destination</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="w-[80px]">Guests</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[50px]">STT</TableHead>
+                  <TableHead>Điểm đến</TableHead>
+                  <TableHead>Đơn giá</TableHead>
+                  <TableHead className="w-[80px]">Khách</TableHead>
+                  <TableHead>Thành tiền</TableHead>
+                  <TableHead>Ngày</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -82,7 +82,7 @@ export function CombinedTab({ tour }: CombinedTabProps) {
             </Table>
             <div className="mt-2 p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg flex justify-end border-t-2 border-yellow-400">
               <div className="text-lg font-bold">
-                Destinations Total: {formatCurrency(totalDestinations)}
+                Tổng điểm đến: {formatCurrency(totalDestinations)}
               </div>
             </div>
           </div>
@@ -95,23 +95,23 @@ export function CombinedTab({ tour }: CombinedTabProps) {
       {/* Expenses Section */}
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-blue-50 dark:bg-blue-950">
-          <h3 className="font-semibold text-lg">Expenses</h3>
+          <h3 className="font-semibold text-lg">Chi phí</h3>
         </div>
         {expenses.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            No expenses added yet
+            Chưa có chi phí nào
           </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Expense</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="w-[80px]">Guests</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[50px]">STT</TableHead>
+                  <TableHead>Chi phí</TableHead>
+                  <TableHead>Đơn giá</TableHead>
+                  <TableHead className="w-[80px]">Khách</TableHead>
+                  <TableHead>Thành tiền</TableHead>
+                  <TableHead>Ngày</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -133,7 +133,7 @@ export function CombinedTab({ tour }: CombinedTabProps) {
             </Table>
             <div className="mt-2 p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg flex justify-end border-t-2 border-yellow-400">
               <div className="text-lg font-bold">
-                Expenses Total: {formatCurrency(totalExpenses)}
+                Tổng chi phí: {formatCurrency(totalExpenses)}
               </div>
             </div>
           </div>
@@ -146,23 +146,23 @@ export function CombinedTab({ tour }: CombinedTabProps) {
       {/* Meals Section */}
       <div className="rounded-lg border">
         <div className="p-4 border-b bg-blue-50 dark:bg-blue-950">
-          <h3 className="font-semibold text-lg">Meals</h3>
+          <h3 className="font-semibold text-lg">Bữa ăn</h3>
         </div>
         {meals.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            No meals added yet
+            Chưa có bữa ăn nào
           </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Meal</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="w-[80px]">Guests</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[50px]">STT</TableHead>
+                  <TableHead>Bữa ăn</TableHead>
+                  <TableHead>Đơn giá</TableHead>
+                  <TableHead className="w-[80px]">Khách</TableHead>
+                  <TableHead>Thành tiền</TableHead>
+                  <TableHead>Ngày</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -184,7 +184,7 @@ export function CombinedTab({ tour }: CombinedTabProps) {
             </Table>
             <div className="mt-2 p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg flex justify-end border-t-2 border-yellow-400">
               <div className="text-lg font-bold">
-                Meals Total: {formatCurrency(totalMeals)}
+                Tổng bữa ăn: {formatCurrency(totalMeals)}
               </div>
             </div>
           </div>
@@ -194,7 +194,7 @@ export function CombinedTab({ tour }: CombinedTabProps) {
       {/* Grand Total */}
       <div className="rounded-lg border-4 border-green-500 bg-green-50 dark:bg-green-950 p-6">
         <div className="flex justify-between items-center text-2xl font-bold">
-          <span>GRAND TOTAL (Destinations + Expenses + Meals):</span>
+          <span>TỔNG CỘNG (Điểm đến + Chi phí + Bữa ăn):</span>
           <span className="text-green-700 dark:text-green-300">{formatCurrency(grandTotal)}</span>
         </div>
       </div>

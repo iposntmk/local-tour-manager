@@ -40,7 +40,7 @@ const ExpenseCategories = () => {
     mutationFn: (input: ExpenseCategoryInput) => store.createExpenseCategory(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
-      toast.success('Expense category created successfully');
+      toast.success('Tạo danh mục chi phí thành công');
       setDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -53,7 +53,7 @@ const ExpenseCategories = () => {
       store.updateExpenseCategory(id, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
-      toast.success('Expense category updated successfully');
+      toast.success('Cập nhật danh mục chi phí thành công');
       setDialogOpen(false);
       setEditingCategory(undefined);
     },
@@ -66,7 +66,7 @@ const ExpenseCategories = () => {
     mutationFn: (id: string) => store.duplicateExpenseCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
-      toast.success('Expense category duplicated successfully');
+      toast.success('Nhân bản danh mục chi phí thành công');
     },
   });
 
@@ -74,7 +74,7 @@ const ExpenseCategories = () => {
     mutationFn: (id: string) => store.deleteExpenseCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
-      toast.success('Expense category deleted successfully');
+      toast.success('Xóa danh mục chi phí thành công');
     },
   });
 
@@ -82,7 +82,7 @@ const ExpenseCategories = () => {
     mutationFn: () => store.deleteAllExpenseCategories(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
-      toast.success('All expense categories deleted successfully');
+      toast.success('Đã xóa tất cả danh mục chi phí');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -138,7 +138,7 @@ const ExpenseCategories = () => {
       toast.error('Bạn không có quyền xóa danh mục chi phí');
       return;
     }
-    if (confirm('Are you sure you want to delete ALL expense categories? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa TẤT CẢ danh mục chi phí? Hành động này không thể hoàn tác.')) {
       deleteAllMutation.mutate();
     }
   };
@@ -157,7 +157,7 @@ const ExpenseCategories = () => {
       return;
     }
     if (filteredCategories.length === 0) {
-      toast.error('No expense categories to export');
+      toast.error('Không có danh mục chi phí nào để xuất');
       return;
     }
 
@@ -174,7 +174,7 @@ const ExpenseCategories = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredCategories.length} expense categories`);
+    toast.success(`Đã xuất ${filteredCategories.length} danh mục chi phí`);
   };
 
   const filteredCategories = useMemo(() => {
@@ -194,32 +194,32 @@ const ExpenseCategories = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Expense Categories</h1>
-              <p className="text-muted-foreground">Manage expense categories</p>
+              <h1 className="text-3xl font-bold">Danh mục chi phí</h1>
+              <p className="text-muted-foreground">Quản lý danh mục chi phí</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button variant="outline" onClick={handleExportTxt}>
                   <Download className="h-4 w-4 mr-2" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
                   <Trash className="h-4 w-4" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Category
+                  Thêm danh mục
                 </Button>
               )}
             </div>
@@ -231,16 +231,16 @@ const ExpenseCategories = () => {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Search categories..."
+              placeholder="Tìm danh mục..."
             />
           </div>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12">Đang tải...</div>
         ) : categories.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No expense categories found. Create your first category to get started.
+            Không tìm thấy danh mục chi phí nào. Hãy tạo danh mục đầu tiên.
           </div>
         ) : (
           <>
@@ -250,14 +250,14 @@ const ExpenseCategories = () => {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-4 font-medium">ID</th>
-                    <th className="text-left p-4 font-medium">Name</th>
-                    <th className="text-left p-4 font-medium">Updated</th>
-                    <th className="text-right p-4 font-medium">Actions</th>
+                    <th className="text-left p-4 font-medium">Tên</th>
+                    <th className="text-left p-4 font-medium">Cập nhật</th>
+                    <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr className="border-t">
                     <th className="p-2">
                       <Input
-                        placeholder="Filter by ID..."
+                        placeholder="Lọc theo ID..."
                         value={idFilter}
                         onChange={(e) => setIdFilter(e.target.value)}
                         className="h-8"
@@ -265,7 +265,7 @@ const ExpenseCategories = () => {
                     </th>
                     <th className="p-2">
                       <Input
-                        placeholder="Filter by name..."
+                        placeholder="Lọc theo tên..."
                         value={nameFilter}
                         onChange={(e) => setNameFilter(e.target.value)}
                         className="h-8"
@@ -273,7 +273,7 @@ const ExpenseCategories = () => {
                     </th>
                     <th className="p-2">
                       <Input
-                        placeholder="Filter by date..."
+                        placeholder="Lọc theo ngày..."
                         value={updatedFilter}
                         onChange={(e) => setUpdatedFilter(e.target.value)}
                         className="h-8"
@@ -312,7 +312,7 @@ const ExpenseCategories = () => {
                               size="sm"
                               onClick={() => {
                                 if (!ensureCanModifyOwnedEntity(category, user?.id, isAdmin)) return;
-                                if (confirm('Are you sure you want to delete this category?')) {
+                                if (confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
                                   deleteMutation.mutate(category.id);
                                 }
                               }}
@@ -342,7 +342,7 @@ const ExpenseCategories = () => {
                       <h3 className="font-medium">{category.name}</h3>
                       <p className="text-sm text-muted-foreground font-mono">ID: {category.id}</p>
                       <p className="text-sm text-muted-foreground">
-                        Updated {formatDate(category.updatedAt.split("T")[0])}
+                        Cập nhật {formatDate(category.updatedAt.split("T")[0])}
                       </p>
                     </div>
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -362,7 +362,7 @@ const ExpenseCategories = () => {
                           size="sm"
                           onClick={() => {
                             if (!ensureCanModifyOwnedEntity(category, user?.id, isAdmin)) return;
-                            if (confirm('Are you sure you want to delete this category?')) {
+                            if (confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
                               deleteMutation.mutate(category.id);
                             }
                           }}
@@ -392,9 +392,9 @@ const ExpenseCategories = () => {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleBulkImport}
-        title="Import Expense Categories"
-        description="Import multiple expense categories at once. Enter one category name per line."
-        placeholder="Enter category names (one per line)\nExample:\nTransportation\nAccommodation\nFood & Beverage\nEntertainment"
+        title="Import danh mục chi phí"
+        description="Import nhiều danh mục chi phí cùng lúc. Nhập mỗi dòng một tên danh mục."
+        placeholder="Nhập tên danh mục (mỗi dòng một danh mục)\nVí dụ:\nDi chuyển\nLưu trú\nĂn uống\nGiải trí"
         parseItem={(parts) => {
           // Accept both single name per line and comma-separated format
           const name = parts[0];

@@ -43,10 +43,10 @@ const Languages = () => {
     mutationFn: (data: LanguageInput) => store.createLanguage(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
-      toast.success('Language created successfully');
+      toast.success('Tạo ngôn ngữ thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create language');
+      toast.error(error.message || 'Tạo ngôn ngữ thất bại');
     },
   });
 
@@ -55,10 +55,10 @@ const Languages = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Language updated successfully');
+      toast.success('Cập nhật ngôn ngữ thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update language');
+      toast.error(error.message || 'Cập nhật ngôn ngữ thất bại');
     },
   });
 
@@ -66,10 +66,10 @@ const Languages = () => {
     mutationFn: (id: string) => store.duplicateLanguage(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
-      toast.success('Language duplicated successfully');
+      toast.success('Nhân bản ngôn ngữ thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to duplicate language');
+      toast.error(error.message || 'Nhân bản ngôn ngữ thất bại');
     },
   });
 
@@ -78,10 +78,10 @@ const Languages = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Language deleted successfully');
+      toast.success('Xóa ngôn ngữ thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete language');
+      toast.error(error.message || 'Xóa ngôn ngữ thất bại');
     },
   });
 
@@ -90,10 +90,10 @@ const Languages = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
       queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('All languages deleted successfully');
+      toast.success('Đã xóa tất cả ngôn ngữ');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete all languages');
+      toast.error(error.message || 'Xóa tất cả ngôn ngữ thất bại');
     },
   });
 
@@ -101,10 +101,10 @@ const Languages = () => {
     mutationFn: (items: LanguageInput[]) => store.bulkCreateLanguages(items),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
-      toast.success('Languages imported successfully');
+      toast.success('Import ngôn ngữ thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to import languages');
+      toast.error(error.message || 'Import ngôn ngữ thất bại');
     },
   });
 
@@ -143,7 +143,7 @@ const Languages = () => {
       toast.error('Bạn không có quyền xóa ngôn ngữ');
       return;
     }
-    if (confirm('Are you sure you want to delete ALL languages? This action cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa TẤT CẢ ngôn ngữ? Hành động này không thể hoàn tác.')) {
       await deleteAllMutation.mutateAsync();
     }
   };
@@ -162,7 +162,7 @@ const Languages = () => {
       return;
     }
     if (filteredLanguages.length === 0) {
-      toast.error('No languages to export');
+      toast.error('Không có ngôn ngữ nào để xuất');
       return;
     }
 
@@ -179,7 +179,7 @@ const Languages = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${filteredLanguages.length} languages`);
+    toast.success(`Đã xuất ${filteredLanguages.length} ngôn ngữ`);
   };
 
   const filteredLanguages = useMemo(() => {
@@ -199,32 +199,32 @@ const Languages = () => {
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Languages</h1>
-              <p className="text-muted-foreground">Manage guide languages</p>
+              <h1 className="text-3xl font-bold">Ngôn ngữ</h1>
+              <p className="text-muted-foreground">Quản lý ngôn ngữ HDV</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {canExport && (
                 <Button onClick={handleExportTxt} variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
-                  Export TXT
+                  Xuất TXT
                 </Button>
               )}
               {canImport && (
                 <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
                   <Upload className="h-4 w-4" />
-                  Import
+                  Nhập
                 </Button>
               )}
               {canDelete && (
                 <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
                   <Trash className="h-4 w-4" />
-                  Delete All
+                  Xóa tất cả
                 </Button>
               )}
               {canCreate && (
                 <Button onClick={() => handleOpenDialog()} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Add Language
+                  Thêm ngôn ngữ
                 </Button>
               )}
             </div>
@@ -234,19 +234,19 @@ const Languages = () => {
         <Card className="p-4">
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="flex-1">
-              <SearchInput value={search} onChange={setSearch} placeholder="Search languages..." />
+              <SearchInput value={search} onChange={setSearch} placeholder="Tìm ngôn ngữ..." />
             </div>
           </div>
 
           {languagesError ? (
             <div className="text-center py-8 text-destructive">
-              {languagesError instanceof Error ? languagesError.message : 'Failed to load languages'}
+              {languagesError instanceof Error ? languagesError.message : 'Tải danh sách ngôn ngữ thất bại'}
             </div>
           ) : isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
           ) : languages.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No languages found. Create your first language!
+              Không tìm thấy ngôn ngữ nào. Hãy tạo ngôn ngữ đầu tiên!
             </div>
           ) : (
             <>
@@ -255,20 +255,20 @@ const Languages = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Native Name</TableHead>
+                      <TableHead>Mã</TableHead>
+                      <TableHead>Tên</TableHead>
+                      <TableHead>Tên bản địa</TableHead>
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
                       <TableHead>
-                        <Input placeholder="Filter by ID..." value={idFilter} onChange={(e) => setIdFilter(e.target.value)} className="h-8" />
+                        <Input placeholder="Lọc theo ID..." value={idFilter} onChange={(e) => setIdFilter(e.target.value)} className="h-8" />
                       </TableHead>
                       <TableHead>
-                        <Input placeholder="Filter by code..." value={codeFilter} onChange={(e) => setCodeFilter(e.target.value)} className="h-8" />
+                        <Input placeholder="Lọc theo mã..." value={codeFilter} onChange={(e) => setCodeFilter(e.target.value)} className="h-8" />
                       </TableHead>
                       <TableHead>
-                        <Input placeholder="Filter by name..." value={nameFilter} onChange={(e) => setNameFilter(e.target.value)} className="h-8" />
+                        <Input placeholder="Lọc theo tên..." value={nameFilter} onChange={(e) => setNameFilter(e.target.value)} className="h-8" />
                       </TableHead>
                       <TableHead></TableHead>
                       <TableHead></TableHead>
@@ -303,7 +303,7 @@ const Languages = () => {
                                 size="sm"
                                 onClick={() => {
                                   if (!ensureCanModifyOwnedEntity(language, user?.id, isAdmin)) return;
-                                  if (confirm('Are you sure you want to delete this language?')) {
+                                  if (confirm('Bạn có chắc chắn muốn xóa ngôn ngữ này?')) {
                                     deleteMutation.mutate(language.id);
                                   }
                                 }}
@@ -334,7 +334,7 @@ const Languages = () => {
                           <h3 className="truncate font-semibold">{language.name}</h3>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground font-mono">{language.id}</p>
-                        <p className="text-sm text-muted-foreground">{language.nativeName || 'No native name'}</p>
+                        <p className="text-sm text-muted-foreground">{language.nativeName || 'Không có tên bản địa'}</p>
                       </div>
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         {canEdit && (
@@ -353,7 +353,7 @@ const Languages = () => {
                             size="sm"
                             onClick={() => {
                               if (!ensureCanModifyOwnedEntity(language, user?.id, isAdmin)) return;
-                              if (confirm('Are you sure you want to delete this language?')) {
+                              if (confirm('Bạn có chắc chắn muốn xóa ngôn ngữ này?')) {
                                 deleteMutation.mutate(language.id);
                               }
                             }}
@@ -382,13 +382,13 @@ const Languages = () => {
           open={importDialogOpen}
           onOpenChange={setImportDialogOpen}
           onImport={handleBulkImport}
-          title="Import Languages"
-          description="Import multiple languages at once. Format: code,name,native name"
-          placeholder="Enter languages (one per line, format: code,name,native name)
-Example:
-en,English,English
-fr,French,Francais
-vi,Vietnamese,Tieng Viet"
+          title="Import ngôn ngữ"
+          description="Import nhiều ngôn ngữ cùng lúc. Định dạng: mã,tên,tên bản địa"
+          placeholder="Nhập ngôn ngữ (mỗi dòng một ngôn ngữ, định dạng: mã,tên,tên bản địa)
+Ví dụ:
+vi,Tiếng Việt,Tiếng Việt
+en,Tiếng Anh,English
+fr,Tiếng Pháp,Français"
           parseItem={(parts: string[]) => {
             if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
               return {

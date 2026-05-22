@@ -52,7 +52,7 @@ export const ToursMobileCards = ({
           style={{ animationDelay: `${index * 0.1}s` }}
         >
           {hasChildren && (
-            <div className="absolute top-2 right-2 bg-blue-500 dark:bg-blue-600 text-white rounded-full p-1.5 shadow-lg" title={`${tour.children} child${tour.children > 1 ? 'ren' : ''}`}>
+            <div className="absolute top-2 right-2 bg-blue-500 dark:bg-blue-600 text-white rounded-full p-1.5 shadow-lg" title={`${tour.children} trẻ em`}>
               <Baby className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
           )}
@@ -86,7 +86,7 @@ export const ToursMobileCards = ({
             <div className="pt-3 border-t cursor-pointer" onClick={() => onOpenTour(tour.id)}>
               <div className="flex items-center gap-2 text-xs sm:text-sm flex-wrap">
                 <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Allowance:</span>
+                  <span className="text-muted-foreground">CTP:</span>
                   <span className="font-semibold">
                     {Math.round(allowanceTotal / 1000)}k
                   </span>
@@ -95,7 +95,7 @@ export const ToursMobileCards = ({
                   <>
                     <span className="text-muted-foreground">|</span>
                     <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Final:</span>
+                      <span className="text-muted-foreground">Tổng kết:</span>
                       <span className="font-semibold text-primary">
                         {Math.round(tour.summary.finalTotal / 1000)}k
                       </span>
@@ -112,7 +112,7 @@ export const ToursMobileCards = ({
               >
                 <div className="min-w-0 overflow-hidden">
                   <p className="truncate" title={tour.companyRef.nameAtBooking}>
-                    <span className="text-muted-foreground">Company: </span>
+                    <span className="text-muted-foreground">Công ty: </span>
                     <span className="font-medium">
                       {truncateText(tour.companyRef.nameAtBooking, 15)}
                     </span>
@@ -120,7 +120,7 @@ export const ToursMobileCards = ({
                 </div>
                 <div className="min-w-0 overflow-hidden">
                   <p className="truncate" title={nationalities}>
-                    <span className="text-muted-foreground">Nationality: </span>
+                    <span className="text-muted-foreground">Quốc tịch: </span>
                     <span className="font-medium">
                       {truncateText(nationalities, 24)}
                     </span>
@@ -136,7 +136,7 @@ export const ToursMobileCards = ({
                   variant="outline"
                   className="h-8 w-8 p-0"
                   onClick={(event) => onExportSingle(tour, event)}
-                  title="Export to Excel"
+                  title="Xuất Excel"
                 >
                   <FileDown className="h-4 w-4" />
                 </Button>
@@ -147,7 +147,7 @@ export const ToursMobileCards = ({
                   variant="outline"
                   className="h-8 w-8 p-0"
                   onClick={(event) => onDuplicate(tour.id, event)}
-                  title="Duplicate tour"
+                  title="Nhân bản tour"
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
@@ -159,7 +159,7 @@ export const ToursMobileCards = ({
                   className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                   onClick={(event) => onDelete(tour.id, event)}
                   disabled={deletePending}
-                  title="Delete tour"
+                  title="Xóa tour"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

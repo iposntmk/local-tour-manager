@@ -65,7 +65,6 @@ export const ToursDesktopTable = ({
   const [tableLandOperatorFilterOpen, setTableLandOperatorFilterOpen] = useState(false);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bottomScrollRef = useRef<HTMLDivElement>(null);
-  const syncingScrollRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem('tours.table.columnVisibility', JSON.stringify(tableColumnVisibility));
@@ -164,18 +163,15 @@ export const ToursDesktopTable = ({
   };
 
   const syncScroll = (source: 'top' | 'bottom') => {
-    if (syncingScrollRef.current) return;
-
     const sourceElement = source === 'top' ? topScrollRef.current : bottomScrollRef.current;
     const targetElement = source === 'top' ? bottomScrollRef.current : topScrollRef.current;
 
-    if (!sourceElement || !targetElement || targetElement.scrollLeft === sourceElement.scrollLeft) return;
+    if (!sourceElement || !targetElement) return;
 
-    syncingScrollRef.current = true;
-    targetElement.scrollLeft = sourceElement.scrollLeft;
-    requestAnimationFrame(() => {
-      syncingScrollRef.current = false;
-    });
+    const sourceScroll = sourceElement.scrollLeft;
+    if (targetElement.scrollLeft === sourceScroll) return;
+
+    targetElement.scrollLeft = sourceScroll;
   };
 
   const scrollHorizontally = (delta: number) => {
@@ -184,7 +180,8 @@ export const ToursDesktopTable = ({
     const sourceElement = topElement || bottomElement;
     if (!sourceElement) return;
 
-    const nextScrollLeft = Math.max(0, sourceElement.scrollLeft + delta);
+    const maxScroll = Math.max(0, sourceElement.scrollWidth - sourceElement.clientWidth);
+    const nextScrollLeft = Math.max(0, Math.min(maxScroll, sourceElement.scrollLeft + delta));
     if (topElement) topElement.scrollLeft = nextScrollLeft;
     if (bottomElement) bottomElement.scrollLeft = nextScrollLeft;
   };
@@ -374,9 +371,10 @@ export const ToursDesktopTable = ({
             </Button>
             <div
               ref={topScrollRef}
-              className="h-5 min-w-0 flex-1 overflow-x-scroll overflow-y-hidden"
+              className="h-6 min-w-0 flex-1 overflow-x-scroll"
               onScroll={() => syncScroll('top')}
               onWheel={(event) => {
+                if (tableWidth <= (bottomScrollRef.current?.clientWidth ?? 0)) return;
                 event.preventDefault();
                 scrollHorizontally(event.deltaX + event.deltaY);
               }}

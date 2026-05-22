@@ -103,6 +103,8 @@ const Tours = () => {
     data: toursResult,
     isLoading,
     isFetching,
+    isError,
+    error,
   } = useQuery({
     queryKey: ['tours', baseTourQuery],
     queryFn: () => store.listTours({ ...baseTourQuery }, { includeDetails: true }),
@@ -173,10 +175,10 @@ const Tours = () => {
     mutationFn: (id: string) => store.duplicateTour(id),
     onSuccess: () => {
       void invalidateTourAggregateCaches(queryClient);
-      toast.success('Tour duplicated successfully');
+      toast.success('Nhân bản tour thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to duplicate tour');
+      toast.error(error.message || 'Nhân bản tour thất bại');
     },
   });
 
@@ -187,10 +189,10 @@ const Tours = () => {
     mutationFn: (id: string) => store.deleteTour(id),
     onSuccess: () => {
       void invalidateTourAggregateCaches(queryClient);
-      toast.success('Tour deleted successfully');
+      toast.success('Xóa tour thành công');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete tour');
+      toast.error(error.message || 'Xóa tour thất bại');
     },
   });
 
@@ -220,11 +222,11 @@ const Tours = () => {
 
   const handleDeleteAllConfirm = () => {
     if (deleteAllPinInput === CORRECT_PIN) {
-      toast.warning('Bulk delete not available. Please delete tours individually.');
+      toast.warning('Không hỗ trợ xóa hàng loạt. Vui lòng xóa từng tour.');
       setShowDeleteAllPinDialog(false);
       setDeleteAllPinInput('');
     } else {
-      toast.error('Incorrect PIN. Access denied.');
+      toast.error('Sai mã PIN. Từ chối truy cập.');
       setDeleteAllPinInput('');
     }
   };
@@ -232,7 +234,7 @@ const Tours = () => {
   const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
     const detailedTour = await store.getTour(tour.id);
     if (!detailedTour) {
-      throw new Error(`Unable to load details for tour ${tour.tourCode} from the database.`);
+      throw new Error(`Không thể tải chi tiết tour ${tour.tourCode} từ cơ sở dữ liệu.`);
     }
     return detailedTour;
   };
@@ -244,7 +246,7 @@ const Tours = () => {
     }
 
     if (totalTours === 0) {
-      toast.error('No tours to export');
+      toast.error('Không có tour nào để xuất');
       return;
     }
 
@@ -252,15 +254,15 @@ const Tours = () => {
       const { tours: toursWithDetails } = await store.listTours({ ...baseTourQuery }, { includeDetails: true });
 
       if (toursWithDetails.length === 0) {
-        toast.error('No tours to export');
+        toast.error('Không có tour nào để xuất');
         return;
       }
 
       await exportAllToursToMonthlyZip(toursWithDetails);
-      toast.success('All tours exported by month (ZIP)');
+      toast.success('Đã xuất tất cả tour theo tháng (ZIP)');
     } catch (error) {
       console.error('Failed to export tours to Excel', error);
-      toast.error('Failed to export tours ZIP. Please try again.');
+      toast.error('Xuất tour ZIP thất bại. Vui lòng thử lại.');
     }
   };
 
@@ -271,7 +273,7 @@ const Tours = () => {
     }
 
     if (totalTours === 0) {
-      toast.error('No tours to export');
+      toast.error('Không có tour nào để xuất');
       return;
     }
 
@@ -279,15 +281,15 @@ const Tours = () => {
       const { tours: toursWithDetails } = await store.listTours({ ...baseTourQuery }, { includeDetails: true });
 
       if (toursWithDetails.length === 0) {
-        toast.error('No tours to export');
+        toast.error('Không có tour nào để xuất');
         return;
       }
 
       await exportAllToursToExcel(toursWithDetails);
-      toast.success('All tours exported to a single Excel sheet');
+      toast.success('Đã xuất tất cả tour vào một trang Excel');
     } catch (error) {
       console.error('Failed to export all tours to single Excel', error);
-      toast.error('Failed to export single Excel. Please try again.');
+      toast.error('Xuất Excel thất bại. Vui lòng thử lại.');
     }
   };
 
@@ -301,13 +303,13 @@ const Tours = () => {
     try {
       const detailedTour = await fetchDetailedTour(tour);
       await exportTourToExcel(detailedTour);
-      toast.success(`Tour ${tour.tourCode} exported to Excel`);
+      toast.success(`Đã xuất tour ${tour.tourCode} ra Excel`);
     } catch (error) {
       console.error(`Failed to export tour ${tour.tourCode} to Excel`, error);
       const message =
         error instanceof Error && error.message.includes('Unable to load details')
           ? error.message
-          : 'Failed to export tour to Excel. Please try again.';
+          : 'Xuất tour ra Excel thất bại. Vui lòng thử lại.';
       toast.error(message);
     }
   };
@@ -349,13 +351,13 @@ const Tours = () => {
 
     setIsBackingUp(true);
     try {
-      toast.info('Generating SQL backup...');
+      toast.info('Đang tạo bản sao lưu SQL...');
       const sql = await generateFullSQLBackup();
       downloadSQLBackup(sql);
-      toast.success('Backup downloaded successfully!');
+      toast.success('Tải bản sao lưu thành công!');
     } catch (error) {
       console.error('Backup error:', error);
-      toast.error('Failed to generate backup');
+      toast.error('Tạo bản sao lưu thất bại');
     } finally {
       setIsBackingUp(false);
     }
@@ -369,7 +371,7 @@ const Tours = () => {
 
     setIsDownloadingImages(true);
     try {
-      toast.info('Fetching all tour images...');
+      toast.info('Đang lấy tất cả ảnh tour...');
       
       // Fetch all tour images from database
       const { data: allImages, error } = await supabase
@@ -380,18 +382,18 @@ const Tours = () => {
       if (error) throw error;
 
       if (!allImages || allImages.length === 0) {
-        toast.error('No images found in database');
+        toast.error('Không tìm thấy ảnh nào trong cơ sở dữ liệu');
         return;
       }
 
-      toast.info(`Downloading ${allImages.length} images...`);
+      toast.info(`Đang tải ${allImages.length} ảnh...`);
 
       const zip = new JSZip();
 
       // Group images by tour code
       const imagesByTour: Record<string, typeof allImages> = {};
       allImages.forEach((img) => {
-        const tourCode = (img.tours as any)?.tour_code || 'unknown';
+        const tourCode = (img.tours as any)?.tour_code || 'khong-ro';
         if (!imagesByTour[tourCode]) {
           imagesByTour[tourCode] = [];
         }
@@ -420,16 +422,16 @@ const Tours = () => {
       const url = URL.createObjectURL(content);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `all-tour-images.zip`;
+      link.download = `tat-ca-anh-tour.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success(`Downloaded ${allImages.length} images from ${Object.keys(imagesByTour).length} tours`);
+      toast.success(`Đã tải ${allImages.length} ảnh từ ${Object.keys(imagesByTour).length} tour`);
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download images');
+      toast.error('Tải ảnh thất bại');
     } finally {
       setIsDownloadingImages(false);
     }
@@ -510,6 +512,15 @@ const Tours = () => {
             allToursData={allToursData}
             showToursBackgroundRefresh={showToursBackgroundRefresh}
           />
+        )}
+
+        {isError && (
+          <div className="mt-6 rounded-lg border border-destructive/50 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <p className="font-semibold">Không thể tải danh sách tour</p>
+            <p className="mt-0.5 text-destructive/80">
+              {error instanceof Error ? error.message : 'Vui lòng thử lại sau.'}
+            </p>
+          </div>
         )}
 
         {showInitialToursSkeleton ? (
