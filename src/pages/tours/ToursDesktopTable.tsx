@@ -65,6 +65,7 @@ export const ToursDesktopTable = ({
   const [tableLandOperatorFilterOpen, setTableLandOperatorFilterOpen] = useState(false);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bottomScrollRef = useRef<HTMLDivElement>(null);
+  const syncingRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem('tours.table.columnVisibility', JSON.stringify(tableColumnVisibility));
@@ -73,6 +74,20 @@ export const ToursDesktopTable = ({
   useEffect(() => {
     localStorage.setItem('tours.table.filters', JSON.stringify(tableFilters));
   }, [tableFilters]);
+
+  // Sync scroll positions when table width changes
+  useEffect(() => {
+    const topElement = topScrollRef.current;
+    const bottomElement = bottomScrollRef.current;
+    
+    if (topElement && bottomElement) {
+      // Ensure both elements have the same scroll position
+      const currentScroll = bottomElement.scrollLeft;
+      if (topElement.scrollLeft !== currentScroll) {
+        topElement.scrollLeft = currentScroll;
+      }
+    }
+  }, [tableWidth, visibleColumns]);
 
   const visibleColumns = useMemo(
     () => TOUR_TABLE_COLUMNS.filter((column) => tableColumnVisibility[column.key]),
@@ -163,6 +178,8 @@ export const ToursDesktopTable = ({
   };
 
   const syncScroll = (source: 'top' | 'bottom') => {
+    if (syncingRef.current) return;
+    
     const sourceElement = source === 'top' ? topScrollRef.current : bottomScrollRef.current;
     const targetElement = source === 'top' ? bottomScrollRef.current : topScrollRef.current;
 
@@ -171,7 +188,13 @@ export const ToursDesktopTable = ({
     const sourceScroll = sourceElement.scrollLeft;
     if (Math.abs(targetElement.scrollLeft - sourceScroll) < 1) return;
 
+    syncingRef.current = true;
     targetElement.scrollLeft = sourceScroll;
+    
+    // Reset sync flag after a short delay
+    setTimeout(() => {
+      syncingRef.current = false;
+    }, 10);
   };
 
   const scrollHorizontally = (delta: number) => {
@@ -180,10 +203,16 @@ export const ToursDesktopTable = ({
     const sourceElement = topElement || bottomElement;
     if (!sourceElement) return;
 
+    syncingRef.current = true;
     const maxScroll = Math.max(0, sourceElement.scrollWidth - sourceElement.clientWidth);
     const nextScrollLeft = Math.max(0, Math.min(maxScroll, sourceElement.scrollLeft + delta));
+    
     if (topElement) topElement.scrollLeft = nextScrollLeft;
     if (bottomElement) bottomElement.scrollLeft = nextScrollLeft;
+    
+    setTimeout(() => {
+      syncingRef.current = false;
+    }, 10);
   };
 
   const renderHeader = (column: TourTableColumn) => {
@@ -372,7 +401,10 @@ export const ToursDesktopTable = ({
             <div
               ref={topScrollRef}
               className="h-6 min-w-0 flex-1 overflow-x-scroll overflow-y-hidden"
-              onScroll={() => syncScroll('top')}
+              onScroll={(e) => {
+                e.preventDefault();
+                syncScroll('top');
+              }}
               onWheel={(event) => {
                 const container = bottomScrollRef.current;
                 if (!container || tableWidth <= container.clientWidth) return;
@@ -381,16 +413,19 @@ export const ToursDesktopTable = ({
                 const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
                 scrollHorizontally(delta);
               }}
+              style={{ 
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(0,0,0,0.3) transparent'
+              }}
             >
-              <div className="flex h-4" style={{ width: `${tableWidth}px`, minWidth: `${tableWidth}px` }}>
-                {visibleColumns.map((column) => (
-                  <div
-                    key={column.key}
-                    className="h-full bg-transparent border-r border-transparent"
-                    style={{ width: column.width, minWidth: column.width, maxWidth: column.width }}
-                  />
-                ))}
-              </div>
+              <div 
+                className="h-4 bg-gradient-to-r from-transparent via-gray-100/20 to-transparent" 
+                style={{ 
+                  width: `${tableWidth}px`, 
+                  minWidth: `${tableWidth}px`,
+                  maxWidth: `${tableWidth}px`
+                }}
+              />
             </div>
             <Button type="button" variant="ghost" size="sm" className="h-6 w-6 shrink-0 p-0" onClick={() => scrollHorizontally(360)} aria-label="Cuộn bảng sang phải">
               <ChevronRight className="h-4 w-4" />
