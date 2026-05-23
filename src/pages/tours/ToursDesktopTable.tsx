@@ -75,6 +75,15 @@ export const ToursDesktopTable = ({
     localStorage.setItem('tours.table.filters', JSON.stringify(tableFilters));
   }, [tableFilters]);
 
+  const visibleColumns = useMemo(
+    () => TOUR_TABLE_COLUMNS.filter((column) => tableColumnVisibility[column.key]),
+    [tableColumnVisibility]
+  );
+  const tableWidth = useMemo(
+    () => visibleColumns.reduce((sum, column) => sum + column.width, 0),
+    [visibleColumns]
+  );
+
   // Sync scroll positions when table width changes
   useEffect(() => {
     const topElement = topScrollRef.current;
@@ -88,15 +97,6 @@ export const ToursDesktopTable = ({
       }
     }
   }, [tableWidth, visibleColumns]);
-
-  const visibleColumns = useMemo(
-    () => TOUR_TABLE_COLUMNS.filter((column) => tableColumnVisibility[column.key]),
-    [tableColumnVisibility]
-  );
-  const tableWidth = useMemo(
-    () => visibleColumns.reduce((sum, column) => sum + column.width, 0),
-    [visibleColumns]
-  );
 
   const companyOptions = useMemo(() => {
     const companies = new Set<string>();
