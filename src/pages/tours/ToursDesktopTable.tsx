@@ -169,7 +169,7 @@ export const ToursDesktopTable = ({
     if (!sourceElement || !targetElement) return;
 
     const sourceScroll = sourceElement.scrollLeft;
-    if (targetElement.scrollLeft === sourceScroll) return;
+    if (Math.abs(targetElement.scrollLeft - sourceScroll) < 1) return;
 
     targetElement.scrollLeft = sourceScroll;
   };
@@ -371,12 +371,15 @@ export const ToursDesktopTable = ({
             </Button>
             <div
               ref={topScrollRef}
-              className="h-6 min-w-0 flex-1 overflow-x-scroll"
+              className="h-6 min-w-0 flex-1 overflow-x-auto"
               onScroll={() => syncScroll('top')}
               onWheel={(event) => {
-                if (tableWidth <= (bottomScrollRef.current?.clientWidth ?? 0)) return;
+                const container = bottomScrollRef.current;
+                if (!container || tableWidth <= container.clientWidth) return;
+                
                 event.preventDefault();
-                scrollHorizontally(event.deltaX + event.deltaY);
+                const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
+                scrollHorizontally(delta);
               }}
             >
               <div className="h-1" style={{ width: `${tableWidth}px`, minWidth: `${tableWidth}px` }} />
@@ -385,7 +388,7 @@ export const ToursDesktopTable = ({
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <div ref={bottomScrollRef} className="w-full max-w-full overflow-x-scroll" onScroll={() => syncScroll('bottom')}>
+          <div ref={bottomScrollRef} className="w-full max-w-full overflow-x-auto" onScroll={() => syncScroll('bottom')}>
             <Table className="table-fixed text-xs" style={{ width: tableWidth, minWidth: tableWidth }}>
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-transparent">
