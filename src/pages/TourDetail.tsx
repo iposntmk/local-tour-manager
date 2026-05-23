@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
@@ -38,6 +38,7 @@ import { formatDateDMY, formatDateRangeDisplay } from '@/lib/date-utils';
 import { formatDate } from '@/lib/utils';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { useAuth } from '@/contexts/AuthContext';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Helper function to clamp guests (same logic as SummaryTab)
 const clampGuests = (guestValue: number | undefined, tourGuests: number): number => {
@@ -316,7 +317,54 @@ const TourDetail = () => {
   const hasWaterExpense = (displayTour?.expenses || []).some(exp =>
     waterExpenseNames.includes(exp.name || '')
   );
-  const showWaterWarning = !isNewTour && !hasWaterExpense;
+  const isWaterDismissed = displayTour?.waterExpenseDismissed === true;
+  const [waterDismissedLocal, setWaterDismissedLocal] = useState(false);
+  const showWaterWarning = !isNewTour && !hasWaterExpense && !isWaterDismissed && !waterDismissedLocal;
+
+  const dismissWaterMutation = useMutation({
+    mutationFn: async () => {
+      if (id) {
+        await store.updateTour(id, { waterExpenseDismissed: true });
+      }
+    },
+    onSuccess: () => {
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['tour', id] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
+      }
+      toast.success('Đã tắt cảnh báo nước uống cho tour này');
+    },
+  });
+
+  const handleDismissWater = useCallback(() => {
+    setWaterDismissedLocal(true);
+    dismissWaterMutation.mutate();
+  }, [dismissWaterMutation]);
+
+  const renderWaterWarningBanner = () => showWaterWarning ? (
+    <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">⚠️</span>
+        <div className="flex-1">
+          <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+            Thiếu chi phí nước uống
+          </h4>
+          <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+            Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
+          </p>
+          <label className="flex items-center gap-2 mt-3 cursor-pointer">
+            <Checkbox
+              checked={false}
+              onCheckedChange={handleDismissWater}
+            />
+            <span className="text-sm text-yellow-700 dark:text-yellow-300">
+              Tour này không bao gồm chi phí nước uống (bỏ qua cảnh báo)
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   const { classes: headerClasses } = useHeaderMode('tourdetail.headerMode');
 
@@ -537,42 +585,14 @@ const TourDetail = () => {
 
             {/* Tab contents */}
             <TabsContent value="info" className="animate-fade-in data-[state=inactive]:hidden" forceMount>
-              {showWaterWarning && (
-                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                        Thiếu chi phí nước uống
-                      </h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderWaterWarningBanner()}
               <div className="rounded-lg border bg-card p-6">
                 <TourInfoForm initialData={isNewTour ? undefined : tour} onSubmit={handleInfoSave} showSubmitButton={false} />
               </div>
             </TabsContent>
 
             <TabsContent value="destinations" className="animate-fade-in">
-              {showWaterWarning && (
-                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                        Thiếu chi phí nước uống
-                      </h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderWaterWarningBanner()}
               <DestinationsTab
                 tourId={isNewTour ? undefined : id!}
                 destinations={displayTour?.destinations || []}
@@ -601,21 +621,7 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="meals" className="animate-fade-in">
-              {showWaterWarning && (
-                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                        Thiếu chi phí nước uống
-                      </h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderWaterWarningBanner()}
               <MealsTab
                 tourId={isNewTour ? undefined : id!}
                 meals={displayTour?.meals || []}
@@ -630,42 +636,14 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="combined" className="animate-fade-in">
-              {showWaterWarning && (
-                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                        Thiếu chi phí nước uống
-                      </h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderWaterWarningBanner()}
               <CombinedTab
                 tour={displayTour}
               />
             </TabsContent>
 
             <TabsContent value="allowances" className="animate-fade-in">
-              {showWaterWarning && (
-                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                        Thiếu chi phí nước uống
-                      </h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderWaterWarningBanner()}
               <AllowancesTab
                 tourId={isNewTour ? undefined : id!}
                 allowances={displayTour?.allowances || []}
@@ -680,21 +658,7 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="summary" className="animate-fade-in">
-              {showWaterWarning && (
-                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                        Thiếu chi phí nước uống
-                      </h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderWaterWarningBanner()}
               <SummaryTab
                 tour={displayTour as Tour}
                 readOnly={!canEditSummary}
@@ -711,21 +675,7 @@ const TourDetail = () => {
             </TabsContent>
 
             <TabsContent value="shoppings" className="animate-fade-in">
-              {showWaterWarning && (
-                <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                        Thiếu chi phí nước uống
-                      </h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                        Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này trong tab Chi phí.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderWaterWarningBanner()}
               <ShoppingsTab
                 tourId={isNewTour ? undefined : id!}
                 shoppings={displayTour?.shoppings || []}

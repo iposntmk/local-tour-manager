@@ -6,16 +6,20 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
+import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import MasterMobileCard from '@/components/master/MasterMobileCard';
 import type { Company, CompanyInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
+import type { UserProfile } from '@/types/user';
 
 const Companies = () => {
   const queryClient = useQueryClient();
@@ -28,6 +32,16 @@ const Companies = () => {
   const [phoneFilter, setPhoneFilter] = useState('');
   const [idFilter, setIdFilter] = useState('');
   const { hasPermission, user, isAdmin } = useAuth();
+  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const profileMap = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    userProfiles.forEach(p => m.set(p.id, p));
+    return m;
+  }, [userProfiles]);
   const canCreate = hasPermission('create_companies');
   const canEdit = hasPermission('edit_companies');
   const canDelete = hasPermission('delete_companies');
@@ -94,6 +108,18 @@ const Companies = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Xóa tất cả công ty thất bại');
+    },
+  });
+
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
+      store.setMasterDataShared('companies', id, shared),
+    onSuccess: (_, { shared }) => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      toast.success(shared ? 'Đã chia sẻ' : 'Đã đặt về riêng tư');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Thao tác chia sẻ thất bại');
     },
   });
 
@@ -233,7 +259,7 @@ const Companies = () => {
   const { classes: headerClasses } = useHeaderMode('companies.headerMode');
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -304,6 +330,7 @@ const Companies = () => {
                       <TableHead>Điện thoại</TableHead>
                       <TableHead>Mặc định</TableHead>
                       <TableHead>Email</TableHead>
+                      {isAdmin && <TableHead>Người tạo</TableHead>}
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
@@ -341,6 +368,7 @@ const Companies = () => {
                       </TableHead>
                       <TableHead></TableHead>
                       <TableHead></TableHead>
+                      {isAdmin && <TableHead></TableHead>}
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -352,7 +380,12 @@ const Companies = () => {
                         onClick={() => canEdit && handleOpenDialog(company)}
                       >
                         <TableCell className="font-mono text-muted-foreground">{company.id}</TableCell>
-                        <TableCell className="font-medium">{company.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {company.name}
+                            <SharedBadge isShared={!!company.isShared} />
+                          </div>
+                        </TableCell>
                         <TableCell>{company.contactName || '-'}</TableCell>
                         <TableCell>{company.phone || '-'}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
@@ -364,8 +397,21 @@ const Companies = () => {
                           />
                         </TableCell>
                         <TableCell>{company.email || '-'}</TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-sm text-muted-foreground">
+                            {company.createdBy
+                              ? (profileMap.get(company.createdBy)?.fullName || profileMap.get(company.createdBy)?.email || company.createdBy.slice(0, 8))
+                              : '-'}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            {isAdmin && company.createdBy === user?.id && (
+                              <ShareToggleButton
+                                isShared={!!company.isShared}
+                                onToggle={() => shareMutation.mutate({ id: company.id, shared: !company.isShared })}
+                              />
+                            )}
                             {canEdit && (
                               <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(company)} className="h-8 w-8 p-0">
                                 <Edit className="h-4 w-4" />
@@ -402,63 +448,32 @@ const Companies = () => {
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
                 {filteredCompanies.map((company) => (
-                  <Card
+                  <MasterMobileCard
                     key={company.id}
-                    className="p-4 cursor-pointer hover:bg-accent/50"
+                    title={company.name}
+                    id={company.id}
+                    isDefault={company.isDefault}
+                    subtitle={company.contactName || 'Không có liên hệ'}
                     onClick={() => canEdit && handleOpenDialog(company)}
+                    onEdit={canEdit ? () => handleOpenDialog(company) : undefined}
+                    onDuplicate={canCreate ? () => duplicateMutation.mutate(company.id) : undefined}
+                    onDelete={canDelete ? () => {
+                      if (!ensureCanModifyOwnedEntity(company, user?.id, isAdmin)) return;
+                      if (confirm('Bạn có chắc chắn muốn xóa công ty này?')) {
+                        deleteMutation.mutate(company.id);
+                      }
+                    } : undefined}
+                    canEdit={canEdit}
+                    canCreate={canCreate}
+                    canDelete={canDelete}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{company.name}</h3>
-                          {company.isDefault && (
-                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-Mặc định
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground font-mono">{company.id}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {company.contactName || 'Không có liên hệ'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        {canEdit && (
-                          <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(company)} className="h-8 w-8 p-0">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canCreate && (
-                          <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(company.id)} className="h-8 w-8 p-0">
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (!ensureCanModifyOwnedEntity(company, user?.id, isAdmin)) return;
-                              if (confirm('Bạn có chắc chắn muốn xóa công ty này?')) {
-                                deleteMutation.mutate(company.id);
-                              }
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      {company.phone && (
-                        <p className="text-muted-foreground">{company.phone}</p>
-                      )}
-                      {company.email && (
-                        <p className="text-muted-foreground">{company.email}</p>
-                      )}
-                    </div>
-                  </Card>
+                    {(company.phone || company.email) && (
+                      <>
+                        {company.phone && <p>{company.phone}</p>}
+                        {company.email && <p>{company.email}</p>}
+                      </>
+                    )}
+                  </MasterMobileCard>
                 ))}
               </div>
             </>
@@ -486,7 +501,7 @@ ABC Travel,Nguyễn Văn A,0123-456-789,abc@example.com
 XYZ Tours,Trần Thị B,0987-654-321"
         />
       </div>
-    </>
+    </TooltipProvider>
   );
 };
 

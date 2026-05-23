@@ -16,6 +16,7 @@ import type {
   SubmissionHistoryEvent,
   TourPayment,
   TourPaymentInput,
+  CommissionPayment,
 } from './tour';
 import type { UserProfile, UserProfileInput } from './user';
 
@@ -24,6 +25,7 @@ export interface SearchQuery {
   status?: 'active' | 'inactive' | 'all';
   limit?: number;
   offset?: number;
+  guideId?: string;
 }
 
 export interface DataStore {
@@ -229,10 +231,22 @@ export interface DataStore {
   updateTourPayment(id: string, patch: Partial<TourPaymentInput>): Promise<void>;
   deleteTourPayment(id: string): Promise<void>;
 
+  // Shopping commission payments
+  listCommissionPayments(tourShoppingId: string): Promise<CommissionPayment[]>;
+  addCommissionPayment(payment: Omit<CommissionPayment, 'id'>): Promise<CommissionPayment>;
+  deleteCommissionPayment(id: string): Promise<void>;
+
   // Data management
   exportData(): Promise<any>;
   importData(data: any): Promise<void>;
   clearAllData(): Promise<void>;
+
+  // Master data sharing (admin only)
+  setMasterDataShared(
+    table: 'companies' | 'guides' | 'nationalities' | 'provinces' | 'tourist_destinations' | 'shoppings' | 'expense_categories' | 'detailed_expenses' | 'languages',
+    id: string,
+    shared: boolean
+  ): Promise<void>;
 
   // User Profiles
   listUserProfiles(query?: SearchQuery): Promise<UserProfile[]>;

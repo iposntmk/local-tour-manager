@@ -45,12 +45,12 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
 
     if (!formData.name.trim()) {
       newErrors.name = true;
-      missingFields.push('Country Name');
+      missingFields.push('Tên quốc gia');
     }
 
     if (missingFields.length > 0) {
       setErrors(newErrors);
-      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      toast.error(`Vui lòng điền đầy đủ các trường bắt buộc: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -72,16 +72,16 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{nationality ? 'Edit Nationality' : 'Add New Nationality'}</DialogTitle>
+            <DialogTitle>{nationality ? 'Sửa quốc tịch' : 'Thêm quốc tịch mới'}</DialogTitle>
             <DialogDescription>
-              {nationality ? 'Update nationality information' : 'Create a new nationality'}
+              {nationality ? 'Cập nhật thông tin quốc tịch' : 'Tạo quốc tịch mới'}
             </DialogDescription>
           </DialogHeader>
           {nationality && <CopyIdRow id={nationality.id} />}
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Country Name *</Label>
+              <Label htmlFor="name">Tên quốc gia *</Label>
               <Input
                 id="name"
                 value={formData.name}
@@ -89,7 +89,7 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
                   setFormData({ ...formData, name: e.target.value });
                   if (errors.name) setErrors({ ...errors, name: false });
                 }}
-                placeholder="Country name"
+                placeholder="Tên quốc gia"
                 className={errors.name ? 'border-destructive' : ''}
                 required
               />
@@ -97,7 +97,7 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="iso2">ISO Code</Label>
+                <Label htmlFor="iso2">Mã ISO</Label>
                 <Input
                   id="iso2"
                   value={formData.iso2}
@@ -105,14 +105,14 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
                     setFormData({ ...formData, iso2: e.target.value.toUpperCase() });
                     if (errors.iso2) setErrors({ ...errors, iso2: false });
                   }}
-                  placeholder="VN (optional)"
+                  placeholder="VN (không bắt buộc)"
                   className={errors.iso2 ? 'border-destructive' : ''}
                   maxLength={2}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="emoji">Flag Emoji</Label>
+                <Label htmlFor="emoji">Emoji quốc kỳ</Label>
                 <Input
                   id="emoji"
                   value={formData.emoji}
@@ -120,7 +120,7 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
                     setFormData({ ...formData, emoji: e.target.value });
                     if (errors.emoji) setErrors({ ...errors, emoji: false });
                   }}
-                  placeholder="🇻🇳 (optional)"
+                  placeholder="🇻🇳 (không bắt buộc)"
                   className={errors.emoji ? 'border-destructive' : ''}
                 />
               </div>
@@ -129,10 +129,10 @@ export function NationalityDialog({ open, onOpenChange, nationality, onSubmit }:
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : nationality ? 'Update' : 'Create'}
+              {isSubmitting ? 'Đang lưu...' : nationality ? 'Cập nhật' : 'Tạo mới'}
             </Button>
           </DialogFooter>
         </form>

@@ -5,16 +5,20 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
+import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import MasterMobileCard from '@/components/master/MasterMobileCard';
 import type { Nationality, NationalityInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
+import type { UserProfile } from '@/types/user';
 
 const Nationalities = () => {
   const queryClient = useQueryClient();
@@ -26,6 +30,16 @@ const Nationalities = () => {
   const [iso2Filter, setIso2Filter] = useState('');
   const [idFilter, setIdFilter] = useState('');
   const { hasPermission, user, isAdmin } = useAuth();
+  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const profileMap = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    userProfiles.forEach(p => m.set(p.id, p));
+    return m;
+  }, [userProfiles]);
   const canCreate = hasPermission('create_nationalities');
   const canEdit = hasPermission('edit_nationalities');
   const canDelete = hasPermission('delete_nationalities');
@@ -88,6 +102,18 @@ const Nationalities = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Xóa tất cả quốc tịch thất bại');
+    },
+  });
+
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
+      store.setMasterDataShared('nationalities', id, shared),
+    onSuccess: (_, { shared }) => {
+      queryClient.invalidateQueries({ queryKey: ['nationalities'] });
+      toast.success(shared ? 'Đã chia sẻ' : 'Đã đặt về riêng tư');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Thao tác chia sẻ thất bại');
     },
   });
 
@@ -199,7 +225,7 @@ const Nationalities = () => {
   const { classes: headerClasses } = useHeaderMode('nationalities.headerMode');
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -264,6 +290,7 @@ const Nationalities = () => {
                       <TableHead>Quốc gia</TableHead>
                       <TableHead>Mã ISO</TableHead>
                       <TableHead>Cờ</TableHead>
+                      {isAdmin && <TableHead>Người tạo</TableHead>}
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                     <TableRow>
@@ -292,6 +319,7 @@ const Nationalities = () => {
                         />
                       </TableHead>
                       <TableHead></TableHead>
+                      {isAdmin && <TableHead></TableHead>}
                       <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -303,13 +331,31 @@ const Nationalities = () => {
                         onClick={() => canEdit && handleOpenDialog(nationality)}
                       >
                         <TableCell className="font-mono text-muted-foreground">{nationality.id}</TableCell>
-                        <TableCell className="font-medium">{nationality.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {nationality.name}
+                            <SharedBadge isShared={!!nationality.isShared} />
+                          </div>
+                        </TableCell>
                         <TableCell>{nationality.iso2 || '-'}</TableCell>
                         <TableCell>
                           <span className="text-2xl">{nationality.emoji || '-'}</span>
                         </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-sm text-muted-foreground">
+                            {nationality.createdBy
+                              ? (profileMap.get(nationality.createdBy)?.fullName || profileMap.get(nationality.createdBy)?.email || nationality.createdBy.slice(0, 8))
+                              : '-'}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            {isAdmin && nationality.createdBy === user?.id && (
+                              <ShareToggleButton
+                                isShared={!!nationality.isShared}
+                                onToggle={() => shareMutation.mutate({ id: nationality.id, shared: !nationality.isShared })}
+                              />
+                            )}
                             {canEdit && (
                               <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(nationality)} className="h-8 w-8 p-0">
                                 <Edit className="h-4 w-4" />
@@ -346,53 +392,25 @@ const Nationalities = () => {
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
                 {filteredNationalities.map((nationality) => (
-                  <Card
+                  <MasterMobileCard
                     key={nationality.id}
-                    className="p-4 cursor-pointer hover:bg-accent/50"
+                    title={nationality.name}
+                    leading={<span className="text-2xl">{nationality.emoji || '🌍'}</span>}
+                    id={nationality.id}
+                    subtitle={nationality.iso2 ? nationality.iso2.toUpperCase() : 'Không có mã ISO'}
                     onClick={() => canEdit && handleOpenDialog(nationality)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-3 flex-1">
-                        <span className="text-3xl">{nationality.emoji || '🌍'}</span>
-                        <div>
-                          <h3 className="font-semibold">{nationality.name}</h3>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {nationality.id}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {nationality.iso2 || 'Không có mã ISO'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        {canEdit && (
-                          <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(nationality)} className="h-8 w-8 p-0">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canCreate && (
-                          <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(nationality.id)} className="h-8 w-8 p-0">
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (!ensureCanModifyOwnedEntity(nationality, user?.id, isAdmin)) return;
-                              if (confirm('Bạn có chắc chắn muốn xóa quốc tịch này?')) {
-                                deleteMutation.mutate(nationality.id);
-                              }
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
+                    onEdit={canEdit ? () => handleOpenDialog(nationality) : undefined}
+                    onDuplicate={canCreate ? () => duplicateMutation.mutate(nationality.id) : undefined}
+                    onDelete={canDelete ? () => {
+                      if (!ensureCanModifyOwnedEntity(nationality, user?.id, isAdmin)) return;
+                      if (confirm('Bạn có chắc chắn muốn xóa quốc tịch này?')) {
+                        deleteMutation.mutate(nationality.id);
+                      }
+                    } : undefined}
+                    canEdit={canEdit}
+                    canCreate={canCreate}
+                    canDelete={canDelete}
+                  />
                 ))}
               </div>
             </>
@@ -429,7 +447,7 @@ Pháp,FR,🇫🇷"
           }}
         />
       </div>
-    </>
+    </TooltipProvider>
   );
 };
 

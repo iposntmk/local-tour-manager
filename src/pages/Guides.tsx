@@ -6,10 +6,13 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
+import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import MasterMobileCard from '@/components/master/MasterMobileCard';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 
 import { GuideDialog } from '@/components/guides/GuideDialog';
@@ -17,6 +20,7 @@ import type { Guide, GuideInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
+import type { UserProfile } from '@/types/user';
 
 const Guides = () => {
   const queryClient = useQueryClient();
@@ -33,6 +37,17 @@ const Guides = () => {
   const canDelete = hasPermission('delete_guides');
   const canImport = hasPermission('import_guides');
   const canExport = hasPermission('export_guides');
+
+  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const profileMap = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    userProfiles.forEach(p => m.set(p.id, p));
+    return m;
+  }, [userProfiles]);
 
   const query: SearchQuery = {
     search,
@@ -99,6 +114,18 @@ const Guides = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Xóa tất cả HDV thất bại');
+    },
+  });
+
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
+      store.setMasterDataShared('guides', id, shared),
+    onSuccess: (_, { shared }) => {
+      queryClient.invalidateQueries({ queryKey: ['guides'] });
+      toast.success(shared ? 'Đã chia sẻ HDV' : 'Đã đặt HDV về riêng tư');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Thao tác chia sẻ thất bại');
     },
   });
 
@@ -223,7 +250,7 @@ const Guides = () => {
   const { classes: headerClasses } = useHeaderMode('guides.headerMode');
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -294,7 +321,8 @@ const Guides = () => {
                       <TableHead>Ngôn ngữ</TableHead>
                       <TableHead>Mặc định</TableHead>
                       <TableHead>Ghi chú</TableHead>
-                      <TableHead className="w-[70px]"></TableHead>
+                      {isAdmin && <TableHead>Người tạo</TableHead>}
+                      <TableHead className="w-[100px]"></TableHead>
                     </TableRow>
                     <TableRow>
                       <TableHead>
@@ -324,6 +352,7 @@ const Guides = () => {
                       <TableHead></TableHead>
                       <TableHead></TableHead>
                       <TableHead></TableHead>
+                      {isAdmin && <TableHead></TableHead>}
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -335,7 +364,12 @@ const Guides = () => {
                         onClick={() => canEdit && handleOpenDialog(guide)}
                       >
                         <TableCell className="font-mono text-muted-foreground">{guide.id}</TableCell>
-                        <TableCell className="font-medium">{guide.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {guide.name}
+                            <SharedBadge isShared={!!guide.isShared} />
+                          </div>
+                        </TableCell>
                         <TableCell>{guide.phone || '-'}</TableCell>
                         <TableCell className="max-w-xs truncate">
                           {guide.languages.length > 0 ? guide.languages.map((language) => language.name).join(', ') : '-'}
@@ -349,8 +383,21 @@ const Guides = () => {
                           />
                         </TableCell>
                         <TableCell className="max-w-xs truncate">{guide.note || '-'}</TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-sm text-muted-foreground">
+                            {guide.createdBy
+                              ? (profileMap.get(guide.createdBy)?.fullName || profileMap.get(guide.createdBy)?.email || guide.createdBy.slice(0, 8))
+                              : '-'}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            {isAdmin && guide.createdBy === user?.id && (
+                              <ShareToggleButton
+                                isShared={!!guide.isShared}
+                                onToggle={() => shareMutation.mutate({ id: guide.id, shared: !guide.isShared })}
+                              />
+                            )}
                             {canEdit && (
                               <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(guide)} className="h-8 w-8 p-0">
                                 <Edit className="h-4 w-4" />
@@ -387,63 +434,34 @@ const Guides = () => {
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
                 {filteredGuides.map((guide) => (
-                  <Card
+                  <MasterMobileCard
                     key={guide.id}
-                    className="p-4 cursor-pointer hover:bg-accent/50"
-                    onClick={() => canEdit && handleOpenDialog(guide)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{guide.name}</h3>
-                          {guide.isDefault && (
-                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                              Mặc định
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground font-mono">{guide.id}</p>
-                        <p className="text-sm text-muted-foreground">{guide.phone || 'Không có điện thoại'}</p>
+                    title={guide.name}
+                    id={guide.id}
+                    isDefault={guide.isDefault}
+                    subtitle={
+                      <>
+                        {guide.phone || 'Không có điện thoại'}
                         {guide.languages.length > 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            {guide.languages.map((language) => language.name).join(', ')}
-                          </p>
+                          <> • {guide.languages.map((l) => l.name).join(', ')}</>
                         )}
-                      </div>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        {canEdit && (
-                          <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(guide)} className="h-8 w-8 p-0">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canCreate && (
-                          <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(guide.id)} className="h-8 w-8 p-0">
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (!ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
-                              if (confirm('Bạn có chắc chắn muốn xóa HDV này?')) {
-                                deleteMutation.mutate(guide.id);
-                              }
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {guide.note && (
-                        <p className="text-sm text-muted-foreground">{guide.note}</p>
-                      )}
-                    </div>
-                  </Card>
+                      </>
+                    }
+                    onClick={() => canEdit && handleOpenDialog(guide)}
+                    onEdit={canEdit ? () => handleOpenDialog(guide) : undefined}
+                    onDuplicate={canCreate ? () => duplicateMutation.mutate(guide.id) : undefined}
+                    onDelete={canDelete ? () => {
+                      if (!ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
+                      if (confirm('Bạn có chắc chắn muốn xóa HDV này?')) {
+                        deleteMutation.mutate(guide.id);
+                      }
+                    } : undefined}
+                    canEdit={canEdit}
+                    canCreate={canCreate}
+                    canDelete={canDelete}
+                  >
+                    {guide.note && <p>{guide.note}</p>}
+                  </MasterMobileCard>
                 ))}
               </div>
             </>
@@ -481,7 +499,7 @@ Lê Văn Cường,0111222333"
           }}
         />
       </div>
-    </>
+    </TooltipProvider>
   );
 };
 

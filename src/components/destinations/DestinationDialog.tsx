@@ -75,19 +75,19 @@ export function DestinationDialog({
     const newErrors: { province?: boolean } = {};
 
     if (!data.name.trim()) {
-      missingFields.push('Destination Name');
+      missingFields.push('Tên điểm đến');
     }
     if (data.price === undefined || data.price === null || data.price <= 0) {
-      missingFields.push('Price');
+      missingFields.push('Giá');
     }
     if (!selectedProvinceId) {
-      missingFields.push('Province');
+      missingFields.push('Tỉnh thành');
       newErrors.province = true;
     }
 
     if (missingFields.length > 0) {
       setFieldErrors(newErrors);
-      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      toast.error(`Vui lòng điền đầy đủ các trường bắt buộc: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -110,15 +110,15 @@ export function DestinationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Destination' : 'Add New Destination'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Sửa điểm đến' : 'Thêm điểm đến mới'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Destination Name *</Label>
+            <Label htmlFor="name">Tên điểm đến *</Label>
             <Input
               id="name"
-              {...register('name', { required: 'Destination name is required' })}
-              placeholder="e.g., Đại Nội, Hội An Ancient Town..."
+              {...register('name', { required: 'Tên điểm đến là bắt buộc' })}
+              placeholder="VD: Đại Nội, Phố cổ Hội An..."
               className={errors.name ? 'border-destructive' : ''}
             />
             {errors.name && (
@@ -127,7 +127,7 @@ export function DestinationDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Province *</Label>
+            <Label>Tỉnh thành *</Label>
             <Popover open={provinceOpen} onOpenChange={setProvinceOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -139,15 +139,15 @@ export function DestinationDialog({
                     fieldErrors.province && 'border-destructive'
                   )}
                 >
-                  {selectedProvince ? selectedProvince.name : 'Select province...'}
+                  {selectedProvince ? selectedProvince.name : 'Chọn tỉnh thành...'}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
                 <Command>
-                  <CommandInput placeholder="Search province..." />
+                  <CommandInput placeholder="Tìm tỉnh thành..." />
                   <CommandList>
-                    <CommandEmpty>No province found.</CommandEmpty>
+                    <CommandEmpty>Không tìm thấy tỉnh thành.</CommandEmpty>
                     <CommandGroup>
                       {provinces.map((province) => (
                         <CommandItem
@@ -176,7 +176,7 @@ export function DestinationDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price">Price (VND) *</Label>
+            <Label htmlFor="price">Giá (VND) *</Label>
             <CurrencyInput
               value={watch('price')}
               onChange={(value) => setValue('price', value)}
@@ -189,10 +189,10 @@ export function DestinationDialog({
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button type="submit">
-              {isEditing ? 'Update' : 'Create'}
+              {isEditing ? 'Cập nhật' : 'Tạo mới'}
             </Button>
           </div>
         </form>

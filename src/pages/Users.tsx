@@ -5,6 +5,7 @@ import { store } from '@/lib/datastore';
 import { UserProfile, USER_ROLE_LABELS, USER_STATUS_LABELS, SETTLEMENT_ROLE_LABELS } from '@/types/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -13,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useHeaderMode } from '@/hooks/useHeaderMode';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +47,7 @@ export default function Users() {
   const canDeleteUsers = hasPermission('delete_users');
   const canManageUserActions = canEditUsers || canDeleteUsers;
   const userTableColumnCount = canManageUserActions ? 7 : 6;
+  const { classes: headerClasses } = useHeaderMode('users.headerMode');
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['user-profiles', searchTerm, statusTab],
@@ -121,9 +124,10 @@ export default function Users() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4">
+    <div className="container mx-auto py-6 px-4 space-y-6">
+      <div className={headerClasses}>
       {/* Header */}
-      <div className="flex flex-col gap-4 mb-6">
+      <div className="flex flex-col gap-4">
         {/* Back button */}
         <Button
           variant="ghost"
@@ -177,9 +181,10 @@ export default function Users() {
           </Tabs>
         </div>
       </div>
+      </div>
 
-      {/* Table */}
-      <div className="border rounded-lg">
+      {/* Desktop Table */}
+      <div className="hidden md:block border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
@@ -263,6 +268,70 @@ export default function Users() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden space-y-4">
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">Không tìm thấy người dùng</div>
+        ) : (
+          users.map((user) => (
+            <Card key={user.id} className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold truncate">{user.email}</h3>
+                  {user.fullName && (
+                    <p className="text-sm text-muted-foreground">{user.fullName}</p>
+                  )}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span
+                      className={`inline-block h-2.5 w-2.5 rounded-full ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`}
+                    />
+                    <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
+                      {USER_ROLE_LABELS[user.role]}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {SETTLEMENT_ROLE_LABELS[user.settlementRole]}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {user.createdAt
+                      ? new Date(user.createdAt).toLocaleDateString('vi-VN')
+                      : '—'}
+                  </p>
+                </div>
+                {canManageUserActions && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {canEditUsers && (
+                        <DropdownMenuItem onClick={() => handleEdit(user)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Chỉnh sửa
+                        </DropdownMenuItem>
+                      )}
+                      {canDeleteUsers && user.id !== currentUserProfile?.id && (
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(user)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Xóa
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Dialogs */}

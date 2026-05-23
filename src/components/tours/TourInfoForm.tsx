@@ -23,6 +23,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Plus, Save } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { GuideDialog } from '@/components/guides/GuideDialog';
@@ -39,6 +40,8 @@ interface TourInfoFormProps {
 }
 
 type QuickAddTarget = 'company' | 'landOperator' | 'guide' | 'nationality';
+
+const DEFAULT_LAND_OPERATOR_ID = '39c48c1c-9ec4-4db3-9fb9-d5e32176cbd2';
 
 const getInitialTourNationalities = (initialData?: Tour): TourNationality[] => {
   if (!initialData) return [];
@@ -64,6 +67,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
   const [selectedLandOperatorId, setSelectedLandOperatorId] = useState(initialData?.landOperatorRef?.id || '');
   const [selectedGuideId, setSelectedGuideId] = useState(initialData?.guideRef.id || '');
   const [selectedNationalities, setSelectedNationalities] = useState<TourNationality[]>(() => getInitialTourNationalities(initialData));
+  const [saveCompanyPref, setSaveCompanyPref] = useState(() => localStorage.getItem('tourform.saveCompanyPref') === 'true');
   const canCreateCompanies = hasPermission('create_companies');
   const canCreateGuides = hasPermission('create_guides');
   const canCreateNationalities = hasPermission('create_nationalities');
@@ -96,18 +100,30 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
   });
 
   useEffect(() => {
-    if (initialData || selectedCompanyId || companies.length === 0) {
-      return;
-    }
+    if (initialData || selectedCompanyId || companies.length === 0) return;
 
-    const defaultCompany = companies.find((company) => company.isDefault);
-    if (!defaultCompany) {
-      return;
+    const savedPref = localStorage.getItem('tourform.saveCompanyPref') === 'true';
+    if (savedPref) {
+      const savedCompanyId = localStorage.getItem('tourform.savedCompanyId');
+      if (savedCompanyId) {
+        const savedCompany = companies.find((c) => c.id === savedCompanyId);
+        if (savedCompany) {
+          setSelectedCompanyId(savedCompany.id);
+          setValue('companyRef', { id: savedCompany.id, nameAtBooking: savedCompany.name });
+        }
+      }
     }
-
-    setSelectedCompanyId(defaultCompany.id);
-    setValue('companyRef', { id: defaultCompany.id, nameAtBooking: defaultCompany.name });
   }, [companies, initialData, selectedCompanyId, setValue]);
+
+  useEffect(() => {
+    if (initialData || selectedLandOperatorId || companies.length === 0) return;
+
+    const defaultLandOperator = companies.find((c) => c.id === DEFAULT_LAND_OPERATOR_ID);
+    if (!defaultLandOperator) return;
+
+    setSelectedLandOperatorId(defaultLandOperator.id);
+    setValue('landOperatorRef', { id: defaultLandOperator.id, nameAtBooking: defaultLandOperator.name });
+  }, [companies, initialData, selectedLandOperatorId, setValue]);
 
   const { data: guides = [] } = useQuery({
     queryKey: ['guides'],
@@ -271,6 +287,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
       !startDate ||
       !endDate ||
       !selectedCompanyId ||
+      !selectedLandOperatorId ||
       !selectedGuideId ||
       selectedNationalities.length === 0 ||
       (totalGuests > 0 && nationalityPaxTotal !== totalGuests)
@@ -285,7 +302,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
     const selectedGuide = guides.find((g) => g.id === selectedGuideId);
     const primaryNationality = selectedNationalities[0];
 
-    if (!selectedCompany || !selectedGuide || !primaryNationality) {
+    if (!selectedCompany || !selectedLandOperator || !selectedGuide || !primaryNationality) {
       return;
     }
 
@@ -301,9 +318,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
         driverName,
         clientPhone,
         companyRef: { id: selectedCompany.id, nameAtBooking: selectedCompany.name },
-        landOperatorRef: selectedLandOperator
-          ? { id: selectedLandOperator.id, nameAtBooking: selectedLandOperator.name }
-          : undefined,
+        landOperatorRef: { id: selectedLandOperator.id, nameAtBooking: selectedLandOperator.name },
         guideRef: { id: selectedGuide.id, nameAtBooking: selectedGuide.name },
         clientNationalityRef: { id: primaryNationality.id, nameAtBooking: primaryNationality.nameAtBooking },
         clientNationalities: selectedNationalities,
@@ -352,7 +367,10 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
       missingFields.push('Ngày kết thúc');
     }
     if (!selectedCompanyId) {
-      missingFields.push('Công ty');
+      missingFields.push('Công ty mẹ');
+    }
+    if (!selectedLandOperatorId) {
+      missingFields.push('Công ty land tour');
     }
     if (!selectedGuideId) {
       missingFields.push('Hướng dẫn viên');
@@ -380,22 +398,37 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
     const selectedGuide = guides.find((g) => g.id === selectedGuideId);
     const primaryNationality = selectedNationalities[0];
 
-    if (!selectedCompany || !selectedGuide || !primaryNationality) {
-      toast.error('Vui lòng chọn Công ty, Hướng dẫn viên và Quốc tịch hợp lệ');
+    if (!selectedCompany || !selectedLandOperator || !selectedGuide || !primaryNationality) {
+      toast.error('Vui lòng chọn Công ty mẹ, Công ty land tour, Hướng dẫn viên và Quốc tịch hợp lệ');
       return;
     }
 
     onSubmit({
       ...data,
       companyRef: { id: selectedCompany.id, nameAtBooking: selectedCompany.name },
-      landOperatorRef: selectedLandOperator
-        ? { id: selectedLandOperator.id, nameAtBooking: selectedLandOperator.name }
-        : undefined,
+      landOperatorRef: { id: selectedLandOperator.id, nameAtBooking: selectedLandOperator.name },
       guideRef: { id: selectedGuide.id, nameAtBooking: selectedGuide.name },
       clientNationalityRef: { id: primaryNationality.id, nameAtBooking: primaryNationality.nameAtBooking },
       clientNationalities: selectedNationalities,
     });
   };
+
+  const handleSavePrefChange = (checked: boolean | 'indeterminate') => {
+    const enabled = checked === true;
+    setSaveCompanyPref(enabled);
+    localStorage.setItem('tourform.saveCompanyPref', String(enabled));
+    if (enabled && selectedCompanyId) {
+      localStorage.setItem('tourform.savedCompanyId', selectedCompanyId);
+    } else {
+      localStorage.removeItem('tourform.savedCompanyId');
+    }
+  };
+
+  useEffect(() => {
+    if (saveCompanyPref && selectedCompanyId) {
+      localStorage.setItem('tourform.savedCompanyId', selectedCompanyId);
+    }
+  }, [selectedCompanyId, saveCompanyPref]);
 
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
   const selectedLandOperator = companies.find((c) => c.id === selectedLandOperatorId);
@@ -418,9 +451,9 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
           )}
         </div>
 
-        {/* Company */}
+        {/* Công ty mẹ */}
         <div className="space-y-2">
-          <Label>Công ty *</Label>
+          <Label>Công ty mẹ *</Label>
           <div className="flex gap-2">
             <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
               <PopoverTrigger asChild>
@@ -430,15 +463,15 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
                   role="combobox"
                   className={cn("min-w-0 flex-1 justify-between", getRequiredFieldClasses(!selectedCompanyId))}
                 >
-                  <span className="truncate">{selectedCompany ? selectedCompany.name : 'Chọn công ty...'}</span>
+                  <span className="truncate">{selectedCompany ? selectedCompany.name : 'Chọn công ty mẹ...'}</span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
                 <Command>
-                  <CommandInput placeholder="Tìm công ty..." />
+                  <CommandInput placeholder="Tìm công ty mẹ..." />
                   <CommandList>
-                    <CommandEmpty>Không tìm thấy công ty.</CommandEmpty>
+                    <CommandEmpty>Không tìm thấy công ty mẹ.</CommandEmpty>
                     <CommandGroup>
                       {companies.map((company) => (
                         <CommandItem
@@ -468,19 +501,34 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
                 type="button"
                 variant="outline"
                 size="icon"
-                aria-label="Thêm công ty"
-                title="Thêm công ty"
+                aria-label="Thêm công ty mẹ"
+                title="Thêm công ty mẹ"
                 onClick={() => openQuickAdd('company')}
               >
                 <Plus className="h-4 w-4" />
               </Button>
             )}
           </div>
+          {!initialData && (
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="save-company-pref"
+                checked={saveCompanyPref}
+                onCheckedChange={handleSavePrefChange}
+              />
+              <Label
+                htmlFor="save-company-pref"
+                className="cursor-pointer text-sm text-muted-foreground select-none"
+              >
+                Lưu công ty mẹ cho lần tạo tour tiếp theo
+              </Label>
+            </div>
+          )}
         </div>
 
-        {/* Land Operator (optional) */}
+        {/* Công ty land tour */}
         <div className="space-y-2">
-          <Label>Công ty land tour</Label>
+          <Label>Công ty land tour *</Label>
           <div className="flex gap-2">
             <Popover open={landOperatorOpen} onOpenChange={setLandOperatorOpen}>
               <PopoverTrigger asChild>
@@ -488,10 +536,10 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
                   type="button"
                   variant="outline"
                   role="combobox"
-                  className="min-w-0 flex-1 justify-between"
+                  className={cn("min-w-0 flex-1 justify-between", getRequiredFieldClasses(!selectedLandOperatorId))}
                 >
                   <span className="truncate">
-                    {selectedLandOperator ? selectedLandOperator.name : 'Chọn công ty land tour (nếu có)...'}
+                    {selectedLandOperator ? selectedLandOperator.name : 'Chọn công ty land tour...'}
                   </span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -500,24 +548,8 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true }:
                 <Command>
                   <CommandInput placeholder="Tìm công ty land tour..." />
                   <CommandList>
-                    <CommandEmpty>Không tìm thấy công ty.</CommandEmpty>
+                    <CommandEmpty>Không tìm thấy công ty land tour.</CommandEmpty>
                     <CommandGroup>
-                      <CommandItem
-                        key="__none__"
-                        value="__none__"
-                        onSelect={() => {
-                          setSelectedLandOperatorId('');
-                          setLandOperatorOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            'mr-2 h-4 w-4',
-                            !selectedLandOperatorId ? 'opacity-100' : 'opacity-0'
-                          )}
-                        />
-                        <span className="text-muted-foreground">— Không có —</span>
-                      </CommandItem>
                       {companies.map((company) => (
                         <CommandItem
                           key={company.id}

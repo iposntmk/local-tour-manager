@@ -56,8 +56,8 @@ const Index = () => {
     },
     {
       icon: BarChart3,
-      title: 'Statistics',
-      description: 'Track revenue, allowances, and tips across tours',
+      title: 'Thống kê',
+      description: 'Theo dõi doanh thu, phụ cấp và tip theo tour',
       action: () => navigate('/statistics'),
       color: 'text-primary'
     },

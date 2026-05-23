@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Lock, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, ChevronsUpDown, Lock, MoreHorizontal, WalletCards, Flag } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   DropdownMenu,
@@ -20,13 +20,49 @@ import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Shopping, Tour } from '@/types/tour';
+import type { CommissionPayment, PaymentMethod, Shopping, Tour } from '@/types/tour';
 import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
 import type { Shopping as MasterShopping } from '@/types/master';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import { useAuth } from '@/contexts/AuthContext';
 
 const REQUIRED_PIN = '0829101188';
+const paymentMethodLabels: Record<PaymentMethod, string> = {
+  cash: 'Tiền mặt',
+  bank_transfer: 'Chuyển khoản',
+};
+
+const getNetCommission = (shopping: Shopping) => shopping.netCommission ?? Math.max(0, shopping.price - (shopping.pitAmount || 0));
+const getPaidTotal = (shopping: Shopping) => (shopping.payments || []).reduce((sum, payment) => sum + payment.amount, 0);
+const getPaymentRemaining = (shopping: Shopping) => Math.max(0, getNetCommission(shopping) - getPaidTotal(shopping));
+const isFullyReceived = (shopping: Shopping) => getPaymentRemaining(shopping) <= 0 && (shopping.payments || []).length > 0;
+const getCommissionStatus = (shopping: Shopping) => {
+  const payments = shopping.payments || [];
+  if (payments.length === 0) return 'pending';
+  return getPaidTotal(shopping) >= getNetCommission(shopping) ? 'paid' : 'partial';
+};
+const getCommissionStatusLabel = (shopping: Shopping) => {
+  const status = shopping.commissionStatus || getCommissionStatus(shopping);
+  if (status === 'paid') return 'Đã nhận đủ';
+  if (status === 'partial') return 'Một phần';
+  return 'Chưa nhận';
+};
+const getCommissionBadgeVariant = (shopping: Shopping) => {
+  const status = shopping.commissionStatus || getCommissionStatus(shopping);
+  return status === 'paid' ? 'default' : status === 'partial' ? 'secondary' : 'outline';
+};
+const getCommissionRowClass = (shopping: Shopping) => {
+  if ((shopping.price ?? 0) === 0) return 'bg-red-50 dark:bg-red-950';
+  const status = shopping.commissionStatus || getCommissionStatus(shopping);
+  if (status === 'paid') return 'bg-emerald-50/80 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/40';
+  if (status === 'partial') return 'bg-amber-50/80 hover:bg-amber-50 dark:bg-amber-950/30 dark:hover:bg-amber-950/40';
+  return 'bg-red-100/80 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-950/50';
+};
 
 interface ShoppingsTabProps {
   tourId?: string;
@@ -47,7 +83,19 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
   const [openShopping, setOpenShopping] = useState(false);
   const [showNewShoppingDialog, setShowNewShoppingDialog] = useState(false);
   const [newShoppingName, setNewShoppingName] = useState('');
+  const [formReceiveFull, setFormReceiveFull] = useState(false);
+  const [formCashPayment, setFormCashPayment] = useState(false);
+  const [expandedPaymentIndex, setExpandedPaymentIndex] = useState<number | null>(null);
+  const [quickCashByShopping, setQuickCashByShopping] = useState<Record<string, boolean>>({});
+  const [paymentForm, setPaymentForm] = useState<Omit<CommissionPayment, 'id' | 'tourShoppingId'>>({
+    amount: 0,
+    paymentMethod: 'cash',
+    paidAt: new Date().toISOString().split('T')[0],
+    note: '',
+  });
   const queryClient = useQueryClient();
+  const { isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
 
   // Initialize formData with tour's start date
   const [formData, setFormData] = useState<Shopping>(() => ({
@@ -57,14 +105,29 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
   }));
 
   const { data: shoppingItems = [] } = useQuery({
-    queryKey: ['shoppings'],
-    queryFn: () => store.listShoppings({ status: 'active' }),
+    queryKey: ['shoppings', guideId ?? null],
+    queryFn: () => store.listShoppings({ status: 'active', guideId }),
   });
+
+  const updateFormCommission = (patch: Partial<Shopping>, options?: { manualPitAmount?: boolean }) => {
+    const next = { ...formData, ...patch };
+    const shouldAutoCalculatePit = !options?.manualPitAmount && (patch.price !== undefined || patch.pitRate !== undefined || patch.withholdsPit !== undefined);
+    const pitAmount = next.withholdsPit
+      ? shouldAutoCalculatePit
+        ? Math.round((next.price || 0) * (next.pitRate || 0))
+        : (next.pitAmount ?? Math.round((next.price || 0) * (next.pitRate || 0)))
+      : 0;
+    setFormData({
+      ...next,
+      pitAmount,
+      netCommission: Math.max(0, (next.price || 0) - pitAmount),
+    });
+  };
 
   // Update formData date when tour data loads
   useEffect(() => {
-    if (tour?.startDate && !formData.date) {
-      setFormData(prev => ({ ...prev, date: tour.startDate }));
+    if (tour?.startDate) {
+      setFormData(prev => prev.date ? prev : { ...prev, date: tour.startDate });
     }
   }, [tour?.startDate]);
 
@@ -83,6 +146,8 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
       }
       toast.success('Đã thêm mục mua sắm');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+      setFormReceiveFull(false);
+      setFormCashPayment(false);
     },
   });
 
@@ -124,11 +189,61 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     },
   });
 
+  const addPaymentMutation = useMutation({
+    mutationFn: async ({ shopping, payment }: { shopping: Shopping; payment: Omit<CommissionPayment, 'id' | 'tourShoppingId'> }) => {
+      if (!shopping.id) throw new Error('Chỉ thêm thanh toán sau khi mục mua sắm đã được lưu.');
+      return store.addCommissionPayment({ ...payment, tourShoppingId: shopping.id });
+    },
+    onSuccess: () => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
+      }
+      setPaymentForm({
+        amount: 0,
+        paymentMethod: 'cash',
+        paidAt: new Date().toISOString().split('T')[0],
+        note: '',
+      });
+      toast.success('Đã thêm khoản nhận hoa hồng');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: (id: string) => store.deleteCommissionPayment(id),
+    onSuccess: () => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
+      }
+      toast.success('Đã xóa khoản nhận hoa hồng');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const clearPaymentsMutation = useMutation({
+    mutationFn: async (shopping: Shopping) => {
+      const paymentIds = (shopping.payments || [])
+        .map((payment) => payment.id)
+        .filter((id): id is string => Boolean(id));
+      await Promise.all(paymentIds.map((id) => store.deleteCommissionPayment(id)));
+    },
+    onSuccess: () => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
+      }
+      toast.success('Đã bỏ ghi nhận hoa hồng');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const createShoppingMutation = useMutation({
-    mutationFn: (name: string) => store.createShopping({ name }),
+    mutationFn: (name: string) => store.createShopping({ name, guideId }),
     onSuccess: (newShopping) => {
-      queryClient.setQueryData<MasterShopping[]>(['shoppings'], (current) => upsertById(current, newShopping));
-      queryClient.invalidateQueries({ queryKey: ['shoppings'] });
+      queryClient.setQueryData<MasterShopping[]>(['shoppings', guideId ?? null], (current) => upsertById(current, newShopping));
+      queryClient.invalidateQueries({ queryKey: ['shoppings', guideId ?? null] });
       toast.success('Đã tạo mục mua sắm');
       setShowNewShoppingDialog(false);
       setNewShoppingName('');
@@ -153,17 +268,34 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
       return;
     }
 
+    const shoppingToSave: Shopping = formReceiveFull && editingIndex === null
+      ? {
+          ...formData,
+          payments: [
+            {
+              amount: getNetCommission(formData),
+              paymentMethod: formCashPayment ? 'cash' : 'bank_transfer',
+              paidAt: new Date().toISOString().split('T')[0],
+              note: 'Nhận đủ',
+            },
+          ],
+        }
+      : formData;
+
     if (editingIndex !== null) {
-      updateMutation.mutate({ index: editingIndex, shopping: formData });
+      updateMutation.mutate({ index: editingIndex, shopping: shoppingToSave });
     } else {
-      addMutation.mutate(formData);
+      addMutation.mutate(shoppingToSave);
     }
   };
 
   const handleEdit = (index: number) => {
     if (readOnly) return;
+    const shopping = shoppings[index];
     setEditingIndex(index);
-    setFormData(shoppings[index]);
+    setFormData(shopping);
+    setFormReceiveFull(isFullyReceived(shopping));
+    setFormCashPayment((shopping.payments || [])[0]?.paymentMethod === 'cash');
     // Scroll to the form at the top
     window.scrollTo({ top: 0, behavior: 'smooth' });
     // Open the combobox after a short delay to allow state to update
@@ -182,6 +314,8 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
   const handleCancel = () => {
     setEditingIndex(null);
     setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+    setFormReceiveFull(false);
+    setFormCashPayment(false);
   };
 
   const handleCreateNewShopping = () => {
@@ -191,6 +325,58 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
       return;
     }
     createShoppingMutation.mutate(newShoppingName.trim());
+  };
+
+  const getQuickPaymentMethod = (shopping: Shopping, index: number): PaymentMethod => (
+    quickCashByShopping[shopping.id || `index-${index}`] ? 'cash' : 'bank_transfer'
+  );
+
+  const handleAddPayment = (
+    shopping: Shopping,
+    amount: number,
+    paymentPatch?: Partial<Omit<CommissionPayment, 'id' | 'tourShoppingId'>>,
+  ) => {
+    if (!shopping.id) {
+      toast.error('Vui lòng lưu mục mua sắm trước khi thêm khoản nhận.');
+      return;
+    }
+
+    const remaining = getPaymentRemaining(shopping);
+    const paidAt = paymentPatch?.paidAt ?? paymentForm.paidAt;
+    if (!amount || amount <= 0 || !paidAt) {
+      toast.error('Vui lòng nhập số tiền và ngày nhận.');
+      return;
+    }
+    if (amount > remaining) {
+      toast.error('Số tiền nhận không được vượt quá số tiền còn lại.');
+      return;
+    }
+
+    addPaymentMutation.mutate({
+      shopping,
+      payment: {
+        ...paymentForm,
+        ...paymentPatch,
+        amount,
+      },
+    });
+  };
+
+  const handleQuickReceiveFull = (shopping: Shopping, index: number) => {
+    handleAddPayment(shopping, getPaymentRemaining(shopping), {
+      paymentMethod: getQuickPaymentMethod(shopping, index),
+      paidAt: new Date().toISOString().split('T')[0],
+      note: 'Nhận đủ',
+    });
+  };
+
+  const handleClearPayments = (shopping: Shopping) => {
+    if ((shopping.payments || []).length === 0) return false;
+    if (!confirm('Bỏ tick sẽ xóa các khoản đã nhận của dòng này. Bạn có chắc chắn không?')) {
+      return false;
+    }
+    clearPaymentsMutation.mutate(shopping);
+    return true;
   };
 
   const totalGuests = tour ? tour.totalGuests : 1;
@@ -289,7 +475,17 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
                             key={item.id}
                             value={item.name}
                             onSelect={() => {
-                              setFormData({ ...formData, name: item.name });
+                              const nextPrice = item.price || formData.price;
+                              const nextPitAmount = item.withholdsPit ? Math.round(nextPrice * (item.pitRate || 0)) : 0;
+                              setFormData({
+                                ...formData,
+                                name: item.name,
+                                price: nextPrice,
+                                withholdsPit: item.withholdsPit,
+                                pitRate: item.pitRate,
+                                pitAmount: nextPitAmount,
+                                netCommission: Math.max(0, nextPrice - nextPitAmount),
+                              });
                               setOpenShopping(false);
                             }}
                           >
@@ -319,11 +515,86 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">Giá *</label>
+            <label className="text-sm font-medium mb-2 block">Hoa hồng gộp *</label>
             <CurrencyInput
               value={formData.price}
-              onChange={(value) => setFormData({ ...formData, price: value })}
+              onChange={(value) => updateFormCommission({ price: value })}
             />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium">
+              <Checkbox
+                checked={!!formData.withholdsPit}
+                onCheckedChange={(checked) => updateFormCommission({ withholdsPit: checked === true })}
+              />
+              Trừ thuế TNCN
+            </label>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Tỷ lệ thuế (%)</label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                disabled={!formData.withholdsPit}
+                value={formData.pitRate !== undefined ? formData.pitRate * 100 : ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? undefined : Number(e.target.value) / 100;
+                  const pitAmount = formData.withholdsPit ? Math.round((formData.price || 0) * (value || 0)) : 0;
+                  setFormData({
+                    ...formData,
+                    pitRate: value,
+                    pitAmount,
+                    netCommission: Math.max(0, (formData.price || 0) - pitAmount),
+                  });
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Tiền thuế</label>
+              <CurrencyInput
+                value={formData.pitAmount || 0}
+                onChange={(value) => updateFormCommission({ pitAmount: value }, { manualPitAmount: true })}
+              />
+            </div>
+          </div>
+          <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+            Hoa hồng thực nhận: <span className="font-semibold">{formatCurrency(getNetCommission(formData))}</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium">
+              <Checkbox
+                checked={formCashPayment}
+                onCheckedChange={(checked) => setFormCashPayment(checked === true)}
+              />
+              Tiền mặt
+            </label>
+            <label className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium">
+              <Checkbox
+                checked={formReceiveFull}
+                disabled={getNetCommission(formData) <= 0 || addPaymentMutation.isPending || clearPaymentsMutation.isPending}
+                onCheckedChange={(checked) => {
+                  const nextChecked = checked === true;
+                  if (editingIndex !== null) {
+                    const shopping = shoppings[editingIndex];
+                    if (nextChecked) {
+                      handleAddPayment(shopping, getPaymentRemaining(shopping), {
+                        paymentMethod: formCashPayment ? 'cash' : 'bank_transfer',
+                        paidAt: new Date().toISOString().split('T')[0],
+                        note: 'Nhận đủ',
+                      });
+                      setFormReceiveFull(true);
+                    } else if (handleClearPayments(shopping)) {
+                      setFormReceiveFull(false);
+                      setFormCashPayment(false);
+                    }
+                    return;
+                  }
+                  setFormReceiveFull(nextChecked);
+                  if (!nextChecked) setFormCashPayment(false);
+                }}
+              />
+              Nhận đủ
+            </label>
           </div>
           <div>
             <label className="text-sm font-medium mb-2 block">Ngày *</label>
@@ -358,7 +629,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
 
       {/* Shoppings List */}
       <div className="rounded-lg border">
-        <Table className="min-w-[520px] sm:min-w-0">
+        <Table className="min-w-[1080px]">
           <TableHeader>
             <TableRow>
               <TableHead>
@@ -366,6 +637,12 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
                 <span className="hidden sm:inline">Mục mua sắm</span>
               </TableHead>
               <TableHead>Giá</TableHead>
+              <TableHead>Thuế</TableHead>
+              <TableHead>Thực nhận</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead>Cảnh báo</TableHead>
+              <TableHead>Tiền mặt</TableHead>
+              <TableHead>Nhận đủ</TableHead>
               <TableHead>Ngày</TableHead>
               <TableHead className="w-[80px] sm:w-[100px]">
                 <span className="sm:hidden">Tác</span>
@@ -376,13 +653,14 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
           <TableBody>
             {shoppings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={10} className="text-center text-muted-foreground">
                   Chưa có mục mua sắm nào
                 </TableCell>
               </TableRow>
             ) : (
               shoppings.map((shopping, index) => (
-                <TableRow key={index} className={`${(shopping.price ?? 0) === 0 ? 'bg-red-50 dark:bg-red-950' : ''}`}>
+                <Fragment key={`shopping-${index}`}>
+                <TableRow className={getCommissionRowClass(shopping)}>
                   <TableCell className="font-medium">
                     <TourRowLabel kind="shopping" label={shopping.name} />
                   </TableCell>
@@ -390,6 +668,68 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
                     {formatCurrency(shopping.price)}
                     {shopping.price === 0 && (
                       <span className="ml-2 text-destructive" title="Giá bằng 0">⚑</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{shopping.withholdsPit ? formatCurrency(shopping.pitAmount || 0) : '-'}</TableCell>
+                  <TableCell>{formatCurrency(getNetCommission(shopping))}</TableCell>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-auto gap-2 px-2 py-1"
+                      onClick={() => setExpandedPaymentIndex(expandedPaymentIndex === index ? null : index)}
+                    >
+                      <Badge variant={getCommissionBadgeVariant(shopping)}>{getCommissionStatusLabel(shopping)}</Badge>
+                      <WalletCards className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                  <TableCell>
+                    {getPaymentRemaining(shopping) > 0 ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700 dark:bg-red-950/60 dark:text-red-300">
+                            <Flag className="h-3.5 w-3.5" />
+                            Thiếu
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Thiếu thanh toán hoa hồng: còn lại {formatCurrency(getPaymentRemaining(shopping))}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {!readOnly && (
+                      <Checkbox
+                        checked={!!quickCashByShopping[shopping.id || `index-${index}`]}
+                        disabled={getPaymentRemaining(shopping) <= 0}
+                        onCheckedChange={(checked) => {
+                          const key = shopping.id || `index-${index}`;
+                          setQuickCashByShopping((current) => ({
+                            ...current,
+                            [key]: checked === true,
+                          }));
+                        }}
+                        aria-label="Chọn tiền mặt cho nhận nhanh"
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {!readOnly && (
+                      <Checkbox
+                        checked={isFullyReceived(shopping)}
+                        disabled={addPaymentMutation.isPending || clearPaymentsMutation.isPending}
+                        onCheckedChange={(checked) => {
+                          if (checked === true) {
+                            handleQuickReceiveFull(shopping, index);
+                          } else {
+                            handleClearPayments(shopping);
+                          }
+                        }}
+                        aria-label="Nhận đủ hoa hồng"
+                      />
                     )}
                   </TableCell>
                   <TableCell>{formatDate(shopping.date)}</TableCell>
@@ -443,6 +783,108 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
                     )}
                   </TableCell>
                 </TableRow>
+                {expandedPaymentIndex === index && (
+                  <TableRow key={`payments-${index}`}>
+                    <TableCell colSpan={10} className="bg-muted/30">
+                      <div className="space-y-3 py-2">
+                        <div className="grid gap-2 text-sm sm:grid-cols-3">
+                          <div>Tổng đã nhận: <span className="font-semibold">{formatCurrency(getPaidTotal(shopping))}</span></div>
+                          <div>Còn lại: <span className="font-semibold">{formatCurrency(getPaymentRemaining(shopping))}</span></div>
+                          <div>Kỳ vọng: <span className="font-semibold">{formatCurrency(getNetCommission(shopping))}</span></div>
+                        </div>
+                        <div className="space-y-2">
+                          {(shopping.payments || []).length === 0 ? (
+                            <div className="text-sm text-muted-foreground">Chưa có khoản nhận nào</div>
+                          ) : (
+                            (shopping.payments || []).map((payment) => (
+                              <div key={payment.id} className="flex flex-col gap-2 rounded-md border bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="text-sm">
+                                  <div className="font-medium">{formatCurrency(payment.amount)} · {paymentMethodLabels[payment.paymentMethod]}</div>
+                                  <div className="text-muted-foreground">{formatDate(payment.paidAt)}{payment.note ? ` · ${payment.note}` : ''}</div>
+                                </div>
+                                {!readOnly && payment.id && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="self-start text-destructive hover:text-destructive sm:self-auto"
+                                    onClick={() => deletePaymentMutation.mutate(payment.id!)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {!readOnly && (
+                          <div className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(160px,1fr)_160px_160px_minmax(160px,1fr)_auto_auto]">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Số tiền</Label>
+                              <CurrencyInput
+                                value={paymentForm.amount}
+                                max={getPaymentRemaining(shopping)}
+                                showQuickAmounts={false}
+                                onChange={(value) => setPaymentForm({ ...paymentForm, amount: value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Hình thức</Label>
+                              <Select
+                                value={paymentForm.paymentMethod}
+                                onValueChange={(value: PaymentMethod) => setPaymentForm({ ...paymentForm, paymentMethod: value })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="cash">Tiền mặt</SelectItem>
+                                  <SelectItem value="bank_transfer">Chuyển khoản</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Ngày nhận</Label>
+                              <Input
+                                type="date"
+                                value={paymentForm.paidAt}
+                                onChange={(e) => setPaymentForm({ ...paymentForm, paidAt: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Ghi chú</Label>
+                              <Input
+                                value={paymentForm.note || ''}
+                                onChange={(e) => setPaymentForm({ ...paymentForm, note: e.target.value })}
+                                placeholder="Ghi chú"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              className="self-end whitespace-nowrap"
+                              onClick={() => handleAddPayment(shopping, paymentForm.amount)}
+                              disabled={addPaymentMutation.isPending || getPaymentRemaining(shopping) <= 0}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Thêm
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="self-end whitespace-nowrap"
+                              onClick={() => handleAddPayment(shopping, getPaymentRemaining(shopping))}
+                              disabled={addPaymentMutation.isPending || getPaymentRemaining(shopping) <= 0}
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Nhận đủ
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                </Fragment>
               ))
             )}
           </TableBody>

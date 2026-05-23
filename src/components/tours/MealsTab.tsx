@@ -26,6 +26,7 @@ import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
 import { ExpenseCategoryDialog } from '@/components/expense-categories/ExpenseCategoryDialog';
 import type { DetailedExpense, ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface MealsTabProps {
   tourId?: string;
@@ -46,6 +47,8 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false }: Me
   const [openCategory, setOpenCategory] = useState(false);
   const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
   const queryClient = useQueryClient();
+  const { isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
 
   // Default guests for new rows in create mode when not editing
   if (!tourId && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {
@@ -53,13 +56,13 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false }: Me
   }
 
   const { data: detailedExpenses = [] } = useQuery({
-    queryKey: ['detailedExpenses'],
-    queryFn: () => store.listDetailedExpenses({ status: 'active' }),
+    queryKey: ['detailedExpenses', guideId ?? null],
+    queryFn: () => store.listDetailedExpenses({ status: 'active', guideId }),
   });
 
   const { data: expenseCategories = [] } = useQuery({
-    queryKey: ['expenseCategories'],
-    queryFn: () => store.listExpenseCategories({ status: 'active' }),
+    queryKey: ['expenseCategories', guideId ?? null],
+    queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
   const addMutation = useMutation({
@@ -119,10 +122,10 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false }: Me
   });
 
   const createCategoryMutation = useMutation({
-    mutationFn: (data: ExpenseCategoryInput) => store.createExpenseCategory(data),
+    mutationFn: (data: ExpenseCategoryInput) => store.createExpenseCategory({ ...data, guideId }),
     onSuccess: (category) => {
-      queryClient.setQueryData<ExpenseCategory[]>(['expenseCategories'], (current) => upsertById(current, category));
-      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
+      queryClient.setQueryData<ExpenseCategory[]>(['expenseCategories', guideId ?? null], (current) => upsertById(current, category));
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories', guideId ?? null] });
       setNewMealCategoryId(category.id);
       setOpenCategory(false);
       setShowNewCategoryDialog(false);
@@ -145,12 +148,13 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false }: Me
         categoryRef: {
           id: categoryId,
           nameAtBooking: category.name
-        }
+        },
+        guideId,
       });
     },
     onSuccess: (newMeal) => {
-      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses'], (current) => upsertById(current, newMeal));
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses', guideId ?? null], (current) => upsertById(current, newMeal));
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses', guideId ?? null] });
       toast.success('Đã tạo bữa ăn chi tiết');
       setShowNewMealDialog(false);
       setNewMealName('');

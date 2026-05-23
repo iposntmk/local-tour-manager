@@ -18,6 +18,7 @@ import { cn, formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
@@ -26,6 +27,7 @@ import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
 import { ExpenseCategoryDialog } from '@/components/expense-categories/ExpenseCategoryDialog';
 import type { DetailedExpense, ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ExpensesTabProps {
   tourId?: string;
@@ -47,15 +49,17 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
   const [editingGuestsIndex, setEditingGuestsIndex] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const { isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
 
   const { data: detailedExpenses = [] } = useQuery({
-    queryKey: ['detailedExpenses'],
-    queryFn: () => store.listDetailedExpenses({ status: 'active' }),
+    queryKey: ['detailedExpenses', guideId ?? null],
+    queryFn: () => store.listDetailedExpenses({ status: 'active', guideId }),
   });
 
   const { data: expenseCategories = [] } = useQuery({
-    queryKey: ['expenseCategories'],
-    queryFn: () => store.listExpenseCategories({ status: 'active' }),
+    queryKey: ['expenseCategories', guideId ?? null],
+    queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
   const addMutation = useMutation({
@@ -72,7 +76,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm chi phí');
-      setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+      setFormData({ name: '', price: 0, date: tour?.endDate || '' });
     },
   });
 
@@ -117,10 +121,10 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   });
 
   const createCategoryMutation = useMutation({
-    mutationFn: (data: ExpenseCategoryInput) => store.createExpenseCategory(data),
+    mutationFn: (data: ExpenseCategoryInput) => store.createExpenseCategory({ ...data, guideId }),
     onSuccess: (category) => {
-      queryClient.setQueryData<ExpenseCategory[]>(['expenseCategories'], (current) => upsertById(current, category));
-      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
+      queryClient.setQueryData<ExpenseCategory[]>(['expenseCategories', guideId ?? null], (current) => upsertById(current, category));
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories', guideId ?? null] });
       setNewExpenseCategoryId(category.id);
       setOpenCategory(false);
       setShowNewCategoryDialog(false);
@@ -143,12 +147,13 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
         categoryRef: {
           id: categoryId,
           nameAtBooking: category.name
-        }
+        },
+        guideId,
       });
     },
     onSuccess: (newExpense) => {
-      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses'], (current) => upsertById(current, newExpense));
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses', guideId ?? null], (current) => upsertById(current, newExpense));
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses', guideId ?? null] });
       toast.success('Đã tạo chi phí chi tiết');
       setShowNewExpenseDialog(false);
       setNewExpenseName('');
@@ -200,7 +205,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
 
   const handleCancel = () => {
     setEditingIndex(null);
-    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+    setFormData({ name: '', price: 0, date: tour?.endDate || '' });
   };
 
   const handleDuplicate = (index: number) => {
@@ -264,7 +269,23 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     'Nước uống cho khách 15k/1 khách / 1 ngày',
   ];
   const hasWaterExpense = expenses.some(exp => waterExpenseNames.includes(exp.name || ''));
-  const showWaterWarning = tourId && !hasWaterExpense; // Only show for existing tours
+  const isDismissed = tour?.waterExpenseDismissed === true;
+  const showWaterWarning = tourId && !hasWaterExpense && !isDismissed; // Only show for existing tours
+
+  const dismissWaterMutation = useMutation({
+    mutationFn: async () => {
+      if (tourId) {
+        await store.updateTour(tourId, { waterExpenseDismissed: true });
+      }
+    },
+    onSuccess: () => {
+      if (tourId) {
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        void invalidateTourAggregateCaches(queryClient, 'none');
+      }
+      toast.success('Đã tắt cảnh báo nước uống cho tour này');
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -272,13 +293,22 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
         <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl">⚠️</span>
-            <div>
+            <div className="flex-1">
               <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
                 Thiếu chi phí nước uống
               </h4>
               <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                 Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này.
               </p>
+              <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                <Checkbox
+                  checked={false}
+                  onCheckedChange={() => dismissWaterMutation.mutate()}
+                />
+                <span className="text-sm text-yellow-700 dark:text-yellow-300">
+                  Tour này không bao gồm chi phí nước uống (bỏ qua cảnh báo)
+                </span>
+              </label>
             </div>
           </div>
         </div>
@@ -316,7 +346,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
                             value={exp.name}
                             onSelect={() => {
                               const today = new Date().toISOString().split('T')[0];
-                              setFormData({ ...formData, name: exp.name, price: exp.price, date: formData.date || today });
+                              setFormData({ ...formData, name: exp.name, price: exp.price, date: formData.date || tour?.endDate || today });
                               setOpenExpense(false);
                             }}
                           >

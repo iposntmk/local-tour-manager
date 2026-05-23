@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
+import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SearchInput } from '@/components/master/SearchInput';
+import MasterMobileCard from '@/components/master/MasterMobileCard';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { TouristDestination, TouristDestinationInput } from '@/types/master';
@@ -15,6 +18,7 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
+import type { UserProfile } from '@/types/user';
 
 const Destinations = () => {
   const [search, setSearch] = useState('');
@@ -27,6 +31,16 @@ const Destinations = () => {
 
   const queryClient = useQueryClient();
   const { hasPermission, user, isAdmin } = useAuth();
+  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const profileMap = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    userProfiles.forEach(p => m.set(p.id, p));
+    return m;
+  }, [userProfiles]);
   const canCreate = hasPermission('create_tourist_destinations');
   const canEdit = hasPermission('edit_tourist_destinations');
   const canDelete = hasPermission('delete_tourist_destinations');
@@ -90,6 +104,18 @@ const Destinations = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
       toast.success('Đã xóa tất cả điểm đến');
+    },
+  });
+
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
+      store.setMasterDataShared('tourist_destinations', id, shared),
+    onSuccess: (_, { shared }) => {
+      queryClient.invalidateQueries({ queryKey: ['touristDestinations'] });
+      toast.success(shared ? 'Đã chia sẻ' : 'Đã đặt về riêng tư');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Thao tác chia sẻ thất bại');
     },
   });
 
@@ -202,7 +228,7 @@ const Destinations = () => {
   const { classes: headerClasses } = useHeaderMode('destinations.headerMode');
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -266,6 +292,7 @@ const Destinations = () => {
                     <th className="text-left p-4 font-medium">Tỉnh</th>
                     <th className="text-left p-4 font-medium">Đơn giá</th>
                     <th className="text-left p-4 font-medium">Cập nhật</th>
+                    {isAdmin && <th className="text-left p-4 font-medium">Người tạo</th>}
                     <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr>
@@ -301,6 +328,7 @@ const Destinations = () => {
                       />
                     </th>
                     <th className="p-2"></th>
+                    {isAdmin && <th className="p-2"></th>}
                     <th className="p-2"></th>
                   </tr>
                 </thead>
@@ -311,7 +339,12 @@ const Destinations = () => {
                       className="border-t hover:bg-muted/50 cursor-pointer"
                       onClick={() => canEdit && handleOpenDialog(destination)}
                     >
-                      <td className="p-4 font-medium">{destination.name}</td>
+                      <td className="p-4 font-medium">
+                        <div className="flex items-center gap-2">
+                          {destination.name}
+                          <SharedBadge isShared={!!destination.isShared} />
+                        </div>
+                      </td>
                       <td className="p-4 text-muted-foreground">{destination.provinceRef.nameAtBooking}</td>
                       <td className="p-4 text-muted-foreground">
                         {formatCurrency(destination.price)}
@@ -319,8 +352,21 @@ const Destinations = () => {
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(destination.updatedAt.split("T")[0])}
                       </td>
+                      {isAdmin && (
+                        <td className="p-4 text-sm text-muted-foreground">
+                          {destination.createdBy
+                            ? (profileMap.get(destination.createdBy)?.fullName || profileMap.get(destination.createdBy)?.email || destination.createdBy.slice(0, 8))
+                            : '-'}
+                        </td>
+                      )}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          {isAdmin && destination.createdBy === user?.id && (
+                            <ShareToggleButton
+                              isShared={!!destination.isShared}
+                              onToggle={() => shareMutation.mutate({ id: destination.id, shared: !destination.isShared })}
+                            />
+                          )}
                           {canEdit && (
                             <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(destination)} className="h-8 w-8 p-0">
                               <Edit className="h-4 w-4" />
@@ -357,50 +403,25 @@ const Destinations = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {filteredDestinations.map((destination) => (
-                <div
+                <MasterMobileCard
                   key={destination.id}
-                  className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
+                  title={destination.name}
+                  id={destination.id}
+                  subtitle={`Cập nhật ${formatDate(destination.updatedAt.split("T")[0])}`}
+                  metadata={`${destination.provinceRef.nameAtBooking} • ${formatCurrency(destination.price)}`}
                   onClick={() => canEdit && handleOpenDialog(destination)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium">{destination.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {destination.provinceRef.nameAtBooking} • {formatCurrency(destination.price)}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Cập nhật {formatDate(destination.updatedAt.split("T")[0])}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      {canEdit && (
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(destination)} className="h-8 w-8 p-0">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canCreate && (
-                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(destination.id)} className="h-8 w-8 p-0">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
-                            if (confirm('Bạn có chắc chắn muốn xóa điểm đến này?')) {
-                              deleteMutation.mutate(destination.id);
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  onEdit={canEdit ? () => handleOpenDialog(destination) : undefined}
+                  onDuplicate={canCreate ? () => duplicateMutation.mutate(destination.id) : undefined}
+                  onDelete={canDelete ? () => {
+                    if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
+                    if (confirm('Bạn có chắc chắn muốn xóa điểm đến này?')) {
+                      deleteMutation.mutate(destination.id);
+                    }
+                  } : undefined}
+                  canEdit={canEdit}
+                  canCreate={canCreate}
+                  canDelete={canDelete}
+                />
               ))}
             </div>
           </>
@@ -433,7 +454,7 @@ const Destinations = () => {
           return null;
         }}
       />
-    </>
+    </TooltipProvider>
   );
 };
 

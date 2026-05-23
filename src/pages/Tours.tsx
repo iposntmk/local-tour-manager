@@ -38,6 +38,7 @@ import { ToursLoadingSkeleton } from '@/pages/tours/ToursLoadingSkeleton';
 import { ToursMobileCards } from '@/pages/tours/ToursMobileCards';
 import { ToursTotalsBar } from '@/pages/tours/ToursTotalsBar';
 import { useTourFilters } from '@/pages/tours/useTourFilters';
+import { getTourWarningInfo } from '@/pages/tours/tour-table-config';
 
 
 const Tours = () => {
@@ -47,7 +48,7 @@ const Tours = () => {
   // Pagination disabled; show all results
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const canCreateTours = hasPermission('create_tours');
   const canDeleteTours = hasPermission('delete_tours');
   const canDuplicateTours = hasPermission('duplicate_tours');
@@ -55,6 +56,17 @@ const Tours = () => {
   const canImportTours = hasPermission('import_tours');
   const canBackupData = hasPermission('backup_data');
   const canDownloadAllTourImages = hasPermission('download_all_tour_images');
+
+  const { data: userProfiles = [] } = useQuery({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const userProfileMap = useMemo(() => {
+    const m = new Map<string, { fullName?: string; email: string }>();
+    userProfiles.forEach(p => m.set(p.id, { fullName: p.fullName, email: p.email }));
+    return m;
+  }, [userProfiles]);
 
   const { data: companies = [] } = useQuery({
     queryKey: ['companies'],
@@ -76,6 +88,8 @@ const Tours = () => {
     setSettlementStatusFilter,
     paymentStatusFilter,
     setPaymentStatusFilter,
+    shoppingCommissionFilter,
+    setShoppingCommissionFilter,
     selectedMonth,
     setSelectedMonth,
     selectedYear,
@@ -116,15 +130,23 @@ const Tours = () => {
   // No need for client-side sorting anymore - database handles it
   const tours = useMemo(() => (toursResult as TourListResult | undefined)?.tours ?? [], [toursResult]);
 
+  const displayedTours = useMemo(() => {
+    if (shoppingCommissionFilter === 'all') return tours;
+    return tours.filter((tour) => {
+      const hasUnpaidShoppingCommission = getTourWarningInfo(tour).hasUnpaidShoppingCommission;
+      return shoppingCommissionFilter === 'unpaid' ? hasUnpaidShoppingCommission : !hasUnpaidShoppingCommission;
+    });
+  }, [shoppingCommissionFilter, tours]);
+
   const totalTours = (toursResult as TourListResult | undefined)?.total ?? 0;
 
   // Calculate total final amount for filtered tours (current page)
   const filteredToursTotal = useMemo(() => {
-    return tours.reduce((sum, tour) => {
+    return displayedTours.reduce((sum, tour) => {
       const finalTotal = tour.summary?.finalTotal ?? 0;
       return sum + finalTotal;
     }, 0);
-  }, [tours]);
+  }, [displayedTours]);
 
   const showInitialToursSkeleton = isLoading && !toursResult;
   const showToursBackgroundRefresh = isFetching && !showInitialToursSkeleton;
@@ -477,6 +499,7 @@ const Tours = () => {
             searchCompany={searchCompany}
             settlementStatusFilter={settlementStatusFilter}
             paymentStatusFilter={paymentStatusFilter}
+            shoppingCommissionFilter={shoppingCommissionFilter}
             nationalityFilter={nationalityFilter}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
@@ -485,7 +508,7 @@ const Tours = () => {
             nationalities={nationalities}
             months={months}
             availableYears={availableYears}
-            toursCount={tours.length}
+            toursCount={displayedTours.length}
             hasActiveFilters={hasActiveFilters}
             showToursBackgroundRefresh={showToursBackgroundRefresh}
             setSearchExpanded={setSearchExpanded}
@@ -496,6 +519,7 @@ const Tours = () => {
             setSearchCompany={setSearchCompany}
             setSettlementStatusFilter={setSettlementStatusFilter}
             setPaymentStatusFilter={setPaymentStatusFilter}
+            setShoppingCommissionFilter={setShoppingCommissionFilter}
             setNationalityFilter={setNationalityFilter}
             setSelectedMonth={setSelectedMonth}
             setSelectedYear={setSelectedYear}
@@ -506,8 +530,8 @@ const Tours = () => {
 
         {/* Totals - Always Visible (Outside Filters Section) */}
         {topControlsExpanded && (
-          <ToursTotalsBar
-            toursCount={tours.length}
+            <ToursTotalsBar
+            toursCount={displayedTours.length}
             filteredToursTotal={filteredToursTotal}
             allToursData={allToursData}
             showToursBackgroundRefresh={showToursBackgroundRefresh}
@@ -525,7 +549,7 @@ const Tours = () => {
 
         {showInitialToursSkeleton ? (
           <ToursLoadingSkeleton />
-        ) : totalTours === 0 ? (
+        ) : displayedTours.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground mt-6">
             {!hasActiveFilters && !(searchCode.trim() || dateRange?.from || dateRange?.to || searchCompany.trim())
               ? 'Không tìm thấy tour nào. Tạo tour đầu tiên để bắt đầu.'
@@ -534,18 +558,19 @@ const Tours = () => {
         ) : (
           <>
             <ToursDesktopTable
-              tours={tours}
+              tours={displayedTours}
               canExportTours={canExportTours}
               canDuplicateTours={canDuplicateTours}
               canDeleteTours={canDeleteTours}
               deletePending={deleteMutation.isPending}
+              userProfileMap={isAdmin ? userProfileMap : undefined}
               onOpenTour={(tourId) => navigate(`/tours/${tourId}`)}
               onExportSingle={handleExportSingle}
               onDuplicate={handleDuplicate}
               onDelete={handleDelete}
             />
             <ToursMobileCards
-              tours={tours}
+              tours={displayedTours}
               canExportTours={canExportTours}
               canDuplicateTours={canDuplicateTours}
               canDeleteTours={canDeleteTours}

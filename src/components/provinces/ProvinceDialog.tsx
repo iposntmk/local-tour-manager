@@ -46,11 +46,11 @@ export function ProvinceDialog({
     const missingFields: string[] = [];
 
     if (!data.name.trim()) {
-      missingFields.push('Province Name');
+      missingFields.push('Tên tỉnh thành');
     }
 
     if (missingFields.length > 0) {
-      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      toast.error(`Vui lòng điền đầy đủ các trường bắt buộc: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -61,16 +61,16 @@ export function ProvinceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Province' : 'Add New Province'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Sửa tỉnh thành' : 'Thêm tỉnh thành mới'}</DialogTitle>
         </DialogHeader>
         {isEditing && initialData?.id && <CopyIdRow id={initialData.id} />}
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Province Name *</Label>
+            <Label htmlFor="name">Tên tỉnh thành *</Label>
             <Input
               id="name"
-              {...register('name', { required: 'Province name is required' })}
-              placeholder="e.g., Hà Nội, Huế..."
+              {...register('name', { required: 'Tên tỉnh thành là bắt buộc' })}
+              placeholder="VD: Hà Nội, Huế..."
               className={errors.name ? 'border-destructive' : ''}
             />
             {errors.name && (
@@ -80,10 +80,10 @@ export function ProvinceDialog({
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button type="submit">
-              {isEditing ? 'Update' : 'Create'}
+              {isEditing ? 'Cập nhật' : 'Tạo mới'}
             </Button>
           </div>
         </form>

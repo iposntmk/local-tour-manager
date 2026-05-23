@@ -9,7 +9,7 @@ interface SearchInputProps {
   debounceMs?: number;
 }
 
-export function SearchInput({ value, onChange, placeholder = 'Search...', debounceMs = 300 }: SearchInputProps) {
+export function SearchInput({ value, onChange, placeholder = 'Tìm kiếm...', debounceMs = 300 }: SearchInputProps) {
   const [localValue, setLocalValue] = useState(value);
 
   // Sync local value with prop value when it changes externally

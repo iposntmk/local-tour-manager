@@ -25,6 +25,7 @@ import type { Allowance, Tour } from '@/types/tour';
 import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
 import type { DetailedExpense } from '@/types/master';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AllowancesTabProps {
   tourId?: string;
@@ -50,15 +51,17 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
   const [newAllowanceCategoryId, setNewAllowanceCategoryId] = useState('');
   const [openAllowanceCategory, setOpenAllowanceCategory] = useState(false);
   const queryClient = useQueryClient();
+  const { isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
 
   const { data: allDetailedExpenses = [] } = useQuery({
-    queryKey: ['detailedExpenses'],
-    queryFn: () => store.listDetailedExpenses({ status: 'active' }),
+    queryKey: ['detailedExpenses', guideId ?? null],
+    queryFn: () => store.listDetailedExpenses({ status: 'active', guideId }),
   });
 
   const { data: expenseCategories = [] } = useQuery({
-    queryKey: ['expenseCategories'],
-    queryFn: () => store.listExpenseCategories({ status: 'active' }),
+    queryKey: ['expenseCategories', guideId ?? null],
+    queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
   const detailedExpenses = allDetailedExpenses.filter(
@@ -160,14 +163,15 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
           id: category.id,
           nameAtBooking: category.name,
         },
+        guideId,
       });
     },
     onSuccess: (newExpense) => {
       const today = new Date().toISOString().split('T')[0];
       const defaultDate = tour?.startDate || today;
 
-      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses'], (current) => upsertById(current, newExpense));
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses', guideId ?? null], (current) => upsertById(current, newExpense));
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses', guideId ?? null] });
       toast.success('Đã tạo CTP');
       setShowNewAllowanceDialog(false);
       setNewAllowanceName('');

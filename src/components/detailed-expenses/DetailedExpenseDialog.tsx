@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -52,10 +53,12 @@ export function DetailedExpenseDialog({
   const [fieldErrors, setFieldErrors] = useState<{ category?: boolean }>({});
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DetailedExpenseInput>();
+  const { isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['expenseCategories'],
-    queryFn: () => store.listExpenseCategories({ status: 'active' }),
+    queryKey: ['expenseCategories', guideId ?? null],
+    queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
   useEffect(() => {
@@ -75,19 +78,19 @@ export function DetailedExpenseDialog({
     const newErrors: { category?: boolean } = {};
 
     if (!data.name.trim()) {
-      missingFields.push('Expense Name');
+      missingFields.push('Tên chi phí');
     }
     if (data.price === undefined || data.price === null || data.price <= 0) {
-      missingFields.push('Price');
+      missingFields.push('Giá');
     }
     if (!selectedCategoryId) {
-      missingFields.push('Category');
+      missingFields.push('Danh mục');
       newErrors.category = true;
     }
 
     if (missingFields.length > 0) {
       setFieldErrors(newErrors);
-      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      toast.error(`Vui lòng điền đầy đủ các trường bắt buộc: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -110,15 +113,15 @@ export function DetailedExpenseDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Detailed Expense' : 'Add New Detailed Expense'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Sửa chi phí chi tiết' : 'Thêm chi phí chi tiết mới'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Expense Name *</Label>
+            <Label htmlFor="name">Tên chi phí *</Label>
             <Input
               id="name"
-              {...register('name', { required: 'Expense name is required' })}
-              placeholder="e.g., Mineral Water, Cold Towels..."
+              {...register('name', { required: 'Tên chi phí là bắt buộc' })}
+              placeholder="VD: Nước suối, Khăn lạnh..."
               className={errors.name ? 'border-destructive' : ''}
             />
             {errors.name && (
@@ -127,7 +130,7 @@ export function DetailedExpenseDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Category *</Label>
+            <Label>Danh mục *</Label>
             <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -139,15 +142,15 @@ export function DetailedExpenseDialog({
                     fieldErrors.category && 'border-destructive'
                   )}
                 >
-                  {selectedCategory ? selectedCategory.name : 'Select category...'}
+                  {selectedCategory ? selectedCategory.name : 'Chọn danh mục...'}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
                 <Command>
-                  <CommandInput placeholder="Search category..." />
+                  <CommandInput placeholder="Tìm danh mục..." />
                   <CommandList>
-                    <CommandEmpty>No category found.</CommandEmpty>
+                    <CommandEmpty>Không tìm thấy danh mục.</CommandEmpty>
                     <CommandGroup>
                       {categories.map((category) => (
                         <CommandItem
@@ -176,7 +179,7 @@ export function DetailedExpenseDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price">Price (VND) *</Label>
+            <Label htmlFor="price">Giá (VND) *</Label>
             <CurrencyInput
               value={watch('price')}
               onChange={(value) => setValue('price', value)}
@@ -189,10 +192,10 @@ export function DetailedExpenseDialog({
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button type="submit">
-              {isEditing ? 'Update' : 'Create'}
+              {isEditing ? 'Cập nhật' : 'Tạo mới'}
             </Button>
           </div>
         </form>

@@ -55,3 +55,4 @@ FIX_*.sql
 
 # Supabase migrations (local only)
 supabase-migrations/
+.aider*

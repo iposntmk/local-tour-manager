@@ -50,12 +50,12 @@ export function GuideDialog({ open, onOpenChange, guide, languages, onSubmit }: 
 
     if (!formData.name.trim()) {
       newErrors.name = true;
-      missingFields.push('Name');
+      missingFields.push('Tên');
     }
 
     if (missingFields.length > 0) {
       setErrors(newErrors);
-      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      toast.error(`Vui lòng điền đầy đủ các trường bắt buộc: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -77,16 +77,16 @@ export function GuideDialog({ open, onOpenChange, guide, languages, onSubmit }: 
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{guide ? 'Edit Guide' : 'Add New Guide'}</DialogTitle>
+            <DialogTitle>{guide ? 'Sửa hướng dẫn viên' : 'Thêm hướng dẫn viên mới'}</DialogTitle>
             <DialogDescription>
-              {guide ? 'Update guide information' : 'Create a new guide profile'}
+              {guide ? 'Cập nhật thông tin hướng dẫn viên' : 'Tạo hồ sơ hướng dẫn viên mới'}
             </DialogDescription>
           </DialogHeader>
           {guide && <CopyIdRow id={guide.id} />}
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">Tên *</Label>
               <Input
                 id="name"
                 value={formData.name}
@@ -94,14 +94,14 @@ export function GuideDialog({ open, onOpenChange, guide, languages, onSubmit }: 
                   setFormData({ ...formData, name: e.target.value });
                   if (errors.name) setErrors({ ...errors, name: false });
                 }}
-                placeholder="Full name"
+                placeholder="Họ và tên"
                 className={errors.name ? 'border-destructive' : ''}
                 required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">Số điện thoại</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -112,7 +112,7 @@ export function GuideDialog({ open, onOpenChange, guide, languages, onSubmit }: 
             </div>
 
             <div className="grid gap-2">
-              <Label>Languages</Label>
+              <Label>Ngôn ngữ</Label>
               <GuideLanguagesPicker
                 languages={languages}
                 value={formData.languageIds || []}
@@ -121,13 +121,13 @@ export function GuideDialog({ open, onOpenChange, guide, languages, onSubmit }: 
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="note">Note</Label>
+              <Label htmlFor="note">Ghi chú</Label>
               <TextareaWithSave
                 id="note"
                 storageKey={guide ? `guide-note-edit-${guide.id}` : 'guide-note-create'}
                 value={formData.note}
                 onValueChange={(value) => setFormData({ ...formData, note: value })}
-                placeholder="Specialties, availability, etc."
+                placeholder="Chuyên môn, lịch trống, v.v."
                 rows={3}
               />
             </div>
@@ -141,17 +141,17 @@ export function GuideDialog({ open, onOpenChange, guide, languages, onSubmit }: 
                 }
               />
               <Label htmlFor="isDefault" className="cursor-pointer">
-                Use as default guide for new tours
+                Dùng làm hướng dẫn viên mặc định cho tour mới
               </Label>
             </div>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : guide ? 'Update' : 'Create'}
+              {isSubmitting ? 'Đang lưu...' : guide ? 'Cập nhật' : 'Tạo mới'}
             </Button>
           </DialogFooter>
         </form>

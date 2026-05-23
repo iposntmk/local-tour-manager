@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -98,6 +99,8 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const [shopForm, setShopForm] = useState<Shopping>({ name: '', price: 0, date: '' });
 
   const queryClient = useQueryClient();
+  const { isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TourInput>({
     defaultValues: initialData ? {
@@ -169,13 +172,13 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   });
 
   const { data: detailedExpenses = [] } = useQuery({
-    queryKey: ['detailedExpenses'],
-    queryFn: () => store.listDetailedExpenses({ status: 'active' }),
+    queryKey: ['detailedExpenses', guideId ?? null],
+    queryFn: () => store.listDetailedExpenses({ status: 'active', guideId }),
   });
 
   const { data: shoppingItems = [] } = useQuery({
-    queryKey: ['shoppings'],
-    queryFn: () => store.listShoppings({ status: 'active' }),
+    queryKey: ['shoppings', guideId ?? null],
+    queryFn: () => store.listShoppings({ status: 'active', guideId }),
   });
 
   const { data: provinces = [] } = useQuery({
@@ -184,8 +187,8 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   });
 
   const { data: expenseCategories = [] } = useQuery({
-    queryKey: ['expenseCategories'],
-    queryFn: () => store.listExpenseCategories({ status: 'active' }),
+    queryKey: ['expenseCategories', guideId ?? null],
+    queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
   // Mutation for creating new tourist destination
@@ -232,11 +235,12 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         categoryRef: {
           id: categoryId,
           nameAtBooking: category.name
-        }
+        },
+        guideId,
       });
     },
     onSuccess: (newExpense) => {
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses', guideId ?? null] });
       toast.success('Detailed expense created');
       setShowNewExpenseDialog(false);
       setNewExpenseName('');
@@ -263,11 +267,12 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
         categoryRef: {
           id: categoryId,
           nameAtBooking: category.name
-        }
+        },
+        guideId,
       });
     },
     onSuccess: (newMeal) => {
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses', guideId ?? null] });
       toast.success('Detailed meal created');
       setShowNewMealDialog(false);
       setNewMealName('');

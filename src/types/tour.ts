@@ -1,3 +1,7 @@
+import type { CommissionStatus, PaymentMethod } from './master';
+
+export type { CommissionStatus, PaymentMethod } from './master';
+
 export interface EntityRef {
   id: string;
   nameAtBooking: string;
@@ -17,7 +21,6 @@ export type SettlementStatus =
 export type LineStatus = 'unchecked' | 'valid' | 'need_more' | 'invalid';
 
 export type PaymentStatus = 'pending' | 'partial' | 'paid';
-export type PaymentMethod = 'cash' | 'bank_transfer';
 
 export interface TourPayment {
   id: string;
@@ -36,6 +39,17 @@ export interface TourPaymentInput {
   method: PaymentMethod;
   paidAt: string;
   note?: string;
+}
+
+export interface CommissionPayment {
+  id?: string;
+  tourShoppingId?: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  paidAt: string;
+  note?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LineReviewFields {
@@ -85,6 +99,12 @@ export interface Shopping extends LineReviewFields {
   name: string;
   price: number;
   date: string;
+  withholdsPit?: boolean;
+  pitRate?: number;
+  pitAmount?: number;
+  netCommission?: number;
+  payments?: CommissionPayment[];
+  commissionStatus?: CommissionStatus;
   matchedId?: string;
   matchedPrice?: number;
 }
@@ -132,6 +152,7 @@ export interface Tour {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  createdByUserId?: string;
   // Settlement workflow
   settlementStatus: SettlementStatus;
   submittedAt?: string;
@@ -152,6 +173,7 @@ export interface Tour {
   allowances: Allowance[];
   shoppings: Shopping[];
   summary: TourSummary;
+  waterExpenseDismissed?: boolean;
 }
 
 export interface TourInput {

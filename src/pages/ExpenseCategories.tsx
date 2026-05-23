@@ -4,7 +4,10 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
+import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SearchInput } from '@/components/master/SearchInput';
+import MasterMobileCard from '@/components/master/MasterMobileCard';
 import { ExpenseCategoryDialog } from '@/components/expense-categories/ExpenseCategoryDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
@@ -13,6 +16,7 @@ import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
+import type { UserProfile } from '@/types/user';
 
 const ExpenseCategories = () => {
   const [search, setSearch] = useState('');
@@ -24,7 +28,18 @@ const ExpenseCategories = () => {
   const [updatedFilter, setUpdatedFilter] = useState('');
 
   const queryClient = useQueryClient();
-  const { hasPermission, user, isAdmin } = useAuth();
+  const { hasPermission, user, isAdmin, isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
+  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const profileMap = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    userProfiles.forEach(p => m.set(p.id, p));
+    return m;
+  }, [userProfiles]);
   const canCreate = hasPermission('create_expense_categories');
   const canEdit = hasPermission('edit_expense_categories');
   const canDelete = hasPermission('delete_expense_categories');
@@ -32,12 +47,12 @@ const ExpenseCategories = () => {
   const canExport = hasPermission('export_expense_categories');
 
   const { data: categories = [], isLoading } = useQuery({
-    queryKey: ['expenseCategories', search],
-    queryFn: () => store.listExpenseCategories({ search }),
+    queryKey: ['expenseCategories', search, guideId ?? null],
+    queryFn: () => store.listExpenseCategories({ search, guideId }),
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: ExpenseCategoryInput) => store.createExpenseCategory(input),
+    mutationFn: (input: ExpenseCategoryInput) => store.createExpenseCategory({ ...input, guideId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
       toast.success('Tạo danh mục chi phí thành công');
@@ -89,8 +104,20 @@ const ExpenseCategories = () => {
     },
   });
 
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
+      store.setMasterDataShared('expense_categories', id, shared),
+    onSuccess: (_, { shared }) => {
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
+      toast.success(shared ? 'Đã chia sẻ' : 'Đã đặt về riêng tư');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Thao tác chia sẻ thất bại');
+    },
+  });
+
   const bulkImportMutation = useMutation({
-    mutationFn: (items: ExpenseCategoryInput[]) => store.bulkCreateExpenseCategories(items),
+    mutationFn: (items: ExpenseCategoryInput[]) => store.bulkCreateExpenseCategories(items.map(i => ({ ...i, guideId }))),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
     },
@@ -189,7 +216,7 @@ const ExpenseCategories = () => {
   const { classes: headerClasses } = useHeaderMode('expensecategories.headerMode');
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -252,6 +279,7 @@ const ExpenseCategories = () => {
                     <th className="text-left p-4 font-medium">ID</th>
                     <th className="text-left p-4 font-medium">Tên</th>
                     <th className="text-left p-4 font-medium">Cập nhật</th>
+                    {isAdmin && <th className="text-left p-4 font-medium">Người tạo</th>}
                     <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr className="border-t">
@@ -279,6 +307,7 @@ const ExpenseCategories = () => {
                         className="h-8"
                       />
                     </th>
+                    {isAdmin && <th className="p-2"></th>}
                     <th className="p-2"></th>
                   </tr>
                 </thead>
@@ -290,12 +319,30 @@ const ExpenseCategories = () => {
                       onClick={() => canEdit && handleOpenDialog(category)}
                     >
                       <td className="p-4 text-muted-foreground text-sm font-mono">{category.id}</td>
-                      <td className="p-4 font-medium">{category.name}</td>
+                      <td className="p-4 font-medium">
+                        <div className="flex items-center gap-2">
+                          {category.name}
+                          <SharedBadge isShared={!!category.isShared} />
+                        </div>
+                      </td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(category.updatedAt.split("T")[0])}
                       </td>
+                      {isAdmin && (
+                        <td className="p-4 text-sm text-muted-foreground">
+                          {category.createdBy
+                            ? (profileMap.get(category.createdBy)?.fullName || profileMap.get(category.createdBy)?.email || category.createdBy.slice(0, 8))
+                            : '-'}
+                        </td>
+                      )}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          {isAdmin && category.createdBy === user?.id && (
+                            <ShareToggleButton
+                              isShared={!!category.isShared}
+                              onToggle={() => shareMutation.mutate({ id: category.id, shared: !category.isShared })}
+                            />
+                          )}
                           {canEdit && (
                             <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(category)} className="h-8 w-8 p-0">
                               <Edit className="h-4 w-4" />
@@ -332,48 +379,24 @@ const ExpenseCategories = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {filteredCategories.map((category) => (
-                <div
+                <MasterMobileCard
                   key={category.id}
-                  className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
+                  title={category.name}
+                  id={category.id}
+                  subtitle={`Cập nhật ${formatDate(category.updatedAt.split("T")[0])}`}
                   onClick={() => canEdit && handleOpenDialog(category)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium">{category.name}</h3>
-                      <p className="text-sm text-muted-foreground font-mono">ID: {category.id}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Cập nhật {formatDate(category.updatedAt.split("T")[0])}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      {canEdit && (
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(category)} className="h-8 w-8 p-0">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canCreate && (
-                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(category.id)} className="h-8 w-8 p-0">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (!ensureCanModifyOwnedEntity(category, user?.id, isAdmin)) return;
-                            if (confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
-                              deleteMutation.mutate(category.id);
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  onEdit={canEdit ? () => handleOpenDialog(category) : undefined}
+                  onDuplicate={canCreate ? () => duplicateMutation.mutate(category.id) : undefined}
+                  onDelete={canDelete ? () => {
+                    if (!ensureCanModifyOwnedEntity(category, user?.id, isAdmin)) return;
+                    if (confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
+                      deleteMutation.mutate(category.id);
+                    }
+                  } : undefined}
+                  canEdit={canEdit}
+                  canCreate={canCreate}
+                  canDelete={canDelete}
+                />
               ))}
             </div>
           </>
@@ -404,7 +427,7 @@ const ExpenseCategories = () => {
           return null;
         }}
       />
-    </>
+    </TooltipProvider>
   );
 };
 

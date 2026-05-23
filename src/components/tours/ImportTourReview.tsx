@@ -3,6 +3,7 @@ import Fuse from 'fuse.js';
 import type { Tour, EntityRef } from '@/types/tour';
 import type { Company, Guide, GuideInput, Language, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
 import { Label } from '@/components/ui/label';
@@ -43,6 +44,8 @@ interface ImportTourReviewProps {
 }
 
 export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities }: ImportTourReviewProps) {
+  const { isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
   const [companies, setCompanies] = useState<Company[]>(preloadedEntities?.companies ?? []);
   const [guides, setGuides] = useState<Guide[]>(preloadedEntities?.guides ?? []);
   const [nationalities, setNationalities] = useState<Nationality[]>(preloadedEntities?.nationalities ?? []);
@@ -315,7 +318,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
 
   const handleCreateExpense = async (data: { name: string; price: number; categoryRef: { id: string; nameAtBooking: string } }) => {
     try {
-      const created = await store.createDetailedExpense(data);
+      const created = await store.createDetailedExpense({ ...data, guideId });
       setExpenses(prev => [created, ...prev]);
       if (targetIndex !== null && targetItemIndex !== null) {
         const tour = draft[targetIndex].tour;
@@ -338,7 +341,7 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
 
   const handleCreateShopping = async (data: { name: string }) => {
     try {
-      const created = await store.createShopping(data);
+      const created = await store.createShopping({ ...data, guideId });
       setShoppings(prev => [created, ...prev]);
       if (targetIndex !== null && targetItemIndex !== null) {
         const tour = draft[targetIndex].tour;

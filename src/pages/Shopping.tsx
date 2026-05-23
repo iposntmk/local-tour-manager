@@ -5,7 +5,10 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
+import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SearchInput } from '@/components/master/SearchInput';
+import MasterMobileCard from '@/components/master/MasterMobileCard';
 import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { Shopping, ShoppingInput } from '@/types/master';
@@ -14,6 +17,12 @@ import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
+import type { UserProfile } from '@/types/user';
+
+const formatPercent = (value?: number) => {
+  if (value === undefined) return '-';
+  return `${Number((value * 100).toFixed(2))}%`;
+};
 
 const ShoppingPage = () => {
   const [search, setSearch] = useState('');
@@ -25,7 +34,18 @@ const ShoppingPage = () => {
   const [updatedFilter, setUpdatedFilter] = useState('');
 
   const queryClient = useQueryClient();
-  const { hasPermission, user, isAdmin } = useAuth();
+  const { hasPermission, user, isAdmin, isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
+  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const profileMap = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    userProfiles.forEach(p => m.set(p.id, p));
+    return m;
+  }, [userProfiles]);
   const canCreate = hasPermission('create_shopping');
   const canEdit = hasPermission('edit_shopping');
   const canDelete = hasPermission('delete_shopping');
@@ -33,12 +53,12 @@ const ShoppingPage = () => {
   const canExport = hasPermission('export_shopping');
 
   const { data: shoppings = [], isLoading } = useQuery({
-    queryKey: ['shoppings', search],
-    queryFn: () => store.listShoppings({ search }),
+    queryKey: ['shoppings', search, guideId ?? null],
+    queryFn: () => store.listShoppings({ search, guideId }),
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: ShoppingInput) => store.createShopping(input),
+    mutationFn: (input: ShoppingInput) => store.createShopping({ ...input, guideId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
       toast.success('Tạo điểm mua sắm thành công');
@@ -90,8 +110,20 @@ const ShoppingPage = () => {
     },
   });
 
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
+      store.setMasterDataShared('shoppings', id, shared),
+    onSuccess: (_, { shared }) => {
+      queryClient.invalidateQueries({ queryKey: ['shoppings'] });
+      toast.success(shared ? 'Đã chia sẻ' : 'Đã đặt về riêng tư');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Thao tác chia sẻ thất bại');
+    },
+  });
+
   const bulkImportMutation = useMutation({
-    mutationFn: (items: { name: string }[]) => store.bulkCreateShoppings(items),
+    mutationFn: (items: { name: string }[]) => store.bulkCreateShoppings(items.map(i => ({ ...i, guideId }))),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shoppings'] });
       toast.success('Import điểm mua sắm thành công');
@@ -117,7 +149,7 @@ const ShoppingPage = () => {
     if (editingShopping) {
       updateMutation.mutate({
         id: editingShopping.id,
-        patch: { name: input.name },
+        patch: input,
       });
     }
   };
@@ -193,7 +225,7 @@ const ShoppingPage = () => {
   const { classes: headerClasses } = useHeaderMode('shopping.headerMode');
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -255,7 +287,10 @@ const ShoppingPage = () => {
                   <tr>
                     <th className="text-left p-4 font-medium">ID</th>
                     <th className="text-left p-4 font-medium">Tên</th>
+                    <th className="text-left p-4 font-medium">Liên hệ</th>
+                    <th className="text-left p-4 font-medium">Hoa hồng</th>
                     <th className="text-left p-4 font-medium">Cập nhật</th>
+                    {isAdmin && <th className="text-left p-4 font-medium">Người tạo</th>}
                     <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr>
@@ -275,6 +310,8 @@ const ShoppingPage = () => {
                         className="h-8"
                       />
                     </th>
+                    <th className="text-left p-4"></th>
+                    <th className="text-left p-4"></th>
                     <th className="text-left p-4">
                       <Input
                         placeholder="Lọc theo ngày..."
@@ -283,6 +320,7 @@ const ShoppingPage = () => {
                         className="h-8"
                       />
                     </th>
+                    {isAdmin && <th className="text-left p-4"></th>}
                     <th className="text-right p-4"></th>
                   </tr>
                 </thead>
@@ -294,12 +332,40 @@ const ShoppingPage = () => {
                       onClick={() => canEdit && handleOpenDialog(shopping)}
                     >
                       <td className="p-4 text-muted-foreground text-sm font-mono">{shopping.id}</td>
-                      <td className="p-4 font-medium">{shopping.name}</td>
+                      <td className="p-4 font-medium">
+                        <div className="flex items-center gap-2">
+                          {shopping.name}
+                          <SharedBadge isShared={!!shopping.isShared} />
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm text-muted-foreground">
+                        <div>{shopping.phone || '-'}</div>
+                        {shopping.address && <div className="max-w-[240px] truncate">{shopping.address}</div>}
+                      </td>
+                      <td className="p-4 text-sm text-muted-foreground">
+                        <div>{formatPercent(shopping.commissionRate)}</div>
+                        {shopping.withholdsPit && (
+                          <div>Thuế {formatPercent(shopping.pitRate)}</div>
+                        )}
+                      </td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(shopping.updatedAt.split("T")[0])}
                       </td>
+                      {isAdmin && (
+                        <td className="p-4 text-sm text-muted-foreground">
+                          {shopping.createdBy
+                            ? (profileMap.get(shopping.createdBy)?.fullName || profileMap.get(shopping.createdBy)?.email || shopping.createdBy.slice(0, 8))
+                            : '-'}
+                        </td>
+                      )}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          {isAdmin && shopping.createdBy === user?.id && (
+                            <ShareToggleButton
+                              isShared={!!shopping.isShared}
+                              onToggle={() => shareMutation.mutate({ id: shopping.id, shared: !shopping.isShared })}
+                            />
+                          )}
                           {canEdit && (
                             <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(shopping)} className="h-8 w-8 p-0">
                               <Edit className="h-4 w-4" />
@@ -336,48 +402,24 @@ const ShoppingPage = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {filteredShoppings.map((shopping) => (
-                <div
+                <MasterMobileCard
                   key={shopping.id}
-                  className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
+                  title={shopping.name}
+                  id={shopping.id}
+                  subtitle={[shopping.phone, shopping.address, `Cập nhật ${formatDate(shopping.updatedAt.split("T")[0])}`].filter(Boolean).join(' · ')}
                   onClick={() => canEdit && handleOpenDialog(shopping)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium">{shopping.name}</h3>
-                      <p className="text-sm text-muted-foreground font-mono">ID: {shopping.id}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Cập nhật {formatDate(shopping.updatedAt.split("T")[0])}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      {canEdit && (
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(shopping)} className="h-8 w-8 p-0">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canCreate && (
-                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(shopping.id)} className="h-8 w-8 p-0">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (!ensureCanModifyOwnedEntity(shopping, user?.id, isAdmin)) return;
-                            if (confirm('Bạn có chắc chắn muốn xóa điểm mua sắm này?')) {
-                              deleteMutation.mutate(shopping.id);
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  onEdit={canEdit ? () => handleOpenDialog(shopping) : undefined}
+                  onDuplicate={canCreate ? () => duplicateMutation.mutate(shopping.id) : undefined}
+                  onDelete={canDelete ? () => {
+                    if (!ensureCanModifyOwnedEntity(shopping, user?.id, isAdmin)) return;
+                    if (confirm('Bạn có chắc chắn muốn xóa điểm mua sắm này?')) {
+                      deleteMutation.mutate(shopping.id);
+                    }
+                  } : undefined}
+                  canEdit={canEdit}
+                  canCreate={canCreate}
+                  canDelete={canDelete}
+                />
               ))}
             </div>
           </>
@@ -412,7 +454,7 @@ Big C"
           return null;
         }}
       />
-    </>
+    </TooltipProvider>
   );
 };
 

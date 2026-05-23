@@ -18,9 +18,11 @@ export type Database = {
         Row: {
           contact_name: string | null
           created_at: string | null
+          created_by: string | null
           email: string | null
           id: string
           is_default: boolean
+          is_shared: boolean
           name: string
           note: string | null
           phone: string | null
@@ -31,9 +33,11 @@ export type Database = {
         Insert: {
           contact_name?: string | null
           created_at?: string | null
+          created_by?: string | null
           email?: string | null
           id?: string
           is_default?: boolean
+          is_shared?: boolean
           name: string
           note?: string | null
           phone?: string | null
@@ -44,9 +48,11 @@ export type Database = {
         Update: {
           contact_name?: string | null
           created_at?: string | null
+          created_by?: string | null
           email?: string | null
           id?: string
           is_default?: boolean
+          is_shared?: boolean
           name?: string
           note?: string | null
           phone?: string | null
@@ -61,7 +67,10 @@ export type Database = {
           category_id: string | null
           category_name_at_booking: string | null
           created_at: string | null
+          created_by: string | null
+          guide_id: string | null
           id: string
+          is_shared: boolean
           name: string
           price: number | null
           search_keywords: string[] | null
@@ -72,7 +81,10 @@ export type Database = {
           category_id?: string | null
           category_name_at_booking?: string | null
           created_at?: string | null
+          created_by?: string | null
+          guide_id?: string | null
           id?: string
+          is_shared?: boolean
           name: string
           price?: number | null
           search_keywords?: string[] | null
@@ -83,7 +95,10 @@ export type Database = {
           category_id?: string | null
           category_name_at_booking?: string | null
           created_at?: string | null
+          created_by?: string | null
+          guide_id?: string | null
           id?: string
+          is_shared?: boolean
           name?: string
           price?: number | null
           search_keywords?: string[] | null
@@ -125,7 +140,10 @@ export type Database = {
       expense_categories: {
         Row: {
           created_at: string | null
+          created_by: string | null
+          guide_id: string | null
           id: string
+          is_shared: boolean
           name: string
           search_keywords: string[] | null
           status: string
@@ -133,7 +151,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
+          guide_id?: string | null
           id?: string
+          is_shared?: boolean
           name: string
           search_keywords?: string[] | null
           status?: string
@@ -141,7 +162,10 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
+          guide_id?: string | null
           id?: string
+          is_shared?: boolean
           name?: string
           search_keywords?: string[] | null
           status?: string
@@ -152,8 +176,10 @@ export type Database = {
       guides: {
         Row: {
           created_at: string | null
+          created_by: string | null
           id: string
           is_default: boolean
+          is_shared: boolean
           name: string
           note: string | null
           phone: string | null
@@ -163,8 +189,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           is_default?: boolean
+          is_shared?: boolean
           name: string
           note?: string | null
           phone?: string | null
@@ -174,8 +202,10 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
           is_default?: boolean
+          is_shared?: boolean
           name?: string
           note?: string | null
           phone?: string | null
@@ -292,6 +322,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
+          is_shared: boolean
           name: string
           native_name: string | null
           search_keywords: string[] | null
@@ -303,6 +334,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          is_shared?: boolean
           name: string
           native_name?: string | null
           search_keywords?: string[] | null
@@ -314,6 +346,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          is_shared?: boolean
           name?: string
           native_name?: string | null
           search_keywords?: string[] | null
@@ -325,9 +358,11 @@ export type Database = {
       nationalities: {
         Row: {
           created_at: string | null
+          created_by: string | null
           emoji: string | null
           id: string
           iso2: string | null
+          is_shared: boolean
           name: string
           search_keywords: string[] | null
           status: string
@@ -335,9 +370,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           emoji?: string | null
           id?: string
           iso2?: string | null
+          is_shared?: boolean
           name: string
           search_keywords?: string[] | null
           status?: string
@@ -345,9 +382,11 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           emoji?: string | null
           id?: string
           iso2?: string | null
+          is_shared?: boolean
           name?: string
           search_keywords?: string[] | null
           status?: string
@@ -403,7 +442,9 @@ export type Database = {
       provinces: {
         Row: {
           created_at: string | null
+          created_by: string | null
           id: string
+          is_shared: boolean
           name: string
           search_keywords: string[] | null
           status: string
@@ -411,7 +452,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_shared?: boolean
           name: string
           search_keywords?: string[] | null
           status?: string
@@ -419,7 +462,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_shared?: boolean
           name?: string
           search_keywords?: string[] | null
           status?: string
@@ -541,31 +586,55 @@ export type Database = {
       }
       shoppings: {
         Row: {
+          address: string | null
+          commission_rate: number | null
           created_at: string | null
+          created_by: string | null
+          guide_id: string | null
           id: string
+          is_shared: boolean
           name: string
+          phone: string | null
+          pit_rate: number | null
           price: number | null
           search_keywords: string[] | null
           status: string
           updated_at: string | null
+          withholds_pit: boolean
         }
         Insert: {
+          address?: string | null
+          commission_rate?: number | null
           created_at?: string | null
+          created_by?: string | null
+          guide_id?: string | null
           id?: string
+          is_shared?: boolean
           name: string
+          phone?: string | null
+          pit_rate?: number | null
           price?: number | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
+          withholds_pit?: boolean
         }
         Update: {
+          address?: string | null
+          commission_rate?: number | null
           created_at?: string | null
+          created_by?: string | null
+          guide_id?: string | null
           id?: string
+          is_shared?: boolean
           name?: string
+          phone?: string | null
+          pit_rate?: number | null
           price?: number | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
+          withholds_pit?: boolean
         }
         Relationships: []
       }
@@ -991,6 +1060,47 @@ export type Database = {
           },
         ]
       }
+      shopping_commission_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          note: string | null
+          paid_at: string
+          payment_method: string
+          tour_shopping_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          paid_at: string
+          payment_method: string
+          tour_shopping_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string
+          payment_method?: string
+          tour_shopping_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_commission_payments_tour_shopping_id_fkey"
+            columns: ["tour_shopping_id"]
+            isOneToOne: false
+            referencedRelation: "tour_shoppings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tour_shoppings: {
         Row: {
           created_at: string | null
@@ -999,11 +1109,15 @@ export type Database = {
           line_comment: string | null
           line_status: string
           name: string
+          net_commission: number | null
+          pit_amount: number | null
+          pit_rate: number | null
           price: number
           reviewed_at: string | null
           reviewed_by: string | null
           tour_id: string | null
           updated_at: string | null
+          withholds_pit: boolean | null
         }
         Insert: {
           created_at?: string | null
@@ -1012,11 +1126,15 @@ export type Database = {
           line_comment?: string | null
           line_status?: string
           name: string
+          net_commission?: number | null
+          pit_amount?: number | null
+          pit_rate?: number | null
           price?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
           tour_id?: string | null
           updated_at?: string | null
+          withholds_pit?: boolean | null
         }
         Update: {
           created_at?: string | null
@@ -1025,11 +1143,15 @@ export type Database = {
           line_comment?: string | null
           line_status?: string
           name?: string
+          net_commission?: number | null
+          pit_amount?: number | null
+          pit_rate?: number | null
           price?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
           tour_id?: string | null
           updated_at?: string | null
+          withholds_pit?: boolean | null
         }
         Relationships: [
           {
@@ -1096,7 +1218,9 @@ export type Database = {
       tourist_destinations: {
         Row: {
           created_at: string | null
+          created_by: string | null
           id: string
+          is_shared: boolean
           name: string
           price: number | null
           province_id: string | null
@@ -1107,7 +1231,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_shared?: boolean
           name: string
           price?: number | null
           province_id?: string | null
@@ -1118,7 +1244,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_shared?: boolean
           name?: string
           price?: number | null
           province_id?: string | null
@@ -1175,6 +1303,7 @@ export type Database = {
           total_tabs: number | null
           tour_code: string
           updated_at: string | null
+          water_warning_dismissed: boolean | null
         }
         Insert: {
           adults?: number | null
@@ -1221,6 +1350,7 @@ export type Database = {
           total_tabs?: number | null
           tour_code: string
           updated_at?: string | null
+          water_warning_dismissed?: boolean | null
         }
         Update: {
           adults?: number | null
@@ -1267,6 +1397,7 @@ export type Database = {
           total_tabs?: number | null
           tour_code?: string
           updated_at?: string | null
+          water_warning_dismissed?: boolean | null
         }
         Relationships: [
           {

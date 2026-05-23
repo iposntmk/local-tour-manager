@@ -18,6 +18,12 @@ const formatNumber = (num: number): string => {
   return new Intl.NumberFormat().format(num);
 };
 
+const coerceMax = (max: React.InputHTMLAttributes<HTMLInputElement>['max']): number | undefined => {
+  if (max === undefined) return undefined;
+  const parsed = Number(max);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 const QUICK_AMOUNTS = [35000, 50000, 100000, 120000, 150000, 200000, 220000];
 
 export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
@@ -74,15 +80,17 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       // Strip all non-digits and compute numeric value
       const cleaned = input.replace(/\D/g, '');
       const parsed = cleaned === '' ? NaN : parseInt(cleaned, 10);
+      const maxValue = coerceMax(props.max);
+      const limited = !isNaN(parsed) && maxValue !== undefined ? Math.min(parsed, maxValue) : parsed;
 
       // Format with thousand separators
-      const formatted = cleaned ? formatNumber(parsed) : '';
+      const formatted = cleaned ? formatNumber(limited) : '';
       setDisplayValue(formatted);
 
       // Emit numeric value only when we have digits. Avoid emitting 0 while user clears input.
       if (cleaned) {
         isInternalChange.current = true;
-        onChange?.(parsed);
+        onChange?.(limited);
       }
 
       // Restore caret position based on number of digits to the left
@@ -103,7 +111,9 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         if (digitCount < digitsLeftOfCaret) caretPos = formatted.length;
         try {
           el.setSelectionRange(caretPos, caretPos);
-        } catch {}
+        } catch {
+          // Some input types/browsers can reject selection updates while rerendering.
+        }
       });
     };
 
@@ -115,7 +125,9 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const handleBlur = () => {
       setIsFocused(false);
       // Ensure display stays formatted on blur
-      const numValue = parseNumber(displayValue);
+      const maxValue = coerceMax(props.max);
+      const parsedValue = parseNumber(displayValue);
+      const numValue = maxValue !== undefined ? Math.min(parsedValue, maxValue) : parsedValue;
       setDisplayValue(numValue ? formatNumber(numValue) : '');
       isInternalChange.current = true;
       onChange?.(numValue);
@@ -138,9 +150,11 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     };
 
     const handleQuickAmount = (amount: number) => {
-      setDisplayValue(formatNumber(amount));
+      const maxValue = coerceMax(props.max);
+      const limited = maxValue !== undefined ? Math.min(amount, maxValue) : amount;
+      setDisplayValue(formatNumber(limited));
       isInternalChange.current = true;
-      onChange?.(amount);
+      onChange?.(limited);
     };
 
     const handleClear = () => {

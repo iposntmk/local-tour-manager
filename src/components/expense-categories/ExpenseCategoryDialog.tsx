@@ -44,7 +44,7 @@ export function ExpenseCategoryDialog({
 
   const handleFormSubmit = (data: ExpenseCategoryInput) => {
     if (!data.name.trim()) {
-      toast.error('Please fill in all required fields: Category Name');
+      toast.error('Vui lòng điền đầy đủ các trường bắt buộc: Tên danh mục');
       return;
     }
     onSubmit(data);
@@ -54,16 +54,16 @@ export function ExpenseCategoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Category' : 'Add New Category'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Sửa danh mục' : 'Thêm danh mục mới'}</DialogTitle>
         </DialogHeader>
         {isEditing && initialData?.id && <CopyIdRow id={initialData.id} />}
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Category Name *</Label>
+            <Label htmlFor="name">Tên danh mục *</Label>
             <Input
               id="name"
-              {...register('name', { required: 'Category name is required' })}
-              placeholder="e.g., Transportation, Accommodation..."
+              {...register('name', { required: 'Tên danh mục là bắt buộc' })}
+              placeholder="VD: Vận chuyển, Lưu trú..."
               className={errors.name ? 'border-destructive' : ''}
             />
             {errors.name && (
@@ -73,10 +73,10 @@ export function ExpenseCategoryDialog({
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button type="submit">
-              {isEditing ? 'Update' : 'Create'}
+              {isEditing ? 'Cập nhật' : 'Tạo mới'}
             </Button>
           </div>
         </form>

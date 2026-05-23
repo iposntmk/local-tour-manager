@@ -1,4 +1,6 @@
 export type EntityStatus = 'active' | 'inactive';
+export type PaymentMethod = 'cash' | 'bank_transfer';
+export type CommissionStatus = 'pending' | 'partial' | 'paid';
 
 export interface Guide {
   id: string;
@@ -12,6 +14,7 @@ export interface Guide {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
 }
 
 export interface GuideInput {
@@ -32,6 +35,7 @@ export interface Language {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
 }
 
 export interface LanguageInput {
@@ -53,6 +57,7 @@ export interface Company {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
 }
 
 export interface CompanyInput {
@@ -74,6 +79,7 @@ export interface Nationality {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
 }
 
 export interface NationalityInput {
@@ -90,6 +96,7 @@ export interface Province {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
 }
 
 export interface ProvinceInput {
@@ -109,6 +116,7 @@ export interface TouristDestination {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
 }
 
 export interface TouristDestinationInput {
@@ -124,16 +132,29 @@ export interface Shopping {
   id: string;
   name: string;
   price: number;
+  phone?: string;
+  address?: string;
+  commissionRate?: number;
+  withholdsPit: boolean;
+  pitRate?: number;
   status: EntityStatus;
   searchKeywords: string[];
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
+  guideId?: string;
 }
 
 export interface ShoppingInput {
   name: string;
   price?: number;
+  guideId?: string;
+  phone?: string;
+  address?: string;
+  commissionRate?: number;
+  withholdsPit?: boolean;
+  pitRate?: number;
 }
 
 export interface ExpenseCategory {
@@ -144,10 +165,13 @@ export interface ExpenseCategory {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
+  guideId?: string;
 }
 
 export interface ExpenseCategoryInput {
   name: string;
+  guideId?: string;
 }
 
 export interface DetailedExpense {
@@ -163,6 +187,8 @@ export interface DetailedExpense {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  isShared?: boolean;
+  guideId?: string;
 }
 
 export interface DetailedExpenseInput {
@@ -172,6 +198,7 @@ export interface DetailedExpenseInput {
     id: string;
     nameAtBooking: string;
   };
+  guideId?: string;
 }
 
 export type DiaryDataType = 'text' | 'date' | 'time' | 'datetime' | 'number' | 'boolean' | 'image' | 'video' | 'audio' | 'location';

@@ -22,7 +22,7 @@ export const BulkImportDialog = <T = any,>({
   onImport,
   title,
   description,
-  placeholder = 'Enter items (one per line, format: name,price)\nExample:\nHa Long Bay,1500000\nSapa Trek,2000000',
+  placeholder = 'Nhập dữ liệu (mỗi dòng một mục, định dạng: tên,giá)\nVí dụ:\nVịnh Hạ Long,1500000\nSapa Trek,2000000',
   parseItem
 }: BulkImportDialogProps<T>) => {
   // Create unique storage key based on dialog title
@@ -35,7 +35,7 @@ export const BulkImportDialog = <T = any,>({
     if (!file) return;
 
     if (!file.name.endsWith('.txt') && !file.name.endsWith('.csv')) {
-      toast.error('Please upload a TXT or CSV file');
+      toast.error('Vui lòng tải lên file TXT hoặc CSV');
       return;
     }
 
@@ -45,7 +45,7 @@ export const BulkImportDialog = <T = any,>({
       setTextInput(content);
     };
     reader.onerror = () => {
-      toast.error('Failed to read file');
+      toast.error('Không thể đọc file');
     };
     reader.readAsText(file);
   };
@@ -80,7 +80,7 @@ export const BulkImportDialog = <T = any,>({
 
   const handleImport = async () => {
     if (!textInput.trim()) {
-      toast.error('Please enter data or upload a file');
+      toast.error('Vui lòng nhập dữ liệu hoặc tải lên file');
       return;
     }
 
@@ -89,14 +89,14 @@ export const BulkImportDialog = <T = any,>({
       const items = parseItems(textInput);
 
       if (items.length === 0) {
-        toast.error('No valid items found. Use format: name,price (one per line)');
+        toast.error('Không tìm thấy mục nào hợp lệ. Sử dụng định dạng: tên,giá (mỗi dòng một mục)');
         return;
       }
 
       await onImport(items);
       setTextInput('');
       onOpenChange(false);
-      toast.success(`Successfully imported ${items.length} item${items.length > 1 ? 's' : ''}`);
+      toast.success(`Đã nhập thành công ${items.length} mục`);
     } catch (error) {
       console.error('Import error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Import failed';
@@ -122,7 +122,7 @@ export const BulkImportDialog = <T = any,>({
           <div>
             <Label htmlFor="import-file" className="flex items-center gap-2 cursor-pointer">
               <FileText className="h-4 w-4" />
-              Upload Text/CSV File
+              Tải lên file TXT/CSV
             </Label>
             <input
               id="import-file"
@@ -138,12 +138,12 @@ export const BulkImportDialog = <T = any,>({
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or paste text</span>
+              <span className="bg-background px-2 text-muted-foreground">Hoặc dán văn bản</span>
             </div>
           </div>
 
           <div>
-            <Label htmlFor="import-textarea">Import Data</Label>
+            <Label htmlFor="import-textarea">Nhập dữ liệu</Label>
             <TextareaWithSave
               id="import-textarea"
               storageKey={storageKey}
@@ -155,20 +155,20 @@ export const BulkImportDialog = <T = any,>({
           </div>
 
           <div className="text-sm text-muted-foreground">
-            <p className="font-medium">Format:</p>
+            <p className="font-medium">Định dạng:</p>
             <ul className="list-disc list-inside mt-1 space-y-1">
-              <li>One item per line</li>
-              <li>Format: <code className="bg-muted px-1 py-0.5 rounded">name,price</code></li>
-              <li>Price can include currency symbols (they will be removed)</li>
+              <li>Mỗi dòng một mục</li>
+              <li>Định dạng: <code className="bg-muted px-1 py-0.5 rounded">tên,giá</code></li>
+              <li>Giá có thể bao gồm ký hiệu tiền tệ (sẽ được tự động loại bỏ)</li>
             </ul>
           </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={handleClose}>
-              Cancel
+              Hủy
             </Button>
             <Button onClick={handleImport} disabled={isProcessing}>
-              {isProcessing ? 'Importing...' : 'Import'}
+              {isProcessing ? 'Đang nhập...' : 'Nhập'}
             </Button>
           </div>
         </div>

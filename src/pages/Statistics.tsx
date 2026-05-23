@@ -34,6 +34,7 @@ import { TopRankChart } from '@/components/statistics/charts/TopRankChart';
 import { ShareRowList } from '@/components/statistics/charts/ShareRowList';
 import { TourStatsTable } from '@/components/statistics/tables/TourStatsTable';
 import { GroupStatsTable } from '@/components/statistics/tables/GroupStatsTable';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Statistics = () => {
   const queryClient = useQueryClient();
@@ -438,7 +439,7 @@ const Statistics = () => {
           <div className="flex flex-col gap-2 md:gap-1">
             <h1 className="text-2xl font-bold md:text-3xl">Thống kê</h1>
             <p className="text-sm text-muted-foreground">
-              Doanh thu, CTP, tip và mua sắm theo HDV, công ty, quốc tịch và tháng — cập nhật realtime.
+              Doanh thu, CTP, tip và mua sắm theo HDV, công ty mẹ, land tour, quốc tịch và tháng — cập nhật realtime.
             </p>
           </div>
         </div>
@@ -472,35 +473,43 @@ const Statistics = () => {
           grandTotalTours={grandTotals.tours}
         />
 
-        {/* Charts: monthly trend + top ranks */}
-        <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
-          <div className="lg:col-span-2">
-            <MonthlyTrendChart data={monthlyStats} />
-          </div>
-          <TopRankChart title="Top HDV theo Final Total" description="5 HDV có doanh thu cao nhất" data={guideStats} />
-          <TopRankChart title="Top công ty theo Final Total" description="5 công ty đóng góp doanh thu cao nhất" data={companyStats} />
-        </div>
+        <Tabs defaultValue="chart" className="w-full">
+          <TabsList className="w-full grid grid-cols-2 md:inline-flex md:w-auto">
+            <TabsTrigger value="chart">Biểu đồ</TabsTrigger>
+            <TabsTrigger value="table">Bảng dữ liệu</TabsTrigger>
+          </TabsList>
 
-        {/* Distribution */}
-        <div className="space-y-6 md:space-y-8">
-          <ShareRowList title="Phân bổ theo công ty" description="% Final Total mỗi công ty đóng góp — bấm sort để đảo chiều" data={companyStats} />
-          <ShareRowList title="Phân bổ theo quốc tịch" description="% Final Total theo quốc tịch khách — bấm sort để đảo chiều" data={nationalityStats} />
-        </div>
+          <TabsContent value="chart" className="space-y-6 md:space-y-8">
+            <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
+              <div className="lg:col-span-2">
+                <MonthlyTrendChart data={monthlyStats} />
+              </div>
+              <TopRankChart title="Top HDV theo Final Total" description="5 HDV có doanh thu cao nhất" data={guideStats} />
+              <TopRankChart title="Top công ty mẹ theo Final Total" description="5 công ty mẹ đóng góp doanh thu cao nhất" data={companyStats} />
+            </div>
 
-        {/* Tables */}
-        <TourStatsTable
-          rows={tourStats}
-          totals={totals}
-          visibility={columnVisibility}
-          onVisibilityChange={handleColumnVisibility}
-          isLoading={isLoading}
-        />
-        <GroupStatsTable title="Thống kê theo HDV" firstColumnLabel="Hướng dẫn viên" rows={guideStats} isLoading={isLoading} />
-        <GroupStatsTable title="Thống kê theo công ty (bán tour)" firstColumnLabel="Công ty" rows={companyStats} isLoading={isLoading} />
-        <GroupStatsTable title="Thống kê theo công ty land tour" firstColumnLabel="Land operator" rows={landOperatorStats} isLoading={isLoading} />
-        <GroupStatsTable title="Thống kê theo cặp Công ty mẹ × Land operator" firstColumnLabel="Công ty mẹ → Land" rows={companyLandOperatorStats} isLoading={isLoading} />
-        <GroupStatsTable title="Thống kê theo tháng" firstColumnLabel="Tháng" rows={monthlyStats} isLoading={isLoading} />
-        <GroupStatsTable title="Thống kê theo quốc tịch" firstColumnLabel="Quốc tịch" rows={nationalityStats} isLoading={isLoading} />
+            <div className="space-y-6 md:space-y-8">
+              <ShareRowList title="Phân bổ theo công ty mẹ" description="% Final Total mỗi công ty mẹ đóng góp — bấm sort để đảo chiều" data={companyStats} />
+              <ShareRowList title="Phân bổ theo quốc tịch" description="% Final Total theo quốc tịch khách — bấm sort để đảo chiều" data={nationalityStats} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="table" className="space-y-6 md:space-y-8">
+            <TourStatsTable
+              rows={tourStats}
+              totals={totals}
+              visibility={columnVisibility}
+              onVisibilityChange={handleColumnVisibility}
+              isLoading={isLoading}
+            />
+            <GroupStatsTable title="Thống kê theo HDV" firstColumnLabel="Hướng dẫn viên" rows={guideStats} isLoading={isLoading} />
+            <GroupStatsTable title="Thống kê theo công ty mẹ (bán tour)" firstColumnLabel="Công ty mẹ" rows={companyStats} isLoading={isLoading} />
+            <GroupStatsTable title="Thống kê theo công ty land tour" firstColumnLabel="Land operator" rows={landOperatorStats} isLoading={isLoading} />
+            <GroupStatsTable title="Thống kê theo cặp Công ty mẹ × Land operator" firstColumnLabel="Công ty mẹ → Land" rows={companyLandOperatorStats} isLoading={isLoading} />
+            <GroupStatsTable title="Thống kê theo tháng" firstColumnLabel="Tháng" rows={monthlyStats} isLoading={isLoading} />
+            <GroupStatsTable title="Thống kê theo quốc tịch" firstColumnLabel="Quốc tịch" rows={nationalityStats} isLoading={isLoading} />
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   );

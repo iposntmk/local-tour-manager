@@ -4,7 +4,10 @@ import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
+import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SearchInput } from '@/components/master/SearchInput';
+import MasterMobileCard from '@/components/master/MasterMobileCard';
 import { ProvinceDialog } from '@/components/provinces/ProvinceDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { Province, ProvinceInput } from '@/types/master';
@@ -13,6 +16,7 @@ import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
+import type { UserProfile } from '@/types/user';
 
 const Provinces = () => {
   const [search, setSearch] = useState('');
@@ -25,6 +29,16 @@ const Provinces = () => {
 
   const queryClient = useQueryClient();
   const { hasPermission, user, isAdmin } = useAuth();
+  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const profileMap = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    userProfiles.forEach(p => m.set(p.id, p));
+    return m;
+  }, [userProfiles]);
   const canCreate = hasPermission('create_provinces');
   const canEdit = hasPermission('edit_provinces');
   const canDelete = hasPermission('delete_provinces');
@@ -86,6 +100,18 @@ const Provinces = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+    },
+  });
+
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
+      store.setMasterDataShared('provinces', id, shared),
+    onSuccess: (_, { shared }) => {
+      queryClient.invalidateQueries({ queryKey: ['provinces'] });
+      toast.success(shared ? 'Đã chia sẻ' : 'Đã đặt về riêng tư');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Thao tác chia sẻ thất bại');
     },
   });
 
@@ -190,7 +216,7 @@ const Provinces = () => {
   const { classes: headerClasses } = useHeaderMode('provinces.headerMode');
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -253,6 +279,7 @@ const Provinces = () => {
                     <th className="text-left p-4 font-medium">ID</th>
                     <th className="text-left p-4 font-medium">Tên</th>
                     <th className="text-left p-4 font-medium">Cập nhật</th>
+                    {isAdmin && <th className="text-left p-4 font-medium">Người tạo</th>}
                     <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr className="border-t">
@@ -280,6 +307,7 @@ const Provinces = () => {
                         className="h-8"
                       />
                     </th>
+                    {isAdmin && <th className="p-2"></th>}
                     <th className="p-2"></th>
                   </tr>
                 </thead>
@@ -291,12 +319,30 @@ const Provinces = () => {
                       onClick={() => canEdit && handleOpenDialog(province)}
                     >
                       <td className="p-4 text-muted-foreground text-sm font-mono">{province.id}</td>
-                      <td className="p-4 font-medium">{province.name}</td>
+                      <td className="p-4 font-medium">
+                        <div className="flex items-center gap-2">
+                          {province.name}
+                          <SharedBadge isShared={!!province.isShared} />
+                        </div>
+                      </td>
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(province.updatedAt.split("T")[0])}
                       </td>
+                      {isAdmin && (
+                        <td className="p-4 text-sm text-muted-foreground">
+                          {province.createdBy
+                            ? (profileMap.get(province.createdBy)?.fullName || profileMap.get(province.createdBy)?.email || province.createdBy.slice(0, 8))
+                            : '-'}
+                        </td>
+                      )}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          {isAdmin && province.createdBy === user?.id && (
+                            <ShareToggleButton
+                              isShared={!!province.isShared}
+                              onToggle={() => shareMutation.mutate({ id: province.id, shared: !province.isShared })}
+                            />
+                          )}
                           {canEdit && (
                             <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(province)} className="h-8 w-8 p-0">
                               <Edit className="h-4 w-4" />
@@ -333,48 +379,24 @@ const Provinces = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {filteredProvinces.map((province) => (
-                <div
+                <MasterMobileCard
                   key={province.id}
-                  className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50"
+                  title={province.name}
+                  id={province.id}
+                  subtitle={`Cập nhật ${formatDate(province.updatedAt.split("T")[0])}`}
                   onClick={() => canEdit && handleOpenDialog(province)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium">{province.name}</h3>
-                      <p className="text-sm text-muted-foreground font-mono">ID: {province.id}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Cập nhật {formatDate(province.updatedAt.split("T")[0])}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      {canEdit && (
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(province)} className="h-8 w-8 p-0">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canCreate && (
-                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(province.id)} className="h-8 w-8 p-0">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (!ensureCanModifyOwnedEntity(province, user?.id, isAdmin)) return;
-                            if (confirm('Bạn có chắc chắn muốn xóa tỉnh thành này?')) {
-                              deleteMutation.mutate(province.id);
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  onEdit={canEdit ? () => handleOpenDialog(province) : undefined}
+                  onDuplicate={canCreate ? () => duplicateMutation.mutate(province.id) : undefined}
+                  onDelete={canDelete ? () => {
+                    if (!ensureCanModifyOwnedEntity(province, user?.id, isAdmin)) return;
+                    if (confirm('Bạn có chắc chắn muốn xóa tỉnh thành này?')) {
+                      deleteMutation.mutate(province.id);
+                    }
+                  } : undefined}
+                  canEdit={canEdit}
+                  canCreate={canCreate}
+                  canDelete={canDelete}
+                />
               ))}
             </div>
           </>
@@ -405,7 +427,7 @@ const Provinces = () => {
           return null;
         }}
       />
-    </>
+    </TooltipProvider>
   );
 };
 

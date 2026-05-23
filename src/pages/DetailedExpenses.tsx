@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Edit, Copy, Trash2, Upload, Trash, Download, Eye, EyeOff } from 'lucide-react';
+import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SearchInput } from '@/components/master/SearchInput';
+import MasterMobileCard from '@/components/master/MasterMobileCard';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { DetailedExpense, DetailedExpenseInput } from '@/types/master';
@@ -15,6 +18,7 @@ import { formatDate } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
+import type { UserProfile } from '@/types/user';
 
 const DetailedExpenses = () => {
   const [search, setSearch] = useState('');
@@ -26,7 +30,18 @@ const DetailedExpenses = () => {
   const [priceFilter, setPriceFilter] = useState('');
 
   const queryClient = useQueryClient();
-  const { hasPermission, user, isAdmin } = useAuth();
+  const { hasPermission, user, isAdmin, isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
+  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
+    queryKey: ['userProfiles'],
+    queryFn: () => store.listUserProfiles(),
+    enabled: isAdmin,
+  });
+  const profileMap = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    userProfiles.forEach(p => m.set(p.id, p));
+    return m;
+  }, [userProfiles]);
   const canCreate = hasPermission('create_detailed_expenses');
   const canEdit = hasPermission('edit_detailed_expenses');
   const canDelete = hasPermission('delete_detailed_expenses');
@@ -34,17 +49,17 @@ const DetailedExpenses = () => {
   const canExport = hasPermission('export_detailed_expenses');
 
   const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ['detailedExpenses', search],
-    queryFn: () => store.listDetailedExpenses({ search }),
+    queryKey: ['detailedExpenses', search, guideId ?? null],
+    queryFn: () => store.listDetailedExpenses({ search, guideId }),
   });
 
   const { data: expenseCategories = [] } = useQuery({
-    queryKey: ['expenseCategories'],
-    queryFn: () => store.listExpenseCategories(),
+    queryKey: ['expenseCategories', guideId ?? null],
+    queryFn: () => store.listExpenseCategories({ guideId }),
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: DetailedExpenseInput) => store.createDetailedExpense(input),
+    mutationFn: (input: DetailedExpenseInput) => store.createDetailedExpense({ ...input, guideId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('Tạo chi phí chi tiết thành công');
@@ -113,15 +128,28 @@ const DetailedExpenses = () => {
     },
   });
 
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
+      store.setMasterDataShared('detailed_expenses', id, shared),
+    onSuccess: (_, { shared }) => {
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
+      toast.success(shared ? 'Đã chia sẻ' : 'Đã đặt về riêng tư');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Thao tác chia sẻ thất bại');
+    },
+  });
+
   const bulkImportMutation = useMutation({
     mutationFn: async (items: { name: string; price: number }[]) => {
-      const categories = await store.listExpenseCategories();
+      const categories = await store.listExpenseCategories({ guideId });
       const defaultCategory = categories[0] || { id: '', name: 'Other' };
 
       const inputs: DetailedExpenseInput[] = items.map(item => ({
         name: item.name,
         price: item.price,
         categoryRef: { id: defaultCategory.id, nameAtBooking: defaultCategory.name },
+        guideId,
       }));
 
       return store.bulkCreateDetailedExpenses(inputs);
@@ -225,7 +253,7 @@ const DetailedExpenses = () => {
   const { classes: headerClasses } = useHeaderMode('detailedexpenses.headerMode');
 
   return (
-    <>
+    <TooltipProvider>
       <div className="space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -289,6 +317,7 @@ const DetailedExpenses = () => {
                     <th className="text-left p-4 font-medium">Danh mục</th>
                     <th className="text-left p-4 font-medium">Đơn giá</th>
                     <th className="text-left p-4 font-medium">Cập nhật</th>
+                    {isAdmin && <th className="text-left p-4 font-medium">Người tạo</th>}
                     <th className="text-right p-4 font-medium">Thao tác</th>
                   </tr>
                   <tr>
@@ -327,6 +356,7 @@ const DetailedExpenses = () => {
                       />
                     </th>
                     <th className="p-2"></th>
+                    {isAdmin && <th className="p-2"></th>}
                     <th className="p-2"></th>
                   </tr>
                 </thead>
@@ -338,10 +368,13 @@ const DetailedExpenses = () => {
                       onClick={() => canEdit && handleOpenDialog(expense)}
                     >
                       <td className="p-4 font-medium">
-                        {expense.name}
-                        {expense.status === 'inactive' && (
-                          <span className="ml-2 text-xs text-muted-foreground">(Đã ẩn)</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {expense.name}
+                          {expense.status === 'inactive' && (
+                            <span className="text-xs text-muted-foreground">(Đã ẩn)</span>
+                          )}
+                          <SharedBadge isShared={!!expense.isShared} />
+                        </div>
                       </td>
                       <td className="p-4 text-muted-foreground">{expense.categoryRef.nameAtBooking}</td>
                       <td className="p-4 text-muted-foreground">
@@ -350,8 +383,21 @@ const DetailedExpenses = () => {
                       <td className="p-4 text-muted-foreground text-sm">
                         {formatDate(expense.updatedAt.split("T")[0])}
                       </td>
+                      {isAdmin && (
+                        <td className="p-4 text-sm text-muted-foreground">
+                          {expense.createdBy
+                            ? (profileMap.get(expense.createdBy)?.fullName || profileMap.get(expense.createdBy)?.email || expense.createdBy.slice(0, 8))
+                            : '-'}
+                        </td>
+                      )}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          {isAdmin && expense.createdBy === user?.id && (
+                            <ShareToggleButton
+                              isShared={!!expense.isShared}
+                              onToggle={() => shareMutation.mutate({ id: expense.id, shared: !expense.isShared })}
+                            />
+                          )}
                           {canEdit && (
                             <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(expense)} className="h-8 w-8 p-0">
                               <Edit className="h-4 w-4" />
@@ -403,70 +449,27 @@ const DetailedExpenses = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {filteredExpenses.map((expense) => (
-                <div
+                <MasterMobileCard
                   key={expense.id}
-                  className={`rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50 ${expense.status === 'inactive' ? 'opacity-50 bg-muted/30' : ''}`}
+                  title={expense.name}
+                  id={expense.id}
+                  isInactive={expense.status === 'inactive'}
+                  subtitle={`Cập nhật ${formatDate(expense.updatedAt.split("T")[0])}`}
+                  metadata={`${expense.categoryRef.nameAtBooking} • ${formatCurrency(expense.price)}`}
                   onClick={() => canEdit && handleOpenDialog(expense)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium">
-                        {expense.name}
-                        {expense.status === 'inactive' && (
-                          <span className="ml-2 text-xs text-muted-foreground">(Đã ẩn)</span>
-                        )}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {expense.categoryRef.nameAtBooking} • {formatCurrency(expense.price)}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Cập nhật {formatDate(expense.updatedAt.split("T")[0])}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                      {canEdit && (
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(expense)} className="h-8 w-8 p-0">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canCreate && (
-                        <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(expense.id)} className="h-8 w-8 p-0">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canEdit && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleStatusMutation.mutate(expense.id)}
-                          className="h-8 w-8 p-0"
-                          title={expense.status === 'active' ? 'Ẩn chi phí' : 'Hiện chi phí'}
-                        >
-                          {expense.status === 'active' ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (!ensureCanModifyOwnedEntity(expense, user?.id, isAdmin)) return;
-                            if (confirm('Bạn có chắc chắn muốn ẩn chi phí này?')) {
-                              deleteMutation.mutate(expense.id);
-                            }
-                          }}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  onEdit={canEdit ? () => handleOpenDialog(expense) : undefined}
+                  onDuplicate={canCreate ? () => duplicateMutation.mutate(expense.id) : undefined}
+                  onToggleStatus={canEdit ? () => toggleStatusMutation.mutate(expense.id) : undefined}
+                  onDelete={canDelete ? () => {
+                    if (!ensureCanModifyOwnedEntity(expense, user?.id, isAdmin)) return;
+                    if (confirm('Bạn có chắc chắn muốn ẩn chi phí này?')) {
+                      deleteMutation.mutate(expense.id);
+                    }
+                  } : undefined}
+                  canEdit={canEdit}
+                  canCreate={canCreate}
+                  canDelete={canDelete}
+                />
               ))}
             </div>
           </>
@@ -499,7 +502,7 @@ const DetailedExpenses = () => {
           return null;
         }}
       />
-    </>
+    </TooltipProvider>
   );
 };
 

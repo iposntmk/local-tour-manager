@@ -3,6 +3,7 @@ import Fuse from 'fuse.js';
 import type { Tour } from '@/types/tour';
 import type { Company, Guide, Language, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -53,6 +54,8 @@ interface SearchableEntity {
 }
 
 export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEntities }: EnhancedImportReviewProps) {
+  const { isGuide, userProfile } = useAuth();
+  const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
   const [companies, setCompanies] = useState<Company[]>(preloadedEntities?.companies ?? []);
   const [guides, setGuides] = useState<Guide[]>(preloadedEntities?.guides ?? []);
   const [nationalities, setNationalities] = useState<Nationality[]>(preloadedEntities?.nationalities ?? []);
@@ -644,7 +647,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
   const handleCreateExpense = async (data: any) => {
     try {
-      const newExpense = await store.createDetailedExpense(data);
+      const newExpense = await store.createDetailedExpense({ ...data, guideId });
       setExpenses(prev => [...prev, newExpense]);
       toast.success('Expense created successfully');
       setOpenExpenseDialog(false);
@@ -655,7 +658,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
 
   const handleCreateShopping = async (data: any) => {
     try {
-      const newShopping = await store.createShopping(data);
+      const newShopping = await store.createShopping({ ...data, guideId });
       setShoppings(prev => [...prev, newShopping]);
       toast.success('Shopping created successfully');
       setOpenShoppingDialog(false);
