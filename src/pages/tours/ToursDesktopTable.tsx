@@ -371,7 +371,7 @@ export const ToursDesktopTable = ({
             </Button>
             <div
               ref={topScrollRef}
-              className="h-6 min-w-0 flex-1 overflow-x-scroll"
+              className="h-6 min-w-0 flex-1 overflow-x-scroll overflow-y-hidden"
               onScroll={() => syncScroll('top')}
               onWheel={(event) => {
                 const container = bottomScrollRef.current;
@@ -381,9 +381,16 @@ export const ToursDesktopTable = ({
                 const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
                 scrollHorizontally(delta);
               }}
-              style={{ scrollbarWidth: 'thin' }}
             >
-              <div className="h-4 bg-transparent" style={{ width: `${tableWidth}px`, minWidth: `${tableWidth}px` }} />
+              <div className="flex h-4" style={{ width: `${tableWidth}px`, minWidth: `${tableWidth}px` }}>
+                {visibleColumns.map((column) => (
+                  <div
+                    key={column.key}
+                    className="h-full bg-transparent border-r border-transparent"
+                    style={{ width: column.width, minWidth: column.width, maxWidth: column.width }}
+                  />
+                ))}
+              </div>
             </div>
             <Button type="button" variant="ghost" size="sm" className="h-6 w-6 shrink-0 p-0" onClick={() => scrollHorizontally(360)} aria-label="Cuộn bảng sang phải">
               <ChevronRight className="h-4 w-4" />
