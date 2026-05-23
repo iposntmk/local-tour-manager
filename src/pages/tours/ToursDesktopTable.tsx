@@ -245,16 +245,16 @@ export const ToursDesktopTable = ({
               <Button
                 variant="outline"
                 className="h-7 w-full justify-start px-2 text-left text-xs font-normal"
-                title={tableFilters.company || 'Tất cả công ty'}
+                title={tableFilters.company || 'Tất cả công ty mẹ'}
               >
-                <span className="truncate">{tableFilters.company || 'Tất cả công ty'}</span>
+                <span className="truncate">{tableFilters.company || 'Tất cả công ty mẹ'}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[260px] p-0" align="start">
               <Command>
-                <CommandInput placeholder="Tìm công ty..." />
+                <CommandInput placeholder="Tìm công ty mẹ..." />
                 <CommandList>
-                  <CommandEmpty>Không tìm thấy công ty.</CommandEmpty>
+                  <CommandEmpty>Không tìm thấy công ty mẹ.</CommandEmpty>
                   <CommandGroup>
                     <CommandItem
                       value="__all_companies__"
@@ -264,7 +264,7 @@ export const ToursDesktopTable = ({
                       }}
                     >
                       <Check className={`mr-2 h-4 w-4 ${tableFilters.company ? 'opacity-0' : 'opacity-100'}`} />
-                      Tất cả công ty
+                      Tất cả công ty mẹ
                     </CommandItem>
                     {companyOptions.map((company) => (
                       <CommandItem
