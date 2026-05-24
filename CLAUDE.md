@@ -2,6 +2,45 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Architecture Laws (MANDATORY)
+
+You are an extremely disciplined senior developer. The following laws are non-negotiable and must be followed in every code change.
+
+### 1. File Size Limit
+- **Maximum 300–350 lines per file** (hard cap: 400 lines in exceptional cases).
+- If a file would exceed this, **stop and split** into smaller modules before continuing.
+
+### 2. Reusability (DRY)
+- Follow **Don't Repeat Yourself** strictly.
+- Extract shared logic into functions, hooks, utilities, components, or services.
+- Write modular code that can be imported and reused across the codebase.
+
+### 3. Design Principles (Non-negotiable)
+- **Single Responsibility Principle**: each file/module has one clear responsibility.
+- **Separation of Concerns**: business logic, UI, data access, validation, and error handling must be separated.
+- **Encapsulation**: internals are not exposed unless explicitly needed by a caller.
+
+### 4. Recommended Structure
+```
+utils/ or lib/    — shared pure functions
+hooks/            — custom React hooks
+services/         — API / store calls
+components/       — UI components (as small as possible)
+features/ or      — domain-specific modules
+  modules/
+types/            — TypeScript types
+constants/        — app-wide constants
+```
+
+### 5. Before Writing a Feature
+- Analyze and propose a multi-file split **before** writing code.
+- Only write a single file when it is genuinely small with a clear reason.
+- Always suggest a modular structure if a file risks growing large.
+
+### 6. Self-Enforcement
+- If code starts growing long, **stop, propose a split, then continue**.
+- Before finalizing any output, verify no law is violated — fix violations before delivering.
+
 ## Project Overview
 
 Local Tour Manager is a comprehensive tour management web application built with React, TypeScript, Vite, and Supabase. It helps travel agencies and tour operators manage tours, expenses, destinations, guides, and generate professional Excel exports.
@@ -78,6 +117,12 @@ All database interactions MUST go through the store interface. Never import Supa
 **Master Data Types** (`src/types/master.ts`):
 - Guide, Company, Nationality, Province, TouristDestination, Shopping, ExpenseCategory, DetailedExpense
 - All master entities have `searchKeywords` arrays for fuzzy search
+- Ownership-aware entities (Shopping, Guide, etc.) have `isShared?: boolean` and optionally `guideId` for scoped access
+
+**Commission Types** (`src/types/tour.ts`):
+- `TourShopping` now includes: `withholdsPit`, `pitRate`, `pitAmount`, `netCommission`, `commissionStatus` (pending/partial/paid), `payments`
+- `CommissionPayment`: `amount`, `paymentMethod` (cash/bank_transfer), `paidAt`, `note`, linked via `tourShoppingId`
+- Shopping master data has: `commissionRate`, `withholdsPit`, `pitRate`
 
 **User Types** (`src/types/user.ts`):
 - `UserProfile`, `UserRole` (admin/editor/viewer), `Permission` (granular action permissions)
@@ -99,6 +144,25 @@ See `src/lib/tour-utils.ts`:
 - `calculateTourSummary()`: Pure calculation function
 - `enrichTourWithSummary()`: Enriches tour objects with calculated summaries
 - Guest count clamping: Individual items can specify custom guest counts (clamped to tour's totalGuests)
+
+### Master Data Sharing & Ownership
+
+Master data entities support a shared/private ownership model:
+
+- **`isShared` flag**: entities marked shared are globally visible to all users; private entities are scoped to their creator
+- **`ShareToggleButton`** (`src/components/master/ShareToggleButton.tsx`): UI toggle that switches an entity between shared/private
+- **`SharedBadge`**: displays a globe icon on shared entities in list views
+- **Ownership enforcement** (`src/lib/master-ownership.ts`): `canModifyOwnedEntity()` / `ensureCanModifyOwnedEntity()` — admins can modify any entity; non-admins only their own
+- Shopping entities additionally support `guideId` scoping so guides only manage their own shops
+
+### Shopping Commission & PIT Tax
+
+Shopping stops track commission payments with optional PIT (Personal Income Tax) withholding:
+
+- Commission rate, PIT rate, and `withholdsPit` flag are configured on Shopping master data
+- `ShoppingsTab` displays commission status (pending/partial/paid) with a PIN-gated payment recording UI (PIN: 0829101188)
+- Payments recorded as `CommissionPayment` records with cash or bank transfer method
+- `pitAmount` and `netCommission` are calculated fields derived from commission amount and PIT rate
 
 ### Excel Export System
 
@@ -210,10 +274,10 @@ VITE_APP_BASE_PATH=/              # Optional: base path for deployment (default 
 ## Common Tasks
 
 ### Adding a New Master Data Entity
-1. Define types in `src/types/master.ts`
+1. Define types in `src/types/master.ts` (add `isShared?: boolean` if ownership-scoped)
 2. Add Supabase types in `src/integrations/supabase/types.ts`
 3. Implement store methods in `src/lib/datastore/supabase-store.ts`
-4. Create page in `src/pages/`
+4. Create page in `src/pages/` (wire `ShareToggleButton` if ownership applies)
 5. Create dialog in `src/components/{entity}/`
 6. Add route in `src/App.tsx`
 

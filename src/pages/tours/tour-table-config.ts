@@ -61,19 +61,28 @@ export const getTourWarningInfo = (tour: Tour) => {
   const hasWaterExpense = (tour.expenses || []).some(expense =>
     WATER_EXPENSE_NAMES.includes((expense.name || '').trim().toLowerCase())
   );
-  const missingWaterExpense = !hasWaterExpense;
+  const missingWaterExpense = !hasWaterExpense && !tour.waterExpenseDismissed;
+
+  const hasUnpaidCommission = (tour.shoppings || []).some((s) => {
+    if ((s.price ?? 0) <= 0) return false;
+    const netCommission = s.netCommission ?? s.price;
+    const paidTotal = (s.payments || []).reduce((sum, p) => sum + p.amount, 0);
+    return paidTotal < netCommission;
+  });
 
   const warningTitle = [
+    hasUnpaidCommission && 'Hoa hồng chưa nhận đủ',
     hasDuplicateDestNames && 'Tên điểm đến trùng lặp',
     hasZeroPrice && 'Có mục giá 0',
-    missingWaterExpense && 'Thiếu chi phí nước uống'
+    missingWaterExpense && 'Thiếu chi phí nước uống',
   ].filter(Boolean).join(' • ') || 'Cần kiểm tra';
 
   return {
     hasZeroPrice,
     hasDuplicateDestNames,
     missingWaterExpense,
-    showRedFlag: hasZeroPrice || hasDuplicateDestNames || missingWaterExpense,
+    hasUnpaidCommission,
+    showRedFlag: hasZeroPrice || hasDuplicateDestNames || missingWaterExpense || hasUnpaidCommission,
     warningTitle,
   };
 };
@@ -95,10 +104,11 @@ export type TourTableColumnKey =
   | 'total'
   | 'settlement'
   | 'payment'
+  | 'commission'
   | 'warning'
   | 'actions';
 
-export type TourTableFilterKey = Exclude<TourTableColumnKey, 'stt' | 'actions' | 'payment' | 'settlement'>;
+export type TourTableFilterKey = Exclude<TourTableColumnKey, 'stt' | 'actions' | 'payment' | 'settlement' | 'commission'>;
 
 export type TourTableFilters = Record<TourTableFilterKey, string> & {
   warning: 'all' | 'warning' | 'ok';
@@ -107,6 +117,7 @@ export type TourTableFilters = Record<TourTableFilterKey, string> & {
 export interface TourTableColumn {
   key: TourTableColumnKey;
   label: string;
+  title?: string;
   width: number;
   headerClassName?: string;
   cellClassName?: string;
@@ -131,7 +142,8 @@ export const TOUR_TABLE_COLUMNS: TourTableColumn[] = [
   { key: 'total', label: 'Tổng', width: 102, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-semibold text-primary', filterType: 'text', filterPlaceholder: 'Lọc tổng' },
   { key: 'settlement', label: 'Quyết toán', width: 116, cellClassName: 'whitespace-nowrap', filterType: 'none' },
   { key: 'payment', label: 'Thanh toán', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'none' },
-  { key: 'warning', label: 'Cờ cảnh báo', width: 108, cellClassName: 'whitespace-nowrap', filterType: 'warning' },
+  { key: 'commission', label: 'Hoa hồng', width: 112, cellClassName: 'whitespace-nowrap', filterType: 'none' },
+  { key: 'warning', label: 'Cảnh báo', title: 'Cảnh báo, tour thiếu nước uống', width: 108, cellClassName: 'whitespace-nowrap', filterType: 'warning' },
   { key: 'actions', label: 'Hành động', width: 98, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right', filterType: 'none' },
 ];
 

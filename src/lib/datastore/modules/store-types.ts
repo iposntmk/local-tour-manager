@@ -42,6 +42,8 @@ export type TourNationalityRow = Database['public']['Tables']['tour_nationalitie
 export type TourPaymentRow = Database['public']['Tables']['tour_payments']['Row'];
 export type TourPaymentInsert = Database['public']['Tables']['tour_payments']['Insert'];
 export type TourPaymentUpdateRow = Database['public']['Tables']['tour_payments']['Update'];
+export type CommissionPaymentRow = Database['public']['Tables']['shopping_commission_payments']['Row'];
+export type CommissionPaymentInsert = Database['public']['Tables']['shopping_commission_payments']['Insert'];
 
 export type GuideRowWithLanguages = GuideRow & {
   languages?: Language[];

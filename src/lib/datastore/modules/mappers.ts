@@ -14,7 +14,7 @@ import type {
   ShopPlace,
   Hotel,
 } from '@/types/master';
-import type { Tour, PaymentMethod, PaymentStatus, TourPayment } from '@/types/tour';
+import type { Tour, PaymentMethod, PaymentStatus, TourPayment, CommissionPayment } from '@/types/tour';
 import { differenceInDays } from 'date-fns';
 import type {
   GuideRow,
@@ -34,6 +34,7 @@ import type {
   HotelRow,
   TourRow,
   TourPaymentRow,
+  CommissionPaymentRow,
 } from './store-types';
 
 export function mapLanguage(row: LanguageRow): Language {
@@ -316,6 +317,7 @@ export function mapTour(row: TourRow): Tour {
     meals: [],
     allowances: [],
     shoppings: [],
+    waterExpenseDismissed: (row as any).water_warning_dismissed ?? false,
     summary: {
       totalTabs: Number(row.total_tabs) || 0,
       advancePayment: Number(row.advance_payment) || 0,
@@ -337,6 +339,19 @@ export function mapTourPayment(row: TourPaymentRow): TourPayment {
     method: (row.payment_method as PaymentMethod) || 'cash',
     paidAt: row.paid_at,
     paidBy: row.paid_by ?? undefined,
+    note: row.note ?? undefined,
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined,
+  };
+}
+
+export function mapCommissionPayment(row: CommissionPaymentRow): CommissionPayment {
+  return {
+    id: row.id,
+    tourShoppingId: row.tour_shopping_id,
+    amount: Number(row.amount) || 0,
+    paymentMethod: (row.payment_method as PaymentMethod) || 'cash',
+    paidAt: row.paid_at,
     note: row.note ?? undefined,
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? undefined,

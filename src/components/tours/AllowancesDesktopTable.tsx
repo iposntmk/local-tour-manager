@@ -1,0 +1,143 @@
+import { Button } from '@/components/ui/button';
+import { Edit2, Trash2, Copy, MoreHorizontal } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { cn, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
+import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import type { Allowance } from '@/types/tour';
+
+interface AllowancesDesktopTableProps {
+  allowances: Allowance[];
+  getCategoryPriority: (allowance: Allowance) => number;
+  readOnly: boolean;
+  onEdit: (index: number) => void;
+  onCopy: (index: number) => void;
+  onDelete: (index: number) => void;
+  totalAmount: number;
+  totalQuantity: number;
+}
+
+export function AllowancesDesktopTable({
+  allowances,
+  getCategoryPriority,
+  readOnly,
+  onEdit,
+  onCopy,
+  onDelete,
+  totalAmount,
+  totalQuantity,
+}: AllowancesDesktopTableProps) {
+  const sorted = allowances
+    .map((a, i) => ({ ...a, originalIndex: i }))
+    .sort((a, b) => {
+      const pa = getCategoryPriority(a);
+      const pb = getCategoryPriority(b);
+      if (pa !== pb) return pa - pb;
+      const da = a.date ? new Date(a.date).getTime() : Infinity;
+      const db = b.date ? new Date(b.date).getTime() : Infinity;
+      return da - db;
+    });
+
+  return (
+    <Table className="min-w-[680px] sm:min-w-0">
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[50px]">#</TableHead>
+          <TableHead>Tên</TableHead>
+          <TableHead>Giá</TableHead>
+          <TableHead className="w-[80px]">SL</TableHead>
+          <TableHead>
+            <span className="sm:hidden">Tổng</span>
+            <span className="hidden sm:inline">Thành tiền</span>
+          </TableHead>
+          <TableHead>Ngày</TableHead>
+          <TableHead className="text-right w-[80px] sm:w-auto">
+            <span className="sm:hidden">Tác</span>
+            <span className="hidden sm:inline">Thao tác</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sorted.map((allowance: any, rowIndex: number, arr: any[]) => {
+          const qty = allowance.quantity || 1;
+          const total = allowance.price * qty;
+          const isZeroPrice = (allowance.price ?? 0) === 0;
+          const currentPriority = getCategoryPriority(allowance);
+          const prevPriority = rowIndex > 0 ? getCategoryPriority(arr[rowIndex - 1]) : null;
+          const showSeparator = prevPriority !== null && currentPriority !== prevPriority;
+
+          return (
+            <>
+              {showSeparator && (
+                <TableRow key={`separator-${rowIndex}`} className="border-t-2 border-primary">
+                  <TableCell colSpan={7} className="h-0 p-0" />
+                </TableRow>
+              )}
+              <TableRow
+                key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`}
+                className={cn('animate-fade-in', isZeroPrice && 'bg-red-50 dark:bg-red-950')}
+              >
+                <TableCell className="font-medium">{rowIndex + 1}</TableCell>
+                <TableCell className="font-medium">
+                  <TourRowLabel kind="allowance" label={allowance.name} />
+                </TableCell>
+                <TableCell className={allowance.price === 0 ? 'text-destructive font-semibold' : ''}>
+                  {formatCurrency(allowance.price)}
+                  {allowance.price === 0 && <span className="ml-2 text-destructive" title="Giá bằng 0">⚑</span>}
+                </TableCell>
+                <TableCell>{qty}</TableCell>
+                <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
+                <TableCell>{formatDate(allowance.date)}</TableCell>
+                <TableCell className="text-right">
+                  {!readOnly && (
+                    <div className="sm:hidden">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <span className="sr-only">Mở menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onEdit(allowance.originalIndex)}>
+                            <Edit2 className="mr-2 h-4 w-4" />Sửa
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onCopy(allowance.originalIndex)}>
+                            <Copy className="mr-2 h-4 w-4" />Sao chép
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onDelete(allowance.originalIndex)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />Xóa
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                  {!readOnly && (
+                    <div className="hidden sm:flex sm:gap-2 sm:justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => onCopy(allowance.originalIndex)} className="hover-scale" title="Sao chép dòng">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => onEdit(allowance.originalIndex)} className="hover-scale" title="Sửa">
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => onDelete(allowance.originalIndex)} className="hover-scale text-destructive hover:text-destructive" title="Xóa">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            </>
+          );
+        })}
+        <TableRow className="bg-muted/50 font-semibold">
+          <TableCell colSpan={3} className="text-right">Tổng cộng:</TableCell>
+          <TableCell>{totalQuantity} ngày</TableCell>
+          <TableCell className="font-bold">{formatCurrency(totalAmount)}</TableCell>
+          <TableCell colSpan={2} />
+        </TableRow>
+      </TableBody>
+    </Table>
+  );
+}

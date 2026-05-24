@@ -220,7 +220,7 @@ export const ToursDesktopTable = ({
 
     return (
       <div className={`space-y-1.5 ${alignRight ? 'text-right' : ''}`}>
-        <div className="text-xs font-semibold">{column.label}</div>
+        <div className="text-xs font-semibold" title={column.title}>{column.label}</div>
         {column.filterType === 'text' && (
           <Input
             value={tableFilters[column.key as TourTableFilterKey] || ''}

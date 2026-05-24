@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { Baby, Copy, FileDown, Flag, Trash2 } from 'lucide-react';
+import { Baby, Copy, FileDown, Flag, Trash2, WalletCards } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PaymentStatusBadge } from '@/components/tours/PaymentStatusBadge';
@@ -97,8 +97,17 @@ export const ToursDesktopTableCellContent = ({
       ) : (
         <span className="text-muted-foreground">-</span>
       );
+    case 'commission':
+      return row.warningInfo.hasUnpaidCommission ? (
+        <Badge className="gap-1 bg-red-600 hover:bg-red-700 text-white" title="Hoa hồng chưa nhận đủ">
+          <WalletCards className="h-3 w-3" />
+          Chưa nhận đủ
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      );
     case 'warning':
-      return row.warningInfo.showRedFlag ? (
+      return (row.warningInfo.hasZeroPrice || row.warningInfo.hasDuplicateDestNames || row.warningInfo.missingWaterExpense) ? (
         <Badge variant="destructive" className="gap-1" title={row.warningInfo.warningTitle}>
           <Flag className="h-3 w-3" />
           Kiểm tra
