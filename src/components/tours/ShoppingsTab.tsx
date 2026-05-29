@@ -16,6 +16,7 @@ import { ShoppingsMobileList } from '@/components/tours/mobile/ShoppingsMobileLi
 import { getNetCommission, getPaymentRemaining, isFullyReceived } from '@/lib/shopping-commission-utils';
 
 const REQUIRED_PIN = '0829101188';
+const DEFAULT_RECEIVE_FULL = true;
 
 interface ShoppingsTabProps {
   tourId?: string;
@@ -31,7 +32,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
   const [pinError, setPinError] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showNewShoppingDialog, setShowNewShoppingDialog] = useState(false);
-  const [formReceiveFull, setFormReceiveFull] = useState(false);
+  const [formReceiveFull, setFormReceiveFull] = useState(DEFAULT_RECEIVE_FULL);
   const [formCashPayment, setFormCashPayment] = useState(false);
   const [expandedPaymentIndex, setExpandedPaymentIndex] = useState<number | null>(null);
   const [quickCashByShopping, setQuickCashByShopping] = useState<Record<string, boolean>>({});
@@ -74,7 +75,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
       }
       toast.success('Đã thêm mục mua sắm');
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
-      setFormReceiveFull(false);
+      setFormReceiveFull(DEFAULT_RECEIVE_FULL);
       setFormCashPayment(false);
     },
   });
@@ -208,7 +209,8 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     e.preventDefault();
     if (readOnly) { toast.error('Bạn không có quyền sửa mua sắm trong tour.'); return; }
     if (!formData.name || !formData.date) { toast.error('Vui lòng điền đầy đủ các trường bắt buộc'); return; }
-    const shoppingToSave: Shopping = formReceiveFull && editingIndex === null
+    const shouldCreateFullPayment = formReceiveFull && editingIndex === null && getNetCommission(formData) > 0;
+    const shoppingToSave: Shopping = shouldCreateFullPayment
       ? {
           ...formData,
           payments: [{
@@ -241,7 +243,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
   const handleCancel = () => {
     setEditingIndex(null);
     setFormData({ name: '', price: 0, date: tour?.startDate || '' });
-    setFormReceiveFull(false);
+    setFormReceiveFull(DEFAULT_RECEIVE_FULL);
     setFormCashPayment(false);
   };
 

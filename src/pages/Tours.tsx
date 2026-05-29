@@ -82,6 +82,8 @@ const Tours = () => {
     setDateRange,
     searchCompany,
     setSearchCompany,
+    searchLandOperator,
+    setSearchLandOperator,
     nationalityFilter,
     setNationalityFilter,
     settlementStatusFilter,
@@ -104,8 +106,11 @@ const Tours = () => {
     setTopControlsExpanded,
     topCompanyFilterOpen,
     setTopCompanyFilterOpen,
+    topLandOperatorFilterOpen,
+    setTopLandOperatorFilterOpen,
     baseTourQuery,
     topCompanyOptions,
+    topLandOperatorOptions,
     months,
     clearFilters,
     hasActiveFilters,
@@ -494,9 +499,11 @@ const Tours = () => {
             searchExpanded={searchExpanded}
             filtersExpanded={filtersExpanded}
             topCompanyFilterOpen={topCompanyFilterOpen}
+            topLandOperatorFilterOpen={topLandOperatorFilterOpen}
             searchCode={searchCode}
             dateRange={dateRange}
             searchCompany={searchCompany}
+            searchLandOperator={searchLandOperator}
             settlementStatusFilter={settlementStatusFilter}
             paymentStatusFilter={paymentStatusFilter}
             shoppingCommissionFilter={shoppingCommissionFilter}
@@ -505,6 +512,7 @@ const Tours = () => {
             selectedYear={selectedYear}
             sortBy={sortBy}
             topCompanyOptions={topCompanyOptions}
+            topLandOperatorOptions={topLandOperatorOptions}
             nationalities={nationalities}
             months={months}
             availableYears={availableYears}
@@ -514,9 +522,11 @@ const Tours = () => {
             setSearchExpanded={setSearchExpanded}
             setFiltersExpanded={setFiltersExpanded}
             setTopCompanyFilterOpen={setTopCompanyFilterOpen}
+            setTopLandOperatorFilterOpen={setTopLandOperatorFilterOpen}
             setSearchCode={setSearchCode}
             setDateRange={setDateRange}
             setSearchCompany={setSearchCompany}
+            setSearchLandOperator={setSearchLandOperator}
             setSettlementStatusFilter={setSettlementStatusFilter}
             setPaymentStatusFilter={setPaymentStatusFilter}
             setShoppingCommissionFilter={setShoppingCommissionFilter}
@@ -551,7 +561,7 @@ const Tours = () => {
           <ToursLoadingSkeleton />
         ) : displayedTours.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground mt-6">
-            {!hasActiveFilters && !(searchCode.trim() || dateRange?.from || dateRange?.to || searchCompany.trim())
+            {!hasActiveFilters && !(searchCode.trim() || dateRange?.from || dateRange?.to || searchCompany.trim() || searchLandOperator.trim())
               ? 'Không tìm thấy tour nào. Tạo tour đầu tiên để bắt đầu.'
               : 'Không có tour nào phù hợp với bộ lọc.'}
           </div>

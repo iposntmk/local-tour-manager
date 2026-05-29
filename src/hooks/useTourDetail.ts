@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import { differenceInDays } from 'date-fns';
@@ -63,11 +62,7 @@ export function useTourDetail() {
 
   const { data: tourImages = [] } = useQuery({
     queryKey: ['tourImages', id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('tour_images').select('*').eq('tour_id', id!);
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: () => store.listTourImages(id!),
     enabled: !isNewTour && !!id,
   });
 

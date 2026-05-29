@@ -7,6 +7,10 @@ type CompanyOption = {
   name?: string | null;
 };
 
+const DEFAULT_TOUR_SORT = 'startDate-desc';
+const LEGACY_DEFAULT_TOUR_SORT = 'startDate-asc';
+const SORT_DEFAULT_MIGRATION_KEY = 'tours.sortBy.defaultMigratedToNewest';
+
 const loadDateRange = (): DateRange | undefined => {
   const saved = localStorage.getItem('tours.search.dateRange');
   if (!saved) return undefined;
@@ -21,6 +25,19 @@ const loadDateRange = (): DateRange | undefined => {
     console.warn('Invalid tour date range filter', error);
     return undefined;
   }
+};
+
+const loadTourSort = () => {
+  const saved = localStorage.getItem('tours.sortBy');
+  const migrated = localStorage.getItem(SORT_DEFAULT_MIGRATION_KEY) === 'true';
+
+  if (!saved || (!migrated && saved === LEGACY_DEFAULT_TOUR_SORT)) {
+    localStorage.setItem(SORT_DEFAULT_MIGRATION_KEY, 'true');
+    return DEFAULT_TOUR_SORT;
+  }
+
+  localStorage.setItem(SORT_DEFAULT_MIGRATION_KEY, 'true');
+  return saved;
 };
 
 export const TOUR_MONTHS = [
@@ -42,6 +59,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   const [searchCode, setSearchCode] = useState(() => localStorage.getItem('tours.search.code') || '');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(loadDateRange);
   const [searchCompany, setSearchCompany] = useState(() => localStorage.getItem('tours.search.company') || '');
+  const [searchLandOperator, setSearchLandOperator] = useState(() => localStorage.getItem('tours.search.landOperator') || '');
   const [nationalityFilter, setNationalityFilter] = useState<string>(() => localStorage.getItem('tours.nationalityFilter') || 'all');
   const [settlementStatusFilter, setSettlementStatusFilter] = useState<string>(() => localStorage.getItem('tours.settlementStatusFilter') || 'all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>(() => localStorage.getItem('tours.paymentStatusFilter') || 'all');
@@ -55,7 +73,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     }
     return saved;
   });
-  const [sortBy, setSortBy] = useState<string>(() => localStorage.getItem('tours.sortBy') || 'startDate-asc');
+  const [sortBy, setSortBy] = useState<string>(loadTourSort);
   const [filtersExpanded, setFiltersExpanded] = useState(() => {
     const saved = localStorage.getItem('tours.filtersExpanded');
     return saved !== null ? JSON.parse(saved) : true;
@@ -69,10 +87,12 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [topCompanyFilterOpen, setTopCompanyFilterOpen] = useState(false);
+  const [topLandOperatorFilterOpen, setTopLandOperatorFilterOpen] = useState(false);
 
   useEffect(() => { localStorage.setItem('tours.search.code', searchCode); }, [searchCode]);
   useEffect(() => { localStorage.setItem('tours.search.dateRange', JSON.stringify(dateRange || {})); }, [dateRange]);
   useEffect(() => { localStorage.setItem('tours.search.company', searchCompany); }, [searchCompany]);
+  useEffect(() => { localStorage.setItem('tours.search.landOperator', searchLandOperator); }, [searchLandOperator]);
   useEffect(() => { localStorage.setItem('tours.nationalityFilter', nationalityFilter); }, [nationalityFilter]);
   useEffect(() => { localStorage.setItem('tours.settlementStatusFilter', settlementStatusFilter); }, [settlementStatusFilter]);
   useEffect(() => { localStorage.setItem('tours.paymentStatusFilter', paymentStatusFilter); }, [paymentStatusFilter]);
@@ -88,10 +108,12 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     const code = searchCode.trim();
     const company = searchCompany.trim();
 
+    const landOperator = searchLandOperator.trim();
     if (code) query.tourCodeLike = code;
     if (dateRange?.from) query.startDate = format(dateRange.from, 'yyyy-MM-dd');
     if (dateRange?.to) query.endDate = format(dateRange.to, 'yyyy-MM-dd');
     if (company) query.companyNameLike = company;
+    if (landOperator) query.landOperatorNameLike = landOperator;
     if (nationalityFilter !== 'all') query.nationalityId = nationalityFilter;
     if (settlementStatusFilter !== 'all') query.settlementStatus = settlementStatusFilter as TourQuery['settlementStatus'];
     if (paymentStatusFilter !== 'all') query.paymentStatus = paymentStatusFilter as TourQuery['paymentStatus'];
@@ -112,7 +134,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     query.sortOrder = order as 'asc' | 'desc';
 
     return query;
-  }, [searchCode, dateRange, searchCompany, nationalityFilter, settlementStatusFilter, paymentStatusFilter, selectedMonth, selectedYear, sortBy]);
+  }, [searchCode, dateRange, searchCompany, searchLandOperator, nationalityFilter, settlementStatusFilter, paymentStatusFilter, selectedMonth, selectedYear, sortBy]);
 
   const topCompanyOptions = useMemo(() => {
     const companyNames = new Set<string>();
@@ -123,6 +145,16 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     if (searchCompany.trim()) companyNames.add(searchCompany.trim());
     return Array.from(companyNames).sort((a, b) => a.localeCompare(b));
   }, [companies, searchCompany]);
+
+  const topLandOperatorOptions = useMemo(() => {
+    const names = new Set<string>();
+    companies.forEach((company) => {
+      const name = company.name?.trim();
+      if (name) names.add(name);
+    });
+    if (searchLandOperator.trim()) names.add(searchLandOperator.trim());
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [companies, searchLandOperator]);
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -148,6 +180,8 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     setDateRange,
     searchCompany,
     setSearchCompany,
+    searchLandOperator,
+    setSearchLandOperator,
     nationalityFilter,
     setNationalityFilter,
     settlementStatusFilter,
@@ -168,8 +202,11 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     setTopControlsExpanded,
     topCompanyFilterOpen,
     setTopCompanyFilterOpen,
+    topLandOperatorFilterOpen,
+    setTopLandOperatorFilterOpen,
     baseTourQuery,
     topCompanyOptions,
+    topLandOperatorOptions,
     availableYears,
     months: TOUR_MONTHS,
     clearFilters,

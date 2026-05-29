@@ -17,6 +17,7 @@ import type {
   TourPayment,
   TourPaymentInput,
   CommissionPayment,
+  TourImage,
 } from './tour';
 import type { UserProfile, UserProfileInput } from './user';
 
@@ -235,6 +236,12 @@ export interface DataStore {
   listCommissionPayments(tourShoppingId: string): Promise<CommissionPayment[]>;
   addCommissionPayment(payment: Omit<CommissionPayment, 'id'>): Promise<CommissionPayment>;
   deleteCommissionPayment(id: string): Promise<void>;
+
+  // Tour images
+  listTourImages(tourId: string): Promise<TourImage[]>;
+  uploadTourImage(tourId: string, file: File, storagePath: string): Promise<void>;
+  deleteTourImage(image: TourImage): Promise<void>;
+  getTourImagePublicUrl(storagePath: string): string;
 
   // Data management
   exportData(): Promise<any>;

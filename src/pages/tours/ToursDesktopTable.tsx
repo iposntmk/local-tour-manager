@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/currency-utils';
+import { isTourPaymentEligible } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 import type { Tour } from '@/types/tour';
 import { ToursDesktopTableCellContent, type TourTableRowData } from './ToursDesktopTableCell';
@@ -151,7 +152,13 @@ export const ToursDesktopTable = ({
         includesTableFilter(tour.clientPhone, tableFilters.clientPhone) &&
         includesTableFilter(tour.driverName, tableFilters.driverName) &&
         includesTableFilter(`${allowanceTotal} ${formatCurrency(allowanceTotal)}`, tableFilters.ctp) &&
-        includesTableFilter(`${finalTotal} ${formatCurrency(finalTotal)}`, tableFilters.total)
+        includesTableFilter(`${finalTotal} ${formatCurrency(finalTotal)}`, tableFilters.total) &&
+        (!tableFilters.settlement || tour.settlementStatus === tableFilters.settlement) &&
+        (!tableFilters.payment || (
+          tableFilters.payment === 'na'
+            ? !isTourPaymentEligible(tour)
+            : isTourPaymentEligible(tour) && tour.paymentStatus === tableFilters.payment
+        ))
       );
     });
   }, [tableFilters, tours]);
@@ -369,6 +376,41 @@ export const ToursDesktopTable = ({
               <SelectItem value="all">Tất cả</SelectItem>
               <SelectItem value="warning">Cần kiểm tra</SelectItem>
               <SelectItem value="ok">Bình thường</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {column.filterType === 'settlement' && (
+          <Select
+            value={tableFilters.settlement || 'all'}
+            onValueChange={(v) => updateTableFilter('settlement', v === 'all' ? '' : v)}
+          >
+            <SelectTrigger className="h-7 px-2 text-xs font-normal">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="draft">Đang soạn</SelectItem>
+              <SelectItem value="submitted">Đã gửi KT</SelectItem>
+              <SelectItem value="need_changes">Cần bổ sung</SelectItem>
+              <SelectItem value="approved">Đã duyệt</SelectItem>
+              <SelectItem value="closed">Đã đóng</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {column.filterType === 'payment' && (
+          <Select
+            value={tableFilters.payment || 'all'}
+            onValueChange={(v) => updateTableFilter('payment', v === 'all' ? '' : v)}
+          >
+            <SelectTrigger className="h-7 px-2 text-xs font-normal">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="na">N/A</SelectItem>
+              <SelectItem value="pending">Chờ TT</SelectItem>
+              <SelectItem value="partial">Một phần</SelectItem>
+              <SelectItem value="paid">Đã TT</SelectItem>
             </SelectContent>
           </Select>
         )}

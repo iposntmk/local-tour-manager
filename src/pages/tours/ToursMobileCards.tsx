@@ -57,6 +57,17 @@ export const ToursMobileCards = ({
             </div>
           )}
           <div className="space-y-3">
+            {warningInfo.hasUnpaidCommission && (
+              <div
+                className={`mx-auto inline-flex min-w-0 items-start gap-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-medium leading-snug text-white ${hasChildren ? 'max-w-[calc(100%-2.5rem)]' : 'max-w-full'}`}
+                title={warningInfo.warningTitle}
+              >
+                <WalletCards className="mt-0.5 h-3 w-3 shrink-0" />
+                <span className="whitespace-normal break-words">
+                  Chưa nhận đủ: {warningInfo.unpaidCommissionShoppingNames.join(', ')}
+                </span>
+              </div>
+            )}
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onOpenTour(tour.id)}>
                 <div className="flex items-center gap-2 overflow-hidden flex-nowrap">
@@ -70,15 +81,6 @@ export const ToursMobileCards = ({
                   <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
                     {totalGuests}p
                   </Badge>
-                  {warningInfo.hasUnpaidCommission && (
-                    <span
-                      className="inline-flex items-center gap-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-full font-medium"
-                      title="Hoa hồng chưa nhận đủ"
-                    >
-                      <WalletCards className="h-3 w-3" />
-                      <span>Hoa hồng</span>
-                    </span>
-                  )}
                   {(warningInfo.hasZeroPrice || warningInfo.hasDuplicateDestNames || warningInfo.missingWaterExpense) && (
                     <span
                       className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm"

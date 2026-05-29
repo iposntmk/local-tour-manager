@@ -56,3 +56,6 @@ FIX_*.sql
 # Supabase migrations (local only)
 supabase-migrations/
 .aider*
+
+# Agent/tool state files
+data/

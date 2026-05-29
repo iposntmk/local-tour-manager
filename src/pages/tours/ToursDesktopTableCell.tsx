@@ -98,13 +98,14 @@ export const ToursDesktopTableCellContent = ({
         <span className="text-muted-foreground">-</span>
       );
     case 'commission':
-      return row.warningInfo.hasUnpaidCommission ? (
-        <Badge className="gap-1 bg-red-600 hover:bg-red-700 text-white" title="Hoa hồng chưa nhận đủ">
-          <WalletCards className="h-3 w-3" />
-          Chưa nhận đủ
+      if (!row.warningInfo.hasUnpaidCommission) return <span className="text-muted-foreground">-</span>;
+      return (
+        <Badge className="max-w-full items-start gap-1 whitespace-normal break-words bg-red-600 text-left text-[11px] leading-snug hover:bg-red-700 sm:text-xs text-white" title={row.warningInfo.warningTitle}>
+          <WalletCards className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>
+            Chưa nhận đủ: {row.warningInfo.unpaidCommissionShoppingNames.join(', ')}
+          </span>
         </Badge>
-      ) : (
-        <span className="text-muted-foreground">-</span>
       );
     case 'warning':
       return (row.warningInfo.hasZeroPrice || row.warningInfo.hasDuplicateDestNames || row.warningInfo.missingWaterExpense) ? (

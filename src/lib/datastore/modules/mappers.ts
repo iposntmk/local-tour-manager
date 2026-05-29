@@ -14,7 +14,7 @@ import type {
   ShopPlace,
   Hotel,
 } from '@/types/master';
-import type { Tour, PaymentMethod, PaymentStatus, TourPayment, CommissionPayment } from '@/types/tour';
+import type { Tour, PaymentMethod, PaymentStatus } from '@/types/tour';
 import { differenceInDays } from 'date-fns';
 import type {
   GuideRow,
@@ -33,9 +33,15 @@ import type {
   ShopPlaceRow,
   HotelRow,
   TourRow,
-  TourPaymentRow,
-  CommissionPaymentRow,
 } from './store-types';
+
+export { mapLineReviewFields } from './line-review-mapper';
+export {
+  mapTourPayment,
+  mapCommissionPayment,
+  getCommissionStatus,
+  mapTourShopping,
+} from './payment-mappers';
 
 export function mapLanguage(row: LanguageRow): Language {
   return {
@@ -328,48 +334,5 @@ export function mapTour(row: TourRow): Tour {
       totalAfterCollections: Number(row.total_after_collections) || 0,
       finalTotal: Number(row.final_total) || 0,
     },
-  };
-}
-
-export function mapTourPayment(row: TourPaymentRow): TourPayment {
-  return {
-    id: row.id,
-    tourId: row.tour_id,
-    amount: Number(row.amount) || 0,
-    method: (row.payment_method as PaymentMethod) || 'cash',
-    paidAt: row.paid_at,
-    paidBy: row.paid_by ?? undefined,
-    note: row.note ?? undefined,
-    createdAt: row.created_at ?? undefined,
-    updatedAt: row.updated_at ?? undefined,
-  };
-}
-
-export function mapCommissionPayment(row: CommissionPaymentRow): CommissionPayment {
-  return {
-    id: row.id,
-    tourShoppingId: row.tour_shopping_id,
-    amount: Number(row.amount) || 0,
-    paymentMethod: (row.payment_method as PaymentMethod) || 'cash',
-    paidAt: row.paid_at,
-    note: row.note ?? undefined,
-    createdAt: row.created_at ?? undefined,
-    updatedAt: row.updated_at ?? undefined,
-  };
-}
-
-export function mapLineReviewFields(row: any): {
-  id?: string;
-  lineStatus?: Tour['destinations'][number]['lineStatus'];
-  lineComment?: string;
-  reviewedBy?: string;
-  reviewedAt?: string;
-} {
-  return {
-    id: row?.id,
-    lineStatus: (row?.line_status as any) ?? 'unchecked',
-    lineComment: row?.line_comment ?? undefined,
-    reviewedBy: row?.reviewed_by ?? undefined,
-    reviewedAt: row?.reviewed_at ?? undefined,
   };
 }

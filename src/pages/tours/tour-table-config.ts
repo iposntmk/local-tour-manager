@@ -45,6 +45,16 @@ export const formatTourNationalities = (tour: Tour) => {
 export const getAllowanceTotal = (tour: Tour) =>
   (tour.allowances || []).reduce((sum, allowance) => sum + (allowance.price * (allowance.quantity || 1)), 0);
 
+export const getUnpaidCommissionShoppingNames = (tour: Tour) =>
+  (tour.shoppings || [])
+    .filter((shopping) => {
+      if ((shopping.price ?? 0) <= 0) return false;
+      const netCommission = shopping.netCommission ?? shopping.price;
+      const paidTotal = (shopping.payments || []).reduce((sum, payment) => sum + payment.amount, 0);
+      return paidTotal < netCommission;
+    })
+    .map((shopping) => shopping.name || 'Không tên');
+
 export const getTourWarningInfo = (tour: Tour) => {
   const hasZeroPrice = !!(
     (tour.destinations || []).some(d => (d.price ?? 0) === 0) ||
@@ -63,15 +73,11 @@ export const getTourWarningInfo = (tour: Tour) => {
   );
   const missingWaterExpense = !hasWaterExpense && !tour.waterExpenseDismissed;
 
-  const hasUnpaidCommission = (tour.shoppings || []).some((s) => {
-    if ((s.price ?? 0) <= 0) return false;
-    const netCommission = s.netCommission ?? s.price;
-    const paidTotal = (s.payments || []).reduce((sum, p) => sum + p.amount, 0);
-    return paidTotal < netCommission;
-  });
+  const unpaidCommissionShoppingNames = getUnpaidCommissionShoppingNames(tour);
+  const hasUnpaidCommission = unpaidCommissionShoppingNames.length > 0;
 
   const warningTitle = [
-    hasUnpaidCommission && 'Hoa hồng chưa nhận đủ',
+    hasUnpaidCommission && `Hoa hồng chưa nhận đủ: ${unpaidCommissionShoppingNames.join(', ')}`,
     hasDuplicateDestNames && 'Tên điểm đến trùng lặp',
     hasZeroPrice && 'Có mục giá 0',
     missingWaterExpense && 'Thiếu chi phí nước uống',
@@ -82,6 +88,7 @@ export const getTourWarningInfo = (tour: Tour) => {
     hasDuplicateDestNames,
     missingWaterExpense,
     hasUnpaidCommission,
+    unpaidCommissionShoppingNames,
     showRedFlag: hasZeroPrice || hasDuplicateDestNames || missingWaterExpense || hasUnpaidCommission,
     warningTitle,
   };
@@ -108,7 +115,7 @@ export type TourTableColumnKey =
   | 'warning'
   | 'actions';
 
-export type TourTableFilterKey = Exclude<TourTableColumnKey, 'stt' | 'actions' | 'payment' | 'settlement' | 'commission'>;
+export type TourTableFilterKey = Exclude<TourTableColumnKey, 'stt' | 'actions' | 'commission'>;
 
 export type TourTableFilters = Record<TourTableFilterKey, string> & {
   warning: 'all' | 'warning' | 'ok';
@@ -121,7 +128,7 @@ export interface TourTableColumn {
   width: number;
   headerClassName?: string;
   cellClassName?: string;
-  filterType: 'text' | 'date' | 'company' | 'landOperator' | 'warning' | 'none';
+  filterType: 'text' | 'date' | 'company' | 'landOperator' | 'warning' | 'settlement' | 'payment' | 'none';
   filterPlaceholder?: string;
 }
 
@@ -140,9 +147,9 @@ export const TOUR_TABLE_COLUMNS: TourTableColumn[] = [
   { key: 'driverName', label: 'Tài xế', width: 110, filterType: 'text', filterPlaceholder: 'Lọc tài xế' },
   { key: 'ctp', label: 'CTP', width: 92, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-medium', filterType: 'text', filterPlaceholder: 'Lọc CTP' },
   { key: 'total', label: 'Tổng', width: 102, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-semibold text-primary', filterType: 'text', filterPlaceholder: 'Lọc tổng' },
-  { key: 'settlement', label: 'Quyết toán', width: 116, cellClassName: 'whitespace-nowrap', filterType: 'none' },
-  { key: 'payment', label: 'Thanh toán', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'none' },
-  { key: 'commission', label: 'Hoa hồng', width: 112, cellClassName: 'whitespace-nowrap', filterType: 'none' },
+  { key: 'settlement', label: 'Quyết toán', width: 116, cellClassName: 'whitespace-nowrap', filterType: 'settlement' },
+  { key: 'payment', label: 'Thanh toán', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'payment' },
+  { key: 'commission', label: 'Hoa hồng', width: 180, filterType: 'none' },
   { key: 'warning', label: 'Cảnh báo', title: 'Cảnh báo, tour thiếu nước uống', width: 108, cellClassName: 'whitespace-nowrap', filterType: 'warning' },
   { key: 'actions', label: 'Hành động', width: 98, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right', filterType: 'none' },
 ];
@@ -169,6 +176,8 @@ export const createDefaultTourTableFilters = (): TourTableFilters => ({
   driverName: '',
   ctp: '',
   total: '',
+  settlement: '',
+  payment: '',
   warning: 'all',
 });
 
@@ -208,6 +217,8 @@ export const loadTourTableFilters = (): TourTableFilters => {
       driverName: parsed.driverName || '',
       ctp: parsed.ctp || '',
       total: parsed.total || '',
+      settlement: parsed.settlement || '',
+      payment: parsed.payment || '',
       warning: parsed.warning === 'warning' || parsed.warning === 'ok' ? parsed.warning : 'all',
     };
   } catch (error) {

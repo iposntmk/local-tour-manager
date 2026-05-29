@@ -221,3 +221,13 @@ export interface TourListResult {
   tours: Tour[];
   total: number;
 }
+
+export interface TourImage {
+  id: string;
+  tour_id: string;
+  storage_path: string;
+  file_name: string;
+  file_size: number | null;
+  mime_type: string | null;
+  created_at: string;
+}

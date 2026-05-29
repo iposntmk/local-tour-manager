@@ -86,7 +86,7 @@ export class TourCrudModule {
     const includeDetails = options?.includeDetails ?? false;
     let queryBuilder = this.supabase.from('tours').select(
       includeDetails
-        ? `*, tour_destinations(*), tour_expenses(*), tour_meals(*), tour_allowances(*), tour_shoppings(*), tour_nationalities(*)`
+        ? `*, tour_destinations(*), tour_expenses(*), tour_meals(*), tour_allowances(*), tour_shoppings(*, shopping_commission_payments(*)), tour_nationalities(*)`
         : `*, tour_allowances(price, quantity), tour_nationalities(*), tour_shoppings(id, price, net_commission, shopping_commission_payments(amount))`,
       { count: 'exact' }
     );
@@ -148,7 +148,18 @@ export class TourCrudModule {
         tour.expenses = (typedRow.tour_expenses || []).map((e) => ({ name: e.name, price: Number(e.price) || 0, date: e.date, guests: e.guests !== null && e.guests !== undefined ? Number(e.guests) : undefined, ...mapLineReviewFields(e) }));
         tour.meals = (typedRow.tour_meals || []).map((m) => ({ name: m.name, price: Number(m.price) || 0, date: m.date, guests: m.guests !== null && m.guests !== undefined ? Number(m.guests) : undefined, ...mapLineReviewFields(m) }));
         tour.allowances = (typedRow.tour_allowances || []).map((a) => ({ date: a.date, name: a.name, price: Number(a.price) || 0, quantity: a.quantity || 1, categoryId: a.category_id ?? undefined, ...mapLineReviewFields(a) }));
-        tour.shoppings = (typedRow.tour_shoppings || []).map((s) => ({ name: s.name, price: Number(s.price) || 0, date: s.date, ...mapLineReviewFields(s) }));
+        tour.shoppings = (typedRow.tour_shoppings || []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          price: Number(s.price) || 0,
+          date: s.date,
+          withholdsPit: s.withholds_pit ?? false,
+          pitRate: s.pit_rate ?? undefined,
+          pitAmount: s.pit_amount ?? undefined,
+          netCommission: s.net_commission ?? undefined,
+          payments: (s.shopping_commission_payments || []).map((p: CommissionPaymentRow) => mapCommissionPayment(p)),
+          ...mapLineReviewFields(s),
+        }));
       } else {
         tour.allowances = (typedRow.tour_allowances || []).map((a) => ({ date: '', name: '', price: Number(a.price) || 0, quantity: a.quantity || 1 }));
         tour.shoppings = ((typedRow as any).tour_shoppings || []).map((s: any) => ({

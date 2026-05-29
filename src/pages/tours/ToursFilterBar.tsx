@@ -21,9 +21,11 @@ type ToursFilterBarProps = {
   searchExpanded: boolean;
   filtersExpanded: boolean;
   topCompanyFilterOpen: boolean;
+  topLandOperatorFilterOpen: boolean;
   searchCode: string;
   dateRange: DateRange | undefined;
   searchCompany: string;
+  searchLandOperator: string;
   settlementStatusFilter: string;
   paymentStatusFilter: string;
   nationalityFilter: string;
@@ -31,6 +33,7 @@ type ToursFilterBarProps = {
   selectedYear: string;
   sortBy: string;
   topCompanyOptions: string[];
+  topLandOperatorOptions: string[];
   nationalities: Nationality[];
   months: MonthOption[];
   availableYears: number[];
@@ -40,9 +43,11 @@ type ToursFilterBarProps = {
   setSearchExpanded: Dispatch<SetStateAction<boolean>>;
   setFiltersExpanded: Dispatch<SetStateAction<boolean>>;
   setTopCompanyFilterOpen: Dispatch<SetStateAction<boolean>>;
+  setTopLandOperatorFilterOpen: Dispatch<SetStateAction<boolean>>;
   setSearchCode: (value: string) => void;
   setDateRange: Dispatch<SetStateAction<DateRange | undefined>>;
   setSearchCompany: (value: string) => void;
+  setSearchLandOperator: (value: string) => void;
   setSettlementStatusFilter: (value: string) => void;
   setPaymentStatusFilter: (value: string) => void;
   setNationalityFilter: (value: string) => void;
@@ -57,9 +62,11 @@ export const ToursFilterBar = ({
   searchExpanded,
   filtersExpanded,
   topCompanyFilterOpen,
+  topLandOperatorFilterOpen,
   searchCode,
   dateRange,
   searchCompany,
+  searchLandOperator,
   settlementStatusFilter,
   paymentStatusFilter,
   nationalityFilter,
@@ -67,6 +74,7 @@ export const ToursFilterBar = ({
   selectedYear,
   sortBy,
   topCompanyOptions,
+  topLandOperatorOptions,
   nationalities,
   months,
   availableYears,
@@ -76,9 +84,11 @@ export const ToursFilterBar = ({
   setSearchExpanded,
   setFiltersExpanded,
   setTopCompanyFilterOpen,
+  setTopLandOperatorFilterOpen,
   setSearchCode,
   setDateRange,
   setSearchCompany,
+  setSearchLandOperator,
   setSettlementStatusFilter,
   setPaymentStatusFilter,
   setNationalityFilter,
@@ -116,7 +126,7 @@ export const ToursFilterBar = ({
       </div>
 
       <div className={`space-y-2 sm:space-y-3 transition-all duration-200 overflow-hidden ${searchExpanded ? 'sm:block' : 'hidden sm:block'}`}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           <SearchInput value={searchCode} onChange={setSearchCode} placeholder="Tìm kiếm mã tour..." />
           <Popover>
             <PopoverTrigger asChild>
@@ -180,6 +190,46 @@ export const ToursFilterBar = ({
                       >
                         <Check className={`mr-2 h-4 w-4 ${searchCompany === company ? 'opacity-100' : 'opacity-0'}`} />
                         <span className="truncate">{company}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          <Popover open={topLandOperatorFilterOpen} onOpenChange={setTopLandOperatorFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={`w-full justify-start text-left font-normal h-10 ${!searchLandOperator ? 'text-muted-foreground' : ''}`} title={searchLandOperator || 'Tìm land tour...'}>
+                <span className="truncate">{searchLandOperator || 'Tìm land tour...'}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[260px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Tìm land tour..." />
+                <CommandList>
+                  <CommandEmpty>Không tìm thấy công ty land tour.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="__all_land_operators__"
+                      onSelect={() => {
+                        setSearchLandOperator('');
+                        setTopLandOperatorFilterOpen(false);
+                      }}
+                    >
+                      <Check className={`mr-2 h-4 w-4 ${searchLandOperator ? 'opacity-0' : 'opacity-100'}`} />
+                      Tất cả land tour
+                    </CommandItem>
+                    {topLandOperatorOptions.map((name) => (
+                      <CommandItem
+                        key={name}
+                        value={name}
+                        onSelect={() => {
+                          setSearchLandOperator(name);
+                          setTopLandOperatorFilterOpen(false);
+                        }}
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${searchLandOperator === name ? 'opacity-100' : 'opacity-0'}`} />
+                        <span className="truncate">{name}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
