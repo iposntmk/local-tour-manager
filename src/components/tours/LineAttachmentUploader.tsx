@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Image, Paperclip, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,18 @@ export function LineAttachmentUploader({
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const canUploadNow = Boolean(tourId && lineId);
+  const attachmentPathKey = attachments.map((attachment) => `${attachment.id}:${attachment.filePath}`).join('|');
+  const { data: attachmentUrls = {} } = useQuery({
+    queryKey: ['tourLineAttachmentUrls', tourId ?? null, attachmentPathKey],
+    queryFn: async () => Object.fromEntries(
+      await Promise.all(attachments.map(async (attachment) => [
+        attachment.filePath,
+        await store.getTourLineAttachmentUrl(attachment.filePath),
+      ]))
+    ),
+    enabled: attachments.length > 0,
+    staleTime: 30 * 60 * 1000,
+  });
 
   const validateFile = (file: File) => {
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return `${file.name}: chỉ hỗ trợ ảnh hoặc PDF.`;
@@ -143,7 +155,10 @@ export function LineAttachmentUploader({
               <button
                 type="button"
                 className="flex w-full items-center gap-2 text-left text-xs"
-                onClick={() => window.open(store.getTourLineAttachmentUrl(attachment.filePath), '_blank')}
+                onClick={() => {
+                  const url = attachmentUrls[attachment.filePath];
+                  if (url) window.open(url, '_blank');
+                }}
               >
                 {isImage(attachment) ? <Image className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                 <span className="truncate">{attachment.fileName}</span>

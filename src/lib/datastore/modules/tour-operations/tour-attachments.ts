@@ -35,9 +35,10 @@ export class TourAttachmentsModule {
     return (data || []).map(mapAttachment);
   }
 
-  getTourLineAttachmentUrl(filePath: string): string {
-    const { data } = this.supabase.storage.from(BUCKET).getPublicUrl(filePath);
-    return data.publicUrl;
+  async getTourLineAttachmentUrl(filePath: string): Promise<string> {
+    const { data, error } = await this.supabase.storage.from(BUCKET).createSignedUrl(filePath, 60 * 60);
+    if (error) throw error;
+    return data.signedUrl;
   }
 
   async uploadTourLineAttachment(

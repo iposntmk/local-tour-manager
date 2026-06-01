@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import type { TourImage } from '@/types/tour';
+import type { TourImageDownloadItem } from '@/types/datastore';
 
 const TOUR_IMAGES_BUCKET = 'tour-images';
 
@@ -16,6 +17,26 @@ export class TourImagesModule {
 
     if (error) throw error;
     return data || [];
+  }
+
+  async listAllTourImagesForDownload(): Promise<TourImageDownloadItem[]> {
+    const { data, error } = await this.supabase
+      .from('tour_images')
+      .select('*, tours!tour_images_tour_id_fkey(tour_code)')
+      .order('tour_id');
+
+    if (error) throw error;
+
+    return (data || []).map((row) => ({
+      id: row.id,
+      tour_id: row.tour_id,
+      storage_path: row.storage_path,
+      file_name: row.file_name,
+      file_size: row.file_size,
+      mime_type: row.mime_type,
+      created_at: row.created_at,
+      tourCode: (row.tours as any)?.tour_code || 'khong-ro',
+    }));
   }
 
   async uploadTourImage(tourId: string, file: File, storagePath: string): Promise<void> {
@@ -61,11 +82,12 @@ export class TourImagesModule {
     if (dbError) throw dbError;
   }
 
-  getTourImagePublicUrl(storagePath: string): string {
-    const { data } = this.supabase.storage
+  async getTourImageUrl(storagePath: string): Promise<string> {
+    const { data, error } = await this.supabase.storage
       .from(TOUR_IMAGES_BUCKET)
-      .getPublicUrl(storagePath);
+      .createSignedUrl(storagePath, 60 * 60);
 
-    return data.publicUrl;
+    if (error) throw error;
+    return data.signedUrl;
   }
 }

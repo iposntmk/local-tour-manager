@@ -37,6 +37,18 @@ export class TourDataModule {
   declare addMeal: (tourId: string, meal: Meal) => Promise<string | undefined>;
   declare addAllowance: (tourId: string, allowance: Allowance) => Promise<void>;
 
+  async getToursGrandTotal(): Promise<{ count: number; grandTotal: number }> {
+    const { data, error, count } = await this.supabase
+      .from('tours')
+      .select('final_total', { count: 'exact' });
+
+    if (error) throw error;
+
+    const rows = data || [];
+    const grandTotal = rows.reduce((sum, tour) => sum + (Number(tour.final_total) || 0), 0);
+    return { count: typeof count === 'number' ? count : rows.length, grandTotal };
+  }
+
   async exportData(): Promise<any> {
     const [guides, languages, companies, nationalities, provinces, destinations, shoppings, categories, expenses, tourResult] = await Promise.all([
       this.listGuides(),

@@ -20,6 +20,16 @@ AS $$
   );
 $$;
 
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = 'public', 'pg_temp'
+AS $$
+  SELECT public.is_admin_user(auth.uid());
+$$;
+
 -- Apply to each master data table
 DO $$
 DECLARE

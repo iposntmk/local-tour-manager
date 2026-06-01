@@ -9,15 +9,13 @@ import {
   UserRole,
   UserStatus,
   SettlementRole,
-  USER_ROLE_LABELS,
-  USER_STATUS_LABELS,
-  SETTLEMENT_ROLE_LABELS,
   Permission,
   getDefaultPermissionsForProfile,
   normalizePermissions,
   ALL_PERMISSIONS,
 } from '@/types/user';
-import { PermissionTree } from '@/components/users/PermissionTree';
+import { UserPermissionSection } from '@/components/users/UserPermissionSection';
+import { UserRoleFields } from '@/components/users/UserRoleFields';
 import {
   Dialog,
   DialogContent,
@@ -29,13 +27,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -54,6 +45,9 @@ interface FormData {
   settlementRole: SettlementRole;
   permissions: Permission[];
 }
+
+const getFormPermissions = (data: Pick<FormData, 'role' | 'permissions'>) =>
+  data.role === 'admin' ? ALL_PERMISSIONS : normalizePermissions(data.permissions);
 
 export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
   const { toast } = useToast();
@@ -145,7 +139,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         role: data.role,
         status: data.status,
         settlementRole: data.settlementRole,
-        permissions: normalizePermissions(data.permissions),
+        permissions: getFormPermissions(data),
       };
 
       await store.updateUserProfile(authData.user.id, profileInput);
@@ -180,7 +174,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         role: data.role,
         status: data.status,
         settlementRole: data.settlementRole,
-        permissions: normalizePermissions(data.permissions),
+        permissions: getFormPermissions(data),
       };
 
       await store.updateUserProfile(user.id, profileInput);
@@ -224,7 +218,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
   });
 
   const onSubmit = async (data: FormData) => {
-    if (isEditingSelf && !data.permissions.includes('manage_users')) {
+    if (isEditingSelf && !getFormPermissions(data).includes('manage_users')) {
       toast({
         title: 'Không thể lưu',
         description: 'Bạn không thể tự gỡ quyền quản lý người dùng khỏi tài khoản đang đăng nhập.',
@@ -301,112 +295,28 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role">
-              Vai trò <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={role}
-              onValueChange={(value: UserRole) => {
-                setValue('role', value);
-                applyRolePreset(value, settlementRole);
-              }}
-            >
-              <SelectTrigger id="role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">{USER_ROLE_LABELS.admin}</SelectItem>
-                <SelectItem value="editor">{USER_ROLE_LABELS.editor}</SelectItem>
-                <SelectItem value="viewer">{USER_ROLE_LABELS.viewer}</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {role === 'admin' && 'Toàn quyền quản trị hệ thống'}
-              {role === 'editor' && 'Có thể tạo và chỉnh sửa tours và dữ liệu'}
-              {role === 'viewer' && 'Chỉ xem, không thể chỉnh sửa'}
-            </p>
-          </div>
+          <UserRoleFields
+            role={role}
+            status={status}
+            settlementRole={settlementRole}
+            onRoleChange={(value) => {
+              setValue('role', value);
+              applyRolePreset(value, settlementRole);
+            }}
+            onStatusChange={(value) => setValue('status', value)}
+            onSettlementRoleChange={(value) => {
+              setValue('settlementRole', value);
+              applyRolePreset(role, value);
+            }}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="status">
-              Trạng thái <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={status}
-              onValueChange={(value: UserStatus) => setValue('status', value)}
-            >
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">{USER_STATUS_LABELS.active}</SelectItem>
-                <SelectItem value="inactive">{USER_STATUS_LABELS.inactive}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="settlementRole">Vai trò quyết toán</Label>
-            <Select
-              value={settlementRole}
-              onValueChange={(value: SettlementRole) => {
-                setValue('settlementRole', value);
-                applyRolePreset(role, value);
-              }}
-            >
-              <SelectTrigger id="settlementRole">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{SETTLEMENT_ROLE_LABELS.none}</SelectItem>
-                <SelectItem value="guide">{SETTLEMENT_ROLE_LABELS.guide}</SelectItem>
-                <SelectItem value="accountant">{SETTLEMENT_ROLE_LABELS.accountant}</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {settlementRole === 'none' && 'Không tham gia luồng quyết toán tour.'}
-              {settlementRole === 'guide' && 'HDV: nhập và gửi quyết toán cho kế toán kiểm tra.'}
-              {settlementRole === 'accountant' && 'Kế toán: review từng dòng chi phí và duyệt quyết toán.'}
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <Label>Phân quyền tính năng</Label>
-                <p className="text-xs text-muted-foreground">
-                  Tick theo từng nhóm chức năng; nhóm cha sẽ chọn hoặc bỏ chọn toàn bộ quyền con.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => applyRolePreset()}>
-                  Theo vai trò
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setValue('permissions', ALL_PERMISSIONS, { shouldDirty: true })}
-                >
-                  Chọn tất cả
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setValue('permissions', protectedPermissions, { shouldDirty: true })}
-                >
-                  Bỏ chọn
-                </Button>
-              </div>
-            </div>
-            <PermissionTree
-              value={permissions}
-              onChange={(nextPermissions) => setValue('permissions', nextPermissions, { shouldDirty: true })}
-              disabledPermissions={protectedPermissions}
-            />
-          </div>
+          <UserPermissionSection
+            role={role}
+            permissions={permissions}
+            protectedPermissions={protectedPermissions}
+            onApplyRolePreset={() => applyRolePreset()}
+            onChange={(nextPermissions) => setValue('permissions', nextPermissions, { shouldDirty: true })}
+          />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

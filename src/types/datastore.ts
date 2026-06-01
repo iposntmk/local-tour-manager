@@ -31,6 +31,15 @@ export interface SearchQuery {
   guideId?: string;
 }
 
+export interface TourImageDownloadItem extends TourImage {
+  tourCode: string;
+}
+
+export interface ToursGrandTotal {
+  count: number;
+  grandTotal: number;
+}
+
 export interface DataStore {
   // Guides
   listGuides(query?: SearchQuery): Promise<Guide[]>;
@@ -187,6 +196,7 @@ export interface DataStore {
 
   // Tours
   listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult>;
+  getToursGrandTotal(): Promise<ToursGrandTotal>;
   getTour(id: string): Promise<Tour | undefined>;
   createTour(input: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; shoppings?: TourShopping[]; summary?: TourSummary }): Promise<Tour>;
   updateTour(id: string, patch: Partial<Tour>): Promise<void>;
@@ -237,7 +247,7 @@ export interface DataStore {
     file: File
   ): Promise<TourLineAttachment>;
   deleteTourLineAttachment(attachment: TourLineAttachment): Promise<void>;
-  getTourLineAttachmentUrl(filePath: string): string;
+  getTourLineAttachmentUrl(filePath: string): Promise<string>;
 
   // Payment tracking
   listTourPayments(tourId: string): Promise<TourPayment[]>;
@@ -252,9 +262,10 @@ export interface DataStore {
 
   // Tour images
   listTourImages(tourId: string): Promise<TourImage[]>;
+  listAllTourImagesForDownload(): Promise<TourImageDownloadItem[]>;
   uploadTourImage(tourId: string, file: File, storagePath: string): Promise<void>;
   deleteTourImage(image: TourImage): Promise<void>;
-  getTourImagePublicUrl(storagePath: string): string;
+  getTourImageUrl(storagePath: string): Promise<string>;
 
   // Data management
   exportData(): Promise<any>;

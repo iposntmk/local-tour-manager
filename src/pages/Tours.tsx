@@ -1,27 +1,12 @@
-import { useState, useMemo } from 'react';
-import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
-import JSZip from 'jszip';
-import { supabase } from '@/integrations/supabase/client';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { exportTourToExcel, exportAllToursToMonthlyZip, exportAllToursToExcel } from '@/lib/excel-utils';
 import { useTourImport } from '@/hooks/useTourImport';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import type { Tour, TourListResult } from '@/types/tour';
-import { generateFullSQLBackup, downloadSQLBackup } from '@/lib/sql-backup';
 import {
-  invalidateTourAggregateCaches,
   TOUR_GRAND_TOTAL_GC_TIME,
   TOUR_GRAND_TOTAL_QUERY_KEY,
   TOUR_GRAND_TOTAL_STALE_TIME,
@@ -39,12 +24,11 @@ import { ToursMobileCards } from '@/pages/tours/ToursMobileCards';
 import { ToursTotalsBar } from '@/pages/tours/ToursTotalsBar';
 import { useTourFilters } from '@/pages/tours/useTourFilters';
 import { getTourWarningInfo } from '@/pages/tours/tour-table-config';
+import { ToursConfirmDialogs } from '@/pages/tours/ToursConfirmDialogs';
+import { useTourPageActions } from '@/pages/tours/useTourPageActions';
 
 
 const Tours = () => {
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [isDownloadingImages, setIsDownloadingImages] = useState(false);
-  
   // Pagination disabled; show all results
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -159,19 +143,7 @@ const Tours = () => {
   // Fetch grand total of ALL tours in database without loading nested tour details
   const { data: allToursData } = useQuery({
     queryKey: TOUR_GRAND_TOTAL_QUERY_KEY,
-    queryFn: async () => {
-      const { data, error, count } = await supabase
-        .from('tours')
-        .select('final_total', { count: 'exact' });
-
-      if (error) throw error;
-
-      const rows = data || [];
-      const grandTotal = rows.reduce((sum, tour) => {
-        return sum + (Number(tour.final_total) || 0);
-      }, 0);
-      return { count: typeof count === 'number' ? count : rows.length, grandTotal };
-    },
+    queryFn: () => store.getToursGrandTotal(),
     staleTime: TOUR_GRAND_TOTAL_STALE_TIME,
     gcTime: TOUR_GRAND_TOTAL_GC_TIME,
   });
@@ -197,176 +169,17 @@ const Tours = () => {
     return Array.from(years).sort().reverse();
   }, [tours]);
 
-
-  const duplicateMutation = useMutation({
-    mutationFn: (id: string) => store.duplicateTour(id),
-    onSuccess: () => {
-      void invalidateTourAggregateCaches(queryClient);
-      toast.success('Nhân bản tour thành công');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Nhân bản tour thất bại');
-    },
+  const tourActions = useTourPageActions({
+    queryClient,
+    baseTourQuery,
+    totalTours,
+    canExportTours,
+    canDuplicateTours,
+    canDeleteTours,
+    canBackupData,
+    canDownloadAllTourImages,
+    isAdmin,
   });
-
-  // Admin confirmation for create/duplicate tour
-  const [showAdminCreateConfirm, setShowAdminCreateConfirm] = useState(false);
-  const [pendingDuplicateId, setPendingDuplicateId] = useState<string | null>(null);
-
-  // Controlled confirm dialog for deleting a tour (avoid window.confirm)
-  const [deleteTourId, setDeleteTourId] = useState<string | null>(null);
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => store.deleteTour(id),
-    onSuccess: () => {
-      void invalidateTourAggregateCaches(queryClient);
-      toast.success('Xóa tour thành công');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Xóa tour thất bại');
-    },
-  });
-
-  // Commented out: deleteAllTours method doesn't exist in store
-  // const deleteAllMutation = useMutation({
-  //   mutationFn: () => store.deleteAllTours(),
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ['tours'] });
-  //     toast.success('All tours deleted successfully');
-  //   },
-  //   onError: (error: Error) => {
-  //     toast.error(error.message || 'Failed to delete all tours');
-  //   },
-  // });
-
-  const [deleteAllPinInput, setDeleteAllPinInput] = useState('');
-  const [showDeleteAllPinDialog, setShowDeleteAllPinDialog] = useState(false);
-  const CORRECT_PIN = '0829101188';
-
-  const handleDeleteAll = () => {
-    if (!canDeleteTours) {
-      toast.error('Bạn không có quyền xóa tour.');
-      return;
-    }
-    setShowDeleteAllPinDialog(true);
-  };
-
-  const handleDeleteAllConfirm = () => {
-    if (deleteAllPinInput === CORRECT_PIN) {
-      toast.warning('Không hỗ trợ xóa hàng loạt. Vui lòng xóa từng tour.');
-      setShowDeleteAllPinDialog(false);
-      setDeleteAllPinInput('');
-    } else {
-      toast.error('Sai mã PIN. Từ chối truy cập.');
-      setDeleteAllPinInput('');
-    }
-  };
-
-  const fetchDetailedTour = async (tour: Tour): Promise<Tour> => {
-    const detailedTour = await store.getTour(tour.id);
-    if (!detailedTour) {
-      throw new Error(`Không thể tải chi tiết tour ${tour.tourCode} từ cơ sở dữ liệu.`);
-    }
-    return detailedTour;
-  };
-
-  const handleExportAll = async () => {
-    if (!canExportTours) {
-      toast.error('Bạn không có quyền xuất tour.');
-      return;
-    }
-
-    if (totalTours === 0) {
-      toast.error('Không có tour nào để xuất');
-      return;
-    }
-
-    try {
-      const { tours: toursWithDetails } = await store.listTours({ ...baseTourQuery }, { includeDetails: true });
-
-      if (toursWithDetails.length === 0) {
-        toast.error('Không có tour nào để xuất');
-        return;
-      }
-
-      await exportAllToursToMonthlyZip(toursWithDetails);
-      toast.success('Đã xuất tất cả tour theo tháng (ZIP)');
-    } catch (error) {
-      console.error('Failed to export tours to Excel', error);
-      toast.error('Xuất tour ZIP thất bại. Vui lòng thử lại.');
-    }
-  };
-
-  const handleExportAllSingle = async () => {
-    if (!canExportTours) {
-      toast.error('Bạn không có quyền xuất tour.');
-      return;
-    }
-
-    if (totalTours === 0) {
-      toast.error('Không có tour nào để xuất');
-      return;
-    }
-
-    try {
-      const { tours: toursWithDetails } = await store.listTours({ ...baseTourQuery }, { includeDetails: true });
-
-      if (toursWithDetails.length === 0) {
-        toast.error('Không có tour nào để xuất');
-        return;
-      }
-
-      await exportAllToursToExcel(toursWithDetails);
-      toast.success('Đã xuất tất cả tour vào một trang Excel');
-    } catch (error) {
-      console.error('Failed to export all tours to single Excel', error);
-      toast.error('Xuất Excel thất bại. Vui lòng thử lại.');
-    }
-  };
-
-  const handleExportSingle = async (tour: Tour, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!canExportTours) {
-      toast.error('Bạn không có quyền xuất tour.');
-      return;
-    }
-
-    try {
-      const detailedTour = await fetchDetailedTour(tour);
-      await exportTourToExcel(detailedTour);
-      toast.success(`Đã xuất tour ${tour.tourCode} ra Excel`);
-    } catch (error) {
-      console.error(`Failed to export tour ${tour.tourCode} to Excel`, error);
-      const message =
-        error instanceof Error && error.message.includes('Unable to load details')
-          ? error.message
-          : 'Xuất tour ra Excel thất bại. Vui lòng thử lại.';
-      toast.error(message);
-    }
-  };
-
-
-  const handleDuplicate = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!canDuplicateTours) {
-      toast.error('Bạn không có quyền nhân bản tour.');
-      return;
-    }
-    if (isAdmin) {
-      setPendingDuplicateId(id);
-      return;
-    }
-    duplicateMutation.mutate(id);
-  };
-
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!canDeleteTours) {
-      toast.error('Bạn không có quyền xóa tour.');
-      return;
-    }
-    setDeleteTourId(id);
-  };
 
   const { handleImport: handleImportFromHook } = useTourImport(queryClient, baseTourQuery);
 
@@ -376,100 +189,6 @@ const Tours = () => {
       return;
     }
     handleImportFromHook(tours);
-  };
-
-  const handleBackup = async () => {
-    if (!canBackupData) {
-      toast.error('Bạn không có quyền sao lưu dữ liệu.');
-      return;
-    }
-
-    setIsBackingUp(true);
-    try {
-      toast.info('Đang tạo bản sao lưu SQL...');
-      const sql = await generateFullSQLBackup();
-      downloadSQLBackup(sql);
-      toast.success('Tải bản sao lưu thành công!');
-    } catch (error) {
-      console.error('Backup error:', error);
-      toast.error('Tạo bản sao lưu thất bại');
-    } finally {
-      setIsBackingUp(false);
-    }
-  };
-
-  const handleDownloadAllImages = async () => {
-    if (!canDownloadAllTourImages) {
-      toast.error('Bạn không có quyền tải toàn bộ ảnh tour.');
-      return;
-    }
-
-    setIsDownloadingImages(true);
-    try {
-      toast.info('Đang lấy tất cả ảnh tour...');
-      
-      // Fetch all tour images from database
-      const { data: allImages, error } = await supabase
-        .from('tour_images')
-        .select('*, tours!tour_images_tour_id_fkey(tour_code)')
-        .order('tour_id');
-
-      if (error) throw error;
-
-      if (!allImages || allImages.length === 0) {
-        toast.error('Không tìm thấy ảnh nào trong cơ sở dữ liệu');
-        return;
-      }
-
-      toast.info(`Đang tải ${allImages.length} ảnh...`);
-
-      const zip = new JSZip();
-
-      // Group images by tour code
-      const imagesByTour: Record<string, typeof allImages> = {};
-      allImages.forEach((img) => {
-        const tourCode = (img.tours as any)?.tour_code || 'khong-ro';
-        if (!imagesByTour[tourCode]) {
-          imagesByTour[tourCode] = [];
-        }
-        imagesByTour[tourCode].push(img);
-      });
-
-      // Add images to zip organized by tour folders
-      for (const [tourCode, images] of Object.entries(imagesByTour)) {
-        for (const image of images) {
-          try {
-            const { data: publicUrlData } = supabase.storage
-              .from('tour-images')
-              .getPublicUrl(image.storage_path);
-            
-            const response = await fetch(publicUrlData.publicUrl);
-            const blob = await response.blob();
-            zip.file(`${tourCode}/${image.file_name}`, blob);
-          } catch (err) {
-            console.error(`Failed to download ${image.file_name}:`, err);
-          }
-        }
-      }
-
-      // Generate and download zip
-      const content = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(content);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `tat-ca-anh-tour.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast.success(`Đã tải ${allImages.length} ảnh từ ${Object.keys(imagesByTour).length} tour`);
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Tải ảnh thất bại');
-    } finally {
-      setIsDownloadingImages(false);
-    }
   };
 
   const { classes: headerClasses } = useHeaderMode('tours.headerMode');
@@ -488,19 +207,19 @@ const Tours = () => {
             canExportTours={canExportTours}
             canDeleteTours={canDeleteTours}
             canCreateTours={canCreateTours}
-            isBackingUp={isBackingUp}
-            isDownloadingImages={isDownloadingImages}
-            deleteAllPinInput={deleteAllPinInput}
-            showDeleteAllPinDialog={showDeleteAllPinDialog}
-            onDeleteAllPinInputChange={setDeleteAllPinInput}
-            onDeleteAllPinDialogChange={setShowDeleteAllPinDialog}
-            onDeleteAllConfirm={handleDeleteAllConfirm}
-            onBackup={handleBackup}
-            onDownloadAllImages={handleDownloadAllImages}
+            isBackingUp={tourActions.isBackingUp}
+            isDownloadingImages={tourActions.isDownloadingImages}
+            deleteAllPinInput={tourActions.deleteAllPinInput}
+            showDeleteAllPinDialog={tourActions.showDeleteAllPinDialog}
+            onDeleteAllPinInputChange={tourActions.setDeleteAllPinInput}
+            onDeleteAllPinDialogChange={tourActions.setShowDeleteAllPinDialog}
+            onDeleteAllConfirm={tourActions.handleDeleteAllConfirm}
+            onBackup={tourActions.handleBackup}
+            onDownloadAllImages={tourActions.handleDownloadAllImages}
             onImport={handleImport}
-            onExportAll={handleExportAll}
-            onExportAllSingle={handleExportAllSingle}
-            onCreateTour={() => { if (isAdmin) { setShowAdminCreateConfirm(true); } else { navigate('/tours/new'); } }}
+            onExportAll={tourActions.handleExportAll}
+            onExportAllSingle={tourActions.handleExportAllSingle}
+            onCreateTour={() => { if (isAdmin) { tourActions.setShowAdminCreateConfirm(true); } else { navigate('/tours/new'); } }}
           />
           <ToursFilterBar
             topControlsExpanded={topControlsExpanded}
@@ -580,80 +299,41 @@ const Tours = () => {
               canExportTours={canExportTours}
               canDuplicateTours={canDuplicateTours}
               canDeleteTours={canDeleteTours}
-              deletePending={deleteMutation.isPending}
+              deletePending={tourActions.deleteMutation.isPending}
               userProfileMap={isAdmin ? userProfileMap : undefined}
               onOpenTour={(tourId) => navigate(`/tours/${tourId}`)}
-              onExportSingle={handleExportSingle}
-              onDuplicate={handleDuplicate}
-              onDelete={handleDelete}
+              onExportSingle={tourActions.handleExportSingle}
+              onDuplicate={tourActions.handleDuplicate}
+              onDelete={tourActions.handleDelete}
             />
             <ToursMobileCards
               tours={displayedTours}
               canExportTours={canExportTours}
               canDuplicateTours={canDuplicateTours}
               canDeleteTours={canDeleteTours}
-              deletePending={deleteMutation.isPending}
+              deletePending={tourActions.deleteMutation.isPending}
               onOpenTour={(tourId) => navigate(`/tours/${tourId}`)}
-              onExportSingle={handleExportSingle}
-              onDuplicate={handleDuplicate}
-              onDelete={handleDelete}
+              onExportSingle={tourActions.handleExportSingle}
+              onDuplicate={tourActions.handleDuplicate}
+              onDelete={tourActions.handleDelete}
             />
           </>
         )}
 
-        {/* Admin Create Tour Confirmation Dialog */}
-        <AlertDialog open={showAdminCreateConfirm} onOpenChange={setShowAdminCreateConfirm}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Xác nhận tạo tour</AlertDialogTitle>
-              <AlertDialogDescription>Bạn là admin. Bạn có muốn tạo tour mới không?</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setShowAdminCreateConfirm(false)}>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={() => { setShowAdminCreateConfirm(false); navigate('/tours/new'); }}>Tạo tour</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Admin Duplicate Confirmation Dialog */}
-        <AlertDialog open={!!pendingDuplicateId} onOpenChange={(open) => !open && setPendingDuplicateId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Xác nhận sao chép tour</AlertDialogTitle>
-              <AlertDialogDescription>Bạn là admin. Bạn có chắc chắn muốn sao chép tour này không?</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setPendingDuplicateId(null)}>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={() => { if (pendingDuplicateId) duplicateMutation.mutate(pendingDuplicateId); setPendingDuplicateId(null); }}>Sao chép</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteTourId} onOpenChange={(open) => !open && setDeleteTourId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Xóa tour này?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Hành động này không thể hoàn tác. Tour sẽ bị xóa vĩnh viễn.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setDeleteTourId(null)}>Hủy</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => {
-                  if (deleteTourId) {
-                    deleteMutation.mutate(deleteTourId);
-                    setDeleteTourId(null);
-                  }
-                }}
-              >
-                Xóa
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ToursConfirmDialogs
+          showAdminCreateConfirm={tourActions.showAdminCreateConfirm}
+          pendingDuplicateId={tourActions.pendingDuplicateId}
+          deleteTourId={tourActions.deleteTourId}
+          onAdminCreateOpenChange={tourActions.setShowAdminCreateConfirm}
+          onDuplicateOpenChange={(open) => !open && tourActions.setPendingDuplicateId(null)}
+          onDeleteOpenChange={(open) => !open && tourActions.setDeleteTourId(null)}
+          onAdminCreateConfirm={() => {
+            tourActions.setShowAdminCreateConfirm(false);
+            navigate('/tours/new');
+          }}
+          onDuplicateConfirm={tourActions.confirmDuplicate}
+          onDeleteConfirm={tourActions.confirmDelete}
+        />
         {/* Pagination removed */}
       </div>
     </>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,7 +21,19 @@ export function SummaryLineAttachmentsDialog({
 }: SummaryLineAttachmentsDialogProps) {
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const selected = attachments.find((item) => item.id === selectedId) || attachments[0];
-  const selectedUrl = selected ? store.getTourLineAttachmentUrl(selected.filePath) : '';
+  const attachmentPathKey = attachments.map((attachment) => `${attachment.id}:${attachment.filePath}`).join('|');
+  const { data: attachmentUrls = {} } = useQuery({
+    queryKey: ['tourLineAttachmentUrls', attachmentPathKey],
+    queryFn: async () => Object.fromEntries(
+      await Promise.all(attachments.map(async (attachment) => [
+        attachment.filePath,
+        await store.getTourLineAttachmentUrl(attachment.filePath),
+      ]))
+    ),
+    enabled: open && attachments.length > 0,
+    staleTime: 30 * 60 * 1000,
+  });
+  const selectedUrl = selected ? attachmentUrls[selected.filePath] ?? '' : '';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,7 +57,7 @@ export function SummaryLineAttachmentsDialog({
                   }`}
                 >
                   {isImage(attachment) ? (
-                    <img src={store.getTourLineAttachmentUrl(attachment.filePath)} alt="" className="h-10 w-10 rounded object-cover" />
+                    <img src={attachmentUrls[attachment.filePath] ?? ''} alt="" className="h-10 w-10 rounded object-cover" />
                   ) : (
                     <FileText className="h-8 w-8 text-muted-foreground" />
                   )}
@@ -56,7 +69,7 @@ export function SummaryLineAttachmentsDialog({
             <div className="flex min-h-0 flex-col overflow-hidden rounded-md border bg-muted/20">
               <div className="flex items-center justify-between gap-2 border-b bg-background px-3 py-2">
                 <span className="truncate text-sm font-medium">{selected?.fileName}</span>
-                <Button variant="outline" size="sm" onClick={() => window.open(selectedUrl, '_blank')}>
+                <Button variant="outline" size="sm" onClick={() => window.open(selectedUrl, '_blank')} disabled={!selectedUrl}>
                   <ExternalLink className="mr-2 h-4 w-4" />
                   Mở
                 </Button>

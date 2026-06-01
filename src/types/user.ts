@@ -214,18 +214,25 @@ export function dbRowToUserProfile(row: UserProfileRow): UserProfile {
   const settlementRoleRaw = (row as unknown as { settlement_role?: string | null }).settlement_role;
   const permissionsRaw = (row as unknown as { permissions?: string[] | null }).permissions;
   const isMasterAdmin = row.email === 'iposntmk@gmail.com';
+  const role = isMasterAdmin ? 'admin' : (row.role as UserRole);
   return {
     id: row.id,
     email: row.email,
     fullName: row.full_name ?? undefined,
-    role: isMasterAdmin ? 'admin' : (row.role as UserRole),
+    role,
     status: isMasterAdmin ? 'active' : (row.status as UserStatus),
     settlementRole: (settlementRoleRaw as SettlementRole) ?? 'none',
-    permissions: isMasterAdmin ? ALL_PERMISSIONS : (Array.isArray(permissionsRaw) ? normalizePermissions(permissionsRaw) : undefined),
+    permissions: role === 'admin' ? ALL_PERMISSIONS : (Array.isArray(permissionsRaw) ? normalizePermissions(permissionsRaw) : undefined),
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? undefined,
     createdBy: row.created_by ?? undefined,
   };
+}
+
+function permissionsForDb(profile: Partial<UserProfileInput>): Permission[] | null | undefined {
+  if (profile.role === 'admin') return null;
+  if (profile.permissions === undefined) return undefined;
+  return profile.permissions === null ? null : normalizePermissions(profile.permissions);
 }
 
 // Convert UserProfile to database insert
@@ -234,6 +241,7 @@ export function userProfileToDbInsert(
   profile: UserProfileInput,
   createdBy?: string
 ): UserProfileInsert {
+  const permissions = permissionsForDb(profile);
   const insert: UserProfileInsert & { settlement_role?: SettlementRole } = {
     id: userId,
     email: profile.email,
@@ -245,8 +253,8 @@ export function userProfileToDbInsert(
   if (profile.settlementRole !== undefined) {
     insert.settlement_role = profile.settlementRole;
   }
-  if (profile.permissions !== undefined) {
-    (insert as UserProfileInsert & { permissions?: Permission[] | null }).permissions = profile.permissions;
+  if (permissions !== undefined) {
+    (insert as UserProfileInsert & { permissions?: Permission[] | null }).permissions = permissions;
   }
   return insert as UserProfileInsert;
 }
@@ -254,14 +262,15 @@ export function userProfileToDbInsert(
 // Convert UserProfile to database update
 export function userProfileToDbUpdate(profile: Partial<UserProfileInput>): UserProfileUpdate {
   const update: UserProfileUpdate & { settlement_role?: SettlementRole } = {};
+  const permissions = permissionsForDb(profile);
 
   if (profile.email !== undefined) update.email = profile.email;
   if (profile.fullName !== undefined) update.full_name = profile.fullName;
   if (profile.role !== undefined) update.role = profile.role;
   if (profile.status !== undefined) update.status = profile.status;
   if (profile.settlementRole !== undefined) update.settlement_role = profile.settlementRole;
-  if (profile.permissions !== undefined) {
-    (update as UserProfileUpdate & { permissions?: Permission[] | null }).permissions = profile.permissions;
+  if (permissions !== undefined) {
+    (update as UserProfileUpdate & { permissions?: Permission[] | null }).permissions = permissions;
   }
 
   return update as UserProfileUpdate;

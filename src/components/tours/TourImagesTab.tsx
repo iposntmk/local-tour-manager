@@ -28,7 +28,7 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
         : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const fileName = `${safeBaseName}-${uniqueSuffix}${extension ? `.${extension}` : ''}`;
-    return `${safeTourCode}/${fileName}`;
+    return `${tourId}/${safeTourCode}/${fileName}`;
   };
 
   const [uploading, setUploading] = useState(false);
@@ -41,6 +41,15 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
     queryKey: ['tourImages', tourId],
     queryFn: () => store.listTourImages(tourId),
     enabled: !!tourId,
+  });
+  const imagePathKey = images.map((image) => `${image.id}:${image.storage_path}`).join('|');
+  const { data: imageUrls = {} } = useQuery({
+    queryKey: ['tourImageUrls', tourId, imagePathKey],
+    queryFn: async () => Object.fromEntries(
+      await Promise.all(images.map(async (image) => [image.storage_path, await store.getTourImageUrl(image.storage_path)]))
+    ),
+    enabled: images.length > 0,
+    staleTime: 30 * 60 * 1000,
   });
 
   // Upload mutation
@@ -104,7 +113,7 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
   };
 
   const getImageUrl = (storagePath: string) => {
-    return store.getTourImagePublicUrl(storagePath);
+    return imageUrls[storagePath] ?? '';
   };
 
   // Reset zoom and position when image changes
@@ -129,7 +138,7 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
       
       // Fetch and add each image to zip
       for (const image of images) {
-        const imageUrl = getImageUrl(image.storage_path);
+        const imageUrl = getImageUrl(image.storage_path) || await store.getTourImageUrl(image.storage_path);
         const response = await fetch(imageUrl);
         const blob = await response.blob();
         zip.file(image.file_name, blob);
