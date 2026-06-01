@@ -209,6 +209,10 @@ const Tours = () => {
     },
   });
 
+  // Admin confirmation for create/duplicate tour
+  const [showAdminCreateConfirm, setShowAdminCreateConfirm] = useState(false);
+  const [pendingDuplicateId, setPendingDuplicateId] = useState<string | null>(null);
+
   // Controlled confirm dialog for deleting a tour (avoid window.confirm)
   const [deleteTourId, setDeleteTourId] = useState<string | null>(null);
 
@@ -346,6 +350,10 @@ const Tours = () => {
     e.stopPropagation();
     if (!canDuplicateTours) {
       toast.error('Bạn không có quyền nhân bản tour.');
+      return;
+    }
+    if (isAdmin) {
+      setPendingDuplicateId(id);
       return;
     }
     duplicateMutation.mutate(id);
@@ -492,7 +500,7 @@ const Tours = () => {
             onImport={handleImport}
             onExportAll={handleExportAll}
             onExportAllSingle={handleExportAllSingle}
-            onCreateTour={() => navigate('/tours/new')}
+            onCreateTour={() => { if (isAdmin) { setShowAdminCreateConfirm(true); } else { navigate('/tours/new'); } }}
           />
           <ToursFilterBar
             topControlsExpanded={topControlsExpanded}
@@ -593,7 +601,34 @@ const Tours = () => {
           </>
         )}
 
-        {/* Pagination Controls (hidden when date range search is active) */}
+        {/* Admin Create Tour Confirmation Dialog */}
+        <AlertDialog open={showAdminCreateConfirm} onOpenChange={setShowAdminCreateConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận tạo tour</AlertDialogTitle>
+              <AlertDialogDescription>Bạn là admin. Bạn có muốn tạo tour mới không?</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowAdminCreateConfirm(false)}>Hủy</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { setShowAdminCreateConfirm(false); navigate('/tours/new'); }}>Tạo tour</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Admin Duplicate Confirmation Dialog */}
+        <AlertDialog open={!!pendingDuplicateId} onOpenChange={(open) => !open && setPendingDuplicateId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận sao chép tour</AlertDialogTitle>
+              <AlertDialogDescription>Bạn là admin. Bạn có chắc chắn muốn sao chép tour này không?</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setPendingDuplicateId(null)}>Hủy</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { if (pendingDuplicateId) duplicateMutation.mutate(pendingDuplicateId); setPendingDuplicateId(null); }}>Sao chép</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!deleteTourId} onOpenChange={(open) => !open && setDeleteTourId(null)}>
           <AlertDialogContent>
