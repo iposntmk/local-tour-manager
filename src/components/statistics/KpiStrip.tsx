@@ -1,4 +1,5 @@
 import { formatCurrency } from '@/lib/currency-utils';
+import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import { StatColumnHelp } from './StatColumnHelp';
 import { statColumnHelp, type StatsTotals } from './shared';
 
@@ -10,6 +11,7 @@ interface KpiStripProps {
 }
 
 export const KpiStrip = ({ totals, averageTipPerDay, grandTotalFinalTotal, grandTotalTours }: KpiStripProps) => {
+  const canViewShoppingSensitive = useCanViewShoppingSensitive();
   const items = [
     { help: statColumnHelp.totalTours, value: totals.tours.toString(), variant: 'plain' as const },
     { help: statColumnHelp.totalGuests, value: totals.guests.toString(), variant: 'plain' as const },
@@ -18,10 +20,12 @@ export const KpiStrip = ({ totals, averageTipPerDay, grandTotalFinalTotal, grand
     { help: statColumnHelp.ctpOnly, value: formatCurrency(totals.ctpOnly), variant: 'plain' as const },
     { help: statColumnHelp.guestTip, value: formatCurrency(totals.tipFromGuests), variant: 'plain' as const },
     { help: statColumnHelp.companyTip, value: formatCurrency(totals.companyTip), variant: 'plain' as const },
-    { help: statColumnHelp.shopping, value: formatCurrency(totals.shoppings), variant: 'plain' as const },
     { help: statColumnHelp.averageTipPerDay, value: formatCurrency(averageTipPerDay), variant: 'plain' as const },
-    { help: statColumnHelp.incomeWithoutCarHotel, value: formatCurrency(totals.incomeWithoutCarHotel), variant: 'plain' as const },
-    { help: statColumnHelp.shopTipAllow, value: formatCurrency(totals.totalShopTipAllow), variant: 'accent' as const },
+    ...(canViewShoppingSensitive ? [
+      { help: statColumnHelp.shopping, value: formatCurrency(totals.shoppings), variant: 'plain' as const },
+      { help: statColumnHelp.incomeWithoutCarHotel, value: formatCurrency(totals.incomeWithoutCarHotel), variant: 'plain' as const },
+      { help: statColumnHelp.shopTipAllow, value: formatCurrency(totals.totalShopTipAllow), variant: 'accent' as const },
+    ] : []),
     { help: statColumnHelp.finalTotal, value: formatCurrency(totals.finalTotal), variant: 'primary' as const, subtitle: `${totals.tours} tour (đã lọc)` },
     { help: statColumnHelp.grandTotal, value: formatCurrency(grandTotalFinalTotal), variant: 'success' as const, subtitle: `${grandTotalTours} tour tổng` },
   ];

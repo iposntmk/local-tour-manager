@@ -7,6 +7,7 @@ import { formatDateRangeDisplay } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 import { calculateTabTotals } from '@/lib/tour-tab-utils';
 import type { Tour } from '@/types/tour';
+import type { Access, TourTabKey } from '@/lib/tour-detail-permissions';
 
 interface TourDetailHeaderProps {
   tour: Tour | undefined;
@@ -17,6 +18,8 @@ interface TourDetailHeaderProps {
   canEditTourInfo: boolean;
   canExportTour: boolean;
   canDeleteTour: boolean;
+  canViewShoppings: boolean;
+  tabAccess?: Record<TourTabKey, Access>;
   hasUnpaidShoppings: boolean;
   tourImagesCount: number;
   totalGuests: number;
@@ -31,10 +34,11 @@ interface TourDetailHeaderProps {
 export function TourDetailHeader({
   tour, displayTour, isNewTour, activeTab,
   canCreateTour, canEditTourInfo, canExportTour, canDeleteTour,
-  hasUnpaidShoppings, tourImagesCount, totalGuests, headerClasses,
+  canViewShoppings, tabAccess, hasUnpaidShoppings, tourImagesCount, totalGuests, headerClasses,
   onNavigateBack, onSave, onExport, onDeleteOpen, onShowHistory,
 }: TourDetailHeaderProps) {
   const totals = calculateTabTotals(displayTour);
+  const canViewTab = (tab: TourTabKey) => tabAccess?.[tab]?.view ?? true;
 
   return (
     <div className={`${headerClasses} border-b py-2 sm:py-4 bg-blue-100 dark:bg-blue-900 z-40`}>
@@ -109,61 +113,66 @@ export function TourDetailHeader({
       </div>
 
       <div className="pt-2 sm:pt-4">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 gap-1 rounded-xl bg-background shadow-sm border p-0.5 sm:p-1 h-auto">
-          <TabsTrigger value="info" className="text-xs sm:text-sm">Thông tin</TabsTrigger>
-          <TabsTrigger value="destinations" className="text-xs sm:text-sm">
+        <TabsList className={cn(
+          'grid w-full grid-cols-3 gap-1 rounded-xl bg-background shadow-sm border p-0.5 sm:p-1 h-auto',
+          canViewShoppings ? 'lg:grid-cols-9' : 'lg:grid-cols-8'
+        )}>
+          {canViewTab('info') && <TabsTrigger value="info" className="text-xs sm:text-sm">Thông tin</TabsTrigger>}
+          {canViewTab('destinations') && <TabsTrigger value="destinations" className="text-xs sm:text-sm">
             <div className="flex flex-col items-center">
               <span className="sm:hidden">Điểm</span><span className="hidden sm:inline">Điểm đến</span>
               <span className="text-xs sm:text-sm font-bold">{displayTour?.destinations?.length || 0} | {formatCurrency(totals.destinations)}</span>
             </div>
-          </TabsTrigger>
-          <TabsTrigger value="expenses" className="text-xs sm:text-sm">
+          </TabsTrigger>}
+          {canViewTab('expenses') && <TabsTrigger value="expenses" className="text-xs sm:text-sm">
             <div className="flex flex-col items-center">
               <span className="sm:hidden">CP</span><span className="hidden sm:inline">Chi phí</span>
               <span className="text-xs sm:text-sm font-bold">{displayTour?.expenses?.length || 0} | {formatCurrency(totals.expenses)}</span>
             </div>
-          </TabsTrigger>
-          <TabsTrigger value="meals" className="text-xs sm:text-sm">
+          </TabsTrigger>}
+          {canViewTab('meals') && <TabsTrigger value="meals" className="text-xs sm:text-sm">
             <div className="flex flex-col items-center">
               <span>Bữa ăn</span>
               <span className="text-xs sm:text-sm font-bold">{displayTour?.meals?.length || 0} | {formatCurrency(totals.meals)}</span>
             </div>
-          </TabsTrigger>
-          <TabsTrigger value="combined" className="text-xs sm:text-sm">
+          </TabsTrigger>}
+          {canViewTab('combined') && <TabsTrigger value="combined" className="text-xs sm:text-sm">
             <div className="flex flex-col items-center">
-              <span className="sm:hidden">Tổng</span><span className="hidden sm:inline">Tổng hợp</span>
+              <span className="sm:hidden">Gộp</span><span className="hidden sm:inline">Gộp dịch vụ</span>
               <span className="text-xs sm:text-sm font-bold">{formatCurrency(totals.destinations + totals.expenses + totals.meals)}</span>
             </div>
-          </TabsTrigger>
-          <TabsTrigger value="allowances" className="text-xs sm:text-sm">
+          </TabsTrigger>}
+          {canViewTab('allowances') && <TabsTrigger value="allowances" className="text-xs sm:text-sm">
             <div className="flex flex-col items-center">
               <span className="sm:hidden">CTP</span><span className="hidden sm:inline">Công tác phí (CTP)</span>
               <span className="text-xs sm:text-sm font-bold">{displayTour?.allowances?.length || 0} | {formatCurrency(totals.allowances)}</span>
             </div>
-          </TabsTrigger>
-          <TabsTrigger value="summary" className="text-xs sm:text-sm">
-            <div className="flex flex-col items-center">
-              <span className="sm:hidden">TK</span><span className="hidden sm:inline">Tổng kết</span>
-              <span className="text-xs sm:text-sm font-bold">{formatCurrency(displayTour?.summary?.finalTotal ?? 0)}</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="shoppings" className={cn('text-xs sm:text-sm', hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-1">
-                <span className="sm:hidden">Mua</span><span className="hidden sm:inline">Mua sắm</span>
-                {hasUnpaidShoppings && <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />}
+          </TabsTrigger>}
+          {canViewTab('shoppings') && canViewShoppings && (
+            <TabsTrigger value="shoppings" className={cn('text-xs sm:text-sm', hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
+              <div className="flex flex-col items-center">
+                <div className="flex items-center gap-1">
+                  <span className="sm:hidden">Mua</span><span className="hidden sm:inline">Mua sắm</span>
+                  {hasUnpaidShoppings && <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />}
+                </div>
+                <span className={cn('text-xs sm:text-sm font-bold', hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
+                  {displayTour?.shoppings?.length || 0} | {formatCurrency(totals.shoppings)}
+                </span>
               </div>
-              <span className={cn('text-xs sm:text-sm font-bold', hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
-                {displayTour?.shoppings?.length || 0} | {formatCurrency(totals.shoppings)}
-              </span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="images" className="text-xs sm:text-sm">
+            </TabsTrigger>
+          )}
+          {canViewTab('images') && <TabsTrigger value="images" className="text-xs sm:text-sm">
             <div className="flex flex-col items-center">
               <span className="sm:hidden">Ảnh</span><span className="hidden sm:inline">Hình ảnh</span>
               <span className="text-xs sm:text-sm font-bold">{isNewTour ? '' : tourImagesCount}</span>
             </div>
-          </TabsTrigger>
+          </TabsTrigger>}
+          {canViewTab('summary') && <TabsTrigger value="summary" className="text-xs sm:text-sm">
+            <div className="flex flex-col items-center">
+              <span className="sm:hidden">TH</span><span className="hidden sm:inline">Tổng hợp</span>
+              <span className="text-xs sm:text-sm font-bold">{formatCurrency(displayTour?.summary?.finalTotal ?? 0)}</span>
+            </div>
+          </TabsTrigger>}
         </TabsList>
       </div>
     </div>

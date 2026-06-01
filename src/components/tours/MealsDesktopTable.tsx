@@ -8,6 +8,13 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
 import type { Meal } from '@/types/tour';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  canViewTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface MealRow extends Meal { originalIndex: number }
 
@@ -15,6 +22,7 @@ interface MealsDesktopTableProps {
   sortedMeals: MealRow[];
   tourGuests: number;
   readOnly: boolean;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
   totalAmount: number;
   onEdit: (index: number) => void;
   onDuplicate: (index: number) => void;
@@ -24,33 +32,53 @@ interface MealsDesktopTableProps {
 }
 
 export function MealsDesktopTable({
-  sortedMeals, tourGuests, readOnly, totalAmount,
+  sortedMeals, tourGuests, readOnly, lineFieldAccess, totalAmount,
   onEdit, onDuplicate, onDelete, onGuestsChange,
 }: MealsDesktopTableProps) {
+  const showName = canViewTourLineField(lineFieldAccess, 'name');
+  const showPrice = canViewTourLineField(lineFieldAccess, 'price');
+  const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
+  const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showTotal = showPrice && showQuantity;
+  const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
+  const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
+
   return (
     <div className="hidden md:block overflow-x-auto">
       <Table className="text-xs sm:text-sm">
         <TableHeader>
           <TableRow>
             <TableHead className="w-8 sm:w-[50px] p-1 sm:p-4">#</TableHead>
+            {showName && (
             <TableHead className="min-w-[80px] sm:min-w-[120px] p-1 sm:p-4">
               <span className="sm:hidden">Bữa</span>
               <span className="hidden sm:inline">Bữa ăn</span>
             </TableHead>
+            )}
+            {showPrice && (
             <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">Giá</TableHead>
+            )}
+            {showQuantity && (
             <TableHead className="w-16 sm:w-[80px] p-1 sm:p-4">
               <span className="sm:hidden">Khách</span>
               <span className="hidden sm:inline">Tổng khách</span>
             </TableHead>
+            )}
+            {showTotal && (
             <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">
               <span className="sm:hidden">Tổng</span>
               <span className="hidden sm:inline">Thành tiền</span>
             </TableHead>
+            )}
+            {showDate && (
             <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Ngày</TableHead>
+            )}
+            {canUseActions && (
             <TableHead className="text-right w-8 sm:w-[50px] p-1 sm:p-4">
               <span className="sm:hidden">...</span>
               <span className="hidden sm:inline">Thao tác</span>
             </TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -62,17 +90,22 @@ export function MealsDesktopTable({
               <TableRow key={`${meal.originalIndex}-${meal.date}`}
                 className={cn('animate-fade-in', isZeroPrice && 'bg-red-50 dark:bg-red-950')}>
                 <TableCell className="font-medium p-1 sm:p-4">{rowIndex + 1}</TableCell>
+                {showName && (
                 <TableCell className="font-medium p-1 sm:p-4">
                   <TourRowLabel kind="meal" label={meal.name} />
                 </TableCell>
+                )}
+                {showPrice && (
                 <TableCell className={cn('p-1 sm:p-4', meal.price === 0 && 'text-destructive font-semibold')}>
                   {formatCurrency(meal.price)}
                   {meal.price === 0 && <span className="ml-1 sm:ml-2 text-destructive" title="Giá bằng 0">⚑</span>}
                 </TableCell>
+                )}
+                {showQuantity && (
                 <TableCell className="p-1 sm:p-4">
                   <NumberInputMobile
                     value={meal.guests} onChange={(val) => {
-                      if (readOnly) return;
+                      if (!canEditQuantity) return;
                       let v = val;
                       if (v !== undefined && tourGuests && v > tourGuests) {
                         toast.warning(`Số khách không được vượt quá tổng khách của tour (${tourGuests}).`);
@@ -80,12 +113,18 @@ export function MealsDesktopTable({
                       }
                       onGuestsChange(meal.originalIndex, v);
                     }}
-                    min={0} max={tourGuests} disabled={readOnly} className="w-12 sm:w-24" />
+                    min={0} max={tourGuests} disabled={!canEditQuantity} className="w-12 sm:w-24" />
                 </TableCell>
+                )}
+                {showTotal && (
                 <TableCell className="font-semibold p-1 sm:p-4">{formatCurrency(totalRowAmount)}</TableCell>
+                )}
+                {showDate && (
                 <TableCell className="p-1 sm:p-4">{formatDate(meal.date)}</TableCell>
+                )}
+                {canUseActions && (
                 <TableCell className="text-right p-1 sm:p-4">
-                  {!readOnly && (
+                  {canUseActions && (
                     <div className="sm:hidden">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -108,7 +147,7 @@ export function MealsDesktopTable({
                       </DropdownMenu>
                     </div>
                   )}
-                  {!readOnly && (
+                  {canUseActions && (
                     <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                       <Button variant="ghost" size="sm" onClick={() => onEdit(meal.originalIndex)}
                         className="hover-scale" title="Sửa"><Edit2 className="h-4 w-4" /></Button>
@@ -121,6 +160,7 @@ export function MealsDesktopTable({
                     </div>
                   )}
                 </TableCell>
+                )}
               </TableRow>
             );
           })}

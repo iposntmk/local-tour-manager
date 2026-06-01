@@ -9,8 +9,16 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { toast } from 'sonner';
+import { LineEvidenceFields } from '@/components/tours/LineEvidenceFields';
 import type { Destination, Tour } from '@/types/tour';
 import type { TouristDestination } from '@/types/master';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  canViewTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface DestinationFormProps {
   formData: Destination;
@@ -21,6 +29,10 @@ interface DestinationFormProps {
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   onOpenNewDialog: () => void;
+  tourId?: string;
+  pendingFiles: File[];
+  onPendingFilesChange: (files: File[]) => void;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
 }
 
 export function DestinationForm({
@@ -32,8 +44,18 @@ export function DestinationForm({
   onSubmit,
   onCancel,
   onOpenNewDialog,
+  tourId,
+  pendingFiles,
+  onPendingFilesChange,
+  lineFieldAccess,
 }: DestinationFormProps) {
   const [openDestination, setOpenDestination] = useState(false);
+  const canView = (field: TourLineFieldKey) => canViewTourLineField(lineFieldAccess, field);
+  const canEdit = (field: TourLineFieldKey) => canEditTourLineField(lineFieldAccess, field);
+  const canSubmit =
+    editingIndex !== null
+      ? canEditAnyTourLineField(lineFieldAccess)
+      : canEdit('name') && canEdit('date') && canEdit('price');
 
   useEffect(() => {
     if (editingIndex !== null) {
@@ -49,6 +71,7 @@ export function DestinationForm({
       </h3>
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-3">
+          {canView('name') && (
           <div className="flex gap-2">
             <Popover open={openDestination} onOpenChange={setOpenDestination}>
               <PopoverTrigger asChild>
@@ -58,6 +81,7 @@ export function DestinationForm({
                   role="combobox"
                   aria-expanded={openDestination}
                   className="flex-1 justify-between"
+                  disabled={!canEdit('name')}
                 >
                   {formData.name || 'Chọn điểm đến...'}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -77,10 +101,10 @@ export function DestinationForm({
                             const today = new Date().toISOString().split('T')[0];
                             onChange({
                               ...formData,
-                              name: dest.name,
-                              price: dest.price,
-                              date: formData.date || tour?.startDate || today,
-                              guests: formData.guests ?? (tour?.totalGuests || undefined),
+                              ...(canEdit('name') ? { name: dest.name } : {}),
+                              ...(canEdit('price') ? { price: dest.price } : {}),
+                              ...(canEdit('date') ? { date: formData.date || tour?.startDate || today } : {}),
+                              ...(canEdit('quantity') ? { guests: formData.guests ?? (tour?.totalGuests || undefined) } : {}),
                             });
                             setOpenDestination(false);
                           }}
@@ -94,23 +118,32 @@ export function DestinationForm({
                 </Command>
               </PopoverContent>
             </Popover>
-            <Button type="button" variant="outline" size="icon" onClick={onOpenNewDialog} title="Thêm điểm đến mới">
+            <Button type="button" variant="outline" size="icon" onClick={onOpenNewDialog} disabled={!canEdit('name')} title="Thêm điểm đến mới">
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+          )}
+          {canView('price') && (
           <CurrencyInput
             placeholder="Giá (VND)"
             value={formData.price}
             onChange={(price) => onChange({ ...formData, price })}
+            disabled={!canEdit('price')}
           />
+          )}
+          {canView('date') && (
           <DateInput
             value={formData.date}
             onChange={(date) => onChange({ ...formData, date })}
             required
+            disabled={!canEdit('date')}
           />
+          )}
+          {canView('quantity') && (
           <NumberInputMobile
             value={formData.guests}
             onChange={(val) => {
+              if (!canEdit('quantity')) return;
               const max = tour?.totalGuests || 0;
               if (val !== undefined && max && val > max) {
                 toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
@@ -123,10 +156,22 @@ export function DestinationForm({
             max={tour?.totalGuests || 0}
             placeholder="Số khách"
             className="w-full"
+            disabled={!canEdit('quantity')}
+          />
+          )}
+          <LineEvidenceFields
+            line={formData}
+            onChange={onChange}
+            totalGuests={tour?.totalGuests || 0}
+            tourId={tourId}
+            lineType="destination"
+            pendingFiles={pendingFiles}
+            onPendingFilesChange={onPendingFilesChange}
+            access={lineFieldAccess?.evidence}
           />
         </div>
         <div className="flex gap-2">
-          <Button type="submit" className="hover-scale">
+          <Button type="submit" className="hover-scale" disabled={!canSubmit}>
             <Plus className="h-4 w-4 mr-2" />
             {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
           </Button>

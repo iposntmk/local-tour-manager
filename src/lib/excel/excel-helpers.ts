@@ -26,7 +26,18 @@ export const infoFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F
 export const finalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBDD7EE' } } as const;
 
 export interface TourSheetBuildResult { sheetName: string; finalTotalCell: string; }
-export interface ServiceItem { name: string; baseName?: string; date?: string; price: number; guests?: number; kind: 'dest' | 'exp'; }
+export interface ServiceItem {
+  name: string;
+  baseName?: string;
+  date?: string;
+  price: number;
+  guests?: number;
+  kind: 'dest' | 'exp';
+  vatRate?: number;
+  vatAmount?: number;
+  guideNote?: string;
+  attachmentCount?: number;
+}
 
 export const formatTourNationalities = (tour: Tour) => {
   const nationalities = tour.clientNationalities?.length
@@ -155,23 +166,43 @@ const MERGE_EXPENSE_NAMES = [
 export const buildServiceItems = (tour: Tour): { serviceItems: ServiceItem[]; allowanceItems: Allowance[] } => {
   const serviceItems: ServiceItem[] = [];
   (tour.destinations || []).forEach(d => {
-    serviceItems.push({ kind: 'dest', name: `vé ${d.name || ''}`, baseName: d.name || '', date: d.date, price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined });
+    serviceItems.push({
+      kind: 'dest', name: `vé ${d.name || ''}`, baseName: d.name || '', date: d.date,
+      price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined,
+      vatRate: d.vatRate || 0, vatAmount: d.vatAmount || 0,
+      guideNote: d.guideNote || '', attachmentCount: d.attachments?.length || 0,
+    });
   });
   if (tour.expenses && tour.expenses.length > 0) {
     tour.expenses.filter(e => !MERGE_EXPENSE_NAMES.includes(e.name || '')).forEach(e => {
-      serviceItems.push({ kind: 'exp', name: e.name || '', date: e.date, price: e.price || 0, guests: e.guests });
+      serviceItems.push({
+        kind: 'exp', name: e.name || '', date: e.date, price: e.price || 0, guests: e.guests,
+        vatRate: e.vatRate || 0, vatAmount: e.vatAmount || 0,
+        guideNote: e.guideNote || '', attachmentCount: e.attachments?.length || 0,
+      });
     });
     MERGE_EXPENSE_NAMES.forEach(NAME => {
       const mergeList = tour.expenses!.filter(e => (e.name || '') === NAME);
       if (mergeList.length > 0) {
         const sumGuests = mergeList.reduce((sum, e) => sum + (typeof e.guests === 'number' ? e.guests : 0), 0);
         const earliestDate = mergeList.reduce<string | undefined>((min, e) => (!e.date ? min : !min || e.date < min ? e.date : min), undefined);
-        serviceItems.push({ kind: 'exp', name: NAME, date: earliestDate, price: mergeList[0].price || 0, guests: sumGuests });
+        const guideNote = mergeList.map(e => e.guideNote?.trim()).filter(Boolean).join('\n');
+        serviceItems.push({
+          kind: 'exp', name: NAME, date: earliestDate, price: mergeList[0].price || 0, guests: sumGuests,
+          vatRate: mergeList[0].vatRate || 0,
+          vatAmount: mergeList.reduce((sum, e) => sum + (e.vatAmount || 0), 0),
+          guideNote, attachmentCount: mergeList.reduce((sum, e) => sum + (e.attachments?.length || 0), 0),
+        });
       }
     });
   }
   (tour.meals || []).forEach(m => {
-    serviceItems.push({ kind: 'exp', name: m.name || '', date: m.date, price: m.price || 0, guests: typeof m.guests === 'number' ? m.guests : undefined });
+    serviceItems.push({
+      kind: 'exp', name: m.name || '', date: m.date, price: m.price || 0,
+      guests: typeof m.guests === 'number' ? m.guests : undefined,
+      vatRate: m.vatRate || 0, vatAmount: m.vatAmount || 0,
+      guideNote: m.guideNote || '', attachmentCount: m.attachments?.length || 0,
+    });
   });
   const sortByDate = (a: { date?: string }, b: { date?: string }) => {
     const da = a.date || '', db = b.date || '';

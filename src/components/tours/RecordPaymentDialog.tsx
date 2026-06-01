@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { store } from '@/lib/datastore';
+import { toVietnameseError } from '@/lib/error-messages';
 import { computePaymentRemaining, formatPaymentMethod, getTourFinalTotal } from '@/lib/payment-utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import type { PaymentMethod, Tour, TourPayment } from '@/types/tour';
@@ -110,8 +111,8 @@ export function RecordPaymentDialog({
       await queryClient.invalidateQueries({ queryKey: ['tours'] });
       onSaved?.();
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e?.message || 'Không thể lưu khoản thanh toán.');
+    } catch (e) {
+      toast.error(toVietnameseError(e, 'Không thể lưu khoản thanh toán.'));
     } finally {
       setBusy(false);
     }

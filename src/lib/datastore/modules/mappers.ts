@@ -13,6 +13,7 @@ import type {
   Restaurant,
   ShopPlace,
   Hotel,
+  CommissionStatus,
 } from '@/types/master';
 import type { Tour, PaymentMethod, PaymentStatus } from '@/types/tour';
 import { differenceInDays } from 'date-fns';
@@ -308,6 +309,7 @@ export function mapTour(row: TourRow): Tour {
     notes: row.notes || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    createdByUserId: row.created_by_user_id ?? undefined,
     settlementStatus: ((row as any).settlement_status as Tour['settlementStatus']) || 'draft',
     submittedAt: (row as any).submitted_at ?? undefined,
     approvedAt: (row as any).approved_at ?? undefined,

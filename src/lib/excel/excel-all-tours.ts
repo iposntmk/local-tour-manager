@@ -14,10 +14,12 @@ const COLUMN_DEFS = [
   { key: 'serviceDate', width: 8 }, { key: 'price', width: 12 }, { key: 'quantity', width: 10 },
   { key: 'total', width: 12 }, { key: 'location', width: 22 }, { key: 'locationDate', width: 8 },
   { key: 'days', width: 8 }, { key: 'ctp', width: 8 }, { key: 'ctpTotal', width: 10 }, { key: 'tourTotal', width: 14 },
+  { key: 'vatRate', width: 8 }, { key: 'vatAmount', width: 12 }, { key: 'guideNote', width: 24 }, { key: 'attachmentCount', width: 12 },
 ];
 const HEADER2_LABELS = [
   'code', 'ngày', 'vé/ăn/uống/chi phí', 'ngày', 'giá vé/đơn giá',
   'số khách/ số ngày/ tổng số chai nước uống', 'thành tiền', 'Địa điểm/tỉnh', 'ngày', 'số ngày', 'CTP', 'thành tiền', '',
+  'VAT %', 'Tiền VAT', 'Ghi chú HDV', 'Số chứng từ/ảnh',
 ];
 
 const writeTourTotalsRow = (
@@ -67,7 +69,7 @@ const writeGrandTotalRow = (worksheet: Worksheet, currentRow: number, allTourTot
   row.getCell(13).font = { bold: true, size: 14 };
   row.getCell(13).alignment = { horizontal: 'right', vertical: 'middle' };
   row.getCell(13).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6600' } };
-  for (let col = 1; col <= 13; col++) row.getCell(col).border = thinBorder;
+  for (let col = 1; col <= 17; col++) row.getCell(col).border = thinBorder;
   row.height = 30;
 };
 
@@ -93,18 +95,20 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   worksheet.mergeCells('A1:B1');
   worksheet.mergeCells('C1:G1');
   worksheet.mergeCells('H1:L1');
+  worksheet.mergeCells('N1:Q1');
   [
     { cell: 'A1', value: 'code', fill: headerFill },
     { cell: 'C1', value: 'vé + ăn + uống + chi phí', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } },
     { cell: 'H1', value: 'Công tác phí (CTP) + ngủ', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } },
     { cell: 'M1', value: 'Tổng tour', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFC000' } } },
+    { cell: 'N1', value: 'VAT + chứng từ', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFC000' } } },
   ].forEach(({ cell, value, fill }) => {
     const c = worksheet.getCell(cell);
     c.value = value; c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     c.fill = fill; c.border = thinBorder;
     c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
   });
-  for (let col = 1; col <= 13; col++) h1.getCell(col).border = thinBorder;
+  for (let col = 1; col <= 17; col++) h1.getCell(col).border = thinBorder;
 
   const h2 = worksheet.getRow(2);
   h2.height = 40;
@@ -120,7 +124,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   const invalidTourCodes: string[] = [];
   const duplicateNameTourCodes: string[] = [];
   let lastMonth: string | undefined;
-  const applyBorder13 = (row: Row) => applyRowBorder(row, 1, 13);
+  const applyBorder17 = (row: Row) => applyRowBorder(row, 1, 17);
 
   tours.forEach((tour) => {
     const issues = validateTourNumbers(tour);
@@ -133,12 +137,12 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
       if (monthKey && lastMonth && monthKey !== lastMonth) {
         const mm = monthKey.slice(5, 7), yy = monthKey.slice(2, 4);
         const headingRow = worksheet.getRow(currentRow);
-        worksheet.mergeCells(`A${currentRow}:M${currentRow}`);
+        worksheet.mergeCells(`A${currentRow}:Q${currentRow}`);
         const title = ` Tour thang ${mm}/${yy} `;
         const side = Math.max(3, Math.floor((120 - title.length) / 2));
         headingRow.getCell(1).value = `${'-'.repeat(side)}${title}${'-'.repeat(side)}`;
         headingRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-        for (let col = 1; col <= 13; col++) headingRow.getCell(col).border = thinBorder;
+        for (let col = 1; col <= 17; col++) headingRow.getCell(col).border = thinBorder;
         currentRow++;
       }
       lastMonth = monthKey || lastMonth;
@@ -181,6 +185,14 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
         row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(7).value = { formula: `E${rowNumber}*F${rowNumber}` };
         row.getCell(7).numFmt = currencyFormat;
+        row.getCell(14).value = service.vatRate || 0;
+        row.getCell(14).numFmt = '0.00';
+        row.getCell(15).value = service.vatAmount || 0;
+        row.getCell(15).numFmt = currencyFormat;
+        row.getCell(16).value = service.guideNote || '';
+        row.getCell(16).alignment = { wrapText: true, vertical: 'middle' };
+        row.getCell(17).value = service.attachmentCount || 0;
+        row.getCell(17).alignment = { horizontal: 'center', vertical: 'middle' };
       }
       if (allowance) {
         row.getCell(8).value = allowance.name || '';
@@ -195,15 +207,15 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
         row.getCell(12).value = { formula: `J${rowNumber}*K${rowNumber}` };
         row.getCell(12).numFmt = currencyFormat;
       }
-      applyBorder13(row);
+      applyBorder17(row);
       currentRow++;
     }
 
     const dataEndRow = currentRow - 1;
     const totalsRowNumber = currentRow;
-    writeTourTotalsRow(worksheet, totalsRowNumber, dataStartRow, dataEndRow, applyBorder13);
+    writeTourTotalsRow(worksheet, totalsRowNumber, dataStartRow, dataEndRow, applyBorder17);
 
-    const summaryResult = appendSummarySection(worksheet, totalsRowNumber, tour, totalsRowNumber + 1, applyBorder13);
+    const summaryResult = appendSummarySection(worksheet, totalsRowNumber, tour, totalsRowNumber + 1, applyBorder17);
     let finalTotalRowNumber = totalsRowNumber;
     if (summaryResult) {
       currentRow = summaryResult.nextRow;
@@ -216,20 +228,20 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
     if (tour.notes && String(tour.notes).trim().length > 0) {
       currentRow++;
       const noteRow = worksheet.getRow(currentRow);
-      worksheet.mergeCells(`A${currentRow}:M${currentRow}`);
+      worksheet.mergeCells(`A${currentRow}:Q${currentRow}`);
       noteRow.getCell(1).value = `Ghi chú: ${tour.notes}`;
       noteRow.getCell(1).alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
       noteRow.getCell(1).font = { color: { argb: 'FFFF0000' } };
-      for (let col = 1; col <= 13; col++) noteRow.getCell(col).border = thinBorder;
+      for (let col = 1; col <= 17; col++) noteRow.getCell(col).border = thinBorder;
       noteRow.height = 30;
     }
 
     currentRow++;
     const sepRow = worksheet.getRow(currentRow);
-    worksheet.mergeCells(`A${currentRow}:M${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:Q${currentRow}`);
     sepRow.getCell(1).value = '';
     sepRow.getCell(1).fill = infoFill;
-    for (let col = 1; col <= 13; col++) sepRow.getCell(col).border = thinBorder;
+    for (let col = 1; col <= 17; col++) sepRow.getCell(col).border = thinBorder;
     sepRow.height = 12;
     currentRow++;
     currentRow++;

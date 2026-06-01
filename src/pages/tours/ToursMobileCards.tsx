@@ -3,6 +3,7 @@ import { Baby, Copy, FileDown, Flag, Trash2, WalletCards } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
+import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import type { Tour } from '@/types/tour';
 import {
   formatTourNationalities,
@@ -35,7 +36,9 @@ export const ToursMobileCards = ({
   onExportSingle,
   onDuplicate,
   onDelete,
-}: ToursMobileCardsProps) => (
+}: ToursMobileCardsProps) => {
+  const canViewShoppingSensitive = useCanViewShoppingSensitive();
+  return (
   <div className="grid grid-cols-1 gap-4 mt-6 md:hidden">
     {tours.map((tour, index) => {
       const warningInfo = getTourWarningInfo(tour);
@@ -48,7 +51,7 @@ export const ToursMobileCards = ({
       return (
         <div
           key={tour.id}
-          className={`rounded-lg border bg-card p-4 sm:p-6 transition-all hover-scale animate-fade-in relative ${warningInfo.hasUnpaidCommission ? 'border-red-600 dark:border-red-500 border-2' : warningInfo.showRedFlag ? 'border-red-500 dark:border-red-600' : ''}`}
+          className={`rounded-lg border bg-card p-4 sm:p-6 transition-all hover-scale animate-fade-in relative ${canViewShoppingSensitive && warningInfo.hasUnpaidCommission ? 'border-red-600 dark:border-red-500 border-2' : warningInfo.showRedFlag ? 'border-red-500 dark:border-red-600' : ''}`}
           style={{ animationDelay: `${index * 0.1}s` }}
         >
           {hasChildren && (
@@ -81,6 +84,15 @@ export const ToursMobileCards = ({
                   <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
                     {totalGuests}p
                   </Badge>
+                  {canViewShoppingSensitive && warningInfo.hasUnpaidCommission && (
+                    <span
+                      className="inline-flex items-center gap-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-full font-medium"
+                      title="Hoa hồng chưa nhận đủ"
+                    >
+                      <WalletCards className="h-3 w-3" />
+                      <span>Hoa hồng</span>
+                    </span>
+                  )}
                   {(warningInfo.hasZeroPrice || warningInfo.hasDuplicateDestNames || warningInfo.missingWaterExpense) && (
                     <span
                       className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm"
@@ -181,4 +193,5 @@ export const ToursMobileCards = ({
       );
     })}
   </div>
-);
+  );
+};

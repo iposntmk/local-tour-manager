@@ -32,9 +32,9 @@ export class TourDataModule {
   declare listTours: (query?: TourQuery, options?: { includeDetails?: boolean }) => Promise<TourListResult>;
   declare createTour: (tour: Omit<Tour, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Tour>;
   declare updateTour: (id: string, tour: Partial<Tour>) => Promise<void>;
-  declare addDestination: (tourId: string, destination: Destination) => Promise<void>;
-  declare addExpense: (tourId: string, expense: Expense) => Promise<void>;
-  declare addMeal: (tourId: string, meal: Meal) => Promise<void>;
+  declare addDestination: (tourId: string, destination: Destination) => Promise<string | undefined>;
+  declare addExpense: (tourId: string, expense: Expense) => Promise<string | undefined>;
+  declare addMeal: (tourId: string, meal: Meal) => Promise<string | undefined>;
   declare addAllowance: (tourId: string, allowance: Allowance) => Promise<void>;
 
   async exportData(): Promise<any> {

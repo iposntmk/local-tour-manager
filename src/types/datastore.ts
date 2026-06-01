@@ -18,6 +18,8 @@ import type {
   TourPaymentInput,
   CommissionPayment,
   TourImage,
+  AttachmentLineType,
+  TourLineAttachment,
 } from './tour';
 import type { UserProfile, UserProfileInput } from './user';
 
@@ -192,15 +194,15 @@ export interface DataStore {
   duplicateTour(id: string): Promise<Tour>;
   
   // Tour subcollections
-  addDestination(tourId: string, destination: Destination): Promise<void>;
+  addDestination(tourId: string, destination: Destination): Promise<string | undefined>;
   updateDestination(tourId: string, index: number, destination: Destination): Promise<void>;
   removeDestination(tourId: string, index: number): Promise<void>;
   
-  addExpense(tourId: string, expense: Expense): Promise<void>;
+  addExpense(tourId: string, expense: Expense): Promise<string | undefined>;
   updateExpense(tourId: string, index: number, expense: Expense): Promise<void>;
   removeExpense(tourId: string, index: number): Promise<void>;
   
-  addMeal(tourId: string, meal: Meal): Promise<void>;
+  addMeal(tourId: string, meal: Meal): Promise<string | undefined>;
   updateMeal(tourId: string, index: number, meal: Meal): Promise<void>;
   removeMeal(tourId: string, index: number): Promise<void>;
   
@@ -225,6 +227,17 @@ export interface DataStore {
   ): Promise<void>;
   listSubmissionHistory(tourId: string): Promise<SubmissionHistoryEvent[]>;
   countToursBySettlementStatus(statuses: SettlementStatus[]): Promise<number>;
+
+  // Tour line attachments
+  listTourLineAttachments(tourId: string): Promise<TourLineAttachment[]>;
+  uploadTourLineAttachment(
+    tourId: string,
+    lineType: AttachmentLineType,
+    lineId: string,
+    file: File
+  ): Promise<TourLineAttachment>;
+  deleteTourLineAttachment(attachment: TourLineAttachment): Promise<void>;
+  getTourLineAttachmentUrl(filePath: string): string;
 
   // Payment tracking
   listTourPayments(tourId: string): Promise<TourPayment[]>;

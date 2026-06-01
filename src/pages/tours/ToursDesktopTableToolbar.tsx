@@ -19,6 +19,7 @@ type ToursDesktopTableToolbarProps = {
   totalCount: number;
   columnFilterCount: number;
   columnVisibility: Record<TourTableColumnKey, boolean>;
+  canViewShoppingSensitive: boolean;
   onClearFilters: () => void;
   onSetAllColumnsVisible: (visible: boolean) => void;
   onToggleColumn: (key: TourTableColumnKey, visible: boolean) => void;
@@ -29,6 +30,7 @@ export const ToursDesktopTableToolbar = ({
   totalCount,
   columnFilterCount,
   columnVisibility,
+  canViewShoppingSensitive,
   onClearFilters,
   onSetAllColumnsVisible,
   onToggleColumn,
@@ -70,7 +72,7 @@ export const ToursDesktopTableToolbar = ({
             Ẩn tất cả
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {TOUR_TABLE_COLUMNS.map((column) => (
+          {TOUR_TABLE_COLUMNS.filter((column) => canViewShoppingSensitive || column.key !== 'commission').map((column) => (
             <DropdownMenuCheckboxItem
               key={column.key}
               checked={columnVisibility[column.key]}

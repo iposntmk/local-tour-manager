@@ -8,6 +8,13 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowIcon } from '@/components/tours/TourRowIcon';
 import type { Expense } from '@/types/tour';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  canViewTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface ExpenseItem extends Expense {
   originalIndex: number;
@@ -17,6 +24,7 @@ interface ExpenseItem extends Expense {
 interface Props {
   items: ExpenseItem[];
   readOnly: boolean;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
   onEdit: (idx: number) => void;
   onDuplicate: (idx: number) => void;
   onDelete: (idx: number) => void;
@@ -24,7 +32,15 @@ interface Props {
   totalAmount: number;
 }
 
-export function ExpensesMobileList({ items, readOnly, onEdit, onDuplicate, onDelete, onGuestsChange, totalAmount }: Props) {
+export function ExpensesMobileList({ items, readOnly, lineFieldAccess, onEdit, onDuplicate, onDelete, onGuestsChange, totalAmount }: Props) {
+  const showName = canViewTourLineField(lineFieldAccess, 'name');
+  const showPrice = canViewTourLineField(lineFieldAccess, 'price');
+  const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
+  const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showTotal = showPrice && showQuantity;
+  const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
+  const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
+
   return (
     <div className="p-3 space-y-2">
       {items.map((expense) => {
@@ -38,11 +54,18 @@ export function ExpensesMobileList({ items, readOnly, onEdit, onDuplicate, onDel
           >
             {/* Row 1: icon + name + date + actions */}
             <div className="flex items-center gap-1.5 min-w-0">
+              {showName && (
+              <>
               <TourRowIcon kind="expense" label={expense.name} className="shrink-0" />
               <span className="flex-1 min-w-0 truncate text-sm font-medium">{expense.name}</span>
               {isZeroPrice && <span className="shrink-0 text-destructive text-xs">⚑</span>}
+              </>
+              )}
+              {!showName && <span className="flex-1 text-sm font-medium">Dòng chi phí #{expense.originalIndex + 1}</span>}
+              {showDate && (
               <span className="shrink-0 text-xs text-muted-foreground pl-1">{formatDate(expense.date)}</span>
-              {!readOnly && !expense.merged && (
+              )}
+              {canUseActions && !expense.merged && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
@@ -65,18 +88,24 @@ export function ExpensesMobileList({ items, readOnly, onEdit, onDuplicate, onDel
             </div>
             {/* Row 2: values */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pl-9">
+              {showPrice && (
               <span>
                 <span className="text-muted-foreground">Giá: </span>
                 <span className={isZeroPrice ? 'text-destructive font-semibold' : 'font-medium'}>{formatCurrency(expense.price)}</span>
               </span>
+              )}
+              {showQuantity && (
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">Khách: </span>
-                <NumberInputMobile value={expense.guests} onChange={(val) => onGuestsChange(expense.originalIndex, val)} min={0} disabled={readOnly || !!expense.merged} className="w-14 h-6 text-xs" />
+                <NumberInputMobile value={expense.guests} onChange={(val) => onGuestsChange(expense.originalIndex, val)} min={0} disabled={!canEditQuantity || !!expense.merged} className="w-14 h-6 text-xs" />
               </span>
+              )}
+              {showTotal && (
               <span>
                 <span className="text-muted-foreground">Tổng: </span>
                 <span className="font-semibold">{formatCurrency(total)}</span>
               </span>
+              )}
             </div>
           </div>
         );

@@ -4,10 +4,18 @@ import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import type { Destination, Tour } from '@/types/tour';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
+import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { DestinationForm } from '@/components/tours/DestinationForm';
 import { NewDestinationDialog } from '@/components/tours/NewDestinationDialog';
 import { DestinationsDesktopTable } from '@/components/tours/DestinationsDesktopTable';
 import { DestinationsMobileList } from '@/components/tours/mobile/DestinationsMobileList';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface DestinationsTabProps {
   tourId?: string;
@@ -15,13 +23,21 @@ interface DestinationsTabProps {
   onChange?: (destinations: Destination[]) => void;
   tour?: Tour | null;
   readOnly?: boolean;
+  editRequest?: { index: number; key: number };
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
 }
 
-export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly = false }: DestinationsTabProps) {
+export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly = false, editRequest, lineFieldAccess }: DestinationsTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Destination>({ name: '', price: 0, date: '' });
   const [showNewDestinationDialog, setShowNewDestinationDialog] = useState(false);
   const queryClient = useQueryClient();
+  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId);
+  const canEditLine = canEditAnyTourLineField(lineFieldAccess);
+  const canCreateLine =
+    canEditTourLineField(lineFieldAccess, 'name') &&
+    canEditTourLineField(lineFieldAccess, 'date') &&
+    canEditTourLineField(lineFieldAccess, 'price');
 
   // Default guests for new rows = tour totalGuests (create mode, keep synchronous)
   if (!tourId && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {
@@ -89,17 +105,20 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
   const addMutation = useMutation({
     mutationFn: async (destination: Destination) => {
       if (tourId) {
-        await store.addDestination(tourId, destination);
+        return store.addDestination(tourId, destination);
       } else {
         onChange?.([...destinations, destination]);
+        return undefined;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (lineId) => {
+      await uploadPendingFiles('destination', lineId);
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm điểm đến');
+      clearPendingFiles();
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
@@ -120,6 +139,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật điểm đến');
+      clearPendingFiles();
       setEditingIndex(null);
     },
   });
@@ -141,7 +161,8 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
   });
 
   const handleEdit = (index: number) => {
-    if (readOnly) return;
+    if (readOnly || !canEditLine) return;
+    clearPendingFiles();
     setEditingIndex(index);
     setFormData(destinations[index]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -149,13 +170,20 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
 
   const handleCancel = () => {
     setEditingIndex(null);
+    clearPendingFiles();
     setFormData({ name: '', price: 0, date: tour?.startDate || '' });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) { toast.error('Bạn không có quyền sửa điểm đến trong tour.'); return; }
+    if (editingIndex === null && !canCreateLine) { toast.error('Bạn không có quyền thêm dòng điểm đến.'); return; }
+    if (editingIndex !== null && !canEditLine) { toast.error('Bạn không có quyền sửa trường trong dòng điểm đến.'); return; }
     if (!formData.name || !formData.date) { toast.error('Vui lòng điền đầy đủ các trường bắt buộc'); return; }
+    if (!isVatAmountValid(formData, tour?.totalGuests || 0)) { toast.error('Tiền VAT không được vượt quá thành tiền.'); return; }
+    if ((formData.vatRate || 0) > 0 && !hasLineAttachments(formData, pendingFiles)) {
+      toast.warning('VAT lớn hơn 0 nhưng chưa có chứng từ.');
+    }
 
     const targetName = formData.name.trim().toLowerCase();
     if (editingIndex !== null) {
@@ -170,7 +198,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
   };
 
   const handleGuestsChange = (originalIndex: number, destination: any, val: number | undefined) => {
-    if (readOnly) return;
+    if (readOnly || !canEditTourLineField(lineFieldAccess, 'quantity')) return;
     const tourGuests = tour?.totalGuests || 0;
     let guestsVal = val;
     if (guestsVal !== undefined && tourGuests && guestsVal > tourGuests) {
@@ -193,9 +221,15 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     }
   }, [tour?.startDate]);
 
+  useEffect(() => {
+    if (editRequest && editRequest.index >= 0 && editRequest.index < destinations.length) {
+      handleEdit(editRequest.index);
+    }
+  }, [editRequest?.key]);
+
   return (
     <div className="space-y-6">
-      {!readOnly && (
+      {!readOnly && canEditLine && (
         <DestinationForm
           formData={formData}
           onChange={setFormData}
@@ -205,6 +239,10 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           onOpenNewDialog={() => setShowNewDestinationDialog(true)}
+          tourId={tourId}
+          pendingFiles={pendingFiles}
+          onPendingFilesChange={setPendingFiles}
+          lineFieldAccess={lineFieldAccess}
         />
       )}
 
@@ -222,6 +260,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
                 duplicateDestinationNames={duplicateDestinationNames}
                 tourGuests={tour?.totalGuests || 0}
                 readOnly={readOnly}
+                lineFieldAccess={lineFieldAccess}
                 onEdit={handleEdit}
                 onDelete={(idx) => deleteMutation.mutate(idx)}
                 onGuestsChange={handleGuestsChange}
@@ -234,6 +273,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
                 duplicateDestinationNames={duplicateDestinationNames}
                 tourGuests={tour?.totalGuests || 0}
                 readOnly={readOnly}
+                lineFieldAccess={lineFieldAccess}
                 onEdit={handleEdit}
                 onDelete={(idx) => deleteMutation.mutate(idx)}
                 onGuestsChange={handleGuestsChange}
@@ -247,7 +287,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
       <NewDestinationDialog
         open={showNewDestinationDialog}
         onOpenChange={setShowNewDestinationDialog}
-        readOnly={readOnly}
+        readOnly={readOnly || !canEditTourLineField(lineFieldAccess, 'name') || !canEditTourLineField(lineFieldAccess, 'price')}
         onCreated={(dest) => setFormData((prev) => ({ ...prev, name: dest.name, price: dest.price }))}
       />
     </div>

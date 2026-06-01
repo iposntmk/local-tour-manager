@@ -1,29 +1,50 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import type { Destination, Expense, Meal, Allowance, Shopping as TourShopping, Tour, CommissionPayment } from '@/types/tour';
-import { mapLineReviewFields } from '../mappers';
+import type { UserProfile } from '@/types/user';
+import { canProfileViewTourShopping } from '@/lib/shopping-access';
 import type { CommissionPaymentRow } from '../store-types';
 import { mapCommissionPayment } from '../mappers';
+import {
+  buildLineWritePayload,
+  mapTourDestinationLine,
+  mapTourExpenseLine,
+  mapTourMealLine,
+} from './tour-line-mappers';
 
 export class TourItemsModule {
   declare protected supabase: SupabaseClient<Database>;
   declare getTour: (id: string) => Promise<Tour | null>;
   declare recalculateTourSummary: (tourId: string) => Promise<void>;
   declare addCommissionPayment: (payment: Omit<CommissionPayment, 'id'>) => Promise<CommissionPayment>;
+  declare getCurrentUserProfile: () => Promise<UserProfile | undefined>;
+
+  private async canManageTourShopping(tourId: string) {
+    const [profile, { data, error }] = await Promise.all([
+      this.getCurrentUserProfile(),
+      this.supabase.from('tours').select('created_by_user_id').eq('id', tourId).single(),
+    ]);
+    if (error || !data) return false;
+    return canProfileViewTourShopping(profile, { createdByUserId: data.created_by_user_id ?? undefined });
+  }
+
+  private async assertCanManageTourShopping(tourId: string) {
+    if (await this.canManageTourShopping(tourId)) return;
+    throw new Error('Bạn không có quyền thao tác dữ liệu mua sắm của tour này.');
+  }
 
   async getDestinations(tourId: string): Promise<Destination[]> {
     const { data, error } = await this.supabase.from('tour_destinations').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
-    return (data || []).map((row) => ({
-      name: row.name, price: Number(row.price) || 0, date: row.date,
-      guests: typeof row.guests === 'number' ? row.guests : undefined,
-    }));
+    return (data || []).map(mapTourDestinationLine);
   }
 
-  async addDestination(tourId: string, destination: Destination): Promise<void> {
-    const { error } = await this.supabase.from('tour_destinations').insert({
-      tour_id: tourId, name: destination.name, price: destination.price, date: destination.date, guests: destination.guests ?? null,
-    });
+  async addDestination(tourId: string, destination: Destination): Promise<string | undefined> {
+    const { data, error } = await (this.supabase as any)
+      .from('tour_destinations')
+      .insert({ tour_id: tourId, ...buildLineWritePayload(destination) })
+      .select('id')
+      .single();
     if (error) {
       if (error.code === '23503') throw new Error('Invalid tour reference');
       if (error.code === '23502') throw new Error('Required destination field is missing');
@@ -33,13 +54,14 @@ export class TourItemsModule {
       throw new Error(`Failed to add destination: ${error.message}`);
     }
     await this.recalculateTourSummary(tourId);
+    return data?.id;
   }
 
   async updateDestination(tourId: string, index: number, destination: Destination): Promise<void> {
     const { data: rows } = await this.supabase.from('tour_destinations').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_destinations').update({
-        name: destination.name, price: destination.price, date: destination.date, guests: destination.guests ?? null,
+      const { error } = await (this.supabase as any).from('tour_destinations').update({
+        ...buildLineWritePayload(destination),
       }).eq('id', rows[index].id);
       if (error) throw error;
       await this.recalculateTourSummary(tourId);
@@ -58,26 +80,26 @@ export class TourItemsModule {
   async getExpenses(tourId: string): Promise<Expense[]> {
     const { data, error } = await this.supabase.from('tour_expenses').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
-    return (data || []).map((row) => ({
-      name: row.name, price: Number(row.price) || 0, date: row.date,
-      guests: row.guests !== null && row.guests !== undefined ? Number(row.guests) : undefined,
-    }));
+    return (data || []).map(mapTourExpenseLine);
   }
 
-  async addExpense(tourId: string, expense: Expense): Promise<void> {
-    const { error } = await this.supabase.from('tour_expenses').insert({
-      tour_id: tourId, name: expense.name, price: expense.price, date: expense.date, guests: expense.guests,
-    });
+  async addExpense(tourId: string, expense: Expense): Promise<string | undefined> {
+    const { data, error } = await (this.supabase as any)
+      .from('tour_expenses')
+      .insert({ tour_id: tourId, ...buildLineWritePayload(expense) })
+      .select('id')
+      .single();
     if (error) throw error;
     await this.recalculateTourSummary(tourId);
+    return data?.id;
   }
 
   async updateExpense(tourId: string, index: number, expense: Expense): Promise<void> {
     const { data: rows } = await this.supabase.from('tour_expenses').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
       console.log('Updating expense in DB - ID:', rows[index].id, 'Guests:', expense.guests);
-      const { error } = await this.supabase.from('tour_expenses').update({
-        name: expense.name, price: expense.price, date: expense.date, guests: expense.guests,
+      const { error } = await (this.supabase as any).from('tour_expenses').update({
+        ...buildLineWritePayload(expense),
       }).eq('id', rows[index].id);
       if (error) { console.error('Error updating expense:', error); throw error; }
       console.log('Expense updated successfully in DB');
@@ -97,25 +119,25 @@ export class TourItemsModule {
   async getMeals(tourId: string): Promise<Meal[]> {
     const { data, error } = await this.supabase.from('tour_meals').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
-    return (data || []).map((row) => ({
-      name: row.name, price: Number(row.price) || 0, date: row.date,
-      guests: row.guests !== null && row.guests !== undefined ? Number(row.guests) : undefined,
-    }));
+    return (data || []).map(mapTourMealLine);
   }
 
-  async addMeal(tourId: string, meal: Meal): Promise<void> {
-    const { error } = await this.supabase.from('tour_meals').insert({
-      tour_id: tourId, name: meal.name, price: meal.price, date: meal.date, guests: meal.guests ?? null,
-    });
+  async addMeal(tourId: string, meal: Meal): Promise<string | undefined> {
+    const { data, error } = await (this.supabase as any)
+      .from('tour_meals')
+      .insert({ tour_id: tourId, ...buildLineWritePayload(meal) })
+      .select('id')
+      .single();
     if (error) throw error;
     await this.recalculateTourSummary(tourId);
+    return data?.id;
   }
 
   async updateMeal(tourId: string, index: number, meal: Meal): Promise<void> {
     const { data: rows } = await this.supabase.from('tour_meals').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_meals').update({
-        name: meal.name, price: meal.price, date: meal.date, guests: meal.guests ?? null,
+      const { error } = await (this.supabase as any).from('tour_meals').update({
+        ...buildLineWritePayload(meal),
       }).eq('id', rows[index].id);
       if (error) throw error;
       await this.recalculateTourSummary(tourId);
@@ -171,12 +193,14 @@ export class TourItemsModule {
   }
 
   async getTourShoppings(tourId: string): Promise<TourShopping[]> {
+    if (!(await this.canManageTourShopping(tourId))) return [];
     const { data, error } = await this.supabase.from('tour_shoppings').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
     return (data || []).map((row) => ({ name: row.name, price: Number(row.price) || 0, date: row.date }));
   }
 
   async addTourShopping(tourId: string, shopping: TourShopping): Promise<void> {
+    await this.assertCanManageTourShopping(tourId);
     const { data, error } = await this.supabase.from('tour_shoppings').insert({
       tour_id: tourId, name: shopping.name, price: shopping.price, date: shopping.date,
       withholds_pit: shopping.withholdsPit ?? null, pit_rate: shopping.pitRate ?? null,
@@ -189,6 +213,7 @@ export class TourItemsModule {
   }
 
   async updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void> {
+    await this.assertCanManageTourShopping(tourId);
     const { data: rows } = await this.supabase.from('tour_shoppings').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
       const { error } = await this.supabase.from('tour_shoppings').update({
@@ -201,6 +226,7 @@ export class TourItemsModule {
   }
 
   async removeTourShopping(tourId: string, index: number): Promise<void> {
+    await this.assertCanManageTourShopping(tourId);
     const { data: rows } = await this.supabase.from('tour_shoppings').select('id').eq('tour_id', tourId).order('date');
     if (rows && rows[index]) {
       const { error } = await this.supabase.from('tour_shoppings').delete().eq('id', rows[index].id);

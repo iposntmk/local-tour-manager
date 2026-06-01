@@ -1,46 +1,88 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
+import { useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { formatDate } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/currency-utils';
+import { formatDate } from '@/lib/utils';
 import type { Tour, TourSummary } from '@/types/tour';
-import { useState, useEffect } from 'react';
 import { TourPaymentsPanel } from './TourPaymentsPanel';
+import { SummaryLineReviewTable, type SummaryLineType } from './SummaryLineReviewTable';
+import { SummaryWorkflowFooter } from './SummaryWorkflowFooter';
+import type { Access, TourLineFieldKey } from '@/lib/tour-detail-permissions';
 
 interface SummaryTabProps {
   tour: Tour;
   onSummaryUpdate?: (summary: TourSummary) => void;
   readOnly?: boolean;
+  onEditLine?: (lineType: SummaryLineType, index: number) => void;
+  canEditLine?: (lineType: SummaryLineType) => boolean;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
+  canExport?: boolean;
+  onExport?: () => void;
 }
 
-export function SummaryTab({ tour, onSummaryUpdate, readOnly = false }: SummaryTabProps) {
-  // Tính tổng giống như các cột "Total Amount" của từng tab (không dựa vào totalGuests toàn tour)
+type SectionTone = 'blue' | 'amber' | 'violet' | 'green';
+
+const SECTION_TONES: Record<SectionTone, string> = {
+  blue: 'border-sky-200 bg-sky-50/70 dark:border-sky-900 dark:bg-sky-950/40',
+  amber: 'border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/40',
+  violet: 'border-violet-200 bg-violet-50/70 dark:border-violet-900 dark:bg-violet-950/40',
+  green: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/40',
+};
+
+function SummarySection({
+  title,
+  description,
+  tone,
+  children,
+}: {
+  title: string;
+  description?: string;
+  tone: SectionTone;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={`rounded-xl border p-3 sm:p-4 ${SECTION_TONES[tone]}`}>
+      <div className="mb-3">
+        <h3 className="text-base font-semibold sm:text-lg">{title}</h3>
+        {description && <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{description}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-lg bg-background/80 p-3 shadow-sm">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 break-words text-sm font-semibold">{value || '-'}</div>
+    </div>
+  );
+}
+
+export function SummaryTab({
+  tour,
+  onSummaryUpdate,
+  readOnly = false,
+  onEditLine,
+  canEditLine,
+  lineFieldAccess,
+  canExport = false,
+  onExport,
+}: SummaryTabProps) {
   const tourGuests = tour.totalGuests || 0;
-  const clampGuests = (g: number | undefined) => {
-    if (typeof g !== 'number') return tourGuests;
-    if (!tourGuests) return g; // nếu tourGuests = 0, giữ g
-    return Math.min(Math.max(g, 0), tourGuests);
+  const clampGuests = (guests: number | undefined) => {
+    if (typeof guests !== 'number') return tourGuests;
+    if (!tourGuests) return guests;
+    return Math.min(Math.max(guests, 0), tourGuests);
   };
 
-  const totalDestinations = tour.destinations.reduce((sum, d) => {
-    const g = clampGuests(d.guests as any);
-    return sum + (d.price * g);
-  }, 0);
-
-  const totalExpenses = tour.expenses.reduce((sum, e) => {
-    const g = clampGuests(e.guests as any);
-    return sum + (e.price * g);
-  }, 0);
-
-  const totalMeals = tour.meals.reduce((sum, m) => {
-    const g = clampGuests(m.guests as any);
-    return sum + (m.price * g);
-  }, 0);
-
-  const totalAllowances = tour.allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0);
-
-  // Bước 2: Tổng các tabs
+  const totalDestinations = tour.destinations.reduce((sum, line) => sum + line.price * clampGuests(line.guests), 0);
+  const totalExpenses = tour.expenses.reduce((sum, line) => sum + line.price * clampGuests(line.guests), 0);
+  const totalMeals = tour.meals.reduce((sum, line) => sum + line.price * clampGuests(line.guests), 0);
+  const totalAllowances = tour.allowances.reduce((sum, line) => sum + line.price * (line.quantity || 1), 0);
   const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;
 
   const [summary, setSummary] = useState<TourSummary>(() => {
@@ -57,35 +99,39 @@ export function SummaryTab({ tour, onSummaryUpdate, readOnly = false }: SummaryT
     };
   });
 
-  // Auto-update totalTabs when items change
   useEffect(() => {
-    setSummary(prev => ({ ...prev, totalTabs: calculatedTotal }));
+    const existingSummary = tour.summary as TourSummary | undefined;
+    setSummary((prev) => ({
+      ...prev,
+      advancePayment: existingSummary?.advancePayment ?? 0,
+      companyTip: existingSummary?.companyTip ?? 0,
+      collectionsForCompany: existingSummary?.collectionsForCompany ?? 0,
+    }));
+  }, [tour.summary?.advancePayment, tour.summary?.companyTip, tour.summary?.collectionsForCompany]);
+
+  useEffect(() => {
+    setSummary((prev) => ({ ...prev, totalTabs: calculatedTotal }));
   }, [calculatedTotal]);
 
-  // Bước 4: Tính toán tuần tự (only recalculate display values, don't save to DB)
   useEffect(() => {
     const totalAfterAdvance = summary.totalTabs - (summary.advancePayment || 0);
     const totalAfterCollections = totalAfterAdvance - (summary.collectionsForCompany || 0);
     const totalAfterTip = totalAfterCollections + (summary.companyTip || 0);
     const finalTotal = totalAfterTip;
 
-    const updated = {
-      ...summary,
-      totalAfterAdvance,
-      totalAfterTip,
-      totalAfterCollections,
-      finalTotal,
-    };
-
-    // Only update state if calculated values have changed (don't save to DB)
     if (
-      updated.totalAfterAdvance !== summary.totalAfterAdvance ||
-      updated.totalAfterTip !== summary.totalAfterTip ||
-      updated.totalAfterCollections !== summary.totalAfterCollections ||
-      updated.finalTotal !== summary.finalTotal
+      totalAfterAdvance !== summary.totalAfterAdvance ||
+      totalAfterCollections !== summary.totalAfterCollections ||
+      totalAfterTip !== summary.totalAfterTip ||
+      finalTotal !== summary.finalTotal
     ) {
-      setSummary(updated);
-      // Note: Don't call onSummaryUpdate here - it's only called when user edits inputs
+      setSummary((prev) => ({
+        ...prev,
+        totalAfterAdvance,
+        totalAfterCollections,
+        totalAfterTip,
+        finalTotal,
+      }));
     }
   }, [summary.totalTabs, summary.advancePayment, summary.companyTip, summary.collectionsForCompany]);
 
@@ -93,98 +139,143 @@ export function SummaryTab({ tour, onSummaryUpdate, readOnly = false }: SummaryT
     if (readOnly) return;
 
     const updated = { ...summary, [field]: value };
-
-    // Recalculate dependent values
     const totalAfterAdvance = updated.totalTabs - (updated.advancePayment || 0);
     const totalAfterCollections = totalAfterAdvance - (updated.collectionsForCompany || 0);
     const totalAfterTip = totalAfterCollections + (updated.companyTip || 0);
-    const finalTotal = totalAfterTip;
-
     const fullUpdate = {
       ...updated,
       totalAfterAdvance,
       totalAfterCollections,
       totalAfterTip,
-      finalTotal,
+      finalTotal: totalAfterTip,
     };
 
     setSummary(fullUpdate);
-
-    // Immediately save to database when user edits a field
-    if (onSummaryUpdate) {
-      onSummaryUpdate(fullUpdate);
-    }
+    onSummaryUpdate?.(fullUpdate);
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="animate-fade-in">
-        <CardHeader>
-          <CardTitle>Tổng kết tài chính</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between items-center py-2 bg-primary/10 px-3 rounded">
-            <span className="font-medium">Tổng các tab (Tự động tính)</span>
-            <span className="font-bold text-primary">{formatCurrency(summary.totalTabs)}</span>
-          </div>
-          <Separator />
+    <div className="space-y-4 sm:space-y-6">
+      <SummarySection title="1. Thông tin tour" tone="blue">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <InfoItem label="Mã tour" value={tour.tourCode} />
+          <InfoItem label="Ngày bắt đầu" value={formatDate(tour.startDate)} />
+          <InfoItem label="Ngày kết thúc" value={formatDate(tour.endDate)} />
+          <InfoItem label="Tổng số ngày" value={tour.totalDays || 0} />
+          <InfoItem label="Số pax lớn" value={tour.adults || 0} />
+          <InfoItem label="Số pax trẻ em" value={tour.children || 0} />
+          <InfoItem label="Công ty mẹ" value={tour.companyRef?.nameAtBooking} />
+          <InfoItem label="Công ty land" value={tour.landOperatorRef?.nameAtBooking || '-'} />
+        </div>
+      </SummarySection>
 
-          <div className="space-y-2">
-            <Label htmlFor="advancePayment" className="text-red-600 font-semibold">- Tạm ứng (Nhập)</Label>
-            <CurrencyInput
-              id="advancePayment"
-              value={summary.advancePayment || 0}
-              onChange={(value) => handleInputChange('advancePayment', value)}
-              disabled={readOnly}
-            />
-          </div>
+      <SummarySection
+        title="2. Thông tin chi phí tour"
+        description="Gồm điểm đến, chi phí/dịch vụ và bữa ăn. Mỗi dòng có VAT, chứng từ, ghi chú HDV và trạng thái duyệt."
+        tone="amber"
+      >
+        <SummaryLineReviewTable
+          tour={tour}
+          onEditLine={onEditLine}
+          canEditLine={canEditLine}
+          evidenceAccess={lineFieldAccess?.evidence}
+          lineFieldAccess={lineFieldAccess}
+          lineTypes={['destination', 'expense', 'meal']}
+          title="Chi phí tour cần đối chiếu"
+        />
+      </SummarySection>
 
-          <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
-            <span className="font-medium">Còn lại sau tạm ứng</span>
-            <span className="font-bold">{formatCurrency(summary.totalAfterAdvance)}</span>
-          </div>
-          <Separator />
+      <SummarySection
+        title="3. Thông tin công tác phí"
+        description="Công tác phí được duyệt theo từng dòng và có nút sửa quay lại đúng tab nguồn."
+        tone="violet"
+      >
+        <SummaryLineReviewTable
+          tour={tour}
+          onEditLine={onEditLine}
+          canEditLine={canEditLine}
+          evidenceAccess={lineFieldAccess?.evidence}
+          lineFieldAccess={lineFieldAccess}
+          lineTypes={['allowance']}
+          title="Công tác phí cần đối chiếu"
+        />
+      </SummarySection>
 
-          <div className="space-y-2">
-            <Label htmlFor="collectionsForCompany" className="text-red-600 font-semibold">- Thu hộ công ty (Nhập)</Label>
-            <CurrencyInput
-              id="collectionsForCompany"
-              value={summary.collectionsForCompany || 0}
-              onChange={(value) => handleInputChange('collectionsForCompany', value)}
-              disabled={readOnly}
-            />
-          </div>
+      <SummarySection title="4. Thông tin tổng kết" tone="green">
+        <Card className="bg-background/90">
+          <CardContent className="space-y-4 p-4">
+            <div className="flex items-center justify-between rounded bg-primary/10 px-3 py-2">
+              <span className="font-medium">Tổng các tab (tự động tính)</span>
+              <span className="font-bold text-primary">{formatCurrency(summary.totalTabs)}</span>
+            </div>
+            <Separator />
 
-          <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
-            <span className="font-medium">Còn lại sau thu hộ</span>
-            <span className="font-bold">{formatCurrency(summary.totalAfterCollections)}</span>
-          </div>
-          <Separator />
+            <div className="space-y-2">
+              <Label htmlFor="advancePayment" className="font-semibold text-red-600">- Tạm ứng</Label>
+              <CurrencyInput
+                id="advancePayment"
+                value={summary.advancePayment || 0}
+                onChange={(value) => handleInputChange('advancePayment', value)}
+                disabled={readOnly}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="companyTip" className="text-blue-600 font-semibold">+ Tip công ty (Nhập)</Label>
-            <CurrencyInput
-              id="companyTip"
-              value={summary.companyTip || 0}
-              onChange={(value) => handleInputChange('companyTip', value)}
-              disabled={readOnly}
-            />
-          </div>
+            <div className="flex items-center justify-between rounded bg-muted/50 px-3 py-2">
+              <span className="font-medium">Còn lại sau tạm ứng</span>
+              <span className="font-bold">{formatCurrency(summary.totalAfterAdvance)}</span>
+            </div>
+            <Separator />
 
-          <div className="flex justify-between items-center py-2 bg-muted/50 px-3 rounded">
-            <span className="font-medium">Tổng sau tip</span>
-            <span className="font-bold">{formatCurrency(summary.totalAfterTip)}</span>
-          </div>
-          <Separator />
+            <div className="space-y-2">
+              <Label htmlFor="collectionsForCompany" className="font-semibold text-red-600">- Thu hộ công ty</Label>
+              <CurrencyInput
+                id="collectionsForCompany"
+                value={summary.collectionsForCompany || 0}
+                onChange={(value) => handleInputChange('collectionsForCompany', value)}
+                disabled={readOnly}
+              />
+            </div>
 
-          <div className="flex justify-between items-center py-3 bg-primary/10 px-4 rounded-lg mt-4">
-            <span className="text-lg font-bold">Tổng kết cuối</span>
-            <span className="text-lg font-bold text-primary">{formatCurrency(summary.finalTotal)}</span>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex items-center justify-between rounded bg-muted/50 px-3 py-2">
+              <span className="font-medium">Còn lại sau thu hộ</span>
+              <span className="font-bold">{formatCurrency(summary.totalAfterCollections)}</span>
+            </div>
+            <Separator />
 
-      <TourPaymentsPanel tour={tour} />
+            <div className="space-y-2">
+              <Label htmlFor="companyTip" className="font-semibold text-blue-600">+ Tip công ty</Label>
+              <CurrencyInput
+                id="companyTip"
+                value={summary.companyTip || 0}
+                onChange={(value) => handleInputChange('companyTip', value)}
+                disabled={readOnly}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded bg-muted/50 px-3 py-2">
+              <span className="font-medium">Tổng sau tip</span>
+              <span className="font-bold">{formatCurrency(summary.totalAfterTip)}</span>
+            </div>
+            <Separator />
+
+            <div className="flex items-center justify-between rounded-lg bg-primary/10 px-4 py-3">
+              <span className="text-lg font-bold">Tổng kết cuối</span>
+              <span className="text-lg font-bold text-primary">{formatCurrency(summary.finalTotal)}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="mt-4">
+          <TourPaymentsPanel tour={tour} />
+        </div>
+      </SummarySection>
+
+      {tour.id && (
+        <SummaryWorkflowFooter
+          tour={tour}
+          canExport={canExport}
+          onExport={onExport || (() => undefined)}
+        />
+      )}
     </div>
   );
 }

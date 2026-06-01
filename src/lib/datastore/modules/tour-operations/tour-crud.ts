@@ -3,22 +3,32 @@ import type { Database } from '@/integrations/supabase/types';
 import type {
   Tour, Destination, Expense, Meal, Allowance,
   Shopping as TourShopping, TourQuery, EntityRef, TourNationality,
-  TourInput, TourSummary, TourListResult, PaymentMethod,
+  TourInput, TourSummary, TourListResult, PaymentMethod, TourLineAttachment,
 } from '@/types/tour';
 import { differenceInDays } from 'date-fns';
 import { enrichTourWithSummary, enrichToursWithSummaries } from '@/lib/tour-utils';
-import { mapTour, mapTourPayment, mapCommissionPayment, mapLineReviewFields } from '../mappers';
-import type { TourRowWithDetails, TourNationalityRow, TourPaymentRow, CommissionPaymentRow } from '../store-types';
+import { stripTourShoppingForProfile } from '@/lib/shopping-access';
+import { mapTour, mapTourPayment, mapTourShopping, mapLineReviewFields } from '../mappers';
+import type { TourRowWithDetails, TourNationalityRow, TourPaymentRow } from '../store-types';
+import type { UserProfile } from '@/types/user';
+import {
+  attachTourLineAttachments,
+  mapTourDestinationLine,
+  mapTourExpenseLine,
+  mapTourMealLine,
+} from './tour-line-mappers';
 
 export class TourCrudModule {
   declare protected supabase: SupabaseClient<Database>;
-  declare addDestination: (tourId: string, dest: Destination) => Promise<void>;
-  declare addExpense: (tourId: string, expense: Expense) => Promise<void>;
+  declare addDestination: (tourId: string, dest: Destination) => Promise<string | undefined>;
+  declare addExpense: (tourId: string, expense: Expense) => Promise<string | undefined>;
   declare updateExpense: (tourId: string, index: number, expense: Expense) => Promise<void>;
-  declare addMeal: (tourId: string, meal: Meal) => Promise<void>;
+  declare addMeal: (tourId: string, meal: Meal) => Promise<string | undefined>;
   declare addAllowance: (tourId: string, allowance: Allowance) => Promise<void>;
   declare addTourShopping: (tourId: string, shopping: TourShopping) => Promise<void>;
   declare updateTour: (id: string, tour: Partial<Tour>) => Promise<void>;
+  declare listTourLineAttachments: (tourId: string) => Promise<TourLineAttachment[]>;
+  declare getCurrentUserProfile: () => Promise<UserProfile | undefined>;
 
   private mapTourNationality(row: TourNationalityRow): TourNationality {
     return { id: row.nationality_id, nameAtBooking: row.nationality_name_at_booking || '', paxCount: Number(row.pax_count) || 0 };
@@ -138,28 +148,18 @@ export class TourCrudModule {
 
     const { data, error, count } = await queryBuilder;
     if (error) throw error;
+    const currentProfile = await this.getCurrentUserProfile();
 
     const tours = (data || []).map((row) => {
       const typedRow = row as TourRowWithDetails;
       const tour = mapTour(row as any);
       this.applyTourNationalities(tour, typedRow.tour_nationalities);
       if (includeDetails) {
-        tour.destinations = (typedRow.tour_destinations || []).map((d) => ({ name: d.name, price: Number(d.price) || 0, date: d.date, guests: d.guests !== null && d.guests !== undefined ? Number(d.guests) : undefined, ...mapLineReviewFields(d) }));
-        tour.expenses = (typedRow.tour_expenses || []).map((e) => ({ name: e.name, price: Number(e.price) || 0, date: e.date, guests: e.guests !== null && e.guests !== undefined ? Number(e.guests) : undefined, ...mapLineReviewFields(e) }));
-        tour.meals = (typedRow.tour_meals || []).map((m) => ({ name: m.name, price: Number(m.price) || 0, date: m.date, guests: m.guests !== null && m.guests !== undefined ? Number(m.guests) : undefined, ...mapLineReviewFields(m) }));
+        tour.destinations = (typedRow.tour_destinations || []).map(mapTourDestinationLine);
+        tour.expenses = (typedRow.tour_expenses || []).map(mapTourExpenseLine);
+        tour.meals = (typedRow.tour_meals || []).map(mapTourMealLine);
         tour.allowances = (typedRow.tour_allowances || []).map((a) => ({ date: a.date, name: a.name, price: Number(a.price) || 0, quantity: a.quantity || 1, categoryId: a.category_id ?? undefined, ...mapLineReviewFields(a) }));
-        tour.shoppings = (typedRow.tour_shoppings || []).map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          price: Number(s.price) || 0,
-          date: s.date,
-          withholdsPit: s.withholds_pit ?? false,
-          pitRate: s.pit_rate ?? undefined,
-          pitAmount: s.pit_amount ?? undefined,
-          netCommission: s.net_commission ?? undefined,
-          payments: (s.shopping_commission_payments || []).map((p: CommissionPaymentRow) => mapCommissionPayment(p)),
-          ...mapLineReviewFields(s),
-        }));
+        tour.shoppings = (typedRow.tour_shoppings || []).map((s) => mapTourShopping(s));
       } else {
         tour.allowances = (typedRow.tour_allowances || []).map((a) => ({ date: '', name: '', price: Number(a.price) || 0, quantity: a.quantity || 1 }));
         tour.shoppings = ((typedRow as any).tour_shoppings || []).map((s: any) => ({
@@ -172,7 +172,8 @@ export class TourCrudModule {
     });
 
     const enrichedTours = includeDetails ? enrichToursWithSummaries(tours) : tours;
-    return { tours: enrichedTours, total: typeof count === 'number' ? count : tours.length };
+    const visibleTours = enrichedTours.map((tour) => stripTourShoppingForProfile(tour, currentProfile));
+    return { tours: visibleTours, total: typeof count === 'number' ? count : tours.length };
   }
 
   async getTour(id: string): Promise<Tour | null> {
@@ -190,12 +191,14 @@ export class TourCrudModule {
     const row: any = data;
     this.applyTourNationalities(tour, row.tour_nationalities);
     tour.payments = (row.tour_payments || []).map((p: TourPaymentRow) => mapTourPayment(p));
-    tour.destinations = (row.tour_destinations || []).map((d: any) => ({ name: d.name, price: Number(d.price) || 0, date: d.date, guests: d.guests !== null && d.guests !== undefined ? Number(d.guests) : undefined, ...mapLineReviewFields(d) }));
-    tour.expenses = (row.tour_expenses || []).map((e: any) => ({ name: e.name, price: Number(e.price) || 0, date: e.date, guests: e.guests !== null && e.guests !== undefined ? Number(e.guests) : undefined, ...mapLineReviewFields(e) }));
-    tour.meals = (row.tour_meals || []).map((m: any) => ({ name: m.name, price: Number(m.price) || 0, date: m.date, guests: m.guests !== null && m.guests !== undefined ? Number(m.guests) : undefined, ...mapLineReviewFields(m) }));
+    tour.destinations = (row.tour_destinations || []).map(mapTourDestinationLine);
+    tour.expenses = (row.tour_expenses || []).map(mapTourExpenseLine);
+    tour.meals = (row.tour_meals || []).map(mapTourMealLine);
     tour.allowances = (row.tour_allowances || []).map((a: any) => ({ date: a.date, name: a.name, price: Number(a.price) || 0, quantity: a.quantity || 1, categoryId: a.category_id ?? undefined, ...mapLineReviewFields(a) }));
-    tour.shoppings = (row.tour_shoppings || []).map((s: any) => ({ id: s.id, name: s.name, price: Number(s.price) || 0, date: s.date, withholdsPit: s.withholds_pit ?? false, pitRate: s.pit_rate ?? undefined, pitAmount: s.pit_amount ?? undefined, netCommission: s.net_commission ?? undefined, payments: (s.shopping_commission_payments || []).map((p: CommissionPaymentRow) => mapCommissionPayment(p)), ...mapLineReviewFields(s) }));
-    return enrichTourWithSummary(tour);
+    tour.shoppings = (row.tour_shoppings || []).map((s: any) => mapTourShopping(s));
+    attachTourLineAttachments(tour, await this.listTourLineAttachments(id));
+    const currentProfile = await this.getCurrentUserProfile();
+    return enrichTourWithSummary(stripTourShoppingForProfile(tour, currentProfile));
   }
 
   async createTour(tour: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; shoppings?: TourShopping[]; summary?: TourSummary }): Promise<Tour> {
@@ -208,6 +211,8 @@ export class TourCrudModule {
     this.validateTourNationalities(nationalityEntries, totalGuests);
     const primaryNationality = nationalityEntries[0];
 
+    // created_by_user_id is stamped server-side by the BEFORE INSERT trigger
+    // (set_tour_created_by) using auth.uid(), so we no longer send it here.
     const { data, error } = await this.supabase.from('tours').insert({
       tour_code: tour.tourCode, company_id: tour.companyRef.id, company_name_at_booking: tour.companyRef.nameAtBooking,
       land_operator_id: tour.landOperatorRef?.id || null, land_operator_name_at_booking: tour.landOperatorRef?.nameAtBooking || null,

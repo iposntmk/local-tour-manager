@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,8 +12,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { MessageSquare } from 'lucide-react';
-import { store } from '@/lib/datastore';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLineReview } from '@/hooks/useLineReview';
 import type { LineStatus, LineType } from '@/types/tour';
 import { LINE_STATUS_LABELS } from '@/lib/settlement-utils';
 
@@ -26,6 +24,7 @@ interface LineReviewControlProps {
   currentStatus?: LineStatus;
   currentComment?: string;
   editable: boolean;
+  statusLabels?: Partial<Record<LineStatus, string>>;
 }
 
 const STATUS_STYLES: Record<LineStatus, string> = {
@@ -42,19 +41,19 @@ export function LineReviewControl({
   currentStatus = 'unchecked',
   currentComment,
   editable,
+  statusLabels,
 }: LineReviewControlProps) {
   const { hasPermission } = useAuth();
-  const queryClient = useQueryClient();
+  const { busy, updateLine } = useLineReview(tourId);
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<LineStatus>(currentStatus);
   const [comment, setComment] = useState(currentComment ?? '');
-  const [busy, setBusy] = useState(false);
 
   const canEdit = editable && hasPermission('review_settlement_line') && !!lineId;
 
   const badge = (
     <Badge className={cn(STATUS_STYLES[currentStatus], 'font-medium gap-1')} variant="secondary">
-      {LINE_STATUS_LABELS[currentStatus]}
+      {statusLabels?.[currentStatus] || LINE_STATUS_LABELS[currentStatus]}
       {currentComment && <MessageSquare className="h-3 w-3" />}
     </Badge>
   );
@@ -65,20 +64,8 @@ export function LineReviewControl({
 
   const handleSave = async () => {
     if (!lineId) return;
-    setBusy(true);
-    try {
-      await store.updateLineReview(tourId, lineType, lineId, {
-        lineStatus: status,
-        lineComment: comment.trim() || undefined,
-      });
-      toast.success('Đã cập nhật trạng thái.');
-      await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-      setOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message || 'Không thể cập nhật.');
-    } finally {
-      setBusy(false);
-    }
+    const ok = await updateLine({ lineType, lineId }, { lineStatus: status, lineComment: comment });
+    if (ok) setOpen(false);
   };
 
   return (

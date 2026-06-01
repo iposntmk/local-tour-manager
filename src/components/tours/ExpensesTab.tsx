@@ -1,15 +1,23 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import type { Expense, Tour } from '@/types/tour';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
+import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useAuth } from '@/contexts/AuthContext';
 import { ExpenseForm } from '@/components/tours/ExpenseForm';
 import { NewExpenseDialog } from '@/components/tours/NewExpenseDialog';
 import { ExpensesDesktopTable } from '@/components/tours/ExpensesDesktopTable';
 import { ExpensesMobileList } from '@/components/tours/mobile/ExpensesMobileList';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 const WATER_EXPENSE_NAMES = [
   'Nước uống cho khách 15k/1 khách / 1 ngày',
@@ -22,15 +30,23 @@ interface ExpensesTabProps {
   onChange?: (expenses: Expense[]) => void;
   tour?: Tour | null;
   readOnly?: boolean;
+  editRequest?: { index: number; key: number };
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
 }
 
-export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false }: ExpensesTabProps) {
+export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false, editRequest, lineFieldAccess }: ExpensesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Expense>({ name: '', price: 0, date: '' });
   const [showNewExpenseDialog, setShowNewExpenseDialog] = useState(false);
   const queryClient = useQueryClient();
+  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId);
   const { isGuide, userProfile } = useAuth();
   const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
+  const canEditLine = canEditAnyTourLineField(lineFieldAccess);
+  const canCreateLine =
+    canEditTourLineField(lineFieldAccess, 'name') &&
+    canEditTourLineField(lineFieldAccess, 'date') &&
+    canEditTourLineField(lineFieldAccess, 'price');
 
   const { data: detailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses', guideId ?? null],
@@ -40,17 +56,20 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   const addMutation = useMutation({
     mutationFn: async (expense: Expense) => {
       if (tourId) {
-        await store.addExpense(tourId, expense);
+        return store.addExpense(tourId, expense);
       } else {
         onChange?.([...expenses, expense]);
+        return undefined;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (lineId) => {
+      await uploadPendingFiles('expense', lineId);
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm chi phí');
+      clearPendingFiles();
       setFormData({ name: '', price: 0, date: tour?.endDate || '' });
     },
   });
@@ -71,6 +90,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật chi phí');
+      clearPendingFiles();
       setEditingIndex(null);
     },
   });
@@ -105,7 +125,8 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   });
 
   const handleEdit = (index: number) => {
-    if (readOnly) return;
+    if (readOnly || !canEditLine) return;
+    clearPendingFiles();
     setEditingIndex(index);
     setFormData(expenses[index]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -113,13 +134,20 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
 
   const handleCancel = () => {
     setEditingIndex(null);
+    clearPendingFiles();
     setFormData({ name: '', price: 0, date: tour?.endDate || '' });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) { toast.error('Bạn không có quyền sửa chi phí trong tour.'); return; }
+    if (editingIndex === null && !canCreateLine) { toast.error('Bạn không có quyền thêm dòng chi phí.'); return; }
+    if (editingIndex !== null && !canEditLine) { toast.error('Bạn không có quyền sửa trường trong dòng chi phí.'); return; }
     if (!formData.name || !formData.date) { toast.error('Vui lòng điền đầy đủ các trường bắt buộc'); return; }
+    if (!isVatAmountValid(formData, tour?.totalGuests || 0)) { toast.error('Tiền VAT không được vượt quá thành tiền.'); return; }
+    if ((formData.vatRate || 0) > 0 && !hasLineAttachments(formData, pendingFiles)) {
+      toast.warning('VAT lớn hơn 0 nhưng chưa có chứng từ.');
+    }
     if (editingIndex !== null) {
       updateMutation.mutate({ index: editingIndex, expense: formData });
     } else {
@@ -128,12 +156,12 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   };
 
   const handleDuplicate = (index: number) => {
-    if (readOnly) return;
+    if (readOnly || !canCreateLine) return;
     addMutation.mutate(expenses[index]);
   };
 
   const handleGuestsChange = (originalIndex: number, val: number | undefined) => {
-    if (readOnly) return;
+    if (readOnly || !canEditTourLineField(lineFieldAccess, 'quantity')) return;
     const totalGuests = tour?.totalGuests || 0;
     if (val !== undefined && val > totalGuests) {
       toast.error(`Số khách không được vượt quá tổng khách (${totalGuests})`);
@@ -148,7 +176,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   };
 
   const handleMobileGuestsChange = (originalIndex: number, val: number | undefined) => {
-    if (readOnly) return;
+    if (readOnly || !canEditTourLineField(lineFieldAccess, 'quantity')) return;
     const updated = { ...expenses[originalIndex], guests: val };
     if (tourId) {
       updateMutation.mutate({ index: originalIndex, expense: updated as Expense });
@@ -211,6 +239,12 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   const isDismissed = tour?.waterExpenseDismissed === true;
   const showWaterWarning = tourId && !hasWaterExpense && !isDismissed;
 
+  useEffect(() => {
+    if (editRequest && editRequest.index >= 0 && editRequest.index < expenses.length) {
+      handleEdit(editRequest.index);
+    }
+  }, [editRequest?.key]);
+
   return (
     <div className="space-y-6">
       {showWaterWarning && (
@@ -223,7 +257,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
                 Tour này chưa có dòng "Nước uống cho khách 10k/1 khách / 1 ngày". Vui lòng thêm chi phí này.
               </p>
               <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                <Checkbox checked={false} onCheckedChange={() => dismissWaterMutation.mutate()} />
+                <Checkbox checked={false} onCheckedChange={() => !readOnly && dismissWaterMutation.mutate()} disabled={readOnly} />
                 <span className="text-sm text-yellow-700 dark:text-yellow-300">
                   Tour này không bao gồm chi phí nước uống (bỏ qua cảnh báo)
                 </span>
@@ -233,7 +267,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
         </div>
       )}
 
-      {!readOnly && (
+      {!readOnly && canEditLine && (
         <ExpenseForm
           formData={formData}
           onChange={setFormData}
@@ -243,6 +277,10 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           onOpenNewDialog={() => setShowNewExpenseDialog(true)}
+          tourId={tourId}
+          pendingFiles={pendingFiles}
+          onPendingFilesChange={setPendingFiles}
+          lineFieldAccess={lineFieldAccess}
         />
       )}
 
@@ -258,6 +296,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
               <ExpensesDesktopTable
                 displayExpenses={displayExpenses}
                 readOnly={readOnly}
+                lineFieldAccess={lineFieldAccess}
                 onEdit={handleEdit}
                 onDuplicate={handleDuplicate}
                 onDelete={(idx) => deleteMutation.mutate(idx)}
@@ -269,6 +308,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
               <ExpensesMobileList
                 items={displayExpenses}
                 readOnly={readOnly}
+                lineFieldAccess={lineFieldAccess}
                 onEdit={handleEdit}
                 onDuplicate={handleDuplicate}
                 onDelete={(idx) => deleteMutation.mutate(idx)}
@@ -283,7 +323,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
       <NewExpenseDialog
         open={showNewExpenseDialog}
         onOpenChange={setShowNewExpenseDialog}
-        readOnly={readOnly}
+        readOnly={readOnly || !canEditTourLineField(lineFieldAccess, 'name') || !canEditTourLineField(lineFieldAccess, 'price')}
         guideId={guideId}
         onCreated={(exp) => setFormData((prev) => ({ ...prev, name: exp.name, price: exp.price }))}
       />

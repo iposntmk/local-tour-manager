@@ -10,6 +10,12 @@ import { AllowanceForm } from '@/components/tours/AllowanceForm';
 import { NewAllowanceDialog, ALLOWANCE_CATEGORY_IDS } from '@/components/tours/NewAllowanceDialog';
 import { AllowancesDesktopTable } from '@/components/tours/AllowancesDesktopTable';
 import { AllowancesMobileList } from '@/components/tours/mobile/AllowancesMobileList';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface AllowancesTabProps {
   tourId?: string;
@@ -17,15 +23,22 @@ interface AllowancesTabProps {
   onChange?: (allowances: Allowance[]) => void;
   tour?: Tour | null;
   readOnly?: boolean;
+  editRequest?: { index: number; key: number };
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
 }
 
-export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = false }: AllowancesTabProps) {
+export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = false, editRequest, lineFieldAccess }: AllowancesTabProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0, quantity: 1 });
   const [showNewAllowanceDialog, setShowNewAllowanceDialog] = useState(false);
   const queryClient = useQueryClient();
   const { isGuide, userProfile } = useAuth();
   const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
+  const canEditLine = canEditAnyTourLineField(lineFieldAccess, ['name', 'price', 'date', 'quantity']);
+  const canCreateLine =
+    canEditTourLineField(lineFieldAccess, 'name') &&
+    canEditTourLineField(lineFieldAccess, 'date') &&
+    canEditTourLineField(lineFieldAccess, 'price');
 
   const { data: allDetailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses', guideId ?? null],
@@ -114,7 +127,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
   });
 
   const handleEdit = (index: number) => {
-    if (readOnly) return;
+    if (readOnly || !canEditLine) return;
     setEditingIndex(index);
     setFormData(allowances[index]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -128,6 +141,8 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) { toast.error('Bạn không có quyền sửa CTP trong tour.'); return; }
+    if (editingIndex === null && !canCreateLine) { toast.error('Bạn không có quyền thêm dòng CTP.'); return; }
+    if (editingIndex !== null && !canEditLine) { toast.error('Bạn không có quyền sửa trường trong dòng CTP.'); return; }
     if (!formData.name || !formData.date) { toast.error('Vui lòng điền đầy đủ các trường bắt buộc'); return; }
     if (editingIndex !== null) {
       updateMutation.mutate({ index: editingIndex, allowance: formData });
@@ -137,7 +152,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
   };
 
   const handleCopy = (index: number) => {
-    if (readOnly) return;
+    if (readOnly || !canCreateLine) return;
     addMutation.mutate({ ...allowances[index] });
   };
 
@@ -146,6 +161,13 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
       setFormData((prev) => ({ ...prev, date: tour.startDate! }));
     }
   }, [tour?.startDate]);
+
+  useEffect(() => {
+    if (!editRequest || readOnly) return;
+    if (editRequest.index >= 0 && editRequest.index < allowances.length) {
+      handleEdit(editRequest.index);
+    }
+  }, [editRequest?.key]);
 
   const sortedAllowancesWithSeparator = useMemo(() => {
     const sorted = allowances
@@ -176,7 +198,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
 
   return (
     <div className="space-y-6">
-      {!readOnly && (
+      {!readOnly && canEditLine && (
         <AllowanceForm
           formData={formData}
           onChange={setFormData}
@@ -188,6 +210,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
           onOpenNewDialog={() => {
             setShowNewAllowanceDialog(true);
           }}
+          lineFieldAccess={lineFieldAccess}
         />
       )}
 
@@ -204,6 +227,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
                 allowances={allowances}
                 getCategoryPriority={getCategoryPriority}
                 readOnly={readOnly}
+                lineFieldAccess={lineFieldAccess}
                 onEdit={handleEdit}
                 onCopy={handleCopy}
                 onDelete={(idx) => deleteMutation.mutate(idx)}
@@ -215,6 +239,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
               <AllowancesMobileList
                 items={sortedAllowancesWithSeparator}
                 readOnly={readOnly}
+                lineFieldAccess={lineFieldAccess}
                 onEdit={handleEdit}
                 onCopy={handleCopy}
                 onDelete={(idx) => deleteMutation.mutate(idx)}
@@ -229,7 +254,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
       <NewAllowanceDialog
         open={showNewAllowanceDialog}
         onOpenChange={setShowNewAllowanceDialog}
-        readOnly={readOnly}
+        readOnly={readOnly || !canEditTourLineField(lineFieldAccess, 'name') || !canEditTourLineField(lineFieldAccess, 'price')}
         guideId={guideId}
         defaultCategoryId={allowanceCategories[0]?.id}
         onCreated={(exp) => {

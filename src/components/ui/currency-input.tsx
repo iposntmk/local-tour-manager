@@ -224,6 +224,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
                 variant="outline"
                 size={isCompact ? 'xs' as any : 'sm'}
                 onClick={() => handleQuickAmount(amount)}
+                disabled={isDisabled}
                 className={cn(
                   'rounded-full border-lime-200 text-lime-700 transition hover:border-lime-400 hover:bg-lime-50 flex-shrink-0',
                   isCompact ? 'h-6 px-2 py-0.5 text-[10px]' : 'h-7 px-2.5 py-0.5 text-[10px] font-medium'

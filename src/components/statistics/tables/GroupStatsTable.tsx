@@ -1,5 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/currency-utils';
+import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import { StatColumnHelp } from '../StatColumnHelp';
 import { statColumnHelp, type GroupStatsRow } from '../shared';
 import { SectionHeader } from '../charts/SectionHeader';
@@ -12,6 +13,7 @@ interface GroupStatsTableProps {
 }
 
 export const GroupStatsTable = ({ title, firstColumnLabel, rows, isLoading }: GroupStatsTableProps) => {
+  const canViewShoppingSensitive = useCanViewShoppingSensitive();
   return (
     <section>
       <SectionHeader title={title} />
@@ -29,10 +31,10 @@ export const GroupStatsTable = ({ title, firstColumnLabel, rows, isLoading }: Gr
                 <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.allowances} /></TableHead>
                 <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.guestTip} /></TableHead>
                 <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.companyTip} /></TableHead>
-                <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.shopping} /></TableHead>
+                {canViewShoppingSensitive && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.shopping} /></TableHead>}
                 <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.ctpOnly} /></TableHead>
-                <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.incomeWithoutCarHotel} /></TableHead>
-                <TableHead className="text-right font-semibold"><StatColumnHelp {...statColumnHelp.shopTipAllow} /></TableHead>
+                {canViewShoppingSensitive && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.incomeWithoutCarHotel} /></TableHead>}
+                {canViewShoppingSensitive && <TableHead className="text-right font-semibold"><StatColumnHelp {...statColumnHelp.shopTipAllow} /></TableHead>}
                 <TableHead className="text-right font-bold bg-blue-100 dark:bg-blue-900">
                   <StatColumnHelp {...statColumnHelp.finalTotal} />
                 </TableHead>
@@ -46,10 +48,10 @@ export const GroupStatsTable = ({ title, firstColumnLabel, rows, isLoading }: Gr
                   <TableCell className="text-right">{formatCurrency(row.totalAllowances)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(row.totalTipFromGuests)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(row.totalCompanyTip)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(row.totalShoppings)}</TableCell>
+                  {canViewShoppingSensitive && <TableCell className="text-right">{formatCurrency(row.totalShoppings)}</TableCell>}
                   <TableCell className="text-right">{formatCurrency(row.totalCtpOnly)}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(row.totalIncomeWithoutCarHotel)}</TableCell>
-                  <TableCell className="text-right font-semibold text-primary">{formatCurrency(row.totalShopTipAllow)}</TableCell>
+                  {canViewShoppingSensitive && <TableCell className="text-right font-medium">{formatCurrency(row.totalIncomeWithoutCarHotel)}</TableCell>}
+                  {canViewShoppingSensitive && <TableCell className="text-right font-semibold text-primary">{formatCurrency(row.totalShopTipAllow)}</TableCell>}
                   <TableCell className="text-right font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrency(row.finalTotal)}
                   </TableCell>

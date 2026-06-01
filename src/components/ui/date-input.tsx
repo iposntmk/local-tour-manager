@@ -12,7 +12,7 @@ interface DateInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement
 }
 
 export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
-  ({ value = '', onChange, ...props }, ref) => {
+  ({ value = '', onChange, disabled, ...props }, ref) => {
     const [open, setOpen] = useState(false);
     const [displayValue, setDisplayValue] = useState('');
 
@@ -79,6 +79,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
           variant="outline"
           size="icon"
           onClick={handleDecrement}
+          disabled={disabled}
           className="h-10 w-10 shrink-0"
         >
           <Minus className="h-4 w-4" />
@@ -90,6 +91,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
             type="text"
             value={displayValue}
             onChange={handleInputChange}
+            disabled={disabled}
             placeholder="DD/MM/YYYY"
             className="flex-1"
           />
@@ -99,6 +101,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
                 type="button"
                 variant="outline"
                 size="icon"
+                disabled={disabled}
                 className="h-10 w-10 shrink-0"
               >
                 <Calendar className="h-4 w-4" />
@@ -119,6 +122,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
           variant="outline"
           size="icon"
           onClick={handleIncrement}
+          disabled={disabled}
           className="h-10 w-10 shrink-0"
         >
           <Plus className="h-4 w-4" />

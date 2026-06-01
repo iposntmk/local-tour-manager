@@ -26,6 +26,7 @@ interface TourNationalitiesPickerProps {
   totalGuests: number;
   required?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export function TourNationalitiesPicker({
@@ -35,6 +36,7 @@ export function TourNationalitiesPicker({
   totalGuests,
   required = false,
   placeholder = 'Chọn quốc tịch...',
+  disabled = false,
 }: TourNationalitiesPickerProps) {
   const [open, setOpen] = useState(false);
   const selectedIds = useMemo(() => new Set(value.map((item) => item.id)), [value]);
@@ -60,6 +62,7 @@ export function TourNationalitiesPicker({
   })();
 
   const toggleNationality = (nationality: Nationality) => {
+    if (disabled) return;
     if (selectedIds.has(nationality.id)) {
       onChange(value.filter((item) => item.id !== nationality.id));
       return;
@@ -78,6 +81,7 @@ export function TourNationalitiesPicker({
   };
 
   const updatePaxCount = (id: string, paxCount: number) => {
+    if (disabled) return;
     onChange(value.map((item) => (
       item.id === id
         ? { ...item, paxCount: Math.max(1, paxCount || 1) }
@@ -93,6 +97,7 @@ export function TourNationalitiesPicker({
             type="button"
             variant="outline"
             role="combobox"
+            disabled={disabled}
             className={cn('w-full justify-between', getRequiredFieldClasses(required && value.length === 0))}
           >
             <span className="truncate">{buttonLabel}</span>
@@ -142,6 +147,7 @@ export function TourNationalitiesPicker({
                   value={item.paxCount}
                   onChange={(nextValue) => updatePaxCount(item.id, nextValue)}
                   min={1}
+                  disabled={disabled}
                 />
               </div>
             );

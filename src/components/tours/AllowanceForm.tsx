@@ -10,6 +10,13 @@ import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import type { Allowance, Tour } from '@/types/tour';
 import type { DetailedExpense } from '@/types/master';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  canViewTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface AllowanceFormProps {
   formData: Allowance;
@@ -20,6 +27,7 @@ interface AllowanceFormProps {
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   onOpenNewDialog: () => void;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
 }
 
 export function AllowanceForm({
@@ -31,8 +39,15 @@ export function AllowanceForm({
   onSubmit,
   onCancel,
   onOpenNewDialog,
+  lineFieldAccess,
 }: AllowanceFormProps) {
   const [openExpense, setOpenExpense] = useState(false);
+  const canView = (field: TourLineFieldKey) => canViewTourLineField(lineFieldAccess, field);
+  const canEdit = (field: TourLineFieldKey) => canEditTourLineField(lineFieldAccess, field);
+  const canSubmit =
+    editingIndex !== null
+      ? canEditAnyTourLineField(lineFieldAccess, ['name', 'price', 'date', 'quantity'])
+      : canEdit('name') && canEdit('date') && canEdit('price');
 
   useEffect(() => {
     if (editingIndex !== null) {
@@ -48,6 +63,7 @@ export function AllowanceForm({
       </h3>
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-3">
+          {canView('name') && (
           <div className="flex gap-2">
             <Popover open={openExpense} onOpenChange={setOpenExpense}>
               <PopoverTrigger asChild>
@@ -57,6 +73,7 @@ export function AllowanceForm({
                   role="combobox"
                   aria-expanded={openExpense}
                   className="min-w-0 flex-1 justify-between"
+                  disabled={!canEdit('name')}
                 >
                   <span className="truncate">{formData.name || 'Chọn CTP...'}</span>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -78,10 +95,10 @@ export function AllowanceForm({
                               const today = new Date().toISOString().split('T')[0];
                               onChange({
                                 ...formData,
-                                name: exp.name,
-                                price: exp.price,
-                                date: formData.date || tour?.startDate || today,
-                                quantity: formData.quantity || 1,
+                                ...(canEdit('name') ? { name: exp.name } : {}),
+                                ...(canEdit('price') ? { price: exp.price } : {}),
+                                ...(canEdit('date') ? { date: formData.date || tour?.startDate || today } : {}),
+                                ...(canEdit('quantity') ? { quantity: formData.quantity || 1 } : {}),
                                 categoryId: exp.categoryRef?.id,
                               });
                               setOpenExpense(false);
@@ -102,30 +119,40 @@ export function AllowanceForm({
                 </Command>
               </PopoverContent>
             </Popover>
-            <Button type="button" variant="outline" size="icon" title="Thêm CTP" aria-label="Thêm CTP" onClick={onOpenNewDialog}>
+            <Button type="button" variant="outline" size="icon" title="Thêm CTP" aria-label="Thêm CTP" onClick={onOpenNewDialog} disabled={!canEdit('name')}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+          )}
+          {canView('price') && (
           <CurrencyInput
             placeholder="Giá (VND)"
             value={formData.price}
             onChange={(price) => onChange({ ...formData, price })}
+            disabled={!canEdit('price')}
           />
+          )}
+          {canView('date') && (
           <DateInput
             value={formData.date}
             onChange={(date) => onChange({ ...formData, date })}
             required
+            disabled={!canEdit('date')}
           />
+          )}
+          {canView('quantity') && (
           <NumberInputMobile
             value={formData.quantity || 1}
             onChange={(val) => onChange({ ...formData, quantity: val || 1 })}
             min={1}
             placeholder="Số lượng"
             className="w-full"
+            disabled={!canEdit('quantity')}
           />
+          )}
         </div>
         <div className="flex gap-2">
-          <Button type="submit" className="hover-scale flex-1">
+          <Button type="submit" className="hover-scale flex-1" disabled={!canSubmit}>
             <Plus className="h-4 w-4 mr-2" />
             {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
           </Button>

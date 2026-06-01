@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatCurrency } from '@/lib/currency-utils';
 import { isTourPaymentEligible } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
+import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import type { Tour } from '@/types/tour';
 import { ToursDesktopTableCellContent, type TourTableRowData } from './ToursDesktopTableCell';
 import { ToursDesktopTableToolbar } from './ToursDesktopTableToolbar';
@@ -59,6 +60,7 @@ export const ToursDesktopTable = ({
   onDuplicate,
   onDelete,
 }: ToursDesktopTableProps) => {
+  const canViewShoppingSensitive = useCanViewShoppingSensitive();
   const [tableColumnVisibility, setTableColumnVisibility] = useState<Record<TourTableColumnKey, boolean>>(loadTourTableColumnVisibility);
   const [tableFilters, setTableFilters] = useState<TourTableFilters>(loadTourTableFilters);
   const [tableDateFilterOpen, setTableDateFilterOpen] = useState(false);
@@ -77,8 +79,8 @@ export const ToursDesktopTable = ({
   }, [tableFilters]);
 
   const visibleColumns = useMemo(
-    () => TOUR_TABLE_COLUMNS.filter((column) => tableColumnVisibility[column.key]),
-    [tableColumnVisibility]
+    () => TOUR_TABLE_COLUMNS.filter((column) => tableColumnVisibility[column.key] && (canViewShoppingSensitive || column.key !== 'commission')),
+    [canViewShoppingSensitive, tableColumnVisibility]
   );
   const tableWidth = useMemo(
     () => visibleColumns.reduce((sum, column) => sum + column.width, 0),
@@ -426,6 +428,7 @@ export const ToursDesktopTable = ({
         totalCount={tours.length}
         columnFilterCount={tableColumnFilterCount}
         columnVisibility={tableColumnVisibility}
+        canViewShoppingSensitive={canViewShoppingSensitive}
         onClearFilters={clearTableFilters}
         onSetAllColumnsVisible={setAllColumnsVisible}
         onToggleColumn={toggleColumn}

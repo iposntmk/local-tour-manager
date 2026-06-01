@@ -18,6 +18,7 @@ import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { store } from '@/lib/datastore';
+import { toVietnameseError } from '@/lib/error-messages';
 import {
   canRecordPayment,
   computePaymentRemaining,
@@ -67,8 +68,8 @@ export function TourPaymentsPanel({ tour }: TourPaymentsPanelProps) {
       await queryClient.invalidateQueries({ queryKey: ['tour', tour.id] });
       await queryClient.invalidateQueries({ queryKey: ['tours'] });
       setDeleting(undefined);
-    } catch (e: any) {
-      toast.error(e?.message || 'Không thể xóa khoản thanh toán.');
+    } catch (e) {
+      toast.error(toVietnameseError(e, 'Không thể xóa khoản thanh toán.'));
     } finally {
       setBusy(false);
     }

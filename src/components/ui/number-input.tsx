@@ -13,6 +13,8 @@ interface NumberInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
   ({ value = 0, onChange, min = 0, max, step = 1, ...props }, ref) => {
+    const isDisabled = props.disabled;
+
     const handleIncrement = () => {
       const newValue = (value || 0) + step;
       if (max === undefined || newValue <= max) {
@@ -43,7 +45,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           variant="outline"
           size="icon"
           onClick={handleDecrement}
-          disabled={value <= min}
+          disabled={isDisabled || value <= min}
           className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
         >
           <Minus className="h-4 w-4" />
@@ -64,7 +66,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           variant="outline"
           size="icon"
           onClick={handleIncrement}
-          disabled={max !== undefined && value >= max}
+          disabled={isDisabled || (max !== undefined && value >= max)}
           className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
         >
           <Plus className="h-4 w-4" />

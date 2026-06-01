@@ -8,6 +8,13 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowIcon } from '@/components/tours/TourRowIcon';
 import type { Meal } from '@/types/tour';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  canViewTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface MealItem extends Meal { originalIndex: number }
 
@@ -15,6 +22,7 @@ interface Props {
   items: MealItem[];
   tourGuests: number;
   readOnly: boolean;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
   onEdit: (idx: number) => void;
   onDuplicate: (idx: number) => void;
   onDelete: (idx: number) => void;
@@ -22,7 +30,15 @@ interface Props {
   totalAmount: number;
 }
 
-export function MealsMobileList({ items, tourGuests, readOnly, onEdit, onDuplicate, onDelete, onGuestsChange, totalAmount }: Props) {
+export function MealsMobileList({ items, tourGuests, readOnly, lineFieldAccess, onEdit, onDuplicate, onDelete, onGuestsChange, totalAmount }: Props) {
+  const showName = canViewTourLineField(lineFieldAccess, 'name');
+  const showPrice = canViewTourLineField(lineFieldAccess, 'price');
+  const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
+  const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showTotal = showPrice && showQuantity;
+  const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
+  const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
+
   return (
     <div className="p-3 space-y-2">
       {items.map((meal) => {
@@ -36,11 +52,18 @@ export function MealsMobileList({ items, tourGuests, readOnly, onEdit, onDuplica
           >
             {/* Row 1: icon + name + date + actions */}
             <div className="flex items-center gap-1.5 min-w-0">
+              {showName && (
+              <>
               <TourRowIcon kind="meal" label={meal.name} className="shrink-0" />
               <span className="flex-1 min-w-0 truncate text-sm font-medium">{meal.name}</span>
               {isZeroPrice && <span className="shrink-0 text-destructive text-xs">⚑</span>}
+              </>
+              )}
+              {!showName && <span className="flex-1 text-sm font-medium">Dòng bữa ăn #{meal.originalIndex + 1}</span>}
+              {showDate && (
               <span className="shrink-0 text-xs text-muted-foreground pl-1">{formatDate(meal.date)}</span>
-              {!readOnly && (
+              )}
+              {canUseActions && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
@@ -63,18 +86,24 @@ export function MealsMobileList({ items, tourGuests, readOnly, onEdit, onDuplica
             </div>
             {/* Row 2: values */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pl-9">
+              {showPrice && (
               <span>
                 <span className="text-muted-foreground">Giá: </span>
                 <span className={isZeroPrice ? 'text-destructive font-semibold' : 'font-medium'}>{formatCurrency(meal.price)}</span>
               </span>
+              )}
+              {showQuantity && (
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">Khách: </span>
-                <NumberInputMobile value={meal.guests} onChange={(val) => onGuestsChange(meal.originalIndex, val)} min={0} max={tourGuests} disabled={readOnly} className="w-14 h-6 text-xs" />
+                <NumberInputMobile value={meal.guests} onChange={(val) => onGuestsChange(meal.originalIndex, val)} min={0} max={tourGuests} disabled={!canEditQuantity} className="w-14 h-6 text-xs" />
               </span>
+              )}
+              {showTotal && (
               <span>
                 <span className="text-muted-foreground">Tổng: </span>
                 <span className="font-semibold">{formatCurrency(total)}</span>
               </span>
+              )}
             </div>
           </div>
         );

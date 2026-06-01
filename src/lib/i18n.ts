@@ -118,6 +118,19 @@ export const vi = {
     images: 'Hình ảnh',
   },
 
+  tourEvidence: {
+    guideNote: 'Ghi chú giải trình',
+    vatRate: 'VAT %',
+    vatAmount: 'Tiền VAT',
+    attachments: 'Chứng từ',
+    upload: 'Tải chứng từ',
+    pendingUpload: 'Sẽ tải lên sau khi lưu dòng',
+    saveTourFirst: 'Lưu tour trước để tải chứng từ',
+    noAttachments: 'Chưa có chứng từ',
+    guideNotePlaceholder: 'Nhập giải trình cho dòng chi phí này',
+    missingVatEvidence: 'VAT lớn hơn 0 nhưng chưa có chứng từ. Có thể lưu, kế toán sẽ đối chiếu sau.',
+  },
+
   destinations: {
     title: 'Điểm đến',
     addDestination: 'Thêm điểm đến',

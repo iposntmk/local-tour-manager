@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/currency-utils';
+import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import { StatColumnHelp } from '../StatColumnHelp';
 import { SectionHeader } from '../charts/SectionHeader';
 import {
@@ -22,6 +23,8 @@ import {
   type TourStatsRow,
 } from '../shared';
 
+const SHOPPING_STATS_COLUMNS = new Set<TourStatsColumnKey>(['shopping', 'incomeWithoutCarHotel', 'shopTipAllow']);
+
 interface TourStatsTableProps {
   rows: TourStatsRow[];
   totals: StatsTotals;
@@ -31,7 +34,9 @@ interface TourStatsTableProps {
 }
 
 export const TourStatsTable = ({ rows, totals, visibility, onVisibilityChange, isLoading }: TourStatsTableProps) => {
-  const firstVisibleTextCol = tourStatsTextColumnKeys.find((k) => visibility[k]);
+  const canViewShoppingSensitive = useCanViewShoppingSensitive();
+  const isVisible = (key: TourStatsColumnKey) => visibility[key] && (canViewShoppingSensitive || !SHOPPING_STATS_COLUMNS.has(key));
+  const firstVisibleTextCol = tourStatsTextColumnKeys.find((k) => isVisible(k));
   const totalLabel = (k: TourStatsColumnKey) => (firstVisibleTextCol === k ? 'Total' : '');
 
   return (
@@ -49,7 +54,7 @@ export const TourStatsTable = ({ rows, totals, visibility, onVisibilityChange, i
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Show columns</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {tourStatsColumns.map((col) => (
+              {tourStatsColumns.filter((col) => canViewShoppingSensitive || !SHOPPING_STATS_COLUMNS.has(col.key)).map((col) => (
                 <DropdownMenuCheckboxItem
                   key={col.key}
                   checked={visibility[col.key]}
@@ -83,12 +88,12 @@ export const TourStatsTable = ({ rows, totals, visibility, onVisibilityChange, i
                 {visibility.allowances && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.allowances} /></TableHead>}
                 {visibility.guestTip && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.guestTip} /></TableHead>}
                 {visibility.companyTip && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.companyTip} /></TableHead>}
-                {visibility.shopping && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.shopping} /></TableHead>}
+                {isVisible('shopping') && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.shopping} /></TableHead>}
                 {visibility.ctpOnly && <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.ctpOnly} /></TableHead>}
-                {visibility.incomeWithoutCarHotel && (
+                {isVisible('incomeWithoutCarHotel') && (
                   <TableHead className="text-right"><StatColumnHelp {...statColumnHelp.incomeWithoutCarHotel} /></TableHead>
                 )}
-                {visibility.shopTipAllow && (
+                {isVisible('shopTipAllow') && (
                   <TableHead className="text-right font-semibold"><StatColumnHelp {...statColumnHelp.shopTipAllow} /></TableHead>
                 )}
                 {visibility.finalTotal && (
@@ -120,12 +125,12 @@ export const TourStatsTable = ({ rows, totals, visibility, onVisibilityChange, i
                   {visibility.allowances && <TableCell className="text-right">{formatCurrency(tour.totalAllowances)}</TableCell>}
                   {visibility.guestTip && <TableCell className="text-right">{formatCurrency(tour.totalTipFromGuests)}</TableCell>}
                   {visibility.companyTip && <TableCell className="text-right">{formatCurrency(tour.totalCompanyTip)}</TableCell>}
-                  {visibility.shopping && <TableCell className="text-right">{formatCurrency(tour.totalShoppings)}</TableCell>}
+                  {isVisible('shopping') && <TableCell className="text-right">{formatCurrency(tour.totalShoppings)}</TableCell>}
                   {visibility.ctpOnly && <TableCell className="text-right">{formatCurrency(tour.totalCtpOnly)}</TableCell>}
-                  {visibility.incomeWithoutCarHotel && (
+                  {isVisible('incomeWithoutCarHotel') && (
                     <TableCell className="text-right font-medium">{formatCurrency(tour.incomeWithoutCarHotel)}</TableCell>
                   )}
-                  {visibility.shopTipAllow && (
+                  {isVisible('shopTipAllow') && (
                     <TableCell className="text-right font-semibold text-primary">{formatCurrency(tour.totalShopTipAllow)}</TableCell>
                   )}
                   {visibility.finalTotal && (
@@ -148,12 +153,12 @@ export const TourStatsTable = ({ rows, totals, visibility, onVisibilityChange, i
                 {visibility.allowances && <TableCell className="text-right font-bold">{formatCurrency(totals.allowances)}</TableCell>}
                 {visibility.guestTip && <TableCell className="text-right font-bold">{formatCurrency(totals.tipFromGuests)}</TableCell>}
                 {visibility.companyTip && <TableCell className="text-right font-bold">{formatCurrency(totals.companyTip)}</TableCell>}
-                {visibility.shopping && <TableCell className="text-right font-bold">{formatCurrency(totals.shoppings)}</TableCell>}
+                {isVisible('shopping') && <TableCell className="text-right font-bold">{formatCurrency(totals.shoppings)}</TableCell>}
                 {visibility.ctpOnly && <TableCell className="text-right font-bold">{formatCurrency(totals.ctpOnly)}</TableCell>}
-                {visibility.incomeWithoutCarHotel && (
+                {isVisible('incomeWithoutCarHotel') && (
                   <TableCell className="text-right font-bold">{formatCurrency(totals.incomeWithoutCarHotel)}</TableCell>
                 )}
-                {visibility.shopTipAllow && (
+                {isVisible('shopTipAllow') && (
                   <TableCell className="text-right font-bold text-primary">{formatCurrency(totals.totalShopTipAllow)}</TableCell>
                 )}
                 {visibility.finalTotal && (

@@ -7,13 +7,20 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
 import { toast } from 'sonner';
-import type { Destination } from '@/types/tour';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  canViewTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface DestinationsDesktopTableProps {
   groups: Array<{ groupName: string; items: any[] }>;
   duplicateDestinationNames: Set<string>;
   tourGuests: number;
   readOnly: boolean;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
   onEdit: (index: number) => void;
   onDelete: (index: number) => void;
   onGuestsChange: (originalIndex: number, destination: any, value: number | undefined) => void;
@@ -25,42 +32,64 @@ export function DestinationsDesktopTable({
   duplicateDestinationNames,
   tourGuests,
   readOnly,
+  lineFieldAccess,
   onEdit,
   onDelete,
   onGuestsChange,
   totalAmount,
 }: DestinationsDesktopTableProps) {
+  const showName = canViewTourLineField(lineFieldAccess, 'name');
+  const showPrice = canViewTourLineField(lineFieldAccess, 'price');
+  const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
+  const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showTotal = showPrice && showQuantity;
+  const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
+  const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
+  const columnCount = [true, showName, showPrice, showQuantity, showTotal, showDate, canUseActions].filter(Boolean).length;
+
   return (
     <>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-[50px]">#</TableHead>
+            {showName && (
             <TableHead>
               <span className="sm:hidden">Đến</span>
               <span className="hidden sm:inline">Điểm đến</span>
             </TableHead>
+            )}
+            {showPrice && (
             <TableHead>Giá</TableHead>
+            )}
+            {showQuantity && (
             <TableHead className="w-[80px]">
               <span className="sm:hidden">Khách</span>
               <span className="hidden sm:inline">Tổng khách</span>
             </TableHead>
+            )}
+            {showTotal && (
             <TableHead>
               <span className="sm:hidden">Tổng</span>
               <span className="hidden sm:inline">Thành tiền</span>
             </TableHead>
+            )}
+            {showDate && (
             <TableHead>Ngày</TableHead>
+            )}
+            {canUseActions && (
             <TableHead className="text-right w-[50px]">
               <span className="sm:hidden">...</span>
               <span className="hidden sm:inline">Thao tác</span>
             </TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
           {groups.map(({ groupName, items: groupItems }) => (
             <>
               <TableRow key={`group-${groupName}`} className="bg-muted/50">
-                <TableCell colSpan={7} className="font-semibold">
+                <TableCell colSpan={columnCount} className="font-semibold">
                   Tỉnh: {groupName} ({groupItems.length})
                 </TableCell>
               </TableRow>
@@ -76,19 +105,24 @@ export function DestinationsDesktopTable({
                     className={cn('animate-fade-in', (isDupName || isZeroPrice) && 'bg-red-50 dark:bg-red-950')}
                   >
                     <TableCell className="font-medium">{idx + 1}</TableCell>
+                    {showName && (
                     <TableCell className="font-medium">
                       <TourRowLabel kind="destination" label={destination.name} />
                       {isDupName && <span className="ml-2 text-destructive" title="Tên điểm đến trùng">⚑</span>}
                     </TableCell>
+                    )}
+                    {showPrice && (
                     <TableCell className={destination.price === 0 ? 'text-destructive font-semibold' : ''}>
                       {formatCurrency(destination.price)}
                       {destination.price === 0 && <span className="ml-2 text-destructive" title="Giá bằng 0">⚑</span>}
                     </TableCell>
+                    )}
+                    {showQuantity && (
                     <TableCell>
                       <NumberInputMobile
                         value={destination.guests}
                         onChange={(val) => {
-                          if (readOnly) return;
+                          if (!canEditQuantity) return;
                           let v = val;
                           if (v !== undefined && tourGuests && v > tourGuests) {
                             toast.warning(`Số khách không được vượt quá tổng khách của tour (${tourGuests}).`);
@@ -98,14 +132,20 @@ export function DestinationsDesktopTable({
                         }}
                         min={0}
                         max={tourGuests}
-                        disabled={readOnly}
+                        disabled={!canEditQuantity}
                         className="w-16 sm:w-24"
                       />
                     </TableCell>
+                    )}
+                    {showTotal && (
                     <TableCell className="font-semibold">{formatCurrency(totalAmt)}</TableCell>
+                    )}
+                    {showDate && (
                     <TableCell>{formatDate(destination.date)}</TableCell>
+                    )}
+                    {canUseActions && (
                     <TableCell className="text-right">
-                      {!readOnly && (
+                      {canUseActions && (
                         <div className="sm:hidden">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -125,7 +165,7 @@ export function DestinationsDesktopTable({
                           </DropdownMenu>
                         </div>
                       )}
-                      {!readOnly && (
+                      {canUseActions && (
                         <div className="hidden sm:flex sm:gap-2 sm:justify-end">
                           <Button variant="ghost" size="sm" onClick={() => onEdit(destination.originalIndex)} className="hover-scale" title="Sửa">
                             <Edit2 className="h-4 w-4" />
@@ -136,6 +176,7 @@ export function DestinationsDesktopTable({
                         </div>
                       )}
                     </TableCell>
+                    )}
                   </TableRow>
                 );
               })}

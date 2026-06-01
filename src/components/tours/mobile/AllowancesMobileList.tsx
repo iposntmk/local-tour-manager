@@ -7,6 +7,12 @@ import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { TourRowIcon } from '@/components/tours/TourRowIcon';
 import type { Allowance } from '@/types/tour';
+import {
+  canEditAnyTourLineField,
+  canViewTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface AllowanceItem extends Allowance {
   originalIndex: number;
@@ -16,6 +22,7 @@ interface AllowanceItem extends Allowance {
 interface Props {
   items: AllowanceItem[];
   readOnly: boolean;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
   onEdit: (idx: number) => void;
   onCopy: (idx: number) => void;
   onDelete: (idx: number) => void;
@@ -23,7 +30,14 @@ interface Props {
   totalQuantity: number;
 }
 
-export function AllowancesMobileList({ items, readOnly, onEdit, onCopy, onDelete, totalAmount, totalQuantity }: Props) {
+export function AllowancesMobileList({ items, readOnly, lineFieldAccess, onEdit, onCopy, onDelete, totalAmount, totalQuantity }: Props) {
+  const showName = canViewTourLineField(lineFieldAccess, 'name');
+  const showPrice = canViewTourLineField(lineFieldAccess, 'price');
+  const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
+  const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showTotal = showPrice && showQuantity;
+  const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess, ['name', 'price', 'date', 'quantity']);
+
   return (
     <div className="p-3 space-y-2">
       {items.map((allowance) => {
@@ -36,11 +50,18 @@ export function AllowancesMobileList({ items, readOnly, onEdit, onCopy, onDelete
             <div className={`rounded-lg border p-2.5 space-y-1.5 ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : 'bg-card'}`}>
               {/* Row 1: icon + name + date + actions */}
               <div className="flex items-center gap-1.5 min-w-0">
+                {showName && (
+                <>
                 <TourRowIcon kind="allowance" label={allowance.name} className="shrink-0" />
                 <span className="flex-1 min-w-0 truncate text-sm font-medium">{allowance.name}</span>
                 {isZeroPrice && <span className="shrink-0 text-destructive text-xs">⚑</span>}
+                </>
+                )}
+                {!showName && <span className="flex-1 text-sm font-medium">Dòng CTP #{allowance.originalIndex + 1}</span>}
+                {showDate && (
                 <span className="shrink-0 text-xs text-muted-foreground pl-1">{formatDate(allowance.date)}</span>
-                {!readOnly && (
+                )}
+                {canUseActions && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
@@ -63,27 +84,35 @@ export function AllowancesMobileList({ items, readOnly, onEdit, onCopy, onDelete
               </div>
               {/* Row 2: values */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pl-9">
+                {showPrice && (
                 <span>
                   <span className="text-muted-foreground">Giá: </span>
                   <span className={isZeroPrice ? 'text-destructive font-semibold' : 'font-medium'}>{formatCurrency(allowance.price)}</span>
                 </span>
+                )}
+                {showQuantity && (
                 <span>
                   <span className="text-muted-foreground">SL: </span>
                   <span className="font-medium">{qty}</span>
                 </span>
+                )}
+                {showTotal && (
                 <span>
                   <span className="text-muted-foreground">Tổng: </span>
                   <span className="font-semibold">{formatCurrency(total)}</span>
                 </span>
+                )}
               </div>
             </div>
           </div>
         );
       })}
+      {(showQuantity || showTotal) && (
       <div className="flex justify-between px-2 py-2 bg-muted/50 rounded-lg font-semibold text-sm">
         <span>Tổng cộng ({totalQuantity} ngày):</span>
-        <span>{formatCurrency(totalAmount)}</span>
+        <span>{showTotal ? formatCurrency(totalAmount) : `${totalQuantity} ngày`}</span>
       </div>
+      )}
     </div>
   );
 }

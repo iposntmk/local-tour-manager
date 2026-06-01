@@ -9,12 +9,17 @@ import {
   formatNgayRangeForExcel, buildServiceItems, appendSummarySection, formatTourNationalities,
 } from './excel-helpers';
 
-const COLUMN_WIDTHS = [14, 10, 24, 8, 12, 10, 12, 22, 8, 8, 8, 10, 14];
-const COLUMN_KEYS = ['code', 'date', 'service', 'serviceDate', 'price', 'quantity', 'total', 'location', 'locationDate', 'days', 'ctp', 'ctpTotal', 'tourTotal'];
+const COLUMN_WIDTHS = [14, 10, 24, 8, 12, 10, 12, 22, 8, 8, 8, 10, 14, 8, 12, 24, 12];
+const COLUMN_KEYS = [
+  'code', 'date', 'service', 'serviceDate', 'price', 'quantity', 'total',
+  'location', 'locationDate', 'days', 'ctp', 'ctpTotal', 'tourTotal',
+  'vatRate', 'vatAmount', 'guideNote', 'attachmentCount',
+];
 const HEADER2_LABELS = [
   'code', 'ngày', 'vé/ăn/uống/chi phí', 'ngày', 'giá vé/đơn giá',
   'số khách/ số ngày/ tổng số chai nước uống',
   'thành tiền', 'Địa điểm/tỉnh', 'ngày', 'số ngày', 'CTP', 'thành tiền', '',
+  'VAT %', 'Tiền VAT', 'Ghi chú HDV', 'Số chứng từ/ảnh',
 ];
 
 const writeWorksheetHeaders = (worksheet: Worksheet, isDraft: boolean) => {
@@ -30,11 +35,13 @@ const writeWorksheetHeaders = (worksheet: Worksheet, isDraft: boolean) => {
   worksheet.mergeCells('A1:B1');
   worksheet.mergeCells('C1:G1');
   worksheet.mergeCells('H1:L1');
+  worksheet.mergeCells('N1:Q1');
   const h1Cells = [
     { cell: 'A1', value: 'code', fill: headerFill },
     { cell: 'C1', value: 'vé + ăn + uống + chi phí', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } },
     { cell: 'H1', value: 'Công tác phí (CTP) + ngủ', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } },
     { cell: 'M1', value: 'Tổng tour', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFC000' } } },
+    { cell: 'N1', value: 'VAT + chứng từ', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFC000' } } },
   ];
   h1Cells.forEach(({ cell, value, fill }) => {
     const c = worksheet.getCell(cell);
@@ -42,7 +49,7 @@ const writeWorksheetHeaders = (worksheet: Worksheet, isDraft: boolean) => {
     c.fill = fill; c.border = thinBorder;
     c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
   });
-  for (let col = 1; col <= 13; col++) h1.getCell(col).border = thinBorder;
+  for (let col = 1; col <= 17; col++) h1.getCell(col).border = thinBorder;
 
   const h2 = worksheet.getRow(2);
   h2.height = 40;
@@ -62,7 +69,7 @@ export const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBui
 
   const totalGuests = tour.totalGuests || tour.adults + tour.children;
   const dataStartRow = 3;
-  const applyBorderAll = (row: Row) => applyRowBorder(row, 1, 13);
+  const applyBorderAll = (row: Row) => applyRowBorder(row, 1, 17);
 
   let firstDataRow = true;
   const setCodeAndDateCells = (row: Row) => {
@@ -100,6 +107,14 @@ export const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBui
       row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
       row.getCell(7).value = { formula: `E${rowNumber}*F${rowNumber}` };
       row.getCell(7).numFmt = currencyFormat;
+      row.getCell(14).value = service.vatRate || 0;
+      row.getCell(14).numFmt = '0.00';
+      row.getCell(15).value = service.vatAmount || 0;
+      row.getCell(15).numFmt = currencyFormat;
+      row.getCell(16).value = service.guideNote || '';
+      row.getCell(16).alignment = { wrapText: true, vertical: 'middle' };
+      row.getCell(17).value = service.attachmentCount || 0;
+      row.getCell(17).alignment = { horizontal: 'center', vertical: 'middle' };
     }
     if (allowance) {
       row.getCell(8).value = allowance.name;
@@ -158,7 +173,7 @@ export const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBui
 
   if (tour.notes && String(tour.notes).trim().length > 0) {
     currentRow++;
-    styleMergedRange(worksheet, `A${currentRow}:M${currentRow}`, `Ghi chú: ${tour.notes}`, {
+    styleMergedRange(worksheet, `A${currentRow}:Q${currentRow}`, `Ghi chú: ${tour.notes}`, {
       bold: false,
       alignment: { horizontal: 'left', vertical: 'top', wrapText: true, shrinkToFit: false, indent: 0, readingOrder: 'ltr', textRotation: 0 },
     });

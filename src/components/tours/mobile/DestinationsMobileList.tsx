@@ -8,6 +8,13 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowIcon } from '@/components/tours/TourRowIcon';
 import type { Destination } from '@/types/tour';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  canViewTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface DestinationItem extends Destination { originalIndex: number }
 
@@ -21,13 +28,22 @@ interface Props {
   duplicateDestinationNames: Set<string>;
   tourGuests: number;
   readOnly: boolean;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
   onEdit: (idx: number) => void;
   onDelete: (idx: number) => void;
   onGuestsChange: (originalIndex: number, dest: DestinationItem, val: number | undefined) => void;
   totalAmount: number;
 }
 
-export function DestinationsMobileList({ groups, duplicateDestinationNames, tourGuests, readOnly, onEdit, onDelete, onGuestsChange, totalAmount }: Props) {
+export function DestinationsMobileList({ groups, duplicateDestinationNames, tourGuests, readOnly, lineFieldAccess, onEdit, onDelete, onGuestsChange, totalAmount }: Props) {
+  const showName = canViewTourLineField(lineFieldAccess, 'name');
+  const showPrice = canViewTourLineField(lineFieldAccess, 'price');
+  const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
+  const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showTotal = showPrice && showQuantity;
+  const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
+  const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
+
   return (
     <div className="p-3 space-y-3">
       {groups.map(({ groupName, items }) => (
@@ -49,12 +65,19 @@ export function DestinationsMobileList({ groups, duplicateDestinationNames, tour
                 >
                   {/* Row 1: icon + name + dup flag + date + actions */}
                   <div className="flex items-center gap-1.5 min-w-0">
+                    {showName && (
+                    <>
                     <TourRowIcon kind="destination" label={destination.name} className="shrink-0" />
                     <span className="flex-1 min-w-0 truncate text-sm font-medium">{destination.name}</span>
                     {isDupName && <span className="shrink-0 text-destructive text-xs">⚑</span>}
                     {isZeroPrice && !isDupName && <span className="shrink-0 text-destructive text-xs">⚑</span>}
+                    </>
+                    )}
+                    {!showName && <span className="flex-1 text-sm font-medium">Dòng điểm đến #{destination.originalIndex + 1}</span>}
+                    {showDate && (
                     <span className="shrink-0 text-xs text-muted-foreground pl-1">{formatDate(destination.date)}</span>
-                    {!readOnly && (
+                    )}
+                    {canUseActions && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
@@ -74,18 +97,24 @@ export function DestinationsMobileList({ groups, duplicateDestinationNames, tour
                   </div>
                   {/* Row 2: values */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pl-9">
+                    {showPrice && (
                     <span>
                       <span className="text-muted-foreground">Giá: </span>
                       <span className={isZeroPrice ? 'text-destructive font-semibold' : 'font-medium'}>{formatCurrency(destination.price)}</span>
                     </span>
+                    )}
+                    {showQuantity && (
                     <span className="flex items-center gap-1">
                       <span className="text-muted-foreground">Khách: </span>
-                      <NumberInputMobile value={destination.guests} onChange={(val) => onGuestsChange(destination.originalIndex, destination, val)} min={0} max={tourGuests} disabled={readOnly} className="w-14 h-6 text-xs" />
+                      <NumberInputMobile value={destination.guests} onChange={(val) => onGuestsChange(destination.originalIndex, destination, val)} min={0} max={tourGuests} disabled={!canEditQuantity} className="w-14 h-6 text-xs" />
                     </span>
+                    )}
+                    {showTotal && (
                     <span>
                       <span className="text-muted-foreground">Tổng: </span>
                       <span className="font-semibold">{formatCurrency(total)}</span>
                     </span>
+                    )}
                   </div>
                 </div>
               );

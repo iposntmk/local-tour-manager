@@ -16,7 +16,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Send, CheckCircle2, RotateCcw, Unlock, History, Wallet } from 'lucide-react';
 import { store } from '@/lib/datastore';
 import { useAuth } from '@/contexts/AuthContext';
+import { toVietnameseError } from '@/lib/error-messages';
 import type { Tour } from '@/types/tour';
+import { areAllSettlementLinesApproved } from '@/lib/tour-line-utils';
 import { canReviewTour, canSubmitTour, validateSettlementReady } from '@/lib/settlement-utils';
 import { canRecordPayment, isTourPaymentEligible } from '@/lib/payment-utils';
 import { SettlementStatusBadge } from './SettlementStatusBadge';
@@ -65,8 +67,8 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
       toast.success('Đã gửi kế toán kiểm tra.');
       await refresh();
       closeDialog();
-    } catch (e: any) {
-      toast.error(e?.message || 'Không thể gửi hồ sơ.');
+    } catch (e) {
+      toast.error(toVietnameseError(e, 'Không thể gửi hồ sơ.'));
     } finally {
       setBusy(false);
     }
@@ -79,22 +81,26 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
       toast.success('Đã trả hồ sơ về HDV.');
       await refresh();
       closeDialog();
-    } catch (e: any) {
-      toast.error(e?.message || 'Không thể trả hồ sơ.');
+    } catch (e) {
+      toast.error(toVietnameseError(e, 'Không thể trả hồ sơ.'));
     } finally {
       setBusy(false);
     }
   };
 
   const handleApprove = async () => {
+    if (!areAllSettlementLinesApproved(tour)) {
+      toast.error('Chỉ chốt khi tất cả dòng đã được duyệt.');
+      return;
+    }
     setBusy(true);
     try {
       await store.approveTourSettlement(tour.id, note || undefined);
       toast.success('Đã duyệt hồ sơ. Hồ sơ đã được khóa.');
       await refresh();
       closeDialog();
-    } catch (e: any) {
-      toast.error(e?.message || 'Không thể duyệt hồ sơ.');
+    } catch (e) {
+      toast.error(toVietnameseError(e, 'Không thể duyệt hồ sơ.'));
     } finally {
       setBusy(false);
     }
@@ -107,8 +113,8 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
       toast.success('Đã mở khóa hồ sơ.');
       await refresh();
       closeDialog();
-    } catch (e: any) {
-      toast.error(e?.message || 'Không thể mở khóa hồ sơ.');
+    } catch (e) {
+      toast.error(toVietnameseError(e, 'Không thể mở khóa hồ sơ.'));
     } finally {
       setBusy(false);
     }
@@ -119,6 +125,7 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
   const showReopen = hasPermission('reopen_settlement') && (tour.settlementStatus === 'approved' || tour.settlementStatus === 'closed');
   const showPaymentBadge = isTourPaymentEligible(tour);
   const showPaymentCTA = canRecordPayment(tour, hasPermission('mark_tour_paid'));
+  const allLinesApproved = areAllSettlementLinesApproved(tour);
 
   const dialogConfig: Record<Exclude<ActionKind, null>, { title: string; description: string; confirmLabel: string; handler: () => Promise<void> }> = {
     submit: {
@@ -135,7 +142,7 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
     },
     approve: {
       title: 'Duyệt hồ sơ này?',
-      description: 'Hồ sơ sẽ được khóa, không thể chỉnh sửa trừ khi admin mở lại.',
+      description: 'Hồ sơ chỉ được khóa khi tất cả dòng trong tab Tổng hợp đã được duyệt.',
       confirmLabel: 'Duyệt',
       handler: handleApprove,
     },
@@ -177,7 +184,7 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
             <RotateCcw className="h-4 w-4 mr-1" />
             Trả về HDV
           </Button>
-          <Button size="sm" onClick={() => setPending('approve')}>
+          <Button size="sm" onClick={() => setPending('approve')} disabled={!allLinesApproved}>
             <CheckCircle2 className="h-4 w-4 mr-1" />
             Duyệt
           </Button>

@@ -60,7 +60,29 @@ export interface LineReviewFields {
   reviewedAt?: string;
 }
 
-export interface Destination extends LineReviewFields {
+export type AttachmentLineType = 'destination' | 'meal' | 'expense';
+
+export interface TourLineAttachment {
+  id: string;
+  tourId: string;
+  lineType: AttachmentLineType;
+  lineId: string;
+  filePath: string;
+  fileName: string;
+  fileType?: string;
+  fileSize?: number;
+  uploadedBy?: string;
+  createdAt: string;
+}
+
+export interface LineEvidenceFields {
+  guideNote?: string;
+  vatRate?: number;
+  vatAmount?: number;
+  attachments?: TourLineAttachment[];
+}
+
+export interface Destination extends LineReviewFields, LineEvidenceFields {
   name: string;
   price: number;
   date: string;
@@ -69,7 +91,7 @@ export interface Destination extends LineReviewFields {
   matchedPrice?: number;
 }
 
-export interface Expense extends LineReviewFields {
+export interface Expense extends LineReviewFields, LineEvidenceFields {
   name: string;
   price: number;
   date: string;
@@ -78,7 +100,7 @@ export interface Expense extends LineReviewFields {
   matchedPrice?: number;
 }
 
-export interface Meal extends LineReviewFields {
+export interface Meal extends LineReviewFields, LineEvidenceFields {
   name: string;
   price: number;
   date: string;

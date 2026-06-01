@@ -6,7 +6,12 @@ import { toast } from 'sonner';
 import { differenceInDays } from 'date-fns';
 import { exportTourToExcel } from '@/lib/excel-utils';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import { toVietnameseError } from '@/lib/error-messages';
 import { useAuth } from '@/contexts/AuthContext';
+import { areAllSettlementLinesApproved } from '@/lib/tour-line-utils';
+import { canEditTourData } from '@/lib/settlement-utils';
+import { canAuthViewTourShopping } from '@/lib/shopping-access';
+import { getTourInfoFieldAccess, getTourLineFieldAccess, getTourTabAccess } from '@/lib/tour-detail-permissions';
 import type { Tour, TourInput, TourSummary } from '@/types/tour';
 
 const WATER_EXPENSE_NAMES = [
@@ -29,7 +34,7 @@ export function useTourDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin, isGuide, userProfile } = useAuth();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
@@ -42,13 +47,6 @@ export function useTourDetail() {
   const isNewTour = id === 'new';
 
   const canCreateTour = hasPermission('create_tours');
-  const canEditTourInfo = hasPermission('edit_tour_info') || hasPermission('edit_tours');
-  const canEditDestinations = hasPermission('edit_tour_destinations') || hasPermission('edit_tours');
-  const canEditExpenses = hasPermission('edit_tour_expenses') || hasPermission('edit_tours');
-  const canEditMeals = hasPermission('edit_tour_meals') || hasPermission('edit_tours');
-  const canEditAllowances = hasPermission('edit_tour_allowances') || hasPermission('edit_tours');
-  const canEditShoppings = hasPermission('edit_tour_shoppings') || hasPermission('edit_tours');
-  const canEditSummary = hasPermission('edit_tour_summary') || hasPermission('edit_tours');
   const canExportTour = hasPermission('export_tours');
   const canDeleteTour = hasPermission('delete_tours');
   const canUploadTourImages = hasPermission('upload_tour_images') || hasPermission('edit_tours');
@@ -86,7 +84,7 @@ export function useTourDetail() {
       toast.error(
         msg.includes('unique') || msg.includes('duplicate') || msg.includes('tour_code')
           ? 'Mã tour này đã tồn tại. Vui lòng dùng mã khác.'
-          : error.message || 'Tạo tour thất bại'
+          : toVietnameseError(error, 'Tạo tour thất bại')
       );
     },
   });
@@ -103,7 +101,7 @@ export function useTourDetail() {
       toast.error(
         msg.includes('unique') || msg.includes('duplicate') || msg.includes('tour_code')
           ? 'Mã tour này đã tồn tại. Vui lòng dùng mã khác.'
-          : error.message || 'Cập nhật tour thất bại'
+          : toVietnameseError(error, 'Cập nhật tour thất bại')
       );
     },
   });
@@ -122,8 +120,31 @@ export function useTourDetail() {
   });
 
   const displayTour = isNewTour ? newTourData as Tour : tour;
+  const canViewShoppings = canAuthViewTourShopping({
+    isAdmin,
+    isGuide,
+    userId: userProfile?.id,
+    tour: displayTour,
+    isNewTour,
+  });
+  const tabAccess = getTourTabAccess(hasPermission, { canViewSensitiveShopping: canViewShoppings, isNewTour });
+  const infoFieldAccess = getTourInfoFieldAccess(hasPermission, tabAccess.info);
+  const lineFieldAccess = getTourLineFieldAccess(hasPermission);
+  // Khóa chỉnh sửa khi hồ sơ đã gửi/duyệt/đóng: chỉ cho sửa lúc còn nháp hoặc
+  // bị trả về (need_changes). Tour mới và admin không bị khóa.
+  const settlementUnlocked = isNewTour || isAdmin || (displayTour ? canEditTourData(displayTour) : false);
+  const canEditTourInfo = settlementUnlocked && Object.values(infoFieldAccess).some((access) => access.edit);
+  const canEditDestinations = settlementUnlocked && tabAccess.destinations.edit;
+  const canEditExpenses = settlementUnlocked && tabAccess.expenses.edit;
+  const canEditMeals = settlementUnlocked && tabAccess.meals.edit;
+  const canEditAllowances = settlementUnlocked && tabAccess.allowances.edit;
+  const canEditShoppings = settlementUnlocked && tabAccess.shoppings.edit;
+  const canEditSummary = settlementUnlocked && tabAccess.summary.edit;
+  // Tour đã lưu nhưng bị khóa chỉnh sửa do trạng thái hồ sơ (đã gửi/duyệt/đóng).
+  const isSettlementLocked = !isNewTour && !settlementUnlocked;
+  const settlementStatus = displayTour?.settlementStatus;
   const totalGuests = displayTour?.totalGuests || (displayTour?.adults || 0) + (displayTour?.children || 0) || 0;
-  const hasUnpaidShoppings = (displayTour?.shoppings || []).some((s) => {
+  const hasUnpaidShoppings = canViewShoppings && (displayTour?.shoppings || []).some((s) => {
     if ((s.price ?? 0) <= 0) return false;
     return (s.payments || []).reduce((sum, p) => sum + p.amount, 0) < (s.netCommission ?? s.price);
   });
@@ -160,14 +181,21 @@ export function useTourDetail() {
   const handleExportExcel = async () => {
     if (!canExportTour) { toast.error('Bạn không có quyền xuất Excel.'); return; }
     if (!displayTour || isNewTour) { toast.error('Không thể xuất tour chưa được lưu'); return; }
+    const exportReady = areAllSettlementLinesApproved(displayTour as Tour)
+      && (displayTour.settlementStatus === 'approved' || displayTour.settlementStatus === 'closed');
+    if (!exportReady) {
+      toast.error('Chỉ xuất Excel khi tất cả dòng đã duyệt và hồ sơ đã chốt.');
+      return;
+    }
     try { await exportTourToExcel(displayTour as Tour); toast.success('Xuất tour ra Excel thành công'); }
     catch (error) { toast.error('Xuất tour ra Excel thất bại'); console.error('Export error:', error); }
   };
 
   const handleDismissWater = useCallback(() => {
+    if (!canEditExpenses) { toast.error('Bạn không có quyền cập nhật cảnh báo chi phí nước uống.'); return; }
     setWaterDismissedLocal(true);
     dismissWaterMutation.mutate();
-  }, [dismissWaterMutation]);
+  }, [canEditExpenses, dismissWaterMutation]);
 
   return {
     id, tour, tourImages, displayTour, isNewTour, isLoading,
@@ -176,9 +204,10 @@ export function useTourDetail() {
     activeTab, setActiveTab,
     historyOpen, setHistoryOpen,
     waterDismissedLocal, isWaterDismissed, showWaterWarning,
-    totalGuests, hasUnpaidShoppings,
+    isSettlementLocked, settlementStatus,
+    totalGuests, hasUnpaidShoppings, tabAccess, infoFieldAccess, lineFieldAccess,
     canCreateTour, canEditTourInfo, canEditDestinations, canEditExpenses,
-    canEditMeals, canEditAllowances, canEditShoppings, canEditSummary,
+    canEditMeals, canEditAllowances, canViewShoppings, canEditShoppings, canEditSummary,
     canExportTour, canDeleteTour, canUploadTourImages, canDeleteTourImages,
     handleInfoSave, handleSummaryUpdate, handleDelete,
     handleHeaderSave, handleExportExcel, handleDismissWater,

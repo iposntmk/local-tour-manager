@@ -20,6 +20,7 @@ interface TourInfoComboboxProps {
   canCreate?: boolean;
   onOpenNewDialog?: () => void;
   createButtonTitle?: string;
+  disabled?: boolean;
   children?: React.ReactNode;
 }
 
@@ -37,6 +38,7 @@ export function TourInfoCombobox({
   canCreate,
   onOpenNewDialog,
   createButtonTitle,
+  disabled,
   children,
 }: TourInfoComboboxProps) {
   const selectedItem = items.find((i) => i.id === selectedId);
@@ -51,6 +53,7 @@ export function TourInfoCombobox({
               type="button"
               variant="outline"
               role="combobox"
+              disabled={disabled}
               className={cn('min-w-0 flex-1 justify-between', required && getRequiredFieldClasses(!selectedId))}
             >
               <span className="truncate">{selectedItem ? selectedItem.name : placeholder}</span>
@@ -78,7 +81,7 @@ export function TourInfoCombobox({
             </Command>
           </PopoverContent>
         </Popover>
-        {canCreate && (
+        {canCreate && !disabled && (
           <Button
             type="button"
             variant="outline"

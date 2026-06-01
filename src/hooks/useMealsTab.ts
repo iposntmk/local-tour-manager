@@ -3,9 +3,17 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
+import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
+import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Meal, Tour } from '@/types/tour';
 import type { DetailedExpense, ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
+import {
+  canEditAnyTourLineField,
+  canEditTourLineField,
+  type Access,
+  type TourLineFieldKey,
+} from '@/lib/tour-detail-permissions';
 
 interface UseMealsTabOptions {
   tourId?: string;
@@ -13,9 +21,10 @@ interface UseMealsTabOptions {
   onChange?: (meals: Meal[]) => void;
   tour?: Tour | null;
   readOnly?: boolean;
+  lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
 }
 
-export function useMealsTab({ tourId, meals, onChange, tour, readOnly }: UseMealsTabOptions) {
+export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineFieldAccess }: UseMealsTabOptions) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Meal>({ name: '', price: 0, date: '' });
   const [openMeal, setOpenMeal] = useState(false);
@@ -26,8 +35,14 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly }: UseMeal
   const [openCategory, setOpenCategory] = useState(false);
   const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
   const queryClient = useQueryClient();
+  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId);
   const { isGuide, userProfile } = useAuth();
   const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
+  const canEditLine = canEditAnyTourLineField(lineFieldAccess);
+  const canCreateLine =
+    canEditTourLineField(lineFieldAccess, 'name') &&
+    canEditTourLineField(lineFieldAccess, 'date') &&
+    canEditTourLineField(lineFieldAccess, 'price');
 
   if (!tourId && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {
     formData.guests = tour!.totalGuests;
@@ -52,12 +67,15 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly }: UseMeal
 
   const addMutation = useMutation({
     mutationFn: async (meal: Meal) => {
-      if (tourId) await store.addMeal(tourId, meal);
-      else onChange?.([...meals, meal]);
+      if (tourId) return store.addMeal(tourId, meal);
+      onChange?.([...meals, meal]);
+      return undefined;
     },
-    onSuccess: () => {
+    onSuccess: async (lineId) => {
+      await uploadPendingFiles('meal', lineId);
       invalidate();
       toast.success('Đã thêm bữa ăn');
+      clearPendingFiles();
       setFormData({ name: '', price: 0, date: tour?.startDate || '' });
     },
   });
@@ -70,6 +88,7 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly }: UseMeal
     onSuccess: () => {
       invalidate();
       toast.success('Đã cập nhật bữa ăn');
+      clearPendingFiles();
       setEditingIndex(null);
     },
   });
@@ -116,13 +135,20 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly }: UseMeal
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) { toast.error('Bạn không có quyền sửa bữa ăn trong tour.'); return; }
+    if (editingIndex === null && !canCreateLine) { toast.error('Bạn không có quyền thêm dòng bữa ăn.'); return; }
+    if (editingIndex !== null && !canEditLine) { toast.error('Bạn không có quyền sửa trường trong dòng bữa ăn.'); return; }
     if (!formData.name || !formData.date) { toast.error('Vui lòng điền đầy đủ các trường bắt buộc'); return; }
+    if (!isVatAmountValid(formData, tour?.totalGuests || 0)) { toast.error('Tiền VAT không được vượt quá thành tiền.'); return; }
+    if ((formData.vatRate || 0) > 0 && !hasLineAttachments(formData, pendingFiles)) {
+      toast.warning('VAT lớn hơn 0 nhưng chưa có chứng từ.');
+    }
     if (editingIndex !== null) updateMutation.mutate({ index: editingIndex, meal: formData });
     else addMutation.mutate(formData);
   };
 
   const handleEdit = (index: number) => {
-    if (readOnly) return;
+    if (readOnly || !canEditLine) return;
+    clearPendingFiles();
     setEditingIndex(index);
     setFormData(meals[index]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -131,15 +157,16 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly }: UseMeal
 
   const handleCancel = () => {
     setEditingIndex(null);
+    clearPendingFiles();
     setFormData({ name: '', price: 0, date: tour?.startDate || '' });
   };
 
   const handleDuplicate = (index: number) => {
-    if (!readOnly) addMutation.mutate(meals[index]);
+    if (!readOnly && canCreateLine) addMutation.mutate(meals[index]);
   };
 
   const handleCreateNewMeal = () => {
-    if (readOnly) return;
+    if (readOnly || !canEditTourLineField(lineFieldAccess, 'name') || !canEditTourLineField(lineFieldAccess, 'price')) return;
     if (!newMealName.trim()) { toast.error('Vui lòng nhập tên bữa ăn'); return; }
     if (newMealPrice <= 0) { toast.error('Vui lòng nhập giá hợp lệ'); return; }
     if (!newMealCategoryId) { toast.error('Vui lòng chọn hạng mục'); return; }
@@ -147,7 +174,7 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly }: UseMeal
   };
 
   const handleMobileGuestsChange = (originalIndex: number, val: number | undefined) => {
-    if (readOnly) return;
+    if (readOnly || !canEditTourLineField(lineFieldAccess, 'quantity')) return;
     const tourGuests = tour?.totalGuests || 0;
     let gv = val;
     if (gv !== undefined && tourGuests && gv > tourGuests) {
@@ -184,6 +211,7 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly }: UseMeal
     handleCreateNewMeal, handleMobileGuestsChange,
     handleCreateNewCategory: (data: ExpenseCategoryInput) => createCategoryMutation.mutate(data),
     sortedMeals, mealsTotalAmount,
+    pendingFiles, setPendingFiles,
     updateMutation, tourId,
   };
 }
