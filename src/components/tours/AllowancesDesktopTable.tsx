@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { Edit2, Trash2, Copy, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -98,14 +99,13 @@ export function AllowancesDesktopTable({
           const showSeparator = prevPriority !== null && currentPriority !== prevPriority;
 
           return (
-            <>
+            <Fragment key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`}>
               {showSeparator && (
-                <TableRow key={`separator-${rowIndex}`} className="border-t-2 border-primary">
+                <TableRow className="border-t-2 border-primary">
                   <TableCell colSpan={columnCount} className="h-0 p-0" />
                 </TableRow>
               )}
               <TableRow
-                key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`}
                 className={cn('animate-fade-in', isZeroPrice && 'bg-red-50 dark:bg-red-950')}
               >
                 <TableCell className="font-medium">{rowIndex + 1}</TableCell>
@@ -170,7 +170,7 @@ export function AllowancesDesktopTable({
                 </TableCell>
                 )}
               </TableRow>
-            </>
+            </Fragment>
           );
         })}
         {(showQuantity || showTotal) && (

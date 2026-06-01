@@ -34,8 +34,8 @@ export const TOUR_TAB_ORDER: TourTabKey[] = [
   'combined',
   'allowances',
   'shoppings',
-  'images',
   'summary',
+  'images',
 ];
 
 export const TOUR_TAB_TO_ROUTE: Record<TourTabKey, string> = {

@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { Edit2, Trash2, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -87,8 +88,8 @@ export function DestinationsDesktopTable({
         </TableHeader>
         <TableBody>
           {groups.map(({ groupName, items: groupItems }) => (
-            <>
-              <TableRow key={`group-${groupName}`} className="bg-muted/50">
+            <Fragment key={`group-${groupName}`}>
+              <TableRow className="bg-muted/50">
                 <TableCell colSpan={columnCount} className="font-semibold">
                   Tỉnh: {groupName} ({groupItems.length})
                 </TableCell>
@@ -180,7 +181,7 @@ export function DestinationsDesktopTable({
                   </TableRow>
                 );
               })}
-            </>
+            </Fragment>
           ))}
         </TableBody>
       </Table>

@@ -4,7 +4,6 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/currency-utils';
-import { formatDate } from '@/lib/utils';
 import type { Tour, TourSummary } from '@/types/tour';
 import { TourPaymentsPanel } from './TourPaymentsPanel';
 import { SummaryLineReviewTable, type SummaryLineType } from './SummaryLineReviewTable';
@@ -53,14 +52,6 @@ function SummarySection({
   );
 }
 
-function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="rounded-lg bg-background/80 p-3 shadow-sm">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words text-sm font-semibold">{value || '-'}</div>
-    </div>
-  );
-}
 
 export function SummaryTab({
   tour,
@@ -156,21 +147,8 @@ export function SummaryTab({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <SummarySection title="1. Thông tin tour" tone="blue">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <InfoItem label="Mã tour" value={tour.tourCode} />
-          <InfoItem label="Ngày bắt đầu" value={formatDate(tour.startDate)} />
-          <InfoItem label="Ngày kết thúc" value={formatDate(tour.endDate)} />
-          <InfoItem label="Tổng số ngày" value={tour.totalDays || 0} />
-          <InfoItem label="Số pax lớn" value={tour.adults || 0} />
-          <InfoItem label="Số pax trẻ em" value={tour.children || 0} />
-          <InfoItem label="Công ty mẹ" value={tour.companyRef?.nameAtBooking} />
-          <InfoItem label="Công ty land" value={tour.landOperatorRef?.nameAtBooking || '-'} />
-        </div>
-      </SummarySection>
-
       <SummarySection
-        title="2. Thông tin chi phí tour"
+        title="1. Thông tin chi phí tour"
         description="Gồm điểm đến, chi phí/dịch vụ và bữa ăn. Mỗi dòng có VAT, chứng từ, ghi chú HDV và trạng thái duyệt."
         tone="amber"
       >
@@ -186,7 +164,7 @@ export function SummaryTab({
       </SummarySection>
 
       <SummarySection
-        title="3. Thông tin công tác phí"
+        title="2. Thông tin công tác phí"
         description="Công tác phí được duyệt theo từng dòng và có nút sửa quay lại đúng tab nguồn."
         tone="violet"
       >
@@ -201,7 +179,7 @@ export function SummaryTab({
         />
       </SummarySection>
 
-      <SummarySection title="4. Thông tin tổng kết" tone="green">
+      <SummarySection title="3. Thông tin tổng kết" tone="green">
         <Card className="bg-background/90">
           <CardContent className="space-y-4 p-4">
             <div className="flex items-center justify-between rounded bg-primary/10 px-3 py-2">

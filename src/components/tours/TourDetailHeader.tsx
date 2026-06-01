@@ -102,6 +102,20 @@ export function TourDetailHeader({
               <span className="text-muted-foreground">Khách:</span>
               <span className="font-semibold">{totalGuests}</span>
             </div>
+            <span className="text-muted-foreground mx-2">|</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-muted-foreground">Công ty mẹ:</span>
+              <span className="font-semibold">{displayTour.companyRef?.nameAtBooking || '-'}</span>
+            </div>
+            {displayTour.landOperatorRef?.nameAtBooking && (
+              <>
+                <span className="text-muted-foreground mx-2">|</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-muted-foreground">Công ty land:</span>
+                  <span className="font-semibold">{displayTour.landOperatorRef.nameAtBooking}</span>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -161,16 +175,16 @@ export function TourDetailHeader({
               </div>
             </TabsTrigger>
           )}
-          {canViewTab('images') && <TabsTrigger value="images" className="text-xs sm:text-sm">
-            <div className="flex flex-col items-center">
-              <span className="sm:hidden">Ảnh</span><span className="hidden sm:inline">Hình ảnh</span>
-              <span className="text-xs sm:text-sm font-bold">{isNewTour ? '' : tourImagesCount}</span>
-            </div>
-          </TabsTrigger>}
           {canViewTab('summary') && <TabsTrigger value="summary" className="text-xs sm:text-sm">
             <div className="flex flex-col items-center">
               <span className="sm:hidden">TH</span><span className="hidden sm:inline">Tổng hợp</span>
               <span className="text-xs sm:text-sm font-bold">{formatCurrency(displayTour?.summary?.finalTotal ?? 0)}</span>
+            </div>
+          </TabsTrigger>}
+          {canViewTab('images') && <TabsTrigger value="images" className="text-xs sm:text-sm">
+            <div className="flex flex-col items-center">
+              <span className="sm:hidden">Ảnh</span><span className="hidden sm:inline">Hình ảnh</span>
+              <span className="text-xs sm:text-sm font-bold">{isNewTour ? '' : tourImagesCount}</span>
             </div>
           </TabsTrigger>}
         </TabsList>

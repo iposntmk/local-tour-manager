@@ -53,6 +53,14 @@ const SUMMARY_STATUS_LABELS: Partial<Record<LineStatus, string>> = {
   invalid: 'Chưa đúng',
 };
 
+type StatusFilter = 'hide_approved' | 'all' | 'pending' | 'invalid';
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'hide_approved', label: 'Ẩn đã duyệt' },
+  { value: 'all', label: 'Tất cả' },
+  { value: 'pending', label: 'Chưa duyệt' },
+  { value: 'invalid', label: 'Chưa đúng' },
+];
+
 const buildGroups = (tour: Tour): Group[] => [
   { title: 'Điểm đến (vé)', lineType: 'destination', className: 'bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100', rows: (tour.destinations || []).map((line, index) => ({ line, index })) },
   { title: 'Ăn', lineType: 'meal', className: 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100', rows: (tour.meals || []).map((line, index) => ({ line, index })) },
@@ -74,6 +82,7 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
   const { busy: reviewBusy, updateMany } = useLineReview(tour.id);
   const [dialogAttachments, setDialogAttachments] = useState<TourLineAttachment[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('hide_approved');
   const canReviewLines = !!tour.id && hasPermission('review_settlement_line');
 
   const approveSection = (group: Group) => {
@@ -123,6 +132,13 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
     if (!lineTypes?.length) return allGroups;
     return allGroups.filter((group) => lineTypes.includes(group.lineType));
   }, [tour, lineTypeKey]);
+  const filteredGroups = useMemo(() => groups.map((g) => {
+    let rows = g.rows;
+    if (statusFilter === 'hide_approved') rows = rows.filter(({ line }) => line.lineStatus !== 'valid');
+    else if (statusFilter === 'pending') rows = rows.filter(({ line }) => !line.lineStatus);
+    else if (statusFilter === 'invalid') rows = rows.filter(({ line }) => line.lineStatus === 'need_more' || line.lineStatus === 'invalid');
+    return { ...g, filteredRows: rows };
+  }), [groups, statusFilter]);
   const tourGuests = tour.totalGuests || 0;
 
   const openAttachments = (attachments: TourLineAttachment[]) => {
@@ -132,20 +148,31 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
 
   return (
     <div className="rounded-lg border">
-      <div className="border-b bg-muted/50 p-4">
-        <h3 className="font-semibold">{title}</h3>
+      <div className="border-b bg-muted/50 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold">{title}</h3>
+          <div className="flex flex-wrap gap-1">
+            {STATUS_FILTERS.map((f) => (
+              <Button key={f.value} size="sm" variant={statusFilter === f.value ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs" onClick={() => setStatusFilter(f.value)}>
+                {f.label}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="space-y-3 p-3 md:hidden">
-        {groups.map((group) => (
+        {filteredGroups.map((group) => (
           <div key={`${group.lineType}-mobile`} className="overflow-hidden rounded-lg border">
             <div className={`flex items-center justify-between gap-2 px-3 py-2 text-sm font-semibold ${group.className}`}>
-              <span>{group.title} ({group.rows.length})</span>
+              <span>{group.title} ({group.filteredRows.length}{group.filteredRows.length < group.rows.length ? `/${group.rows.length}` : ''})</span>
               {renderApproveAll(group)}
             </div>
             <div className="space-y-2 p-2">
-              {group.rows.length === 0 ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">Chưa có dữ liệu</div>
-              ) : group.rows.map(({ line, index }) => {
+              {group.filteredRows.length === 0 ? (
+                <div className="py-4 text-center text-sm text-muted-foreground">
+                  {group.rows.length > 0 ? `Đã ẩn ${group.rows.length} dòng` : 'Chưa có dữ liệu'}
+                </div>
+              ) : group.filteredRows.map(({ line, index }) => {
                 const attachments = isAttachmentLineType(group.lineType) ? (line as Destination | Meal | Expense).attachments || [] : [];
                 return (
                   <div key={`${group.lineType}-mobile-${line.id || index}`} className="rounded-md border bg-card p-3 text-sm">
@@ -236,24 +263,24 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
             </TableRow>
           </TableHeader>
           <TableBody>
-            {groups.map((group) => (
+            {filteredGroups.map((group) => (
               <Fragment key={group.lineType}>
                 <TableRow className={group.className}>
                   <TableCell colSpan={columnCount} className="font-semibold">
                     <div className="flex items-center justify-between gap-2">
-                      <span>{group.title} ({group.rows.length})</span>
+                      <span>{group.title} ({group.filteredRows.length}{group.filteredRows.length < group.rows.length ? `/${group.rows.length}` : ''})</span>
                       {renderApproveAll(group)}
                     </div>
                   </TableCell>
                 </TableRow>
-                {group.rows.length === 0 ? (
+                {group.filteredRows.length === 0 ? (
                   <TableRow key={`${group.lineType}-empty`}>
                     <TableCell colSpan={columnCount} className="text-center text-muted-foreground">
-                      Chưa có dữ liệu
+                      {group.rows.length > 0 ? `Đã ẩn ${group.rows.length} dòng` : 'Chưa có dữ liệu'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  group.rows.map(({ line, index }) => {
+                  group.filteredRows.map(({ line, index }) => {
                     const attachments = isAttachmentLineType(group.lineType) ? (line as Destination | Meal | Expense).attachments || [] : [];
                     const hasVatWithoutAttachment = 'vatRate' in line && (line.vatRate || 0) > 0 && attachments.length === 0;
                     return (
