@@ -7,7 +7,6 @@ import { DateInput } from '@/components/ui/date-input';
 import { Plus, Save } from 'lucide-react';
 import { cn, getRequiredFieldClasses } from '@/lib/utils';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
-import { GuideDialog } from '@/components/guides/GuideDialog';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
 import { TourNationalitiesPicker } from '@/components/tours/TourNationalitiesPicker';
 import { TourInfoCombobox } from '@/components/tours/TourInfoCombobox';
@@ -36,10 +35,10 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true, r
     selectedNationalities, setSelectedNationalities,
     totalGuests, totalDays,
     saveCompanyPref, handleSavePrefChange,
-    canCreateCompanies, canCreateGuides, canCreateNationalities,
-    companies, guides, languages, nationalities,
+    canCreateCompanies, canCreateNationalities,
+    companies, guides, nationalities,
     quickAddTarget, openQuickAdd, handleQuickAddOpenChange,
-    handleCreateCompany, handleCreateGuide, handleCreateNationality,
+    handleCreateCompany, handleCreateNationality,
   } = useTourInfoForm(initialData, onSubmit);
   const canView = (field: TourInfoFieldKey) => fieldAccess?.[field]?.view ?? true;
   const canEdit = (field: TourInfoFieldKey) => !readOnly && (fieldAccess?.[field]?.edit ?? true);
@@ -119,10 +118,7 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true, r
             placeholder="Chọn hướng dẫn viên..."
             searchPlaceholder="Tìm hướng dẫn viên..."
             emptyText="Không tìm thấy hướng dẫn viên."
-            canCreate={canCreateGuides}
             disabled={!canEdit('guide')}
-            onOpenNewDialog={() => openQuickAdd('guide')}
-            createButtonTitle="Thêm hướng dẫn viên"
           />
         )}
 
@@ -248,12 +244,6 @@ export function TourInfoForm({ initialData, onSubmit, showSubmitButton = true, r
         open={quickAddTarget === 'company' || quickAddTarget === 'landOperator'}
         onOpenChange={handleQuickAddOpenChange}
         onSubmit={handleCreateCompany}
-      />
-      <GuideDialog
-        open={quickAddTarget === 'guide'}
-        onOpenChange={handleQuickAddOpenChange}
-        languages={languages}
-        onSubmit={handleCreateGuide}
       />
       <NationalityDialog
         open={quickAddTarget === 'nationality'}

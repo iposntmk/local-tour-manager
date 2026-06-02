@@ -4,6 +4,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/currency-utils';
+import { cn } from '@/lib/utils';
 import type { Tour, TourSummary } from '@/types/tour';
 import { TourPaymentsPanel } from './TourPaymentsPanel';
 import { SummaryLineReviewTable, type SummaryLineType } from './SummaryLineReviewTable';
@@ -24,10 +25,10 @@ interface SummaryTabProps {
 type SectionTone = 'blue' | 'amber' | 'violet' | 'green';
 
 const SECTION_TONES: Record<SectionTone, string> = {
-  blue: 'border-sky-200 bg-sky-50/70 dark:border-sky-900 dark:bg-sky-950/40',
-  amber: 'border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/40',
-  violet: 'border-violet-200 bg-violet-50/70 dark:border-violet-900 dark:bg-violet-950/40',
-  green: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/40',
+  blue: 'sm:border-sky-200 sm:bg-sky-50/70 sm:dark:border-sky-900 sm:dark:bg-sky-950/40',
+  amber: 'sm:border-amber-200 sm:bg-amber-50/70 sm:dark:border-amber-900 sm:dark:bg-amber-950/40',
+  violet: 'sm:border-violet-200 sm:bg-violet-50/70 sm:dark:border-violet-900 sm:dark:bg-violet-950/40',
+  green: 'sm:border-emerald-200 sm:bg-emerald-50/70 sm:dark:border-emerald-900 sm:dark:bg-emerald-950/40',
 };
 
 function SummarySection({
@@ -42,10 +43,14 @@ function SummarySection({
   children: React.ReactNode;
 }) {
   return (
-    <section className={`rounded-xl border p-3 sm:p-4 ${SECTION_TONES[tone]}`}>
-      <div className="mb-3">
-        <h3 className="text-base font-semibold sm:text-lg">{title}</h3>
-        {description && <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{description}</p>}
+    <section className={cn('space-y-3 sm:rounded-xl sm:border sm:p-4', SECTION_TONES[tone])}>
+      <div>
+        <div className="flex items-center gap-2 sm:block">
+          <span className="h-px flex-1 bg-border sm:hidden" />
+          <h3 className="whitespace-nowrap text-sm font-semibold sm:text-lg">{title}</h3>
+          <span className="h-px flex-1 bg-border sm:hidden" />
+        </div>
+        {description && <p className="mt-1 hidden text-xs text-muted-foreground sm:block sm:text-sm">{description}</p>}
       </div>
       {children}
     </section>
@@ -180,8 +185,8 @@ export function SummaryTab({
       </SummarySection>
 
       <SummarySection title="3. Thông tin tổng kết" tone="green">
-        <Card className="bg-background/90">
-          <CardContent className="space-y-4 p-4">
+        <Card className="border-0 bg-transparent shadow-none sm:border sm:bg-background/90">
+          <CardContent className="space-y-4 p-0 sm:p-4">
             <div className="flex items-center justify-between rounded bg-primary/10 px-3 py-2">
               <span className="font-medium">Tổng các tab (tự động tính)</span>
               <span className="font-bold text-primary">{formatCurrency(summary.totalTabs)}</span>

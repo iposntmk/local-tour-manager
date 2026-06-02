@@ -111,7 +111,7 @@ export function DetailedExpenseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Sửa chi phí chi tiết' : 'Thêm chi phí chi tiết mới'}</DialogTitle>
         </DialogHeader>

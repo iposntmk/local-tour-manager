@@ -3,11 +3,16 @@ import type { Database } from '@/integrations/supabase/types';
 import type { Guide, Language, GuideInput, LanguageInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
 import { generateSearchKeywords } from '@/lib/string-utils';
-import { mapLanguage, mapGuide } from '../mappers';
-import type { GuideRow, GuideUpdate, LanguageUpdate } from '../store-types';
+import { mapLanguage } from '../mappers';
+import type { LanguageUpdate } from '../store-types';
 
+// Guides are now user_profiles with settlement_role = 'guide'. The guide master
+// methods below read through to the user-profile store; all guide creation and
+// editing happens on the Users page. The legacy `guides` table is no longer used.
 export class GuideModule {
   declare protected supabase: SupabaseClient<Database>;
+  declare listGuideUsers: (query?: SearchQuery) => Promise<Guide[]>;
+  declare getGuideUser: (id: string) => Promise<Guide | null>;
 
   private isMissingLanguageSchemaError(error: { code?: string; message?: string; details?: string; hint?: string } | null): boolean {
     const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
@@ -20,191 +25,46 @@ export class GuideModule {
     );
   }
 
-  private async attachGuideLanguages(guides: GuideRow[]): Promise<Guide[]> {
-    if (guides.length === 0) return [];
-    const guideIds = guides.map((g) => g.id);
-    const { data: guideLanguages, error: glError } = await this.supabase
-      .from('guide_languages').select('guide_id, language_id').in('guide_id', guideIds);
-
-    if (glError) {
-      if (this.isMissingLanguageSchemaError(glError)) return guides.map((g) => mapGuide({ ...g, languages: [] }));
-      throw glError;
-    }
-
-    const languageIds = Array.from(new Set((guideLanguages || []).map((i) => i.language_id)));
-    if (languageIds.length === 0) return guides.map((g) => mapGuide({ ...g, languages: [] }));
-
-    const { data: languages, error: lError } = await this.supabase.from('languages').select('*').in('id', languageIds);
-    if (lError) {
-      if (this.isMissingLanguageSchemaError(lError)) return guides.map((g) => mapGuide({ ...g, languages: [] }));
-      throw lError;
-    }
-
-    const languagesById = new Map((languages || []).map((l) => [l.id, mapLanguage(l)]));
-    const languageIdsByGuideId = new Map<string, string[]>();
-    (guideLanguages || []).forEach((item) => {
-      const existing = languageIdsByGuideId.get(item.guide_id) || [];
-      existing.push(item.language_id);
-      languageIdsByGuideId.set(item.guide_id, existing);
-    });
-
-    return guides.map((guide) => {
-      const ids = languageIdsByGuideId.get(guide.id) || [];
-      const langs = ids.map((id) => languagesById.get(id)).filter((l): l is Language => Boolean(l));
-      return mapGuide({ ...guide, languages: langs });
-    });
-  }
-
-  private async replaceGuideLanguages(guideId: string, languageIds: string[]): Promise<void> {
-    const { error: deleteError } = await this.supabase.from('guide_languages').delete().eq('guide_id', guideId);
-    if (deleteError) throw deleteError;
-    const unique = Array.from(new Set(languageIds.filter(Boolean)));
-    if (unique.length === 0) return;
-    const { error: insertError } = await this.supabase.from('guide_languages')
-      .insert(unique.map((id) => ({ guide_id: guideId, language_id: id, proficiency: 'working' })));
-    if (insertError) throw insertError;
+  private guideManagementMoved(): never {
+    throw new Error(
+      'Hướng dẫn viên nay được quản lý tại trang Người dùng. Hãy tạo/sửa tài khoản và đặt "Vai trò quyết toán" thành "Hướng dẫn viên".'
+    );
   }
 
   async listGuides(query?: SearchQuery): Promise<Guide[]> {
-    const applyFilters = <T extends { eq: (...a: any[]) => any; ilike: (...a: any[]) => any }>(qb: T) => {
-      let b = qb;
-      if (query?.status) b = b.eq('status', query.status);
-      if (query?.search) b = b.ilike('name', `%${query.search}%`);
-      return b;
-    };
-
-    const { data, error } = await applyFilters(
-      this.supabase.from('guides').select('*').order('is_default', { ascending: false }).order('name')
-    );
-    if (!error) return this.attachGuideLanguages(data || []);
-
-    const isMissingDefault = error.message?.includes('is_default') || error.details?.includes('is_default') || error.hint?.includes('is_default');
-    if (!isMissingDefault) throw error;
-
-    const { data: fallback, error: fallbackError } = await applyFilters(this.supabase.from('guides').select('*').order('name'));
-    if (fallbackError) throw fallbackError;
-    return this.attachGuideLanguages(fallback || []);
+    return this.listGuideUsers(query);
   }
 
   async getGuide(id: string): Promise<Guide | null> {
-    const { data, error } = await this.supabase.from('guides').select('*').eq('id', id).single();
-    if (error) return null;
-    if (!data) return null;
-    const [guide] = await this.attachGuideLanguages([data]);
-    return guide || null;
+    return this.getGuideUser(id);
   }
 
-  async createGuide(guide: GuideInput): Promise<Guide> {
-    const { data: existing } = await this.supabase.from('guides').select('id').ilike('name', guide.name).maybeSingle();
-    if (existing) throw new Error('A guide with this name already exists');
-
-    if (guide.isDefault) {
-      const { error } = await this.supabase.from('guides').update({ is_default: false }).eq('is_default', true);
-      if (error) throw error;
-    }
-
-    const { data, error } = await this.supabase.from('guides').insert({
-      is_default: guide.isDefault || false,
-      name: guide.name,
-      phone: guide.phone || '',
-      note: guide.note || '',
-      status: 'active',
-      search_keywords: generateSearchKeywords(guide.name),
-    }).select().single();
-    if (error) throw error;
-
-    if (guide.languageIds !== undefined) await this.replaceGuideLanguages(data.id, guide.languageIds);
-    const created = await this.getGuide(data.id);
-    if (!created) throw new Error('Guide was created but could not be loaded');
-    return created;
+  async createGuide(_guide: GuideInput): Promise<Guide> {
+    return this.guideManagementMoved();
   }
 
-  async updateGuide(id: string, guide: Partial<GuideInput>): Promise<void> {
-    const { data: existing, error: lookupError } = await this.supabase.from('guides').select('id, name').eq('id', id).maybeSingle();
-    if (lookupError) throw lookupError;
-    if (!existing) throw new Error('Guide not found or you do not have permission to edit it');
-
-    const updates: GuideUpdate = {};
-    if (guide.name !== undefined) {
-      const { data: dup } = await this.supabase.from('guides').select('id').ilike('name', guide.name).neq('id', id).maybeSingle();
-      if (dup) throw new Error('A guide with this name already exists');
-      updates.name = guide.name;
-      updates.search_keywords = generateSearchKeywords(guide.name);
-    }
-    if (guide.phone !== undefined) updates.phone = guide.phone;
-    if (guide.note !== undefined) updates.note = guide.note;
-    if (guide.isDefault !== undefined) updates.is_default = guide.isDefault;
-
-    const hasUpdates = Object.keys(updates).length > 0;
-    const hasLanguageUpdates = guide.languageIds !== undefined;
-    if (!hasUpdates && !hasLanguageUpdates) throw new Error('No changes to save');
-
-    if (guide.isDefault) {
-      const { error } = await this.supabase.from('guides').update({ is_default: false }).neq('id', id).eq('is_default', true);
-      if (error) throw error;
-    }
-
-    if (hasUpdates) {
-      const { data: updated, error } = await this.supabase.from('guides').update(updates).eq('id', id).select('id').maybeSingle();
-      if (error) throw error;
-      if (!updated) throw new Error(`Guide "${existing.name}" was not updated. Refresh and try again.`);
-    }
-    if (hasLanguageUpdates) await this.replaceGuideLanguages(id, guide.languageIds || []);
+  async updateGuide(_id: string, _guide: Partial<GuideInput>): Promise<void> {
+    this.guideManagementMoved();
   }
 
-  async deleteGuide(id: string): Promise<void> {
-    const { data: guide, error: lookupError } = await this.supabase.from('guides').select('id, name').eq('id', id).maybeSingle();
-    if (lookupError) throw lookupError;
-    if (!guide) throw new Error('Guide not found or you do not have permission to delete it');
-
-    const { error: detachError } = await this.supabase.from('tours').update({ guide_id: null }).eq('guide_id', id);
-    if (detachError) throw new Error(`Cannot delete guide "${guide.name}" because related tours could not be updated`);
-
-    const { data: deleted, error } = await this.supabase.from('guides').delete().eq('id', id).select('id').maybeSingle();
-    if (error) throw error;
-    if (!deleted) throw new Error(`Guide "${guide.name}" was not deleted. Refresh and try again.`);
+  async deleteGuide(_id: string): Promise<void> {
+    this.guideManagementMoved();
   }
 
-  async duplicateGuide(id: string): Promise<Guide> {
-    const original = await this.getGuide(id);
-    if (!original) throw new Error('Guide not found');
-    return this.createGuide({
-      name: `${original.name} (Copy)`,
-      phone: original.phone,
-      note: original.note,
-      languageIds: original.languages.map((l) => l.id),
-      isDefault: false,
-    });
+  async duplicateGuide(_id: string): Promise<Guide> {
+    return this.guideManagementMoved();
   }
 
   async deleteAllGuides(): Promise<void> {
-    const { error: detachError } = await this.supabase.from('tours').update({ guide_id: null }).not('guide_id', 'is', null);
-    if (detachError) throw detachError;
-    const { error } = await this.supabase.from('guides').delete().gte('created_at', '1970-01-01');
-    if (error) throw error;
+    this.guideManagementMoved();
   }
 
-  async bulkCreateGuides(inputs: GuideInput[]): Promise<Guide[]> {
-    const names = inputs.map((i) => i.name.toLowerCase());
-    const dups = names.filter((n, idx) => names.indexOf(n) !== idx);
-    if (dups.length > 0) throw new Error('Duplicate names found in batch');
-
-    const { data: existing } = await this.supabase.from('guides').select('name');
-    if (existing) {
-      const existingNames = existing.map((g) => g.name.toLowerCase());
-      const conflicts = inputs.filter((i) => existingNames.includes(i.name.toLowerCase()));
-      if (conflicts.length > 0) throw new Error(`The following guides already exist: ${conflicts.map((d) => d.name).join(', ')}`);
-    }
-
-    const { data, error } = await this.supabase.from('guides').insert(
-      inputs.map((i) => ({ name: i.name, phone: i.phone || '', note: i.note || '', status: 'active', search_keywords: generateSearchKeywords(i.name) }))
-    ).select();
-    if (error) throw error;
-    return (data || []).map(mapGuide);
+  async bulkCreateGuides(_inputs: GuideInput[]): Promise<Guide[]> {
+    return this.guideManagementMoved();
   }
 
   async toggleGuideStatus(_id: string): Promise<void> {
-    throw new Error('Status toggling is disabled');
+    this.guideManagementMoved();
   }
 
   async listLanguages(query?: SearchQuery): Promise<Language[]> {

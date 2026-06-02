@@ -37,7 +37,6 @@ interface Props {
   onUpdateEntityRef: (entityType: EntityType, entity: { id: string; name: string }) => void;
   onRemove: () => void;
   onOpenCompanyDialog: () => void;
-  onOpenGuideDialog: () => void;
   onOpenNationalityDialog: () => void;
 }
 
@@ -48,7 +47,7 @@ export function EnhancedImportTourCard({
   onUpdateDestination, onUpdateExpense, onUpdateMeal, onUpdateAllowance,
   onRemoveDestination, onRemoveExpense, onRemoveMeal, onRemoveAllowance,
   onUpdateField, onUpdateEntityRef, onRemove,
-  onOpenCompanyDialog, onOpenGuideDialog, onOpenNationalityDialog,
+  onOpenCompanyDialog, onOpenNationalityDialog,
 }: Props) {
   const { tour, raw } = item;
 
@@ -133,7 +132,7 @@ export function EnhancedImportTourCard({
                 <div className={!tour.guideRef?.id ? 'border border-yellow-500 rounded' : ''}>
                   <EntitySelector entities={guides} selected={tour.guideRef}
                     onSelect={(e) => onUpdateEntityRef('guideRef', e)}
-                    onCreateNew={onOpenGuideDialog} placeholder="Select guide" />
+                    placeholder="Select guide" />
                 </div>
               </div>
               <div>

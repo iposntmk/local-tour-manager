@@ -2,12 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import type { Language, Guide, Company, Nationality, Province, TouristDestination, Shopping, ExpenseCategory, DetailedExpense } from '@/types/master';
 import type { Tour, Destination, Expense, Meal, Allowance, Shopping as TourShopping, TourQuery, TourListResult } from '@/types/tour';
+import type { SearchQuery } from '@/types/datastore';
 
 export class TourDataModule {
   declare protected supabase: SupabaseClient<Database>;
 
   // Master data list declares
-  declare listGuides: () => Promise<Guide[]>;
+  declare listGuideUsers: (query?: SearchQuery) => Promise<Guide[]>;
   declare listLanguages: () => Promise<Language[]>;
   declare listCompanies: () => Promise<Company[]>;
   declare listNationalities: () => Promise<Nationality[]>;
@@ -19,7 +20,6 @@ export class TourDataModule {
 
   // Master data create declares
   declare createLanguage: (input: Omit<Language, 'id' | 'createdAt' | 'updatedAt' | 'searchKeywords'>) => Promise<Language>;
-  declare createGuide: (input: any) => Promise<Guide>;
   declare createCompany: (input: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Company>;
   declare createNationality: (input: Omit<Nationality, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Nationality>;
   declare createProvince: (input: Omit<Province, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Province>;
@@ -51,7 +51,7 @@ export class TourDataModule {
 
   async exportData(): Promise<any> {
     const [guides, languages, companies, nationalities, provinces, destinations, shoppings, categories, expenses, tourResult] = await Promise.all([
-      this.listGuides(),
+      this.listGuideUsers(),
       this.listLanguages(),
       this.listCompanies(),
       this.listNationalities(),
@@ -82,15 +82,6 @@ export class TourDataModule {
       for (const language of data.languages) {
         const { id, createdAt, updatedAt, createdBy, searchKeywords, ...rest } = language;
         await this.createLanguage(rest);
-      }
-    }
-    if (data.guides) {
-      for (const guide of data.guides) {
-        const { id, createdAt, updatedAt, createdBy, searchKeywords, languages, ...rest } = guide;
-        await this.createGuide({
-          ...rest,
-          languageIds: Array.isArray(languages) ? languages.map((lang: Language) => lang.id) : undefined,
-        });
       }
     }
     if (data.companies) {
@@ -169,7 +160,6 @@ export class TourDataModule {
       this.supabase.from('provinces').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       this.supabase.from('nationalities').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       this.supabase.from('companies').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      this.supabase.from('guides').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
     ]);
   }
 }

@@ -1,0 +1,23 @@
+{
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "general": {},
+  "mcpServers": {
+    "agentmemory": {
+      "type": "stdio",
+      "command": "agentmemory",
+      "args": ["mcp"]
+    },
+    "codegraph": {
+      "type": "stdio",
+      "command": "codegraph",
+      "args": [
+        "serve",
+        "--mcp"
+      ]
+    }
+  }
+}

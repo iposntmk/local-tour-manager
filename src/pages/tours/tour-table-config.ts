@@ -151,7 +151,7 @@ export const TOUR_TABLE_COLUMNS: TourTableColumn[] = [
   { key: 'payment', label: 'Thanh toán', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'payment' },
   { key: 'commission', label: 'Hoa hồng', width: 180, filterType: 'none' },
   { key: 'warning', label: 'Cảnh báo', title: 'Cảnh báo, tour thiếu nước uống', width: 108, cellClassName: 'whitespace-nowrap', filterType: 'warning' },
-  { key: 'actions', label: 'Hành động', width: 98, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right', filterType: 'none' },
+  { key: 'actions', label: 'Hành động', width: 124, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right', filterType: 'none' },
 ];
 
 export const TOUR_TABLE_COLUMN_KEYS = TOUR_TABLE_COLUMNS.map(column => column.key);

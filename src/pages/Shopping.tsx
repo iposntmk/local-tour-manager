@@ -226,35 +226,37 @@ const ShoppingPage = () => {
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Mua sắm</h1>
-              <p className="text-muted-foreground">Quản lý điểm mua sắm</p>
+              <h1 className="text-lg sm:text-xl md:text-3xl font-bold">Mua sắm</h1>
+              <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Quản lý điểm mua sắm</p>
             </div>
-            <div className="flex flex-wrap gap-2 sm:justify-end">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 sm:justify-end">
               {canExport && (
-                <Button onClick={handleExportTxt} variant="outline" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Xuất TXT
+                <Button variant="outline" size="sm" onClick={handleExportTxt} className="h-8 px-2.5 text-xs md:h-9 md:px-4 md:text-sm">
+                  <Download className="h-3.5 w-3.5 mr-1.5 md:mr-2" />
+                  <span className="hidden sm:inline">Xuất TXT</span>
+                  <span className="sm:hidden">Xuất</span>
                 </Button>
               )}
               {canImport && (
-                <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
-                  <Upload className="h-4 w-4" />
+                <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-8 px-2.5 text-xs md:h-9 md:px-4 md:text-sm">
+                  <Upload className="h-3.5 w-3.5 mr-1.5 md:mr-2" />
                   Nhập
                 </Button>
               )}
               {canDelete && (
-                <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
-                  <Trash className="h-4 w-4" />
-                  Xóa tất cả
+                <Button variant="outline" size="sm" onClick={handleDeleteAll} className="h-8 px-2.5 text-xs md:h-9 md:px-4 md:text-sm gap-1.5 text-destructive hover:text-destructive">
+                  <Trash className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Xóa tất cả</span>
+                  <span className="sm:hidden">Xóa</span>
                 </Button>
               )}
               {canCreate && (
-                <Button onClick={() => handleOpenDialog()}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button size="sm" onClick={() => handleOpenDialog()} className="h-8 px-3 text-xs md:h-9 md:px-4 md:text-sm">
+                  <Plus className="h-3.5 w-3.5 mr-1.5 md:mr-2" />
                   Thêm mua sắm
                 </Button>
               )}
@@ -273,9 +275,9 @@ const ShoppingPage = () => {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">Đang tải...</div>
+          <div className="text-center py-8 md:py-12">Đang tải...</div>
         ) : shoppings.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-8 md:py-12 text-muted-foreground">
             Không tìm thấy điểm mua sắm nào. Hãy tạo điểm mua sắm đầu tiên.
           </div>
         ) : (
@@ -400,7 +402,7 @@ const ShoppingPage = () => {
             </div>
 
             {/* Mobile Cards */}
-            <div className="md:hidden space-y-4">
+            <div className="md:hidden space-y-2 md:space-y-3">
               {filteredShoppings.map((shopping) => (
                 <MasterMobileCard
                   key={shopping.id}

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users, Building2, Globe, ArrowRight, BarChart3, Database } from 'lucide-react';
+import { MapPin, Building2, Globe, ArrowRight, BarChart3, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateFullSQLBackup, downloadSQLBackup } from '@/lib/sql-backup';
@@ -32,13 +32,6 @@ const Index = () => {
       description: 'Create and manage tours with destinations, expenses, and meals',
       action: () => navigate('/tours'),
       color: 'text-primary'
-    },
-    {
-      icon: Users,
-      title: 'Guides',
-      description: 'Manage your tour guides database',
-      action: () => navigate('/guides'),
-      color: 'text-accent'
     },
     {
       icon: Building2,
@@ -75,7 +68,7 @@ const Index = () => {
             Tour Manager
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Cloud-based tour management system for organizing tours, guides, and companies
+            Cloud-based tour management system for organizing tours and companies
           </p>
           <div className="flex flex-wrap gap-3 justify-center mt-8">
             <Button size="lg" onClick={() => navigate('/tours')} className="gap-2">

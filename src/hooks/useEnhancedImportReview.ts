@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import Fuse from 'fuse.js';
 import type { Tour } from '@/types/tour';
-import type { Company, Guide, Language, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
+import type { Company, Guide, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -40,7 +40,6 @@ export function useEnhancedImportReview(
   const [companies, setCompanies] = useState<Company[]>(preloadedEntities?.companies ?? []);
   const [guides, setGuides] = useState<Guide[]>(preloadedEntities?.guides ?? []);
   const [nationalities, setNationalities] = useState<Nationality[]>(preloadedEntities?.nationalities ?? []);
-  const [languages, setLanguages] = useState<Language[]>([]);
   const [destinations, setDestinations] = useState<TouristDestination[]>([]);
   const [expenses, setExpenses] = useState<DetailedExpense[]>([]);
   const [shoppings, setShoppings] = useState<Shopping[]>([]);
@@ -50,7 +49,6 @@ export function useEnhancedImportReview(
   const [searchQuery, setSearchQuery] = useState('');
 
   const [openCompanyDialog, setOpenCompanyDialog] = useState(false);
-  const [openGuideDialog, setOpenGuideDialog] = useState(false);
   const [openNationalityDialog, setOpenNationalityDialog] = useState(false);
   const [openDestinationDialog, setOpenDestinationDialog] = useState(false);
   const [openExpenseDialog, setOpenExpenseDialog] = useState(false);
@@ -68,17 +66,16 @@ export function useEnhancedImportReview(
   useEffect(() => {
     const load = async () => {
       try {
-        const [c, g, n, l, d, e, s, p] = await Promise.all([
+        const [c, g, n, d, e, s, p] = await Promise.all([
           preloadedEntities?.companies ? Promise.resolve(preloadedEntities.companies) : store.listCompanies({}),
-          preloadedEntities?.guides ? Promise.resolve(preloadedEntities.guides) : store.listGuides({}),
+          preloadedEntities?.guides ? Promise.resolve(preloadedEntities.guides) : store.listGuideUsers({}),
           preloadedEntities?.nationalities ? Promise.resolve(preloadedEntities.nationalities) : store.listNationalities({}),
-          store.listLanguages({ status: 'active' }),
           store.listTouristDestinations({}),
           store.listDetailedExpenses({}),
           store.listShoppings({}),
           store.listProvinces({}),
         ]);
-        setCompanies(c); setGuides(g); setNationalities(n); setLanguages(l);
+        setCompanies(c); setGuides(g); setNationalities(n);
         setDestinations(d); setExpenses(e); setShoppings(s); setProvinces(p);
 
         const ctp = e.filter(exp => exp.categoryRef?.nameAtBooking === 'CTP');
@@ -258,15 +255,6 @@ export function useEnhancedImportReview(
     } catch { toast.error('Failed to create company'); }
   };
 
-  const handleCreateGuide = async (data: any) => {
-    try {
-      const g = await store.createGuide(data);
-      setGuides(prev => [...prev, g]);
-      toast.success('Guide created successfully');
-      setOpenGuideDialog(false);
-    } catch { toast.error('Failed to create guide'); }
-  };
-
   const handleCreateNationality = async (data: any) => {
     try {
       const n = await store.createNationality(data);
@@ -304,17 +292,16 @@ export function useEnhancedImportReview(
   };
 
   return {
-    companies, guides, nationalities, languages, destinations, expenses, shoppings, provinces, ctpAllowances,
+    companies, guides, nationalities, destinations, expenses, shoppings, provinces, ctpAllowances,
     draft, searchQuery, setSearchQuery,
     validationWarnings, filteredTours, validateForImport,
     matchDestination, matchExpense, matchShopping, matchAllowance,
     updateDestination, updateExpense, updateMeal, updateAllowance,
     removeDestination, removeExpense, removeMeal, removeAllowance,
     updateTourField, updateEntityRef, removeTour,
-    handleCreateCompany, handleCreateGuide, handleCreateNationality,
+    handleCreateCompany, handleCreateNationality,
     handleCreateDestination, handleCreateExpense, handleCreateShopping,
     openCompanyDialog, setOpenCompanyDialog,
-    openGuideDialog, setOpenGuideDialog,
     openNationalityDialog, setOpenNationalityDialog,
     openDestinationDialog, setOpenDestinationDialog,
     openExpenseDialog, setOpenExpenseDialog,

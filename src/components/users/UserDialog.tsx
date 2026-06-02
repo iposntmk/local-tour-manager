@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -15,6 +15,7 @@ import {
   ALL_PERMISSIONS,
 } from '@/types/user';
 import { UserPermissionSection } from '@/components/users/UserPermissionSection';
+import { UserGuideFields } from '@/components/users/UserGuideFields';
 import { UserRoleFields } from '@/components/users/UserRoleFields';
 import {
   Dialog,
@@ -25,10 +26,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { UserAccountFields } from '@/components/users/UserAccountFields';
 
 interface UserDialogProps {
   open: boolean;
@@ -40,6 +40,10 @@ interface FormData {
   email: string;
   password?: string;
   fullName: string;
+  phone: string;
+  note: string;
+  isDefaultGuide: boolean;
+  languageIds: string[];
   role: UserRole;
   status: UserStatus;
   settlementRole: SettlementRole;
@@ -67,6 +71,10 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
       email: '',
       password: '',
       fullName: '',
+      phone: '',
+      note: '',
+      isDefaultGuide: false,
+      languageIds: [],
       role: 'viewer',
       status: 'active',
       settlementRole: 'none',
@@ -78,8 +86,15 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
   const status = watch('status');
   const settlementRole = watch('settlementRole');
   const permissions = watch('permissions') || [];
+  const isDefaultGuide = watch('isDefaultGuide');
+  const languageIds = watch('languageIds') || [];
   const isEditingSelf = !!user && user.id === currentUserProfile?.id;
   const protectedPermissions: Permission[] = isEditingSelf ? ['manage_users'] : [];
+
+  const { data: languages = [] } = useQuery({
+    queryKey: ['languages', 'active'],
+    queryFn: () => store.listLanguages({ status: 'active' }),
+  });
 
   const applyRolePreset = (nextRole = role, nextSettlementRole = settlementRole) => {
     setValue(
@@ -95,6 +110,10 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         email: user.email,
         password: undefined,
         fullName: user.fullName || '',
+        phone: user.phone || '',
+        note: user.note || '',
+        isDefaultGuide: user.isDefaultGuide || false,
+        languageIds: user.languageIds || [],
         role: user.role,
         status: user.status,
         settlementRole: user.settlementRole ?? 'none',
@@ -108,6 +127,10 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         email: '',
         password: '',
         fullName: '',
+        phone: '',
+        note: '',
+        isDefaultGuide: false,
+        languageIds: [],
         role: 'viewer',
         status: 'active',
         settlementRole: 'none',
@@ -118,36 +141,35 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Create auth user first
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Tạo tài khoản đăng nhập qua Edge Function (Admin API): không làm mất
+      // session admin và không cần xác nhận email.
+      const userId = await store.createAuthUser({
         email: data.email,
         password: data.password!,
-        options: {
-          data: {
-            full_name: data.fullName,
-          },
-        },
+        fullName: data.fullName,
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user');
-
-      // Create profile (this might already be created by trigger, but we update it)
+      // Hồ sơ được trigger tạo sẵn khi insert auth.users; cập nhật chi tiết.
       const profileInput: UserProfileInput = {
         email: data.email,
         fullName: data.fullName,
+        phone: data.phone,
+        note: data.note,
+        isDefaultGuide: data.settlementRole === 'guide' && data.isDefaultGuide,
+        languageIds: data.settlementRole === 'guide' ? data.languageIds : [],
         role: data.role,
         status: data.status,
         settlementRole: data.settlementRole,
         permissions: getFormPermissions(data),
       };
 
-      await store.updateUserProfile(authData.user.id, profileInput);
+      await store.updateUserProfile(userId, profileInput);
 
-      return authData.user;
+      return userId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['guide-users'] });
       toast({
         title: 'Thành công',
         description: 'Đã tạo người dùng mới',
@@ -171,6 +193,10 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
       const profileInput: Partial<UserProfileInput> = {
         email: data.email,
         fullName: data.fullName,
+        phone: data.phone,
+        note: data.note,
+        isDefaultGuide: data.settlementRole === 'guide' && data.isDefaultGuide,
+        languageIds: data.settlementRole === 'guide' ? data.languageIds : [],
         role: data.role,
         status: data.status,
         settlementRole: data.settlementRole,
@@ -201,6 +227,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['guide-users'] });
       toast({
         title: 'Thành công',
         description: 'Đã cập nhật thông tin người dùng',
@@ -255,45 +282,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">
-              Email <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              {...register('email', { required: 'Email là bắt buộc' })}
-              placeholder="user@example.com"
-            />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">
-              Mật khẩu {!isEdit && <span className="text-destructive">*</span>}
-              {isEdit && <span className="text-muted-foreground text-xs">(để trống nếu không đổi)</span>}
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              {...register('password')}
-              placeholder={isEdit ? '••••••••' : 'Tối thiểu 6 ký tự'}
-            />
-            {!isEdit && (
-              <p className="text-xs text-muted-foreground">Mật khẩu phải có ít nhất 6 ký tự</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Họ và tên</Label>
-            <Input
-              id="fullName"
-              {...register('fullName')}
-              placeholder="Nguyễn Văn A"
-            />
-          </div>
+          <UserAccountFields isEdit={isEdit} register={register} errors={errors} />
 
           <UserRoleFields
             role={role}
@@ -306,8 +295,22 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
             onStatusChange={(value) => setValue('status', value)}
             onSettlementRoleChange={(value) => {
               setValue('settlementRole', value);
+              if (value !== 'guide') {
+                setValue('isDefaultGuide', false);
+                setValue('languageIds', []);
+              }
               applyRolePreset(role, value);
             }}
+          />
+
+          <UserGuideFields
+            settlementRole={settlementRole}
+            register={register}
+            isDefaultGuide={isDefaultGuide}
+            languageIds={languageIds}
+            languages={languages}
+            onDefaultGuideChange={(value) => setValue('isDefaultGuide', value, { shouldDirty: true })}
+            onLanguageIdsChange={(value) => setValue('languageIds', value, { shouldDirty: true })}
           />
 
           <UserPermissionSection

@@ -6,9 +6,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { upsertById } from '@/lib/query-cache';
 import type { Tour, TourInput, TourNationality } from '@/types/tour';
-import type { Company, CompanyInput, Guide, GuideInput, Nationality, NationalityInput } from '@/types/master';
+import type { Company, CompanyInput, Nationality, NationalityInput } from '@/types/master';
 
-export type QuickAddTarget = 'company' | 'landOperator' | 'guide' | 'nationality';
+export type QuickAddTarget = 'company' | 'landOperator' | 'nationality';
 
 const DEFAULT_LAND_OPERATOR_ID = '39c48c1c-9ec4-4db3-9fb9-d5e32176cbd2';
 
@@ -21,7 +21,7 @@ export const getInitialTourNationalities = (initialData?: Tour): TourNationality
 
 export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: TourInput) => void) {
   const queryClient = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isGuide, userProfile } = useAuth();
 
   const [companyOpen, setCompanyOpen] = useState(false);
   const [landOperatorOpen, setLandOperatorOpen] = useState(false);
@@ -34,7 +34,6 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
   const [saveCompanyPref, setSaveCompanyPref] = useState(() => localStorage.getItem('tourform.saveCompanyPref') === 'true');
 
   const canCreateCompanies = hasPermission('create_companies');
-  const canCreateGuides = hasPermission('create_guides');
   const canCreateNationalities = hasPermission('create_nationalities');
 
   const { register, handleSubmit: rhfHandleSubmit, watch, setValue, formState } = useForm<TourInput>({
@@ -51,8 +50,7 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
   });
 
   const { data: companies = [] } = useQuery({ queryKey: ['companies'], queryFn: () => store.listCompanies({ status: 'active' }) });
-  const { data: guides = [] } = useQuery({ queryKey: ['guides'], queryFn: () => store.listGuides({ status: 'active' }) });
-  const { data: languages = [] } = useQuery({ queryKey: ['languages'], queryFn: () => store.listLanguages({ status: 'active' }) });
+  const { data: guides = [] } = useQuery({ queryKey: ['guide-users'], queryFn: () => store.listGuideUsers({ status: 'active' }) });
   const { data: nationalities = [] } = useQuery({ queryKey: ['nationalities'], queryFn: () => store.listNationalities({ status: 'active' }) });
 
   useEffect(() => {
@@ -70,9 +68,10 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
 
   useEffect(() => {
     if (initialData || selectedGuideId || guides.length === 0) return;
-    const dg = guides.find((g) => g.isDefault);
+    const currentGuide = isGuide ? guides.find((g) => g.id === userProfile?.id) : undefined;
+    const dg = currentGuide ?? guides.find((g) => g.isDefault);
     if (dg) { setSelectedGuideId(dg.id); setValue('guideRef', { id: dg.id, nameAtBooking: dg.name }); }
-  }, [guides, initialData, selectedGuideId, setValue]);
+  }, [guides, initialData, isGuide, selectedGuideId, setValue, userProfile?.id]);
 
   const createCompanyMutation = useMutation({
     mutationFn: (data: CompanyInput) => store.createCompany(data),
@@ -82,16 +81,6 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
       toast.success('Đã thêm công ty');
     },
     onError: (e: Error) => toast.error(e.message || 'Không thể thêm công ty'),
-  });
-
-  const createGuideMutation = useMutation({
-    mutationFn: (data: GuideInput) => store.createGuide(data),
-    onSuccess: (guide) => {
-      queryClient.setQueryData<Guide[]>(['guides'], (cur) => upsertById(cur, guide));
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Đã thêm hướng dẫn viên');
-    },
-    onError: (e: Error) => toast.error(e.message || 'Không thể thêm hướng dẫn viên'),
   });
 
   const createNationalityMutation = useMutation({
@@ -177,13 +166,6 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
     else { setSelectedCompanyId(company.id); setValue('companyRef', ref); }
   };
 
-  const handleCreateGuide = async (data: GuideInput) => {
-    if (!canCreateGuides) { toast.error('Bạn không có quyền tạo hướng dẫn viên'); return; }
-    const guide = await createGuideMutation.mutateAsync(data);
-    setSelectedGuideId(guide.id);
-    setValue('guideRef', { id: guide.id, nameAtBooking: guide.name });
-  };
-
   const handleCreateNationality = async (data: NationalityInput) => {
     if (!canCreateNationalities) { toast.error('Bạn không có quyền tạo quốc tịch'); return; }
     const nat = await createNationalityMutation.mutateAsync(data);
@@ -250,9 +232,9 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
     selectedNationalities, setSelectedNationalities,
     totalGuests, totalDays,
     saveCompanyPref, handleSavePrefChange,
-    canCreateCompanies, canCreateGuides, canCreateNationalities,
-    companies, guides, languages, nationalities,
+    canCreateCompanies, canCreateNationalities,
+    companies, guides, nationalities,
     quickAddTarget, openQuickAdd, handleQuickAddOpenChange,
-    handleCreateCompany, handleCreateGuide, handleCreateNationality,
+    handleCreateCompany, handleCreateNationality,
   };
 }

@@ -43,7 +43,7 @@ export const buildEntityCaches = (companies: Company[], guides: Guide[], nationa
 
 export const loadEntityCachesFromStore = async (): Promise<EntityCaches> => {
   const [companies, guides, nationalities] = await Promise.all([
-    store.listCompanies({}), store.listGuides({}), store.listNationalities({}),
+    store.listCompanies({}), store.listGuideUsers({}), store.listNationalities({}),
   ]);
   return buildEntityCaches(companies, guides, nationalities);
 };

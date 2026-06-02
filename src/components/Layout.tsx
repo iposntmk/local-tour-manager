@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
-  Users,
   Building2,
   Globe,
   MapPin,
@@ -9,14 +8,16 @@ import {
   Tag,
   Receipt,
   Plane,
-  Home,
+  LayoutDashboard,
   BarChart3,
   Settings,
   LogOut,
   UserCog,
+  UserCircle,
   Languages,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { t } from '@/lib/i18n';
 import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
 import { SupabaseHealthBanner } from '@/components/SupabaseHealthBanner';
 import { useState, useEffect } from 'react';
@@ -48,7 +49,6 @@ interface NavItem {
 }
 
 const masterDataItems: NavItem[] = [
-  { to: '/guides', icon: Users, label: 'Hướng dẫn viên', permission: 'view_guides' },
   { to: '/languages', icon: Languages, label: 'Ngôn ngữ', permission: 'view_languages' },
   { to: '/companies', icon: Building2, label: 'Công ty', permission: 'view_companies' },
   { to: '/nationalities', icon: Globe, label: 'Quốc tịch', permission: 'view_nationalities' },
@@ -60,11 +60,12 @@ const masterDataItems: NavItem[] = [
 ];
 
 const mainNavItems: NavItem[] = [
-  { to: '/tours', icon: Plane, label: 'Tour', permission: 'view_tours' },
-  { to: '/statistics', icon: BarChart3, label: 'Thống kê', permission: 'view_statistics' },
+  { to: '/tours', icon: Plane, label: t('nav.tours'), permission: 'view_tours' },
+  { to: '/statistics', icon: BarChart3, label: t('nav.statistics'), permission: 'view_statistics' },
 ];
 
 const userManagementItem: NavItem = { to: '/users', icon: UserCog, label: 'Người dùng', permission: 'manage_users' };
+const profileItem: NavItem = { to: '/profile', icon: UserCircle, label: t('nav.profile') };
 
 function usePendingSettlementCount(): { count: number; enabled: boolean } {
   const { hasPermission } = useAuth();
@@ -107,6 +108,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
   const visibleMasterDataItems = masterDataItems.filter(canShowItem);
 
   const settingsItems = [
+    profileItem,
     ...(visibleUserManagementItem ? [visibleUserManagementItem] : []),
     ...visibleMasterDataItems,
   ];
@@ -124,11 +126,11 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
     return (
       <>
         <NavLink
-          to="/"
+          to="/dashboard"
           className={({ isActive }) => navLinkClass(isActive)}
         >
-          <Home className="h-4 w-4" />
-          <span className="text-center truncate w-full">Trang chủ</span>
+          <LayoutDashboard className="h-4 w-4" />
+          <span className="text-center truncate w-full">{t('nav.dashboard')}</span>
         </NavLink>
 
         {visibleMainNavItems
@@ -206,11 +208,11 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
   return (
     <>
       <NavLink
-        to="/"
+        to="/dashboard"
         className={({ isActive }) => navLinkClass(isActive)}
       >
-        <Home className="h-4 w-4" />
-        <span className="text-center">Home</span>
+        <LayoutDashboard className="h-4 w-4" />
+        <span className="text-center">{t('nav.dashboard')}</span>
       </NavLink>
 
       {visibleMainNavItems
@@ -256,7 +258,7 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
-  const isTourListRoute = location.pathname === '/' || location.pathname === '/tours';
+  const isTourListRoute = location.pathname === '/tours';
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -284,7 +286,13 @@ export function Layout({ children }: LayoutProps) {
           </div>
           {user && (
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-xs text-muted-foreground">{user.email}</span>
+              <NavLink
+                to="/profile"
+                className="flex max-w-[14rem] items-center gap-1 truncate rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <UserCircle className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{user.email}</span>
+              </NavLink>
               <Button variant="ghost" size="sm" onClick={handleLogout} className="h-7 text-xs">
                 <LogOut className="h-3 w-3 mr-1" />
                 Đăng xuất

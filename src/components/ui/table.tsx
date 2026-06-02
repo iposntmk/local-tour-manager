@@ -2,14 +2,22 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-x-auto -mx-4 sm:mx-0">
-      <div className="inline-block min-w-full align-middle">
-        <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+type TableProps = React.HTMLAttributes<HTMLTableElement> & {
+  unwrapped?: boolean;
+};
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, unwrapped, ...props }, ref) => {
+    const table = <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />;
+
+    if (unwrapped) return table;
+
+    return (
+      <div className="relative w-full overflow-x-auto -mx-4 sm:mx-0">
+        <div className="inline-block min-w-full align-middle">{table}</div>
       </div>
-    </div>
-  ),
+    );
+  },
 );
 Table.displayName = "Table";
 

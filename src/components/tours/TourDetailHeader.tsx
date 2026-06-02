@@ -31,6 +31,9 @@ interface TourDetailHeaderProps {
   onShowHistory: () => void;
 }
 
+const TAB_TRIGGER_CLASS = 'min-w-0 px-1 py-1 text-[11px] leading-tight sm:px-2 sm:text-sm';
+const TAB_COUNT_CLASS = 'max-w-full truncate text-[10px] font-bold leading-tight sm:text-sm';
+
 export function TourDetailHeader({
   tour, displayTour, isNewTour, activeTab,
   canCreateTour, canEditTourInfo, canExportTour, canDeleteTour,
@@ -89,12 +92,14 @@ export function TourDetailHeader({
             </div>
             <span className="text-muted-foreground mx-2">|</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-muted-foreground">Người lớn:</span>
+              <span className="text-muted-foreground sm:hidden">NL:</span>
+              <span className="hidden text-muted-foreground sm:inline">Người lớn:</span>
               <span className="font-semibold">{displayTour.adults || 0}</span>
             </div>
             <span className="text-muted-foreground mx-2">|</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-muted-foreground">Trẻ em:</span>
+              <span className="text-muted-foreground sm:hidden">TE:</span>
+              <span className="hidden text-muted-foreground sm:inline">Trẻ em:</span>
               <span className="font-semibold">{displayTour.children || 0}</span>
             </div>
             <span className="text-muted-foreground mx-2">|</span>
@@ -104,14 +109,16 @@ export function TourDetailHeader({
             </div>
             <span className="text-muted-foreground mx-2">|</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-muted-foreground">Công ty mẹ:</span>
+              <span className="text-muted-foreground sm:hidden">Cty mẹ:</span>
+              <span className="hidden text-muted-foreground sm:inline">Công ty mẹ:</span>
               <span className="font-semibold">{displayTour.companyRef?.nameAtBooking || '-'}</span>
             </div>
             {displayTour.landOperatorRef?.nameAtBooking && (
               <>
                 <span className="text-muted-foreground mx-2">|</span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-muted-foreground">Công ty land:</span>
+                  <span className="text-muted-foreground sm:hidden">Cty land:</span>
+                  <span className="hidden text-muted-foreground sm:inline">Công ty land:</span>
                   <span className="font-semibold">{displayTour.landOperatorRef.nameAtBooking}</span>
                 </div>
               </>
@@ -128,63 +135,63 @@ export function TourDetailHeader({
 
       <div className="pt-2 sm:pt-4">
         <TabsList className={cn(
-          'grid w-full grid-cols-3 gap-1 rounded-xl bg-background shadow-sm border p-0.5 sm:p-1 h-auto',
+          'grid w-full grid-cols-5 gap-0.5 rounded-lg bg-background shadow-sm border p-0.5 sm:gap-1 sm:p-1 h-auto',
           canViewShoppings ? 'lg:grid-cols-9' : 'lg:grid-cols-8'
         )}>
-          {canViewTab('info') && <TabsTrigger value="info" className="text-xs sm:text-sm">Thông tin</TabsTrigger>}
-          {canViewTab('destinations') && <TabsTrigger value="destinations" className="text-xs sm:text-sm">
+          {canViewTab('info') && <TabsTrigger value="info" className={TAB_TRIGGER_CLASS}>Thông tin</TabsTrigger>}
+          {canViewTab('destinations') && <TabsTrigger value="destinations" className={TAB_TRIGGER_CLASS}>
             <div className="flex flex-col items-center">
               <span className="sm:hidden">Điểm</span><span className="hidden sm:inline">Điểm đến</span>
-              <span className="text-xs sm:text-sm font-bold">{displayTour?.destinations?.length || 0} | {formatCurrency(totals.destinations)}</span>
+              <span className={TAB_COUNT_CLASS}>{displayTour?.destinations?.length || 0} | {formatCurrency(totals.destinations)}</span>
             </div>
           </TabsTrigger>}
-          {canViewTab('expenses') && <TabsTrigger value="expenses" className="text-xs sm:text-sm">
+          {canViewTab('expenses') && <TabsTrigger value="expenses" className={TAB_TRIGGER_CLASS}>
             <div className="flex flex-col items-center">
               <span className="sm:hidden">CP</span><span className="hidden sm:inline">Chi phí</span>
-              <span className="text-xs sm:text-sm font-bold">{displayTour?.expenses?.length || 0} | {formatCurrency(totals.expenses)}</span>
+              <span className={TAB_COUNT_CLASS}>{displayTour?.expenses?.length || 0} | {formatCurrency(totals.expenses)}</span>
             </div>
           </TabsTrigger>}
-          {canViewTab('meals') && <TabsTrigger value="meals" className="text-xs sm:text-sm">
+          {canViewTab('meals') && <TabsTrigger value="meals" className={TAB_TRIGGER_CLASS}>
             <div className="flex flex-col items-center">
               <span>Bữa ăn</span>
-              <span className="text-xs sm:text-sm font-bold">{displayTour?.meals?.length || 0} | {formatCurrency(totals.meals)}</span>
+              <span className={TAB_COUNT_CLASS}>{displayTour?.meals?.length || 0} | {formatCurrency(totals.meals)}</span>
             </div>
           </TabsTrigger>}
-          {canViewTab('combined') && <TabsTrigger value="combined" className="text-xs sm:text-sm">
+          {canViewTab('combined') && <TabsTrigger value="combined" className={TAB_TRIGGER_CLASS}>
             <div className="flex flex-col items-center">
               <span className="sm:hidden">Gộp</span><span className="hidden sm:inline">Gộp dịch vụ</span>
-              <span className="text-xs sm:text-sm font-bold">{formatCurrency(totals.destinations + totals.expenses + totals.meals)}</span>
+              <span className={TAB_COUNT_CLASS}>{formatCurrency(totals.destinations + totals.expenses + totals.meals)}</span>
             </div>
           </TabsTrigger>}
-          {canViewTab('allowances') && <TabsTrigger value="allowances" className="text-xs sm:text-sm">
+          {canViewTab('allowances') && <TabsTrigger value="allowances" className={TAB_TRIGGER_CLASS}>
             <div className="flex flex-col items-center">
               <span className="sm:hidden">CTP</span><span className="hidden sm:inline">Công tác phí (CTP)</span>
-              <span className="text-xs sm:text-sm font-bold">{displayTour?.allowances?.length || 0} | {formatCurrency(totals.allowances)}</span>
+              <span className={TAB_COUNT_CLASS}>{displayTour?.allowances?.length || 0} | {formatCurrency(totals.allowances)}</span>
             </div>
           </TabsTrigger>}
           {canViewTab('shoppings') && canViewShoppings && (
-            <TabsTrigger value="shoppings" className={cn('text-xs sm:text-sm', hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
+            <TabsTrigger value="shoppings" className={cn(TAB_TRIGGER_CLASS, hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
               <div className="flex flex-col items-center">
                 <div className="flex items-center gap-1">
                   <span className="sm:hidden">Mua</span><span className="hidden sm:inline">Mua sắm</span>
                   {hasUnpaidShoppings && <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />}
                 </div>
-                <span className={cn('text-xs sm:text-sm font-bold', hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
+                <span className={cn(TAB_COUNT_CLASS, hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
                   {displayTour?.shoppings?.length || 0} | {formatCurrency(totals.shoppings)}
                 </span>
               </div>
             </TabsTrigger>
           )}
-          {canViewTab('summary') && <TabsTrigger value="summary" className="text-xs sm:text-sm">
+          {canViewTab('summary') && <TabsTrigger value="summary" className={TAB_TRIGGER_CLASS}>
             <div className="flex flex-col items-center">
               <span className="sm:hidden">TH</span><span className="hidden sm:inline">Tổng hợp</span>
-              <span className="text-xs sm:text-sm font-bold">{formatCurrency(displayTour?.summary?.finalTotal ?? 0)}</span>
+              <span className={TAB_COUNT_CLASS}>{formatCurrency(displayTour?.summary?.finalTotal ?? 0)}</span>
             </div>
           </TabsTrigger>}
-          {canViewTab('images') && <TabsTrigger value="images" className="text-xs sm:text-sm">
+          {canViewTab('images') && <TabsTrigger value="images" className={TAB_TRIGGER_CLASS}>
             <div className="flex flex-col items-center">
               <span className="sm:hidden">Ảnh</span><span className="hidden sm:inline">Hình ảnh</span>
-              <span className="text-xs sm:text-sm font-bold">{isNewTour ? '' : tourImagesCount}</span>
+              <span className={TAB_COUNT_CLASS}>{isNewTour ? '' : tourImagesCount}</span>
             </div>
           </TabsTrigger>}
         </TabsList>

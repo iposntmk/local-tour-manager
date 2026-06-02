@@ -17,6 +17,7 @@ interface LineQuickReviewProps {
   currentComment?: string;
   editable: boolean;
   statusLabels?: Partial<Record<LineStatus, string>>;
+  onApproved?: () => void;
 }
 
 const STATUS_STYLES: Record<LineStatus, string> = {
@@ -38,6 +39,7 @@ export function LineQuickReview({
   currentComment,
   editable,
   statusLabels,
+  onApproved,
 }: LineQuickReviewProps) {
   const { hasPermission } = useAuth();
   const { busy, updateLine } = useLineReview(tourId);
@@ -55,7 +57,10 @@ export function LineQuickReview({
     );
   }
 
-  const approve = () => updateLine({ lineType, lineId }, { lineStatus: 'valid' });
+  const approve = async () => {
+    const ok = await updateLine({ lineType, lineId }, { lineStatus: 'valid' });
+    if (ok) onApproved?.();
+  };
 
   const openReject = () => {
     setComment(currentComment ?? '');
@@ -69,34 +74,34 @@ export function LineQuickReview({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex w-full flex-nowrap items-center gap-1.5 sm:w-auto">
         <Button
           type="button"
           size="sm"
           variant={currentStatus === 'valid' ? 'default' : 'outline'}
           className={cn(
-            'h-7 gap-1 px-2',
+            'h-7 min-w-0 flex-1 gap-1 px-1.5 text-xs sm:flex-none sm:px-2',
             currentStatus === 'valid' && 'bg-green-600 hover:bg-green-700'
           )}
           disabled={busy}
           onClick={approve}
         >
           <Check className="h-3.5 w-3.5" />
-          {labelFor('valid')}
+          <span className="truncate">{currentStatus === 'valid' ? labelFor('valid') : 'Duyệt'}</span>
         </Button>
         <Button
           type="button"
           size="sm"
           variant={currentStatus === 'invalid' ? 'default' : 'outline'}
           className={cn(
-            'h-7 gap-1 px-2',
+            'h-7 min-w-0 flex-1 gap-1 px-1.5 text-xs sm:flex-none sm:px-2',
             currentStatus === 'invalid' && 'bg-red-600 hover:bg-red-700'
           )}
           disabled={busy}
           onClick={openReject}
         >
           <X className="h-3.5 w-3.5" />
-          {labelFor('invalid')}
+          <span className="truncate">{labelFor('invalid')}</span>
         </Button>
       </div>
 

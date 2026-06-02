@@ -59,3 +59,8 @@ supabase-migrations/
 
 # Agent/tool state files
 data/
+
+# Agent/tool state files (junk)
+.codegraph/
+nul
+supabase/.temp/

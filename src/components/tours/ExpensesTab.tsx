@@ -84,7 +84,8 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
         onChange?.(newExps);
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_, { expense }) => {
+      await uploadPendingFiles('expense', expense.id);
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');

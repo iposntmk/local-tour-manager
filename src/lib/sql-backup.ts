@@ -12,7 +12,8 @@ interface TableSchema {
 
 export async function generateFullSQLBackup(): Promise<string> {
   const tables = [
-    'guides', 'companies', 'nationalities', 'provinces', 
+    'user_profiles', 'languages', 'user_languages',
+    'companies', 'nationalities', 'provinces',
     'tourist_destinations', 'shoppings', 'expense_categories', 
     'detailed_expenses', 'diary_types', 'tours', 'tour_destinations',
     'tour_expenses', 'tour_meals', 'tour_allowances', 'tour_shoppings',

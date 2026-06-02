@@ -59,7 +59,7 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   });
 
   const { data: companies = [] } = useQuery({ queryKey: ['companies'], queryFn: () => store.listCompanies({ status: 'active' }) });
-  const { data: guides = [] } = useQuery({ queryKey: ['guides'], queryFn: () => store.listGuides({ status: 'active' }) });
+  const { data: guides = [] } = useQuery({ queryKey: ['guide-users'], queryFn: () => store.listGuideUsers({ status: 'active' }) });
   const { data: nationalities = [] } = useQuery({ queryKey: ['nationalities'], queryFn: () => store.listNationalities({ status: 'active' }) });
 
   useEffect(() => {

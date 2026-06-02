@@ -5,7 +5,7 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Copy, Trash2, Upload, Trash, Download, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Upload, Trash, Download, Eye, EyeOff, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SearchInput } from '@/components/master/SearchInput';
@@ -14,7 +14,7 @@ import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedEx
 import { BulkImportDialog } from '@/components/master/BulkImportDialog';
 import type { DetailedExpense, DetailedExpenseInput } from '@/types/master';
 import { toast } from 'sonner';
-import { formatDate } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
@@ -22,6 +22,7 @@ import type { UserProfile } from '@/types/user';
 
 const DetailedExpenses = () => {
   const [search, setSearch] = useState('');
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<DetailedExpense | undefined>();
@@ -254,35 +255,36 @@ const DetailedExpenses = () => {
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div className={headerClasses}>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Chi phí chi tiết</h1>
-              <p className="text-muted-foreground">Quản lý chi phí chi tiết</p>
+              <h1 className="text-lg sm:text-xl md:text-3xl font-bold tracking-tight">Chi phí chi tiết</h1>
+              <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">Quản lý chi phí chi tiết</p>
             </div>
-            <div className="flex flex-wrap gap-2 sm:justify-end">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 sm:justify-end">
               {canExport && (
-                <Button variant="outline" onClick={handleExportTxt}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Xuất TXT
+                <Button variant="outline" size="sm" onClick={handleExportTxt} className="h-8 px-2.5 text-xs md:h-9 md:px-4 md:text-sm">
+                  <Download className="h-3.5 w-3.5 mr-1.5 md:mr-2" />
+                  <span className="hidden xs:inline">Xuất TXT</span>
+                  <span className="xs:hidden">Xuất</span>
                 </Button>
               )}
               {canImport && (
-                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Nhập
+                <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-8 px-2.5 text-xs md:h-9 md:px-4 md:text-sm">
+                  <Upload className="h-3.5 w-3.5 mr-1.5 md:mr-2" />
+                  <span className="hidden xs:inline">Nhập</span>
                 </Button>
               )}
               {canDelete && (
-                <Button variant="outline" onClick={handleDeleteAll} className="gap-2 text-destructive hover:text-destructive">
-                  <Trash className="h-4 w-4" />
-                  Xóa tất cả
+                <Button variant="outline" size="sm" onClick={handleDeleteAll} className="h-8 px-2.5 text-xs md:h-9 md:px-4 md:text-sm gap-1.5 text-destructive hover:text-destructive">
+                  <Trash className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Xóa tất cả</span>
                 </Button>
               )}
               {canCreate && (
-                <Button onClick={() => handleOpenDialog()}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button size="sm" onClick={() => handleOpenDialog()} className="h-8 px-3 text-xs md:h-9 md:px-4 md:text-sm">
+                  <Plus className="h-3.5 w-3.5 mr-1.5 md:mr-2" />
                   Thêm chi phí
                 </Button>
               )}
@@ -290,20 +292,74 @@ const DetailedExpenses = () => {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Tìm chi phí..."
-            />
+          <div className="space-y-2 md:space-y-4">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex-1">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Tìm chi phí..."
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+              className={cn("h-9 md:h-10 gap-2 text-xs md:text-sm", isFiltersExpanded && "bg-accent")}
+            >
+              <Filter className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              Lọc nâng cao
+              {isFiltersExpanded ? <ChevronUp className="h-3.5 w-3.5 md:h-4 md:w-4" /> : <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4" />}
+            </Button>
           </div>
+
+          {isFiltersExpanded && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 md:gap-4 md:p-4 rounded-lg border bg-muted/20 animate-in fade-in slide-in-from-top-2">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tên chi phí</label>
+                <Input
+                  placeholder="Lọc theo tên..."
+                  value={nameFilter}
+                  onChange={(e) => setNameFilter(e.target.value)}
+                  className="h-10 bg-background"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Danh mục</label>
+                <Select
+                  value={categoryFilter}
+                  onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
+                >
+                  <SelectTrigger className="h-10 bg-background">
+                    <SelectValue placeholder="Tất cả danh mục" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    {expenseCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Đơn giá</label>
+                <Input
+                  placeholder="Lọc theo giá..."
+                  value={priceFilter}
+                  onChange={(e) => setPriceFilter(e.target.value)}
+                  className="h-10 bg-background"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">Đang tải...</div>
+            <div className="text-center py-8 md:py-12">Đang tải...</div>
         ) : expenses.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-8 md:py-12 text-muted-foreground">
             Không tìm thấy chi phí chi tiết nào. Hãy tạo chi phí đầu tiên.
           </div>
         ) : (
@@ -311,7 +367,7 @@ const DetailedExpenses = () => {
             {/* Desktop Table */}
             <div className="hidden md:block rounded-lg border">
               <table className="w-full">
-                <thead className="bg-muted/50">
+                <thead className="bg-muted/50 border-b">
                   <tr>
                     <th className="text-left p-4 font-medium">Tên</th>
                     <th className="text-left p-4 font-medium">Danh mục</th>
@@ -319,45 +375,6 @@ const DetailedExpenses = () => {
                     <th className="text-left p-4 font-medium">Cập nhật</th>
                     {isAdmin && <th className="text-left p-4 font-medium">Người tạo</th>}
                     <th className="text-right p-4 font-medium">Thao tác</th>
-                  </tr>
-                  <tr>
-                    <th className="p-2">
-                      <Input
-                        placeholder="Lọc theo tên..."
-                        value={nameFilter}
-                        onChange={(e) => setNameFilter(e.target.value)}
-                        className="h-8"
-                      />
-                    </th>
-                    <th className="p-2">
-                      <Select
-                        value={categoryFilter}
-                        onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Tất cả danh mục" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tất cả</SelectItem>
-                          {expenseCategories.map((category) => (
-                            <SelectItem key={category.id} value={category.name}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </th>
-                    <th className="p-2">
-                      <Input
-                        placeholder="Lọc theo giá..."
-                        value={priceFilter}
-                        onChange={(e) => setPriceFilter(e.target.value)}
-                        className="h-8"
-                      />
-                    </th>
-                    <th className="p-2"></th>
-                    {isAdmin && <th className="p-2"></th>}
-                    <th className="p-2"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -447,7 +464,7 @@ const DetailedExpenses = () => {
             </div>
 
             {/* Mobile Cards */}
-            <div className="md:hidden space-y-4">
+            <div className="md:hidden space-y-3">
               {filteredExpenses.map((expense) => (
                 <MasterMobileCard
                   key={expense.id}

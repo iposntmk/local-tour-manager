@@ -13,11 +13,21 @@ export type UserProfileRow = Database['public']['Tables']['user_profiles']['Row'
 export type UserProfileInsert = Database['public']['Tables']['user_profiles']['Insert'];
 export type UserProfileUpdate = Database['public']['Tables']['user_profiles']['Update'];
 
+type UserProfileGuideDbFields = {
+  phone?: string | null;
+  note?: string | null;
+  is_default_guide?: boolean | null;
+};
+
 // Application user profile type
 export interface UserProfile {
   id: string;
   email: string;
   fullName?: string;
+  phone?: string;
+  note?: string;
+  isDefaultGuide?: boolean;
+  languageIds?: string[];
   role: UserRole;
   status: UserStatus;
   settlementRole: SettlementRole;
@@ -31,6 +41,10 @@ export interface UserProfile {
 export interface UserProfileInput {
   email: string;
   fullName?: string;
+  phone?: string;
+  note?: string;
+  isDefaultGuide?: boolean;
+  languageIds?: string[];
   role: UserRole;
   status: UserStatus;
   settlementRole?: SettlementRole;
@@ -213,12 +227,20 @@ export const SETTLEMENT_ROLE_LABELS: Record<SettlementRole, string> = {
 export function dbRowToUserProfile(row: UserProfileRow): UserProfile {
   const settlementRoleRaw = (row as unknown as { settlement_role?: string | null }).settlement_role;
   const permissionsRaw = (row as unknown as { permissions?: string[] | null }).permissions;
+  const guideFields = row as unknown as {
+    phone?: string | null;
+    note?: string | null;
+    is_default_guide?: boolean | null;
+  };
   const isMasterAdmin = row.email === 'iposntmk@gmail.com';
   const role = isMasterAdmin ? 'admin' : (row.role as UserRole);
   return {
     id: row.id,
     email: row.email,
     fullName: row.full_name ?? undefined,
+    phone: guideFields.phone ?? undefined,
+    note: guideFields.note ?? undefined,
+    isDefaultGuide: guideFields.is_default_guide ?? false,
     role,
     status: isMasterAdmin ? 'active' : (row.status as UserStatus),
     settlementRole: (settlementRoleRaw as SettlementRole) ?? 'none',
@@ -242,10 +264,13 @@ export function userProfileToDbInsert(
   createdBy?: string
 ): UserProfileInsert {
   const permissions = permissionsForDb(profile);
-  const insert: UserProfileInsert & { settlement_role?: SettlementRole } = {
+  const insert: UserProfileInsert & { settlement_role?: SettlementRole } & UserProfileGuideDbFields = {
     id: userId,
     email: profile.email,
     full_name: profile.fullName,
+    phone: profile.phone,
+    note: profile.note,
+    is_default_guide: profile.isDefaultGuide,
     role: profile.role,
     status: profile.status,
     created_by: createdBy,
@@ -261,11 +286,14 @@ export function userProfileToDbInsert(
 
 // Convert UserProfile to database update
 export function userProfileToDbUpdate(profile: Partial<UserProfileInput>): UserProfileUpdate {
-  const update: UserProfileUpdate & { settlement_role?: SettlementRole } = {};
+  const update: UserProfileUpdate & { settlement_role?: SettlementRole } & UserProfileGuideDbFields = {};
   const permissions = permissionsForDb(profile);
 
   if (profile.email !== undefined) update.email = profile.email;
   if (profile.fullName !== undefined) update.full_name = profile.fullName;
+  if (profile.phone !== undefined) update.phone = profile.phone;
+  if (profile.note !== undefined) update.note = profile.note;
+  if (profile.isDefaultGuide !== undefined) update.is_default_guide = profile.isDefaultGuide;
   if (profile.role !== undefined) update.role = profile.role;
   if (profile.status !== undefined) update.status = profile.status;
   if (profile.settlementRole !== undefined) update.settlement_role = profile.settlementRole;

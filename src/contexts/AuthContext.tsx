@@ -3,11 +3,13 @@ import { User } from '@supabase/supabase-js';
 import { store } from '@/lib/datastore';
 import { UserProfile, UserRole, Permission, profileHasPermission, isGuide as isGuideRole, isAccountant as isAccountantRole } from '@/types/user';
 import { supabase } from '@/integrations/supabase/client';
+import { MASTER_ADMIN_EMAIL } from '@/lib/auth-constants';
 
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  profileLoading: boolean;
   hasPermission: (permission: Permission) => boolean;
   hasAnyPermission: (permissions: Permission[]) => boolean;
   hasAllPermissions: (permissions: Permission[]) => boolean;
@@ -25,8 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const loadUserProfile = async (userId: string) => {
+    setProfileLoading(true);
     try {
       console.log('[AuthContext] Loading user profile for ID:', userId);
       const profile = await store.getUserProfile(userId);
@@ -34,12 +38,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(profile || null);
 
       if (!profile) {
-        console.warn('[AuthContext] ⚠️ No user profile found! Please run the database migration.');
-        console.warn('[AuthContext] See: supabase/migrations/001_create_user_profiles.sql');
+        console.warn('[AuthContext] ⚠️ No user profile found for this account (it may have been deleted).');
       }
     } catch (error) {
       console.error('[AuthContext] ❌ Error loading user profile:', error);
       setUserProfile(null);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -56,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         loadUserProfile(session.user.id).finally(() => setLoading(false));
       } else {
+        setProfileLoading(false);
         setLoading(false);
       }
     });
@@ -69,36 +75,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadUserProfile(session.user.id);
       } else {
         setUserProfile(null);
+        setProfileLoading(false);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const isMasterAdmin = user?.email === MASTER_ADMIN_EMAIL || userProfile?.email === MASTER_ADMIN_EMAIL;
+
   const hasPermissionFn = (permission: Permission): boolean => {
-    if (user?.email === 'iposntmk@gmail.com' || userProfile?.email === 'iposntmk@gmail.com') return true;
+    if (isMasterAdmin) return true;
     if (!userProfile || userProfile.status !== 'active') return false;
     return profileHasPermission(userProfile, permission);
   };
 
   const hasAnyPermissionFn = (permissions: Permission[]): boolean => {
-    if (user?.email === 'iposntmk@gmail.com' || userProfile?.email === 'iposntmk@gmail.com') return true;
+    if (isMasterAdmin) return true;
     if (!userProfile || userProfile.status !== 'active') return false;
     return permissions.some((permission) => profileHasPermission(userProfile, permission));
   };
 
   const hasAllPermissionsFn = (permissions: Permission[]): boolean => {
-    if (user?.email === 'iposntmk@gmail.com' || userProfile?.email === 'iposntmk@gmail.com') return true;
+    if (isMasterAdmin) return true;
     if (!userProfile || userProfile.status !== 'active') return false;
     return permissions.every((permission) => profileHasPermission(userProfile, permission));
   };
-
-  const isMasterAdmin = user?.email === 'iposntmk@gmail.com' || userProfile?.email === 'iposntmk@gmail.com';
 
   const value: AuthContextType = {
     user,
     userProfile,
     loading,
+    profileLoading,
     hasPermission: hasPermissionFn,
     hasAnyPermission: hasAnyPermissionFn,
     hasAllPermissions: hasAllPermissionsFn,

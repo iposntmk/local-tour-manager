@@ -133,7 +133,8 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
         onChange?.(newDests);
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_, { destination }) => {
+      await uploadPendingFiles('destination', destination.id);
       if (tourId) {
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');

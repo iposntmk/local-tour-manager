@@ -1,195 +1,46 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
-import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { Download, Info } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { SearchInput } from '@/components/master/SearchInput';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import MasterMobileCard from '@/components/master/MasterMobileCard';
-import { BulkImportDialog } from '@/components/master/BulkImportDialog';
-
-import { GuideDialog } from '@/components/guides/GuideDialog';
-import type { Guide, GuideInput } from '@/types/master';
 import type { SearchQuery } from '@/types/datastore';
 import { useAuth } from '@/contexts/AuthContext';
-import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
-import type { UserProfile } from '@/types/user';
 
+// Guides are user_profiles with settlement_role = 'guide'. This page is a
+// read-only roster; creating and editing guides happens on the Users page.
 const Guides = () => {
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingGuide, setEditingGuide] = useState<Guide | undefined>();
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [nameFilter, setNameFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
   const [idFilter, setIdFilter] = useState('');
-  const { hasPermission, user, isAdmin } = useAuth();
-  const canCreate = hasPermission('create_guides');
-  const canEdit = hasPermission('edit_guides');
-  const canDelete = hasPermission('delete_guides');
-  const canImport = hasPermission('import_guides');
+  const { hasPermission } = useAuth();
   const canExport = hasPermission('export_guides');
 
-  const { data: userProfiles = [] } = useQuery<UserProfile[]>({
-    queryKey: ['userProfiles'],
-    queryFn: () => store.listUserProfiles(),
-    enabled: isAdmin,
-  });
-  const profileMap = useMemo(() => {
-    const m = new Map<string, UserProfile>();
-    userProfiles.forEach(p => m.set(p.id, p));
-    return m;
-  }, [userProfiles]);
-
-  const query: SearchQuery = {
-    search,
-  };
+  const query: SearchQuery = { search };
 
   const { data: guides = [], isLoading, error: guidesError } = useQuery({
-    queryKey: ['guides', query],
-    queryFn: () => store.listGuides(query),
+    queryKey: ['guide-users', query],
+    queryFn: () => store.listGuideUsers(query),
     retry: false,
   });
 
-  const { data: languages = [] } = useQuery({
-    queryKey: ['languages'],
-    queryFn: () => store.listLanguages({ status: 'active' }),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: GuideInput) => store.createGuide(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Tạo HDV thành công');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Tạo HDV thất bại');
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<GuideInput> }) =>
-      store.updateGuide(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Cập nhật HDV thành công');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Cập nhật HDV thất bại');
-    },
-  });
-
-  const duplicateMutation = useMutation({
-    mutationFn: (id: string) => store.duplicateGuide(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Nhân bản HDV thành công');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => store.deleteGuide(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Xóa HDV thành công');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Xóa HDV thất bại');
-    },
-  });
-
-  const deleteAllMutation = useMutation({
-    mutationFn: () => store.deleteAllGuides(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Đã xóa tất cả HDV');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Xóa tất cả HDV thất bại');
-    },
-  });
-
-  const shareMutation = useMutation({
-    mutationFn: ({ id, shared }: { id: string; shared: boolean }) =>
-      store.setMasterDataShared('guides', id, shared),
-    onSuccess: (_, { shared }) => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success(shared ? 'Đã chia sẻ HDV' : 'Đã đặt HDV về riêng tư');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Thao tác chia sẻ thất bại');
-    },
-  });
-
-  const bulkImportMutation = useMutation({
-    mutationFn: (inputs: GuideInput[]) => store.bulkCreateGuides(inputs),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      toast.success('Import HDV thành công');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Import HDV thất bại');
-    },
-  });
-
-  const handleCreate = async (data: GuideInput) => {
-    if (!canCreate) {
-      toast.error('Bạn không có quyền tạo hướng dẫn viên');
-      return;
-    }
-    await createMutation.mutateAsync(data);
-  };
-
-  const handleEdit = async (data: GuideInput) => {
-    if (!canEdit) {
-      toast.error('Bạn không có quyền sửa hướng dẫn viên');
-      return;
-    }
-    if (!editingGuide) return;
-    await updateMutation.mutateAsync({
-      id: editingGuide.id,
-      data,
+  const filteredGuides = useMemo(() => {
+    return guides.filter((guide) => {
+      const matchesId = !idFilter || guide.id.toLowerCase().includes(idFilter.toLowerCase());
+      const matchesName = !nameFilter || guide.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesPhone = !phoneFilter || (guide.phone && guide.phone.toLowerCase().includes(phoneFilter.toLowerCase()));
+      return matchesId && matchesName && matchesPhone;
     });
-  };
-
-  const handleOpenDialog = (guide?: Guide) => {
-    if (guide && !canEdit) return;
-    if (!guide && !canCreate) return;
-    if (guide && !ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
-    setEditingGuide(guide);
-    setDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setEditingGuide(undefined);
-  };
-
-  const handleDeleteAll = async () => {
-    if (!canDelete) {
-      toast.error('Bạn không có quyền xóa hướng dẫn viên');
-      return;
-    }
-    if (confirm('Bạn có chắc chắn muốn xóa tất cả HDV? Hành động này không thể hoàn tác.')) {
-      await deleteAllMutation.mutateAsync();
-    }
-  };
-
-  const handleBulkImport = async (items: GuideInput[]) => {
-    if (!canImport) {
-      toast.error('Bạn không có quyền import hướng dẫn viên');
-      return;
-    }
-    await bulkImportMutation.mutateAsync(items);
-  };
+  }, [guides, nameFilter, phoneFilter, idFilter]);
 
   const handleExportTxt = () => {
     if (!canExport) {
@@ -202,7 +53,7 @@ const Guides = () => {
     }
 
     const txtContent = filteredGuides
-      .map(guide => {
+      .map((guide) => {
         const parts = [guide.name];
         if (guide.phone) parts.push(guide.phone);
         if (guide.languages.length > 0) parts.push(guide.languages.map((language) => language.name).join('|'));
@@ -223,64 +74,25 @@ const Guides = () => {
     toast.success(`Đã xuất ${filteredGuides.length} HDV`);
   };
 
-  const filteredGuides = useMemo(() => {
-    return guides.filter(guide => {
-      const matchesId = !idFilter || guide.id.toLowerCase().includes(idFilter.toLowerCase());
-      const matchesName = !nameFilter || guide.name.toLowerCase().includes(nameFilter.toLowerCase());
-      const matchesPhone = !phoneFilter || (guide.phone && guide.phone.toLowerCase().includes(phoneFilter.toLowerCase()));
-      return matchesId && matchesName && matchesPhone;
-    });
-  }, [guides, nameFilter, phoneFilter, idFilter]);
-
-  const handleSetDefaultGuide = async (guide: Guide, checked: boolean) => {
-    if (!canEdit) {
-      toast.error('Bạn không có quyền sửa hướng dẫn viên');
-      return;
-    }
-    try {
-      await updateMutation.mutateAsync({
-        id: guide.id,
-        data: { isDefault: checked },
-      });
-    } catch {
-      // Error toast handled by mutation
-    }
-  };
-
   const { classes: headerClasses } = useHeaderMode('guides.headerMode');
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div className={headerClasses}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Hướng dẫn viên</h1>
-              <p className="text-muted-foreground">Quản lý hướng dẫn viên</p>
+              <h1 className="text-lg sm:text-xl md:text-3xl font-bold">Hướng dẫn viên</h1>
+              <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+                Danh sách hướng dẫn viên (quản lý tại trang Người dùng)
+              </p>
             </div>
-            <div className="flex flex-wrap gap-2 sm:justify-end">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 sm:justify-end">
               {canExport && (
-                <Button onClick={handleExportTxt} variant="outline" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Xuất TXT
-                </Button>
-              )}
-              {canImport && (
-                <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Nhập
-                </Button>
-              )}
-              {canDelete && (
-                <Button onClick={handleDeleteAll} variant="outline" className="gap-2 text-destructive hover:text-destructive">
-                  <Trash className="h-4 w-4" />
-                  Xóa tất cả
-                </Button>
-              )}
-              {canCreate && (
-                <Button onClick={() => handleOpenDialog()} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Thêm HDV
+                <Button variant="outline" size="sm" onClick={handleExportTxt} className="h-8 px-2.5 text-xs md:h-9 md:px-4 md:text-sm">
+                  <Download className="h-3.5 w-3.5 mr-1.5 md:mr-2" />
+                  <span className="hidden sm:inline">Xuất TXT</span>
+                  <span className="sm:hidden">Xuất</span>
                 </Button>
               )}
             </div>
@@ -288,13 +100,17 @@ const Guides = () => {
         </div>
 
         <Card className="p-4">
+          <div className="mb-4 flex items-start gap-2 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground md:text-sm">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Hướng dẫn viên là người dùng có "Vai trò quyết toán = Hướng dẫn viên". Để thêm, sửa thông tin,
+              ngôn ngữ hoặc đặt HDV mặc định, hãy vào trang <strong>Người dùng</strong>.
+            </span>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="flex-1">
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder="Tìm HDV..."
-              />
+              <SearchInput value={search} onChange={setSearch} placeholder="Tìm HDV..." />
             </div>
           </div>
 
@@ -306,7 +122,7 @@ const Guides = () => {
             <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
           ) : guides.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Không tìm thấy HDV nào. Hãy tạo HDV đầu tiên!
+              Chưa có hướng dẫn viên nào. Tạo người dùng với vai trò quyết toán "Hướng dẫn viên" tại trang Người dùng.
             </div>
           ) : (
             <>
@@ -321,110 +137,35 @@ const Guides = () => {
                       <TableHead>Ngôn ngữ</TableHead>
                       <TableHead>Mặc định</TableHead>
                       <TableHead>Ghi chú</TableHead>
-                      {isAdmin && <TableHead>Người tạo</TableHead>}
-                      <TableHead className="w-[100px]"></TableHead>
                     </TableRow>
                     <TableRow>
                       <TableHead>
-                        <Input
-                          placeholder="Lọc theo ID..."
-                          value={idFilter}
-                          onChange={(e) => setIdFilter(e.target.value)}
-                          className="h-8"
-                        />
+                        <Input placeholder="Lọc theo ID..." value={idFilter} onChange={(e) => setIdFilter(e.target.value)} className="h-8" />
                       </TableHead>
                       <TableHead>
-                        <Input
-                          placeholder="Lọc theo tên..."
-                          value={nameFilter}
-                          onChange={(e) => setNameFilter(e.target.value)}
-                          className="h-8"
-                        />
+                        <Input placeholder="Lọc theo tên..." value={nameFilter} onChange={(e) => setNameFilter(e.target.value)} className="h-8" />
                       </TableHead>
                       <TableHead>
-                        <Input
-                          placeholder="Lọc theo điện thoại..."
-                          value={phoneFilter}
-                          onChange={(e) => setPhoneFilter(e.target.value)}
-                          className="h-8"
-                        />
+                        <Input placeholder="Lọc theo điện thoại..." value={phoneFilter} onChange={(e) => setPhoneFilter(e.target.value)} className="h-8" />
                       </TableHead>
                       <TableHead></TableHead>
                       <TableHead></TableHead>
-                      <TableHead></TableHead>
-                      {isAdmin && <TableHead></TableHead>}
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredGuides.map((guide) => (
-                      <TableRow
-                        key={guide.id}
-                        className="cursor-pointer hover:bg-accent/50"
-                        onClick={() => canEdit && handleOpenDialog(guide)}
-                      >
+                      <TableRow key={guide.id}>
                         <TableCell className="font-mono text-muted-foreground">{guide.id}</TableCell>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {guide.name}
-                            <SharedBadge isShared={!!guide.isShared} />
-                          </div>
-                        </TableCell>
+                        <TableCell className="font-medium">{guide.name}</TableCell>
                         <TableCell>{guide.phone || '-'}</TableCell>
                         <TableCell className="max-w-xs truncate">
                           {guide.languages.length > 0 ? guide.languages.map((language) => language.name).join(', ') : '-'}
                         </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={guide.isDefault}
-                            onCheckedChange={(checked) => handleSetDefaultGuide(guide, checked === true)}
-                            disabled={!canEdit}
-                            aria-label={`${guide.name} là HDV mặc định`}
-                          />
+                        <TableCell>
+                          <Checkbox checked={guide.isDefault} disabled aria-label={`${guide.name} là HDV mặc định`} />
                         </TableCell>
                         <TableCell className="max-w-xs truncate">{guide.note || '-'}</TableCell>
-                        {isAdmin && (
-                          <TableCell className="text-sm text-muted-foreground">
-                            {guide.createdBy
-                              ? (profileMap.get(guide.createdBy)?.fullName || profileMap.get(guide.createdBy)?.email || guide.createdBy.slice(0, 8))
-                              : '-'}
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                            {isAdmin && guide.createdBy === user?.id && (
-                              <ShareToggleButton
-                                isShared={!!guide.isShared}
-                                onToggle={() => shareMutation.mutate({ id: guide.id, shared: !guide.isShared })}
-                              />
-                            )}
-                            {canEdit && (
-                              <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(guide)} className="h-8 w-8 p-0">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {canCreate && (
-                              <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(guide.id)} className="h-8 w-8 p-0">
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {canDelete && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (!ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
-                                  if (confirm('Bạn có chắc chắn muốn xóa HDV này?')) {
-                                    deleteMutation.mutate(guide.id);
-                                  }
-                                }}
-                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -432,7 +173,7 @@ const Guides = () => {
               </div>
 
               {/* Mobile Cards */}
-              <div className="md:hidden space-y-4">
+              <div className="md:hidden space-y-2 md:space-y-3">
                 {filteredGuides.map((guide) => (
                   <MasterMobileCard
                     key={guide.id}
@@ -442,23 +183,9 @@ const Guides = () => {
                     subtitle={
                       <>
                         {guide.phone || 'Không có điện thoại'}
-                        {guide.languages.length > 0 && (
-                          <> • {guide.languages.map((l) => l.name).join(', ')}</>
-                        )}
+                        {guide.languages.length > 0 && (<> • {guide.languages.map((l) => l.name).join(', ')}</>)}
                       </>
                     }
-                    onClick={() => canEdit && handleOpenDialog(guide)}
-                    onEdit={canEdit ? () => handleOpenDialog(guide) : undefined}
-                    onDuplicate={canCreate ? () => duplicateMutation.mutate(guide.id) : undefined}
-                    onDelete={canDelete ? () => {
-                      if (!ensureCanModifyOwnedEntity(guide, user?.id, isAdmin)) return;
-                      if (confirm('Bạn có chắc chắn muốn xóa HDV này?')) {
-                        deleteMutation.mutate(guide.id);
-                      }
-                    } : undefined}
-                    canEdit={canEdit}
-                    canCreate={canCreate}
-                    canDelete={canDelete}
                   >
                     {guide.note && <p>{guide.note}</p>}
                   </MasterMobileCard>
@@ -467,37 +194,6 @@ const Guides = () => {
             </>
           )}
         </Card>
-
-        <GuideDialog
-          open={dialogOpen}
-          onOpenChange={handleCloseDialog}
-          guide={editingGuide}
-          languages={languages}
-          onSubmit={editingGuide ? handleEdit : handleCreate}
-        />
-
-        <BulkImportDialog
-          open={importDialogOpen}
-          onOpenChange={setImportDialogOpen}
-          onImport={handleBulkImport}
-          title="Import HDV"
-          description="Import nhiều HDV cùng lúc. Định dạng: Tên HDV[,Điện thoại,Ghi chú] (điện thoại, ghi chú không bắt buộc)"
-          placeholder="Nhập HDV (mỗi dòng một HDV, định dạng: Tên HDV[,Điện thoại,Ghi chú])
-Ví dụ:
-Nguyễn Văn An
-Trần Thị Bình,0987654321,Nói được tiếng Anh
-Lê Văn Cường,0111222333"
-          parseItem={(parts: string[]) => {
-            if (parts.length >= 1 && parts[0].trim()) {
-              return {
-                name: parts[0].trim(),
-                phone: parts[1]?.trim() || undefined,
-                note: parts[2]?.trim() || undefined,
-              };
-            }
-            return null;
-          }}
-        />
       </div>
     </TooltipProvider>
   );

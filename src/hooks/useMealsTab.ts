@@ -85,7 +85,8 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
       if (tourId) await store.updateMeal(tourId, index, meal);
       else { const m = [...meals]; m[index] = meal; onChange?.(m); }
     },
-    onSuccess: () => {
+    onSuccess: async (_, { meal }) => {
+      await uploadPendingFiles('meal', meal.id);
       invalidate();
       toast.success('Đã cập nhật bữa ăn');
       clearPendingFiles();

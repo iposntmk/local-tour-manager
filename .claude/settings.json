@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__codegraph__codegraph_search",
+      "mcp__codegraph__codegraph_context",
+      "mcp__codegraph__codegraph_callers",
+      "mcp__codegraph__codegraph_callees",
+      "mcp__codegraph__codegraph_impact",
+      "mcp__codegraph__codegraph_node",
+      "mcp__codegraph__codegraph_status"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "codegraph sync D:/local-tour-manager --quiet 2>nul || true"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -2,38 +2,25 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { store } from '@/lib/datastore';
-import { UserProfile, USER_ROLE_LABELS, USER_STATUS_LABELS, SETTLEMENT_ROLE_LABELS } from '@/types/user';
+import { SETTLEMENT_ROLE_LABELS, UserProfile, type SettlementRole } from '@/types/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserDialog } from '@/components/users/UserDialog';
-import { Plus, MoreVertical, Pencil, Trash2, Search, Users as UsersIcon, ArrowLeft } from 'lucide-react';
+import { UserListViews } from '@/components/users/UserListViews';
+import { Plus, Search, Users as UsersIcon, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 type StatusTab = 'all' | 'active' | 'inactive';
+type SettlementRoleTab = 'all' | SettlementRole;
 
 export default function Users() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusTab, setStatusTab] = useState<StatusTab>('all');
+  const [settlementRoleTab, setSettlementRoleTab] = useState<SettlementRoleTab>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | undefined>();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -45,16 +32,15 @@ export default function Users() {
   const canCreateUsers = hasPermission('create_users');
   const canEditUsers = hasPermission('edit_users');
   const canDeleteUsers = hasPermission('delete_users');
-  const canManageUserActions = canEditUsers || canDeleteUsers;
-  const userTableColumnCount = canManageUserActions ? 7 : 6;
   const { classes: headerClasses } = useHeaderMode('users.headerMode');
 
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ['user-profiles', searchTerm, statusTab],
+    queryKey: ['user-profiles', searchTerm, statusTab, settlementRoleTab],
     queryFn: () =>
       store.listUserProfiles({
         search: searchTerm || undefined,
         status: statusTab === 'all' ? 'all' : statusTab,
+        settlementRole: settlementRoleTab,
       }),
   });
 
@@ -106,21 +92,6 @@ export default function Users() {
   const handleCreate = () => {
     setSelectedUser(undefined);
     setDialogOpen(true);
-  };
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'destructive';
-      case 'editor':
-        return 'default';
-      default:
-        return 'secondary';
-    }
-  };
-
-  const getStatusBadgeVariant = (status: string) => {
-    return status === 'active' ? 'default' : 'secondary';
   };
 
   return (
@@ -180,159 +151,26 @@ export default function Users() {
             </TabsList>
           </Tabs>
         </div>
+        <Tabs value={settlementRoleTab} onValueChange={(v) => setSettlementRoleTab(v as SettlementRoleTab)}>
+          <TabsList>
+            <TabsTrigger value="all">Tất cả vai trò</TabsTrigger>
+            <TabsTrigger value="guide">{SETTLEMENT_ROLE_LABELS.guide}</TabsTrigger>
+            <TabsTrigger value="accountant">{SETTLEMENT_ROLE_LABELS.accountant}</TabsTrigger>
+            <TabsTrigger value="none">{SETTLEMENT_ROLE_LABELS.none}</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
       </div>
 
-      {/* Desktop Table */}
-      <div className="hidden md:block border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Họ và tên</TableHead>
-              <TableHead>Vai trò</TableHead>
-              <TableHead>Vai trò quyết toán</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead>Ngày tạo</TableHead>
-              {canManageUserActions && <TableHead className="w-[70px]"></TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={userTableColumnCount} className="text-center py-8">
-                  Đang tải...
-                </TableCell>
-              </TableRow>
-            ) : users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={userTableColumnCount} className="text-center py-8 text-muted-foreground">
-                  Không tìm thấy người dùng
-                </TableCell>
-              </TableRow>
-            ) : (
-              users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.email}</TableCell>
-                  <TableCell>{user.fullName || '—'}</TableCell>
-                  <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                      {USER_ROLE_LABELS[user.role]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {SETTLEMENT_ROLE_LABELS[user.settlementRole]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(user.status)}>
-                      {USER_STATUS_LABELS[user.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {user.createdAt
-                      ? new Date(user.createdAt).toLocaleDateString('vi-VN')
-                      : '—'}
-                  </TableCell>
-                  {canManageUserActions && (
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {canEditUsers && (
-                            <DropdownMenuItem onClick={() => handleEdit(user)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Chỉnh sửa
-                            </DropdownMenuItem>
-                          )}
-                          {canDeleteUsers && user.id !== currentUserProfile?.id && (
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(user)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Xóa
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Mobile Cards */}
-      <div className="md:hidden space-y-4">
-        {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
-        ) : users.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">Không tìm thấy người dùng</div>
-        ) : (
-          users.map((user) => (
-            <Card key={user.id} className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{user.email}</h3>
-                  {user.fullName && (
-                    <p className="text-sm text-muted-foreground">{user.fullName}</p>
-                  )}
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <span
-                      className={`inline-block h-2.5 w-2.5 rounded-full ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`}
-                    />
-                    <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
-                      {USER_ROLE_LABELS[user.role]}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {SETTLEMENT_ROLE_LABELS[user.settlementRole]}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {user.createdAt
-                      ? new Date(user.createdAt).toLocaleDateString('vi-VN')
-                      : '—'}
-                  </p>
-                </div>
-                {canManageUserActions && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canEditUsers && (
-                        <DropdownMenuItem onClick={() => handleEdit(user)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Chỉnh sửa
-                        </DropdownMenuItem>
-                      )}
-                      {canDeleteUsers && user.id !== currentUserProfile?.id && (
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(user)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Xóa
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            </Card>
-          ))
-        )}
-      </div>
+      <UserListViews
+        users={users}
+        isLoading={isLoading}
+        canEditUsers={canEditUsers}
+        canDeleteUsers={canDeleteUsers}
+        currentUserId={currentUserProfile?.id}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
       {/* Dialogs */}
       <UserDialog

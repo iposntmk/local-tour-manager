@@ -11,7 +11,7 @@ export function usePendingLineAttachments(tourId?: string) {
   const clearPendingFiles = () => setPendingFiles([]);
 
   const uploadPendingFiles = async (lineType: AttachmentLineType, lineId?: string) => {
-    if (!tourId || !lineId || pendingFiles.length === 0) return;
+    if (!tourId || !lineId || pendingFiles.length === 0) return true;
     try {
       for (const file of pendingFiles) {
         await store.uploadTourLineAttachment(tourId, lineType, lineId, file);
@@ -19,8 +19,10 @@ export function usePendingLineAttachments(tourId?: string) {
       toast.success('Đã tải chứng từ');
       clearPendingFiles();
       await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      return true;
     } catch (error: any) {
       toast.error(error?.message || 'Không thể tải chứng từ.');
+      return false;
     }
   };
 

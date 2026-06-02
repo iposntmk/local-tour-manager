@@ -26,7 +26,6 @@ interface Props {
   onUpdateMealMatch: (mealIdx: number, selected: Shopping) => void;
   onUpdateAllowanceMatch: (allowIdx: number, selected: Province) => void;
   onOpenAddCompany: () => void;
-  onOpenAddGuide: () => void;
   onOpenAddNationality: () => void;
   onOpenAddDestination: (destIdx: number) => void;
   onOpenAddExpense: (expIdx: number) => void;
@@ -37,7 +36,7 @@ export function ImportTourReviewCard({
   item, idx,
   companies, guides, nationalities, destinations, expenses, shoppings, provinces,
   onSetRef, onUpdateDestinationMatch, onUpdateExpenseMatch, onUpdateMealMatch, onUpdateAllowanceMatch,
-  onOpenAddCompany, onOpenAddGuide, onOpenAddNationality,
+  onOpenAddCompany, onOpenAddNationality,
   onOpenAddDestination, onOpenAddExpense, onOpenAddShopping,
 }: Props) {
   const { tour, raw } = item;
@@ -75,7 +74,7 @@ export function ImportTourReviewCard({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {([
                 { label: 'Company', key: 'companyRef' as const, list: companies, raw: raw.company, onAdd: onOpenAddCompany },
-                { label: 'Guide', key: 'guideRef' as const, list: guides, raw: raw.guide, onAdd: onOpenAddGuide },
+                { label: 'Guide', key: 'guideRef' as const, list: guides, raw: raw.guide, onAdd: undefined },
                 { label: 'Client Nationality', key: 'clientNationalityRef' as const, list: nationalities, raw: raw.nationality, onAdd: onOpenAddNationality },
               ] as const).map(({ label, key, list, raw: rawVal, onAdd }) => (
                 <div key={key} className="space-y-1">
@@ -95,7 +94,7 @@ export function ImportTourReviewCard({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" onClick={onAdd}>Add</Button>
+                    {onAdd && <Button variant="outline" onClick={onAdd}>Add</Button>}
                   </div>
                   {!(tour[key] as EntityRef | undefined)?.id && <p className="text-xs text-destructive">Required</p>}
                 </div>

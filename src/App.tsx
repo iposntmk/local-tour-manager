@@ -10,8 +10,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { InactiveUserBanner } from "@/components/auth/InactiveUserBanner";
+import { RemovedUserBanner } from "@/components/auth/RemovedUserBanner";
 import type { Permission } from "@/types/user";
-import Guides from "./pages/Guides";
 import Languages from "./pages/Languages";
 import Companies from "./pages/Companies";
 import Nationalities from "./pages/Nationalities";
@@ -26,6 +26,8 @@ import NotFound from "./pages/NotFound";
 import Statistics from "./pages/Statistics";
 import Auth from "./pages/Auth";
 import Users from "./pages/Users";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
@@ -119,12 +121,14 @@ const App = () => {
           <Toaster />
           <Sonner />
           <InactiveUserBanner />
+          <RemovedUserBanner />
           <HashRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
             <Routes>
-              <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/" />} />
+              <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/dashboard" />} />
               <Route element={user ? <Layout /> : <Navigate to="/auth" />}>
-                <Route index element={<RequirePermissionRoute permission="view_tours"><Tours /></RequirePermissionRoute>} />
-                <Route path="guides" element={<RequirePermissionRoute permission="view_guides"><Guides /></RequirePermissionRoute>} />
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="profile" element={<Profile />} />
                 <Route path="languages" element={<RequirePermissionRoute permission="view_languages"><Languages /></RequirePermissionRoute>} />
                 <Route path="companies" element={<RequirePermissionRoute permission="view_companies"><Companies /></RequirePermissionRoute>} />
                 <Route path="nationalities" element={<RequirePermissionRoute permission="view_nationalities"><Nationalities /></RequirePermissionRoute>} />

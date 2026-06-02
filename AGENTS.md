@@ -81,3 +81,16 @@ Only start writing after this is clear.
 - Toast notifications via `sonner`.
 - TanStack Query for async state; follow existing `staleTime` / `gcTime` config.
 - Do **not** add `optimizeDeps.force: true` to `vite.config.ts` (causes EPERM on Windows).
+
+---
+
+### Law 8 — Domain Architecture Decisions (do not regress)
+
+**Guides ARE users — the legacy `guides` table is abandoned.**
+
+- A guide = a row in `user_profiles` with `role='editor'` + `settlement_role='guide'` (this is the default when a user signs up via Google). Admins change role / settlement_role / permissions on the **Users page** (`UserDialog` + `UserGuideFields` handle phone, note, languages, default-guide).
+- `tours.guide_id` has a foreign key to `user_profiles(id)` (migration `20260602100000_merge_guides_into_user_profiles`). It does **not** reference the `guides` table.
+- **Tour guide selector MUST use `store.listGuideUsers()` / `store.getGuideUser()`** (read `user_profiles`, return canonical ids). Do **not** wire the tour guide picker to `store.listGuides` / `store.getGuide` — sending a legacy `guides.id` causes a `tours_guide_id_fkey` FK violation (SQLSTATE 23503) on tour create/update.
+- `store.listGuides` / `getGuide` now read through to `user_profiles`; all guide **write** methods (`createGuide`, `updateGuide`, `deleteGuide`, `duplicateGuide`, `bulkCreateGuides`, `deleteAllGuides`, `toggleGuideStatus`) throw on purpose — guide management lives on the Users page.
+- The master `Guides.tsx` page is a **read-only roster** (list + search + TXT export).
+- **Never reintroduce reads/writes against the `guides` or `guide_languages` tables.** Guide languages live in `user_languages`.

@@ -48,26 +48,26 @@ const MasterMobileCard = ({
 }: MasterMobileCardProps) => {
   return (
     <Card
-      className={`p-4 cursor-pointer hover:bg-accent/50 transition-colors ${isInactive ? 'opacity-50 bg-muted/30' : ''}`}
+      className={`p-2.5 sm:p-3 md:p-4 cursor-pointer hover:bg-accent/50 transition-colors ${isInactive ? 'opacity-50 bg-muted/30' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 flex-wrap">
             {leading && <span className="shrink-0">{leading}</span>}
-            <h3 className="font-semibold truncate">{title}</h3>
+            <h3 className="font-semibold text-sm sm:text-base md:text-lg break-words leading-tight">{title}</h3>
             {isDefault && (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary shrink-0">
+              <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] sm:text-[10px] md:text-xs font-medium text-primary shrink-0">
                 Mặc định
               </span>
             )}
             {isInactive && (
-              <span className="text-xs text-muted-foreground shrink-0">(Đã ẩn)</span>
+              <span className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground shrink-0">(Đã ẩn)</span>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-            <span className="text-xs text-muted-foreground font-mono">ID: {id.slice(0, 8)}</span>
+          <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1 md:mt-1.5 flex-wrap">
+            <span className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground font-mono">ID: {id.slice(0, 8)}</span>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -80,44 +80,44 @@ const MasterMobileCard = ({
             {subtitle && (
               <>
                 <span className="text-muted-foreground">•</span>
-                <span className="text-xs text-muted-foreground">{subtitle}</span>
+                <span className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground">{subtitle}</span>
               </>
             )}
           </div>
 
           {metadata && (
-            <div className="mt-1.5 text-sm text-muted-foreground">
+            <div className="mt-0.5 sm:mt-1 md:mt-1.5 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
               {metadata}
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-0 shrink-0" onClick={(e) => e.stopPropagation()}>
           {onToggleStatus && canEdit && (
-            <Button variant="ghost" size="sm" onClick={onToggleStatus} className="h-8 w-8 p-0">
-              {isInactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            <Button variant="ghost" size="sm" onClick={onToggleStatus} className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 p-0">
+              {isInactive ? <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" /> : <EyeOff className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />}
             </Button>
           )}
           {onEdit && canEdit && (
-            <Button variant="ghost" size="sm" onClick={onEdit} className="h-8 w-8 p-0">
-              <Edit className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={onEdit} className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 p-0">
+              <Edit className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
             </Button>
           )}
           {onDuplicate && canCreate && (
-            <Button variant="ghost" size="sm" onClick={onDuplicate} className="h-8 w-8 p-0">
-              <Copy className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={onDuplicate} className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 p-0">
+              <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
             </Button>
           )}
           {onDelete && canDelete && (
-            <Button variant="ghost" size="sm" onClick={onDelete} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
-              <Trash2 className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={onDelete} className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 p-0 text-destructive hover:text-destructive">
+              <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
             </Button>
           )}
         </div>
       </div>
 
       {children && (
-        <div className="mt-3 pt-3 border-t text-sm text-muted-foreground space-y-1">
+        <div className="mt-1.5 pt-1.5 sm:mt-2 sm:pt-2 md:mt-3 md:pt-3 border-t text-[10px] sm:text-[11px] md:text-sm text-muted-foreground space-y-1">
           {children}
         </div>
       )}

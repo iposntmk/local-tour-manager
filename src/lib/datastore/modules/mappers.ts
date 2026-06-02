@@ -55,6 +55,7 @@ export function mapLanguage(row: LanguageRow): Language {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: row.created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 
@@ -71,6 +72,7 @@ export function mapGuide(row: GuideRowWithLanguages): Guide {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 
@@ -88,6 +90,7 @@ export function mapCompany(row: CompanyRow): Company {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 
@@ -102,6 +105,7 @@ export function mapNationality(row: NationalityRow): Nationality {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 
@@ -114,6 +118,7 @@ export function mapProvince(row: ProvinceRow): Province {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 
@@ -131,6 +136,7 @@ export function mapTouristDestination(row: TouristDestinationRow): TouristDestin
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 
@@ -144,6 +150,7 @@ export function mapShopping(row: ShoppingRow): Shopping {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 
@@ -156,6 +163,7 @@ export function mapExpenseCategory(row: ExpenseCategoryRow): ExpenseCategory {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 
@@ -173,6 +181,7 @@ export function mapDetailedExpense(row: DetailedExpenseRow): DetailedExpense {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared,
   };
 }
 

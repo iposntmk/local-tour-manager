@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
-import { GuideDialog } from '@/components/guides/GuideDialog';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
@@ -21,14 +20,13 @@ interface ImportTourReviewProps {
 
 export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities }: ImportTourReviewProps) {
   const {
-    companies, guides, nationalities, languages, destinations, expenses, shoppings, provinces,
+    companies, guides, nationalities, destinations, expenses, shoppings, provinces,
     draft, allValid,
     setRef, openAddDialog,
     updateDestinationMatch, updateExpenseMatch, updateMealMatch, updateAllowanceMatch,
-    handleCreateCompany, handleCreateGuide, handleCreateNationality,
+    handleCreateCompany, handleCreateNationality,
     handleCreateDestination, handleCreateExpense, handleCreateShopping,
     openCompanyDialog, setOpenCompanyDialog,
-    openGuideDialog, setOpenGuideDialog,
     openNationalityDialog, setOpenNationalityDialog,
     openDestinationDialog, setOpenDestinationDialog,
     openExpenseDialog, setOpenExpenseDialog,
@@ -70,7 +68,6 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
             onUpdateMealMatch={(mi, sel) => updateMealMatch(idx, mi, sel)}
             onUpdateAllowanceMatch={(ai, sel) => updateAllowanceMatch(idx, ai, sel)}
             onOpenAddCompany={() => openAddDialog('company', idx)}
-            onOpenAddGuide={() => openAddDialog('guide', idx)}
             onOpenAddNationality={() => openAddDialog('nationality', idx)}
             onOpenAddDestination={(di) => { setTargetIndex(idx); setTargetItemIndex(di); setOpenDestinationDialog(true); }}
             onOpenAddExpense={(ei) => { setTargetIndex(idx); setTargetItemIndex(ei); setOpenExpenseDialog(true); }}
@@ -87,7 +84,6 @@ export function ImportTourReview({ items, onCancel, onConfirm, preloadedEntities
       </div>
 
       <CompanyDialog open={openCompanyDialog} onOpenChange={setOpenCompanyDialog} onSubmit={handleCreateCompany} />
-      <GuideDialog open={openGuideDialog} onOpenChange={setOpenGuideDialog} languages={languages} onSubmit={handleCreateGuide} />
       <NationalityDialog open={openNationalityDialog} onOpenChange={setOpenNationalityDialog} onSubmit={handleCreateNationality} />
       <DestinationDialog open={openDestinationDialog} onOpenChange={setOpenDestinationDialog} onSubmit={handleCreateDestination} />
       <DetailedExpenseDialog open={openExpenseDialog} onOpenChange={setOpenExpenseDialog} onSubmit={handleCreateExpense} />

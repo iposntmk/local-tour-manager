@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ALL_PERMISSIONS,
   dbRowToUserProfile,
+  getDefaultPermissionsForProfile,
+  getEffectivePermissions,
   userProfileToDbInsert,
   userProfileToDbUpdate,
   type UserProfileInput,
@@ -50,5 +52,27 @@ describe('user profile permissions', () => {
     });
 
     expect(update.permissions).toBeNull();
+  });
+
+  it('grants editor guide users tour creation, editing, and settlement submission by default', () => {
+    const permissions = getDefaultPermissionsForProfile({ role: 'editor', settlementRole: 'guide' });
+
+    expect(permissions).toEqual(expect.arrayContaining([
+      'create_tours',
+      'edit_tours',
+      'edit_tour_info',
+      'edit_tour_info_all_fields',
+      'submit_settlement',
+    ]));
+  });
+
+  it('keeps explicit non-admin permission overrides exact', () => {
+    const permissions = getEffectivePermissions({
+      role: 'editor',
+      settlementRole: 'guide',
+      permissions: ['view_tours'],
+    });
+
+    expect(permissions).toEqual(['view_tours']);
   });
 });

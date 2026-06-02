@@ -17,7 +17,7 @@ export interface EntitySelectorProps {
   entities: any[];
   selected: EntityRef | undefined;
   onSelect: (entity: any) => void;
-  onCreateNew: () => void;
+  onCreateNew?: () => void;
   placeholder: string;
 }
 
@@ -73,15 +73,17 @@ export function EntitySelector({ entities, selected, onSelect, onCreateNew, plac
           )}
         </SelectContent>
       </Select>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onCreateNew}
-        className="h-7 w-7 p-0"
-      >
-        <Plus className="h-3 w-3" />
-      </Button>
+      {onCreateNew && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onCreateNew}
+          className="h-7 w-7 p-0"
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+      )}
     </div>
   );
 }

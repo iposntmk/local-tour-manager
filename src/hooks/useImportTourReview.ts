@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Fuse from 'fuse.js';
 import type { Tour, EntityRef } from '@/types/tour';
-import type { Company, Guide, GuideInput, Language, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
+import type { Company, Guide, Nationality, TouristDestination, DetailedExpense, Shopping, Province } from '@/types/master';
 import { store } from '@/lib/datastore';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -27,7 +27,6 @@ export function useImportTourReview(
   const [companies, setCompanies] = useState<Company[]>(preloadedEntities?.companies ?? []);
   const [guides, setGuides] = useState<Guide[]>(preloadedEntities?.guides ?? []);
   const [nationalities, setNationalities] = useState<Nationality[]>(preloadedEntities?.nationalities ?? []);
-  const [languages, setLanguages] = useState<Language[]>([]);
   const [destinations, setDestinations] = useState<TouristDestination[]>([]);
   const [expenses, setExpenses] = useState<DetailedExpense[]>([]);
   const [shoppings, setShoppings] = useState<Shopping[]>([]);
@@ -35,7 +34,6 @@ export function useImportTourReview(
   const [draft, setDraft] = useState<ReviewItem[]>(items);
 
   const [openCompanyDialog, setOpenCompanyDialog] = useState(false);
-  const [openGuideDialog, setOpenGuideDialog] = useState(false);
   const [openNationalityDialog, setOpenNationalityDialog] = useState(false);
   const [openDestinationDialog, setOpenDestinationDialog] = useState(false);
   const [openExpenseDialog, setOpenExpenseDialog] = useState(false);
@@ -46,17 +44,16 @@ export function useImportTourReview(
   useEffect(() => {
     const load = async () => {
       try {
-        const [c, g, n, l, d, e, s, p] = await Promise.all([
+        const [c, g, n, d, e, s, p] = await Promise.all([
           preloadedEntities?.companies ? Promise.resolve(preloadedEntities.companies) : store.listCompanies({}),
-          preloadedEntities?.guides ? Promise.resolve(preloadedEntities.guides) : store.listGuides({}),
+          preloadedEntities?.guides ? Promise.resolve(preloadedEntities.guides) : store.listGuideUsers({}),
           preloadedEntities?.nationalities ? Promise.resolve(preloadedEntities.nationalities) : store.listNationalities({}),
-          store.listLanguages({ status: 'active' }),
           store.listTouristDestinations({}),
           store.listDetailedExpenses({}),
           store.listShoppings({}),
           store.listProvinces({}),
         ]);
-        setCompanies(c); setGuides(g); setNationalities(n); setLanguages(l);
+        setCompanies(c); setGuides(g); setNationalities(n);
         setDestinations(d); setExpenses(e); setShoppings(s); setProvinces(p);
 
         setDraft(items.map(item => {
@@ -120,10 +117,9 @@ export function useImportTourReview(
   const setRef = (idx: number, key: 'companyRef' | 'guideRef' | 'clientNationalityRef', ref: EntityRef) =>
     setDraft(prev => prev.map((it, i) => i === idx ? { ...it, tour: { ...it.tour, [key]: ref } } : it));
 
-  const openAddDialog = (type: 'company' | 'guide' | 'nationality', idx: number) => {
+  const openAddDialog = (type: 'company' | 'nationality', idx: number) => {
     setTargetIndex(idx);
     if (type === 'company') setOpenCompanyDialog(true);
-    if (type === 'guide') setOpenGuideDialog(true);
     if (type === 'nationality') setOpenNationalityDialog(true);
   };
 
@@ -154,15 +150,6 @@ export function useImportTourReview(
       if (targetIndex !== null) setRef(targetIndex, 'companyRef', { id: created.id, nameAtBooking: created.name });
       toast.success('Company created');
     } catch { toast.error('Failed to create company'); throw new Error(); }
-  };
-
-  const handleCreateGuide = async (data: GuideInput) => {
-    try {
-      const created = await store.createGuide({ name: data.name, phone: data.phone || '', note: data.note || '' });
-      setGuides(prev => [created, ...prev]);
-      if (targetIndex !== null) setRef(targetIndex, 'guideRef', { id: created.id, nameAtBooking: created.name });
-      toast.success('Guide created');
-    } catch { toast.error('Failed to create guide'); throw new Error(); }
   };
 
   const handleCreateNationality = async (data: { name: string; iso2?: string; emoji?: string }) => {
@@ -211,14 +198,13 @@ export function useImportTourReview(
   };
 
   return {
-    companies, guides, nationalities, languages, destinations, expenses, shoppings, provinces,
+    companies, guides, nationalities, destinations, expenses, shoppings, provinces,
     draft, allValid,
     setRef, openAddDialog,
     updateDestinationMatch, updateExpenseMatch, updateMealMatch, updateAllowanceMatch,
-    handleCreateCompany, handleCreateGuide, handleCreateNationality,
+    handleCreateCompany, handleCreateNationality,
     handleCreateDestination, handleCreateExpense, handleCreateShopping,
     openCompanyDialog, setOpenCompanyDialog,
-    openGuideDialog, setOpenGuideDialog,
     openNationalityDialog, setOpenNationalityDialog,
     openDestinationDialog, setOpenDestinationDialog,
     openExpenseDialog, setOpenExpenseDialog,

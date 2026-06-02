@@ -241,6 +241,17 @@ const TOUR_FIELD_EDIT_PERMISSIONS: Permission[] = [
   'edit_tour_line_quantity',
   'edit_tour_line_evidence',
 ];
+const GUIDE_SETTLEMENT_EDIT_PERMISSIONS: Permission[] = [
+  'edit_tour_destinations',
+  'edit_tour_expenses',
+  'edit_tour_meals',
+  'edit_tour_allowances',
+  'edit_tour_shoppings',
+  'edit_tour_summary',
+  'edit_tour_line_all_fields',
+  ...TOUR_FIELD_EDIT_PERMISSIONS,
+  'upload_tour_images',
+];
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   admin: ALL_PERMISSIONS,
@@ -278,7 +289,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 
 export const SETTLEMENT_ROLE_PERMISSIONS: Record<SettlementRole, Permission[]> = {
   none: [],
-  guide: ['submit_settlement', 'view_tour_all_tabs', ...TOUR_TAB_VIEW_PERMISSIONS, ...TOUR_FIELD_VIEW_PERMISSIONS],
+  guide: [
+    'submit_settlement',
+    'view_tour_all_tabs',
+    ...TOUR_TAB_VIEW_PERMISSIONS,
+    ...TOUR_FIELD_VIEW_PERMISSIONS,
+    ...GUIDE_SETTLEMENT_EDIT_PERMISSIONS,
+  ],
   accountant: [
     'review_settlement_line',
     'approve_settlement',

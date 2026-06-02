@@ -21,7 +21,7 @@ import type {
   AttachmentLineType,
   TourLineAttachment,
 } from './tour';
-import type { UserProfile, UserProfileInput } from './user';
+import type { SettlementRole, UserProfile, UserProfileInput } from './user';
 
 export interface SearchQuery {
   search?: string;
@@ -29,6 +29,7 @@ export interface SearchQuery {
   limit?: number;
   offset?: number;
   guideId?: string;
+  settlementRole?: SettlementRole | 'all';
 }
 
 export interface TourImageDownloadItem extends TourImage {
@@ -39,6 +40,17 @@ export interface ToursGrandTotal {
   count: number;
   grandTotal: number;
 }
+
+export type ShareableMasterDataTable =
+  | 'companies'
+  | 'guides'
+  | 'nationalities'
+  | 'provinces'
+  | 'tourist_destinations'
+  | 'shoppings'
+  | 'expense_categories'
+  | 'detailed_expenses'
+  | 'languages';
 
 export interface DataStore {
   // Guides
@@ -274,17 +286,21 @@ export interface DataStore {
 
   // Master data sharing (admin only)
   setMasterDataShared(
-    table: 'companies' | 'guides' | 'nationalities' | 'provinces' | 'tourist_destinations' | 'shoppings' | 'expense_categories' | 'detailed_expenses' | 'languages',
+    table: ShareableMasterDataTable,
     id: string,
     shared: boolean
   ): Promise<void>;
 
   // User Profiles
   listUserProfiles(query?: SearchQuery): Promise<UserProfile[]>;
+  listGuideUsers(query?: SearchQuery): Promise<Guide[]>;
+  getGuideUser(id: string): Promise<Guide | null>;
   getUserProfile(id: string): Promise<UserProfile | undefined>;
   getUserProfileByEmail(email: string): Promise<UserProfile | undefined>;
+  createAuthUser(input: { email: string; password: string; fullName?: string }): Promise<string>;
   createUserProfile(userId: string, input: UserProfileInput, createdBy?: string): Promise<UserProfile>;
   updateUserProfile(id: string, patch: Partial<UserProfileInput>): Promise<void>;
+  updateOwnProfile(patch: Pick<Partial<UserProfileInput>, 'fullName' | 'phone' | 'note'>): Promise<UserProfile>;
   deleteUserProfile(id: string): Promise<void>;
   getCurrentUserProfile(): Promise<UserProfile | undefined>;
 }

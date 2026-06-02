@@ -5,30 +5,27 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
-import { getLineGuests, getLineTotal } from '@/lib/tour-line-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLineReview } from '@/hooks/useLineReview';
 import { LineQuickReview } from './LineQuickReview';
 import { SummaryLineAttachmentsDialog } from './SummaryLineAttachmentsDialog';
-import type {
-  Allowance,
-  AttachmentLineType,
-  Destination,
-  Expense,
-  LineStatus,
-  LineType,
-  Meal,
-  Tour,
-  TourLineAttachment,
-} from '@/types/tour';
+import { SummaryLineReviewMobileList } from './SummaryLineReviewMobileList';
+import type { Destination, Expense, LineType, Meal, Tour, TourLineAttachment } from '@/types/tour';
+import { canViewTourLineField, type Access, type TourLineFieldKey } from '@/lib/tour-detail-permissions';
 import {
-  canViewTourLineField,
-  type Access,
-  type TourLineFieldKey,
-} from '@/lib/tour-detail-permissions';
+  buildGroups,
+  getQuantity,
+  getTotal,
+  isAttachmentLineType,
+  STATUS_FILTERS,
+  SUMMARY_STATUS_LABELS,
+  type FilteredSummaryLineGroup,
+  type StatusFilter,
+  type SummaryLineGroup,
+  type SummaryLineType,
+} from './summary-line-review-utils';
 
-export type SummaryLineType = AttachmentLineType | 'allowance';
-type ReviewLine = Destination | Meal | Expense | Allowance;
+export type { SummaryLineType } from './summary-line-review-utils';
 
 interface SummaryLineReviewTableProps {
   tour: Tour;
@@ -40,43 +37,6 @@ interface SummaryLineReviewTableProps {
   title?: string;
 }
 
-interface Group {
-  title: string;
-  lineType: SummaryLineType;
-  className: string;
-  rows: Array<{ line: ReviewLine; index: number }>;
-}
-
-const SUMMARY_STATUS_LABELS: Partial<Record<LineStatus, string>> = {
-  valid: 'Đã duyệt',
-  need_more: 'Chưa đúng',
-  invalid: 'Chưa đúng',
-};
-
-type StatusFilter = 'hide_approved' | 'all' | 'pending' | 'invalid';
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: 'hide_approved', label: 'Ẩn đã duyệt' },
-  { value: 'all', label: 'Tất cả' },
-  { value: 'pending', label: 'Chưa duyệt' },
-  { value: 'invalid', label: 'Chưa đúng' },
-];
-
-const buildGroups = (tour: Tour): Group[] => [
-  { title: 'Điểm đến (vé)', lineType: 'destination', className: 'bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100', rows: (tour.destinations || []).map((line, index) => ({ line, index })) },
-  { title: 'Ăn', lineType: 'meal', className: 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100', rows: (tour.meals || []).map((line, index) => ({ line, index })) },
-  { title: 'Dịch vụ / Chi phí', lineType: 'expense', className: 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100', rows: (tour.expenses || []).map((line, index) => ({ line, index })) },
-  { title: 'Công tác phí', lineType: 'allowance', className: 'bg-violet-50 text-violet-900 dark:bg-violet-950 dark:text-violet-100', rows: (tour.allowances || []).map((line, index) => ({ line, index })) },
-];
-
-const isAttachmentLineType = (lineType: SummaryLineType): lineType is AttachmentLineType =>
-  lineType === 'destination' || lineType === 'meal' || lineType === 'expense';
-
-const getQuantity = (line: ReviewLine, tourGuests: number) =>
-  'quantity' in line ? (line.quantity || 1) : getLineGuests(line, tourGuests);
-
-const getTotal = (line: ReviewLine, tourGuests: number) =>
-  'quantity' in line ? line.price * (line.quantity || 1) : getLineTotal(line, tourGuests);
-
 export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidenceAccess, lineFieldAccess, lineTypes, title = 'Đối chiếu VAT, ghi chú và chứng từ' }: SummaryLineReviewTableProps) {
   const { hasPermission } = useAuth();
   const { busy: reviewBusy, updateMany } = useLineReview(tour.id);
@@ -85,14 +45,16 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('hide_approved');
   const canReviewLines = !!tour.id && hasPermission('review_settlement_line');
 
-  const approveSection = (group: Group) => {
+  const approveSection = async (group: SummaryLineGroup) => {
     const targets = group.rows
       .filter(({ line }) => line.id)
       .map(({ line }) => ({ lineType: group.lineType as LineType, lineId: line.id as string }));
-    if (targets.length) updateMany(targets, { lineStatus: 'valid' });
+    if (!targets.length) return;
+    const ok = await updateMany(targets, { lineStatus: 'valid' });
+    if (ok) setStatusFilter('hide_approved');
   };
 
-  const renderApproveAll = (group: Group) =>
+  const renderApproveAll = (group: SummaryLineGroup) =>
     canReviewLines && group.rows.some(({ line }) => line.id) ? (
       <Button
         type="button"
@@ -135,9 +97,9 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
   const filteredGroups = useMemo(() => groups.map((g) => {
     let rows = g.rows;
     if (statusFilter === 'hide_approved') rows = rows.filter(({ line }) => line.lineStatus !== 'valid');
-    else if (statusFilter === 'pending') rows = rows.filter(({ line }) => !line.lineStatus);
+    else if (statusFilter === 'pending') rows = rows.filter(({ line }) => !line.lineStatus || line.lineStatus === 'unchecked');
     else if (statusFilter === 'invalid') rows = rows.filter(({ line }) => line.lineStatus === 'need_more' || line.lineStatus === 'invalid');
-    return { ...g, filteredRows: rows };
+    return { ...g, filteredRows: rows } as FilteredSummaryLineGroup;
   }), [groups, statusFilter]);
   const tourGuests = tour.totalGuests || 0;
 
@@ -147,92 +109,38 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
   };
 
   return (
-    <div className="rounded-lg border">
-      <div className="border-b bg-muted/50 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-semibold">{title}</h3>
-          <div className="flex flex-wrap gap-1">
+    <div className="sm:rounded-lg sm:border">
+      <div className="border-b bg-muted/40 p-2 sm:bg-muted/50 sm:p-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
+          <div className="grid w-full grid-cols-4 gap-1 sm:w-auto sm:flex">
             {STATUS_FILTERS.map((f) => (
-              <Button key={f.value} size="sm" variant={statusFilter === f.value ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs" onClick={() => setStatusFilter(f.value)}>
+              <Button
+                key={f.value}
+                size="sm"
+                variant={statusFilter === f.value ? 'secondary' : 'ghost'}
+                className="h-6 min-w-0 px-1 text-[11px] sm:h-7 sm:px-2 sm:text-xs"
+                onClick={() => setStatusFilter(f.value)}
+              >
                 {f.label}
               </Button>
             ))}
           </div>
         </div>
       </div>
-      <div className="space-y-3 p-3 md:hidden">
-        {filteredGroups.map((group) => (
-          <div key={`${group.lineType}-mobile`} className="overflow-hidden rounded-lg border">
-            <div className={`flex items-center justify-between gap-2 px-3 py-2 text-sm font-semibold ${group.className}`}>
-              <span>{group.title} ({group.filteredRows.length}{group.filteredRows.length < group.rows.length ? `/${group.rows.length}` : ''})</span>
-              {renderApproveAll(group)}
-            </div>
-            <div className="space-y-2 p-2">
-              {group.filteredRows.length === 0 ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">
-                  {group.rows.length > 0 ? `Đã ẩn ${group.rows.length} dòng` : 'Chưa có dữ liệu'}
-                </div>
-              ) : group.filteredRows.map(({ line, index }) => {
-                const attachments = isAttachmentLineType(group.lineType) ? (line as Destination | Meal | Expense).attachments || [] : [];
-                return (
-                  <div key={`${group.lineType}-mobile-${line.id || index}`} className="rounded-md border bg-card p-3 text-sm">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        {showName ? (
-                        <div className="font-medium">{line.name}</div>
-                        ) : (
-                          <div className="font-medium">Dòng #{index + 1}</div>
-                        )}
-                        {(showDate || showQuantity) && (
-                          <div className="text-xs text-muted-foreground">
-                            {[showDate ? formatDate(line.date) : null, showQuantity ? `SL/khách: ${getQuantity(line, tourGuests)}` : null]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </div>
-                        )}
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEditLine?.(group.lineType, index)} disabled={!onEditLine || canEditLine?.(group.lineType) === false}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                      {showPrice && (
-                      <div><span className="text-muted-foreground">Giá: </span>{formatCurrency(line.price)}</div>
-                      )}
-                      {showTotal && (
-                      <div><span className="text-muted-foreground">Tổng: </span>{formatCurrency(getTotal(line, tourGuests))}</div>
-                      )}
-                      {showEvidence && <div><span className="text-muted-foreground">VAT: </span>{'vatRate' in line ? `${line.vatRate || 0}% / ${formatCurrency(line.vatAmount || 0)}` : '-'}</div>}
-                      {showEvidence && (
-                        <button type="button" className="text-left" onClick={() => attachments.length && openAttachments(attachments)} disabled={!attachments.length}>
-                          <span className="text-muted-foreground">Chứng từ: </span>{attachments.length}
-                        </button>
-                      )}
-                    </div>
-                    {showEvidence && 'guideNote' in line && line.guideNote && <p className="mt-2 whitespace-pre-wrap text-xs">{line.guideNote}</p>}
-                    <div className="mt-2">
-                      {tour.id && line.id ? (
-                        <LineQuickReview
-                          tourId={tour.id}
-                          lineType={group.lineType as LineType}
-                          lineId={line.id}
-                          currentStatus={line.lineStatus}
-                          currentComment={line.lineComment}
-                          editable
-                          statusLabels={SUMMARY_STATUS_LABELS}
-                        />
-                      ) : <span className="text-muted-foreground">-</span>}
-                      {line.lineComment && (
-                        <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">Lý do: {line.lineComment}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+      <SummaryLineReviewMobileList
+        groups={filteredGroups}
+        tour={tour}
+        showName={showName}
+        showPrice={showPrice}
+        showTotal={showTotal}
+        showEvidence={showEvidence}
+        reviewAction={renderApproveAll}
+        onOpenAttachments={openAttachments}
+        onApproved={() => setStatusFilter('hide_approved')}
+        onEditLine={onEditLine}
+        canEditLine={canEditLine}
+      />
 
       <div className="hidden overflow-x-auto md:block">
         <Table className="min-w-[1120px] text-sm">
@@ -350,6 +258,7 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
                               currentComment={line.lineComment}
                               editable
                               statusLabels={SUMMARY_STATUS_LABELS}
+                              onApproved={() => setStatusFilter('hide_approved')}
                             />
                           ) : (
                             <span className="text-muted-foreground">-</span>

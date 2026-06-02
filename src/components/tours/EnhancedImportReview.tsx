@@ -6,7 +6,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
-import { GuideDialog } from '@/components/guides/GuideDialog';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
 import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedExpenseDialog';
@@ -28,17 +27,16 @@ interface EnhancedImportReviewProps {
 export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEntities }: EnhancedImportReviewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const {
-    companies, guides, nationalities, languages, destinations, expenses, ctpAllowances,
+    companies, guides, nationalities, destinations, expenses, ctpAllowances,
     draft, searchQuery, setSearchQuery,
     validationWarnings, filteredTours, validateForImport,
     matchDestination, matchExpense, matchAllowance,
     updateDestination, updateExpense, updateMeal, updateAllowance,
     removeDestination, removeExpense, removeMeal, removeAllowance,
     updateTourField, updateEntityRef, removeTour,
-    handleCreateCompany, handleCreateGuide, handleCreateNationality,
+    handleCreateCompany, handleCreateNationality,
     handleCreateDestination, handleCreateExpense, handleCreateShopping,
     openCompanyDialog, setOpenCompanyDialog,
-    openGuideDialog, setOpenGuideDialog,
     openNationalityDialog, setOpenNationalityDialog,
     openDestinationDialog, setOpenDestinationDialog,
     openExpenseDialog, setOpenExpenseDialog,
@@ -127,7 +125,6 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                   onUpdateEntityRef={(t, e) => updateEntityRef(originalIndex, t, e)}
                   onRemove={() => removeTour(originalIndex)}
                   onOpenCompanyDialog={() => { setTargetIndex(originalIndex); setInitialEntityName(item.raw.company || ''); setOpenCompanyDialog(true); }}
-                  onOpenGuideDialog={() => { setTargetIndex(originalIndex); setInitialEntityName(item.raw.guide || ''); setOpenGuideDialog(true); }}
                   onOpenNationalityDialog={() => { setTargetIndex(originalIndex); setInitialEntityName(item.raw.nationality || ''); setOpenNationalityDialog(true); }}
                 />
                 {index < filteredTours.length - 1 && <div className="my-4 border-t border-gray-300" />}
@@ -145,9 +142,6 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
       <CompanyDialog open={openCompanyDialog} onOpenChange={setOpenCompanyDialog}
         company={initialEntityName ? { id: '', name: initialEntityName, createdAt: '', updatedAt: '' } as any : undefined}
         onSubmit={handleCreateCompany} />
-      <GuideDialog open={openGuideDialog} onOpenChange={setOpenGuideDialog}
-        guide={initialEntityName ? { id: '', name: initialEntityName, createdAt: '', updatedAt: '' } as any : undefined}
-        languages={languages} onSubmit={handleCreateGuide} />
       <NationalityDialog open={openNationalityDialog} onOpenChange={setOpenNationalityDialog}
         nationality={initialEntityName ? { id: '', name: initialEntityName, createdAt: '', updatedAt: '' } as any : undefined}
         onSubmit={handleCreateNationality} />

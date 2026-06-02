@@ -1,35 +1,27 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/currency-utils';
 import { isTourPaymentEligible } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import type { Tour } from '@/types/tour';
 import { ToursDesktopTableCellContent, type TourTableRowData } from './ToursDesktopTableCell';
+import { ToursDesktopTableHeader } from './ToursDesktopTableHeader';
 import { ToursDesktopTableToolbar } from './ToursDesktopTableToolbar';
+import { useSyncedHorizontalScroll } from './useSyncedHorizontalScroll';
 import {
-  formatTableDateFilterLabel,
   formatTourNationalities,
   getAllowanceTotal,
   getTourDays,
   getTourGuests,
   getTourWarningInfo,
   includesTableFilter,
-  parseTableDateFilter,
-  serializeTableDateFilter,
   tourMatchesTableDateFilter,
   TOUR_TABLE_COLUMNS,
   TOUR_TABLE_COLUMN_KEYS,
-  type TourTableColumn,
   type TourTableColumnKey,
-  type TourTableFilterKey,
   type TourTableFilters,
   createDefaultTourTableColumnVisibility,
   createDefaultTourTableFilters,
@@ -47,6 +39,7 @@ type ToursDesktopTableProps = {
   onExportSingle: (tour: Tour, event: MouseEvent) => void;
   onDuplicate: (tourId: string, event: MouseEvent) => void;
   onDelete: (tourId: string, event: MouseEvent) => void;
+  userProfileMap?: Map<string, { fullName?: string; email: string }>;
 };
 
 export const ToursDesktopTable = ({
@@ -66,9 +59,6 @@ export const ToursDesktopTable = ({
   const [tableDateFilterOpen, setTableDateFilterOpen] = useState(false);
   const [tableCompanyFilterOpen, setTableCompanyFilterOpen] = useState(false);
   const [tableLandOperatorFilterOpen, setTableLandOperatorFilterOpen] = useState(false);
-  const topScrollRef = useRef<HTMLDivElement>(null);
-  const bottomScrollRef = useRef<HTMLDivElement>(null);
-  const syncingRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem('tours.table.columnVisibility', JSON.stringify(tableColumnVisibility));
@@ -82,24 +72,18 @@ export const ToursDesktopTable = ({
     () => TOUR_TABLE_COLUMNS.filter((column) => tableColumnVisibility[column.key] && (canViewShoppingSensitive || column.key !== 'commission')),
     [canViewShoppingSensitive, tableColumnVisibility]
   );
-  const tableWidth = useMemo(
+  const tableMinWidth = useMemo(
     () => visibleColumns.reduce((sum, column) => sum + column.width, 0),
     [visibleColumns]
   );
-
-  // Sync scroll positions when table width changes
-  useEffect(() => {
-    const topElement = topScrollRef.current;
-    const bottomElement = bottomScrollRef.current;
-    
-    if (topElement && bottomElement) {
-      // Ensure both elements have the same scroll position
-      const currentScroll = bottomElement.scrollLeft;
-      if (topElement.scrollLeft !== currentScroll) {
-        topElement.scrollLeft = currentScroll;
-      }
-    }
-  }, [tableWidth, visibleColumns]);
+  const {
+    topScrollRef,
+    tableViewportRef,
+    tableRef,
+    scrollContentWidth,
+    syncScroll,
+    scrollHorizontally,
+  } = useSyncedHorizontalScroll(tableMinWidth);
 
   const companyOptions = useMemo(() => {
     const companies = new Set<string>();
@@ -186,241 +170,6 @@ export const ToursDesktopTable = ({
     setTableColumnVisibility((prev) => ({ ...prev, [key]: visible }));
   };
 
-  const syncScroll = (source: 'top' | 'bottom') => {
-    if (syncingRef.current) return;
-    
-    const sourceElement = source === 'top' ? topScrollRef.current : bottomScrollRef.current;
-    const targetElement = source === 'top' ? bottomScrollRef.current : topScrollRef.current;
-
-    if (!sourceElement || !targetElement) return;
-
-    const sourceScroll = sourceElement.scrollLeft;
-    if (Math.abs(targetElement.scrollLeft - sourceScroll) < 1) return;
-
-    syncingRef.current = true;
-    targetElement.scrollLeft = sourceScroll;
-    
-    // Reset sync flag after a short delay
-    setTimeout(() => {
-      syncingRef.current = false;
-    }, 10);
-  };
-
-  const scrollHorizontally = (delta: number) => {
-    const topElement = topScrollRef.current;
-    const bottomElement = bottomScrollRef.current;
-    const sourceElement = topElement || bottomElement;
-    if (!sourceElement) return;
-
-    syncingRef.current = true;
-    const maxScroll = Math.max(0, sourceElement.scrollWidth - sourceElement.clientWidth);
-    const nextScrollLeft = Math.max(0, Math.min(maxScroll, sourceElement.scrollLeft + delta));
-    
-    if (topElement) topElement.scrollLeft = nextScrollLeft;
-    if (bottomElement) bottomElement.scrollLeft = nextScrollLeft;
-    
-    setTimeout(() => {
-      syncingRef.current = false;
-    }, 10);
-  };
-
-  const renderHeader = (column: TourTableColumn) => {
-    const alignRight = column.headerClassName?.includes('text-right');
-
-    return (
-      <div className={`space-y-1.5 ${alignRight ? 'text-right' : ''}`}>
-        <div className="text-xs font-semibold" title={column.title}>{column.label}</div>
-        {column.filterType === 'text' && (
-          <Input
-            value={tableFilters[column.key as TourTableFilterKey] || ''}
-            onChange={(event) => updateTableFilter(column.key as TourTableFilterKey, event.target.value)}
-            onClick={(event) => event.stopPropagation()}
-            placeholder={column.filterPlaceholder || 'Lọc'}
-            className={`h-7 px-2 text-xs font-normal ${alignRight ? 'text-right' : ''}`}
-          />
-        )}
-        {column.filterType === 'date' && (
-          <Popover open={tableDateFilterOpen} onOpenChange={setTableDateFilterOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-7 w-full justify-start px-2 text-left text-xs font-normal"
-                title={formatTableDateFilterLabel(tableFilters.date)}
-              >
-                <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                <span className="truncate">{formatTableDateFilterLabel(tableFilters.date)}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="range"
-                selected={parseTableDateFilter(tableFilters.date)}
-                onSelect={(range) => updateTableFilter('date', serializeTableDateFilter(range))}
-                numberOfMonths={2}
-                initialFocus
-              />
-              {tableFilters.date && (
-                <div className="border-t p-3">
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => {
-                      updateTableFilter('date', '');
-                      setTableDateFilterOpen(false);
-                    }}
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Xóa ngày
-                  </Button>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
-        )}
-        {column.filterType === 'company' && (
-          <Popover open={tableCompanyFilterOpen} onOpenChange={setTableCompanyFilterOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-7 w-full justify-start px-2 text-left text-xs font-normal"
-                title={tableFilters.company || 'Tất cả công ty mẹ'}
-              >
-                <span className="truncate">{tableFilters.company || 'Tất cả công ty mẹ'}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[260px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Tìm công ty mẹ..." />
-                <CommandList>
-                  <CommandEmpty>Không tìm thấy công ty mẹ.</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      value="__all_companies__"
-                      onSelect={() => {
-                        updateTableFilter('company', '');
-                        setTableCompanyFilterOpen(false);
-                      }}
-                    >
-                      <Check className={`mr-2 h-4 w-4 ${tableFilters.company ? 'opacity-0' : 'opacity-100'}`} />
-                      Tất cả công ty mẹ
-                    </CommandItem>
-                    {companyOptions.map((company) => (
-                      <CommandItem
-                        key={company}
-                        value={company}
-                        onSelect={() => {
-                          updateTableFilter('company', company);
-                          setTableCompanyFilterOpen(false);
-                        }}
-                      >
-                        <Check className={`mr-2 h-4 w-4 ${tableFilters.company === company ? 'opacity-100' : 'opacity-0'}`} />
-                        <span className="truncate">{company}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        )}
-        {column.filterType === 'landOperator' && (
-          <Popover open={tableLandOperatorFilterOpen} onOpenChange={setTableLandOperatorFilterOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-7 w-full justify-start px-2 text-left text-xs font-normal"
-                title={tableFilters.landOperator || 'Tất cả land tour'}
-              >
-                <span className="truncate">{tableFilters.landOperator || 'Tất cả land tour'}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[260px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Tìm land tour..." />
-                <CommandList>
-                  <CommandEmpty>Không tìm thấy công ty land tour.</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      value="__all_land_operators__"
-                      onSelect={() => {
-                        updateTableFilter('landOperator', '');
-                        setTableLandOperatorFilterOpen(false);
-                      }}
-                    >
-                      <Check className={`mr-2 h-4 w-4 ${tableFilters.landOperator ? 'opacity-0' : 'opacity-100'}`} />
-                      Tất cả land tour
-                    </CommandItem>
-                    {landOperatorOptions.map((name) => (
-                      <CommandItem
-                        key={name}
-                        value={name}
-                        onSelect={() => {
-                          updateTableFilter('landOperator', name);
-                          setTableLandOperatorFilterOpen(false);
-                        }}
-                      >
-                        <Check className={`mr-2 h-4 w-4 ${tableFilters.landOperator === name ? 'opacity-100' : 'opacity-0'}`} />
-                        <span className="truncate">{name}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        )}
-        {column.filterType === 'warning' && (
-          <Select value={tableFilters.warning} onValueChange={(value) => updateTableFilter('warning', value)}>
-            <SelectTrigger className="h-7 px-2 text-xs font-normal">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="warning">Cần kiểm tra</SelectItem>
-              <SelectItem value="ok">Bình thường</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-        {column.filterType === 'settlement' && (
-          <Select
-            value={tableFilters.settlement || 'all'}
-            onValueChange={(v) => updateTableFilter('settlement', v === 'all' ? '' : v)}
-          >
-            <SelectTrigger className="h-7 px-2 text-xs font-normal">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="draft">Đang soạn</SelectItem>
-              <SelectItem value="submitted">Đã gửi KT</SelectItem>
-              <SelectItem value="need_changes">Cần bổ sung</SelectItem>
-              <SelectItem value="approved">Đã duyệt</SelectItem>
-              <SelectItem value="closed">Đã đóng</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-        {column.filterType === 'payment' && (
-          <Select
-            value={tableFilters.payment || 'all'}
-            onValueChange={(v) => updateTableFilter('payment', v === 'all' ? '' : v)}
-          >
-            <SelectTrigger className="h-7 px-2 text-xs font-normal">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="na">N/A</SelectItem>
-              <SelectItem value="pending">Chờ TT</SelectItem>
-              <SelectItem value="partial">Một phần</SelectItem>
-              <SelectItem value="paid">Đã TT</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-        {column.filterType === 'none' && <div className="h-7" />}
-      </div>
-    );
-  };
-
   return (
     <div className="hidden md:block mt-6 rounded-lg border bg-card overflow-hidden">
       <ToursDesktopTableToolbar
@@ -446,14 +195,13 @@ export const ToursDesktopTable = ({
             <div
               ref={topScrollRef}
               className="h-6 min-w-0 flex-1 overflow-x-scroll overflow-y-hidden"
-              onScroll={(e) => {
-                e.preventDefault();
+              onScroll={() => {
                 syncScroll('top');
               }}
               onWheel={(event) => {
-                const container = bottomScrollRef.current;
-                if (!container || tableWidth <= container.clientWidth) return;
-                
+                const container = tableViewportRef.current;
+                if (!container || scrollContentWidth <= container.clientWidth) return;
+
                 event.preventDefault();
                 const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
                 scrollHorizontally(delta);
@@ -466,9 +214,8 @@ export const ToursDesktopTable = ({
               <div 
                 className="h-4 bg-gradient-to-r from-transparent via-gray-100/20 to-transparent" 
                 style={{ 
-                  width: `${tableWidth}px`, 
-                  minWidth: `${tableWidth}px`,
-                  maxWidth: `${tableWidth}px`
+                  width: `${scrollContentWidth}px`,
+                  minWidth: `${scrollContentWidth}px`,
                 }}
               />
             </div>
@@ -476,21 +223,30 @@ export const ToursDesktopTable = ({
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <div ref={bottomScrollRef} className="w-full max-w-full overflow-x-auto" onScroll={() => syncScroll('bottom')}>
-            <Table className="table-fixed text-xs" style={{ width: tableWidth, minWidth: tableWidth }}>
-              <TableHeader className="bg-muted/50">
-                <TableRow className="hover:bg-transparent">
-                  {visibleColumns.map((column) => (
-                    <TableHead
-                      key={column.key}
-                      className={cn('px-2 py-2 align-top', column.headerClassName)}
-                      style={{ width: column.width, minWidth: column.width, maxWidth: column.width }}
-                    >
-                      {renderHeader(column)}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
+          <div
+            ref={tableViewportRef}
+            className="max-h-[70vh] w-full max-w-full overflow-auto overscroll-contain"
+            onScroll={() => syncScroll('table')}
+          >
+            <Table
+              unwrapped
+              ref={tableRef}
+              className="w-full table-auto border-separate border-spacing-0 text-xs"
+              style={{ minWidth: tableMinWidth }}
+            >
+              <ToursDesktopTableHeader
+                columns={visibleColumns}
+                filters={tableFilters}
+                companyOptions={companyOptions}
+                landOperatorOptions={landOperatorOptions}
+                dateFilterOpen={tableDateFilterOpen}
+                companyFilterOpen={tableCompanyFilterOpen}
+                landOperatorFilterOpen={tableLandOperatorFilterOpen}
+                onDateFilterOpenChange={setTableDateFilterOpen}
+                onCompanyFilterOpenChange={setTableCompanyFilterOpen}
+                onLandOperatorFilterOpenChange={setTableLandOperatorFilterOpen}
+                onUpdateFilter={updateTableFilter}
+              />
               <TableBody>
                 {tableFilteredTours.length === 0 ? (
                   <TableRow>
@@ -519,8 +275,8 @@ export const ToursDesktopTable = ({
                         {visibleColumns.map((column) => (
                           <TableCell
                             key={column.key}
-                            className={cn('px-2 py-2 text-xs', column.cellClassName)}
-                            style={{ width: column.width, minWidth: column.width, maxWidth: column.width }}
+                            className={cn('min-w-0 px-2 py-2 text-xs align-top', column.cellClassName)}
+                            style={{ minWidth: column.width, width: column.width }}
                           >
                             <ToursDesktopTableCellContent
                               column={column}

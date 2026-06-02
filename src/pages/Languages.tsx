@@ -54,7 +54,7 @@ const Languages = () => {
     mutationFn: ({ id, data }: { id: string; data: Partial<Language> }) => store.updateLanguage(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
+      queryClient.invalidateQueries({ queryKey: ['guide-users'] });
       toast.success('Cập nhật ngôn ngữ thành công');
     },
     onError: (error: Error) => {
@@ -77,7 +77,7 @@ const Languages = () => {
     mutationFn: (id: string) => store.deleteLanguage(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
+      queryClient.invalidateQueries({ queryKey: ['guide-users'] });
       toast.success('Xóa ngôn ngữ thành công');
     },
     onError: (error: Error) => {
@@ -89,7 +89,7 @@ const Languages = () => {
     mutationFn: () => store.deleteAllLanguages(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['languages'] });
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
+      queryClient.invalidateQueries({ queryKey: ['guide-users'] });
       toast.success('Đã xóa tất cả ngôn ngữ');
     },
     onError: (error: Error) => {
