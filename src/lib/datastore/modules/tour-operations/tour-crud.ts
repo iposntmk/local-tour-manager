@@ -94,6 +94,7 @@ export class TourCrudModule {
 
   async listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult> {
     const includeDetails = options?.includeDetails ?? false;
+    const currentProfile = await this.getCurrentUserProfile();
     let queryBuilder = this.supabase.from('tours').select(
       includeDetails
         ? `*, tour_destinations(*), tour_expenses(*), tour_meals(*), tour_allowances(*), tour_shoppings(*, shopping_commission_payments(*)), tour_nationalities(*)`
@@ -127,7 +128,8 @@ export class TourCrudModule {
     if (query?.clientName) queryBuilder = queryBuilder.ilike('client_name', `%${query.clientName}%`);
     if (query?.companyId) queryBuilder = queryBuilder.eq('company_id', query.companyId);
     if (query?.landOperatorId) queryBuilder = queryBuilder.eq('land_operator_id', query.landOperatorId);
-    if (query?.guideId) queryBuilder = queryBuilder.eq('guide_id', query.guideId);
+    if (currentProfile?.settlementRole === 'guide') queryBuilder = queryBuilder.eq('guide_id', currentProfile.id);
+    else if (query?.guideId) queryBuilder = queryBuilder.eq('guide_id', query.guideId);
     if (query?.startDate) queryBuilder = queryBuilder.gte('end_date', query.startDate);
     if (query?.endDate) queryBuilder = queryBuilder.lte('start_date', query.endDate);
     if (query?.nationalityId) {
@@ -148,8 +150,6 @@ export class TourCrudModule {
 
     const { data, error, count } = await queryBuilder;
     if (error) throw error;
-    const currentProfile = await this.getCurrentUserProfile();
-
     const tours = (data || []).map((row) => {
       const typedRow = row as TourRowWithDetails;
       const tour = mapTour(row as any);

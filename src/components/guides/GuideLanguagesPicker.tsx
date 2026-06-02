@@ -40,6 +40,7 @@ export function GuideLanguagesPicker({
       .map((id) => languages.find((language) => language.id === id))
       .filter((language): language is Language => Boolean(language));
 
+    if (selectedLanguages.length === 0) return `${value.length} ngôn ngữ`;
     if (selectedLanguages.length <= 2) {
       return selectedLanguages.map((language) => language.name).join(', ');
     }

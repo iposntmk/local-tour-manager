@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save, UserCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { GuideLanguagesPicker } from '@/components/guides/GuideLanguagesPicker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,17 +14,28 @@ import { store } from '@/lib/datastore';
 import { t } from '@/lib/i18n';
 import { SETTLEMENT_ROLE_LABELS, USER_ROLE_LABELS, USER_STATUS_LABELS } from '@/types/user';
 
+const normalizeIds = (ids?: string[]) => Array.from(new Set(ids || [])).sort();
+
 export default function Profile() {
   const queryClient = useQueryClient();
   const { user, userProfile, refreshUserProfile } = useAuth();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
+  const [languageIds, setLanguageIds] = useState<string[]>([]);
+  const isGuideProfile = userProfile?.settlementRole === 'guide';
+
+  const { data: languages = [] } = useQuery({
+    queryKey: ['languages', 'active'],
+    queryFn: () => store.listLanguages({ status: 'active' }),
+    enabled: isGuideProfile,
+  });
 
   useEffect(() => {
     setFullName(userProfile?.fullName ?? '');
     setPhone(userProfile?.phone ?? '');
     setNote(userProfile?.note ?? '');
+    setLanguageIds(userProfile?.languageIds ?? []);
   }, [userProfile]);
 
   const mutation = useMutation({
@@ -31,10 +43,12 @@ export default function Profile() {
       fullName: fullName.trim(),
       phone: phone.trim(),
       note: note.trim(),
+      languageIds: isGuideProfile ? languageIds : undefined,
     }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['user-profiles'] }),
+        queryClient.invalidateQueries({ queryKey: ['userProfiles'] }),
         queryClient.invalidateQueries({ queryKey: ['guide-users'] }),
       ]);
       await refreshUserProfile();
@@ -49,6 +63,7 @@ export default function Profile() {
     fullName !== (userProfile.fullName ?? '')
     || phone !== (userProfile.phone ?? '')
     || note !== (userProfile.note ?? '')
+    || (isGuideProfile && normalizeIds(languageIds).join('|') !== normalizeIds(userProfile.languageIds).join('|'))
   );
 
   const handleSubmit = (event: FormEvent) => {
@@ -138,6 +153,17 @@ export default function Profile() {
                 rows={4}
               />
             </div>
+            {isGuideProfile && (
+              <div className="space-y-2">
+                <Label>{t('profile.languages')}</Label>
+                <GuideLanguagesPicker
+                  languages={languages}
+                  value={languageIds}
+                  onChange={setLanguageIds}
+                  placeholder={t('profile.languagesPlaceholder')}
+                />
+              </div>
+            )}
             <Button type="submit" disabled={!hasChanges || mutation.isPending}>
               <Save className="mr-2 h-4 w-4" />
               {mutation.isPending ? t('common.loading') : t('common.save')}

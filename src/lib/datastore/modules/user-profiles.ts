@@ -14,7 +14,7 @@ type UserProfileGuideRow = Database['public']['Tables']['user_profiles']['Row'] 
   guide_search_keywords?: string[] | null;
 };
 
-type OwnProfilePatch = Pick<Partial<UserProfileInput>, 'fullName' | 'phone' | 'note'>;
+type OwnProfilePatch = Pick<Partial<UserProfileInput>, 'fullName' | 'phone' | 'note' | 'languageIds'>;
 
 // supabase-js trả về FunctionsHttpError khi Edge Function phản hồi non-2xx;
 // body JSON thực sự nằm trong error.context (một Response). Trích `error` từ đó.
@@ -326,6 +326,7 @@ export class UserProfilesModule {
       p_full_name: patch.fullName ?? null,
       p_phone: patch.phone ?? null,
       p_note: patch.note ?? null,
+      p_language_ids: patch.languageIds ?? null,
     });
 
     if (error) {

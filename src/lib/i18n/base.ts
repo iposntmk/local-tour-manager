@@ -91,6 +91,8 @@ export const baseVi = {
     phonePlaceholder: 'Nhập số điện thoại',
     note: 'Ghi chú',
     notePlaceholder: 'Ghi chú nội bộ hoặc thông tin liên hệ thêm',
+    languages: 'Ngôn ngữ',
+    languagesPlaceholder: 'Chọn ngôn ngữ HDV...',
     email: 'Email',
     systemRole: 'Vai trò hệ thống',
     settlementRole: 'Vai trò quyết toán',
@@ -98,7 +100,7 @@ export const baseVi = {
     saveSuccess: 'Đã cập nhật hồ sơ.',
     saveError: 'Không thể cập nhật hồ sơ.',
     noProfile: 'Không tìm thấy hồ sơ người dùng.',
-    adminManaged: 'Email, vai trò, trạng thái, ngôn ngữ và quyền được quản lý tại trang Người dùng.',
+    adminManaged: 'Email, vai trò, trạng thái và quyền được quản lý tại trang Người dùng.',
   },
 
   tourTabs: {

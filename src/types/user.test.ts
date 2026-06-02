@@ -66,6 +66,16 @@ describe('user profile permissions', () => {
     ]));
   });
 
+  it('does not grant language master writes from the guide settlement role alone', () => {
+    const permissions = getDefaultPermissionsForProfile({ role: 'viewer', settlementRole: 'guide' });
+
+    expect(permissions).not.toEqual(expect.arrayContaining([
+      'create_languages',
+      'edit_languages',
+      'delete_languages',
+    ]));
+  });
+
   it('keeps explicit non-admin permission overrides exact', () => {
     const permissions = getEffectivePermissions({
       role: 'editor',
