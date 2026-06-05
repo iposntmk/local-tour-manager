@@ -17,6 +17,7 @@ import Companies from "./pages/Companies";
 import Nationalities from "./pages/Nationalities";
 import Provinces from "./pages/Provinces";
 import Destinations from "./pages/Destinations";
+import DestinationsFree from "./pages/DestinationsFree";
 import Shopping from "./pages/Shopping";
 import ExpenseCategories from "./pages/ExpenseCategories";
 import DetailedExpenses from "./pages/DetailedExpenses";
@@ -134,6 +135,7 @@ const App = () => {
                 <Route path="nationalities" element={<RequirePermissionRoute permission="view_nationalities"><Nationalities /></RequirePermissionRoute>} />
                 <Route path="provinces" element={<RequirePermissionRoute permission="view_provinces"><Provinces /></RequirePermissionRoute>} />
                 <Route path="destinations" element={<RequirePermissionRoute permission="view_tourist_destinations"><Destinations /></RequirePermissionRoute>} />
+                <Route path="destinations-free" element={<RequirePermissionRoute permission="view_destinations_free"><DestinationsFree /></RequirePermissionRoute>} />
                 <Route path="shopping" element={<RequirePermissionRoute permission="view_shopping"><Shopping /></RequirePermissionRoute>} />
                 <Route path="expense-categories" element={<RequirePermissionRoute permission="view_expense_categories"><ExpenseCategories /></RequirePermissionRoute>} />
                 <Route path="detailed-expenses" element={<RequirePermissionRoute permission="view_detailed_expenses"><DetailedExpenses /></RequirePermissionRoute>} />

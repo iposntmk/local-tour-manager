@@ -54,6 +54,7 @@ const masterDataItems: NavItem[] = [
   { to: '/nationalities', icon: Globe, label: 'Quốc tịch', permission: 'view_nationalities' },
   { to: '/provinces', icon: MapPin, label: 'Tỉnh thành', permission: 'view_provinces' },
   { to: '/destinations', icon: Map, label: 'Điểm đến', permission: 'view_tourist_destinations' },
+  { to: '/destinations-free', icon: Map, label: 'Miễn phí', permission: 'view_destinations_free' },
   { to: '/shopping', icon: ShoppingBag, label: 'Mua sắm', permission: 'view_shopping' },
   { to: '/expense-categories', icon: Tag, label: 'Danh mục', permission: 'view_expense_categories' },
   { to: '/detailed-expenses', icon: Receipt, label: 'Chi phí', permission: 'view_detailed_expenses' },

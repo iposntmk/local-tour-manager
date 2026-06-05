@@ -43,6 +43,7 @@ export const baseVi = {
     nationalities: 'Quốc tịch',
     provinces: 'Tỉnh thành',
     destinations: 'Điểm đến',
+    destinationsFree: 'Miễn phí',
     shopping: 'Mua sắm',
     categories: 'Danh mục',
     expenses: 'Chi phí',

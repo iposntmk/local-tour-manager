@@ -3,11 +3,12 @@ import { CompanyModule } from './company-module';
 import { NationalityModule } from './nationality-module';
 import { ProvinceModule } from './province-module';
 import { DestinationModule } from './destination-module';
+import { DestinationFreeModule } from './destination-free-module';
 import { ShoppingModule } from './shopping-module';
 import { ExpenseModule } from './expense-module';
 import { SharingModule } from './sharing-module';
 
-export { GuideModule, CompanyModule, NationalityModule, ProvinceModule, DestinationModule, ShoppingModule, ExpenseModule, SharingModule };
+export { GuideModule, CompanyModule, NationalityModule, ProvinceModule, DestinationModule, DestinationFreeModule, ShoppingModule, ExpenseModule, SharingModule };
 
 function applyMixins(derivedCtor: any, constructors: any[]) {
   constructors.forEach((baseCtor) => {
@@ -29,6 +30,6 @@ export class MasterDataModule {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MasterDataModule extends GuideModule, CompanyModule, NationalityModule, ProvinceModule, DestinationModule, ShoppingModule, ExpenseModule, SharingModule {}
+export interface MasterDataModule extends GuideModule, CompanyModule, NationalityModule, ProvinceModule, DestinationModule, DestinationFreeModule, ShoppingModule, ExpenseModule, SharingModule {}
 
-applyMixins(MasterDataModule, [GuideModule, CompanyModule, NationalityModule, ProvinceModule, DestinationModule, ShoppingModule, ExpenseModule, SharingModule]);
+applyMixins(MasterDataModule, [GuideModule, CompanyModule, NationalityModule, ProvinceModule, DestinationModule, DestinationFreeModule, ShoppingModule, ExpenseModule, SharingModule]);

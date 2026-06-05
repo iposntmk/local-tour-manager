@@ -5,6 +5,7 @@ import type {
   Nationality,
   Province,
   TouristDestination,
+  DestinationFree,
   Shopping,
   ExpenseCategory,
   DetailedExpense,
@@ -25,6 +26,7 @@ import type {
   NationalityRow,
   ProvinceRow,
   TouristDestinationRow,
+  DestinationFreeRow,
   ShoppingRow,
   ExpenseCategoryRow,
   DetailedExpenseRow,
@@ -138,6 +140,24 @@ export function mapTouristDestination(row: TouristDestinationRow): TouristDestin
     updatedAt: row.updated_at,
     createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
     isShared: row.is_shared,
+  };
+}
+
+export function mapDestinationFree(row: DestinationFreeRow): DestinationFree {
+  return {
+    id: row.id,
+    name: row.name,
+    rawName: row.raw_name || undefined,
+    provinceRef: {
+      id: row.province_id || '',
+      nameAtBooking: row.province_name_at_booking || '',
+    },
+    status: row.status,
+    searchKeywords: row.search_keywords || [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    createdBy: (row as { created_by?: string | null }).created_by ?? undefined,
+    isShared: row.is_shared ?? undefined,
   };
 }
 

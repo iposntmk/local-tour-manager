@@ -1,4 +1,4 @@
-import type { Guide, GuideInput, Language, LanguageInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput, DiaryType, DiaryTypeInput, TourDiary, TourDiaryInput, Restaurant, RestaurantInput, ShopPlace, ShopPlaceInput, Hotel, HotelInput } from './master';
+import type { Guide, GuideInput, Language, LanguageInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, DestinationFree, DestinationFreeInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput, DiaryType, DiaryTypeInput, TourDiary, TourDiaryInput, Restaurant, RestaurantInput, ShopPlace, ShopPlaceInput, Hotel, HotelInput } from './master';
 import type {
   Tour,
   TourInput,
@@ -47,6 +47,7 @@ export type ShareableMasterDataTable =
   | 'nationalities'
   | 'provinces'
   | 'tourist_destinations'
+  | 'destinations_free'
   | 'shoppings'
   | 'expense_categories'
   | 'detailed_expenses'
@@ -119,6 +120,16 @@ export interface DataStore {
   deleteAllTouristDestinations(): Promise<void>;
   bulkCreateTouristDestinations(inputs: TouristDestinationInput[]): Promise<TouristDestination[]>;
   
+  // Destinations Free
+  listDestinationsFree(query?: SearchQuery): Promise<DestinationFree[]>;
+  getDestinationFree(id: string): Promise<DestinationFree | undefined>;
+  createDestinationFree(input: DestinationFreeInput): Promise<DestinationFree>;
+  updateDestinationFree(id: string, patch: Partial<DestinationFree>): Promise<void>;
+  duplicateDestinationFree(id: string): Promise<DestinationFree>;
+  deleteDestinationFree(id: string): Promise<void>;
+  deleteAllDestinationsFree(): Promise<void>;
+  bulkCreateDestinationsFree(inputs: DestinationFreeInput[]): Promise<DestinationFree[]>;
+
   // Shopping
   listShoppings(query?: SearchQuery): Promise<MasterShopping[]>;
   getShopping(id: string): Promise<MasterShopping | undefined>;

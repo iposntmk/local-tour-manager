@@ -356,3 +356,28 @@ export interface HotelInput {
   };
   note?: string;
 }
+
+export interface DestinationFree {
+  id: string;
+  name: string;
+  rawName?: string;
+  provinceRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+  status: EntityStatus;
+  searchKeywords: string[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  isShared?: boolean;
+}
+
+export interface DestinationFreeInput {
+  name: string;
+  rawName?: string;
+  provinceRef: {
+    id: string;
+    nameAtBooking: string;
+  };
+}

@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       companies: {
@@ -61,6 +86,63 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      destinations_free: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_shared: boolean | null
+          name: string
+          province_id: string | null
+          province_name_at_booking: string | null
+          raw_name: string | null
+          search_keywords: string[] | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_shared?: boolean | null
+          name: string
+          province_id?: string | null
+          province_name_at_booking?: string | null
+          raw_name?: string | null
+          search_keywords?: string[] | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_shared?: boolean | null
+          name?: string
+          province_id?: string | null
+          province_name_at_booking?: string | null
+          raw_name?: string | null
+          search_keywords?: string[] | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "destinations_free_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "destinations_free_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "provinces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       detailed_expenses: {
         Row: {
@@ -1842,6 +1924,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

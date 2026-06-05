@@ -46,6 +46,14 @@ export const masterDataVi = {
       price: 'Giá',
       searchPlaceholder: 'Tìm kiếm điểm đến...',
     },
+    destinationsFree: {
+      title: 'Điểm tham quan miễn phí',
+      add: 'Thêm điểm tham quan',
+      edit: 'Sửa điểm tham quan',
+      name: 'Tên điểm tham quan',
+      province: 'Tỉnh thành',
+      searchPlaceholder: 'Tìm kiếm điểm tham quan...',
+    },
     shopping: {
       title: 'Mua sắm',
       add: 'Thêm mua sắm',
