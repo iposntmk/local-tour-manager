@@ -21,9 +21,10 @@ export function useTourImageOcr() {
   const analyze = async (input: File, options: TourImportOptions = {}): Promise<boolean> => {
     setIsAnalyzing(true);
     try {
-      const [analyzeResult, destinations, caches] = await Promise.all([
+      const [analyzeResult, destinations, freeDestinations, caches] = await Promise.all([
         store.analyzeTourImage(input),
         store.listTouristDestinations({}),
+        store.listDestinationsFree({}),
         loadEntityCachesFromStore(),
       ]);
       setEntityCaches(caches);
@@ -31,8 +32,11 @@ export function useTourImageOcr() {
 
       const importJson = buildTourImportJson(
         analyzeResult,
-        destinations.map((d) => ({ name: d.name, rawName: d.rawName, price: d.price })),
+        destinations.map((d) => ({
+          name: d.name, rawName: d.rawName, price: d.price, province: d.provinceRef?.nameAtBooking,
+        })),
         options,
+        freeDestinations.map((d) => ({ name: d.name, rawName: d.rawName, price: 0 })),
       );
       // Đính JSON parser sinh ra (sourceJson) vào từng item để tab JSON đối chiếu.
       const transformed = importJson.map((t) => ({ ...transformImportedTour(t, caches), sourceJson: t }));

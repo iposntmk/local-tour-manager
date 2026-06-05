@@ -78,6 +78,46 @@ describe('buildTourImportJson', () => {
   });
 });
 
+describe('buildTourImportJson — destinations_free & công tác phí theo tỉnh', () => {
+  const destinationsWithProvince = [
+    { name: 'vé_Đại Nội', rawName: 'Imperial City', price: 100000, province: 'Huế' },
+    { name: 'vé_Hội An', rawName: 'Old Town', price: 50000, province: 'Quảng Nam' },
+  ];
+  const freeDestinations = [{ name: 'Cầu Vàng', price: 0 }];
+
+  const analyzeResult: AnalyzeResult = {
+    tables: [{
+      cells: [
+        { rowIndex: 0, columnIndex: 0, content: 'Ngày' },
+        { rowIndex: 0, columnIndex: 1, content: 'Tham quan' },
+        { rowIndex: 1, columnIndex: 0, content: '4/9' },
+        { rowIndex: 1, columnIndex: 1, content: 'Tham Đại Nội' },
+        { rowIndex: 2, columnIndex: 0, content: '5/9' },
+        { rowIndex: 2, columnIndex: 1, content: 'Tham Hội An, Cầu Vàng' },
+      ],
+    }],
+  };
+
+  const [result] = buildTourImportJson(analyzeResult, destinationsWithProvince, { year: 2025 }, freeDestinations);
+  const { destinations, allowances } = result.subcollections;
+
+  it('loại điểm khớp destinations_free khỏi JSON', () => {
+    const names = destinations.map((d) => d.name);
+    expect(names).toContain('vé_Hội An');
+    expect(names).not.toContain('Cầu Vàng');
+  });
+
+  it('ngày tỉnh Huế giữ mặc định Công tác phí - Huế 700k', () => {
+    const day1 = allowances.find((a) => a.date === '2025-09-04');
+    expect(day1).toMatchObject({ name: 'Công tác phí - Huế 700k', price: 700000 });
+  });
+
+  it('ngày tỉnh khác Huế đặt tên theo tỉnh, giá 0 để sửa tay', () => {
+    const day2 = allowances.find((a) => a.date === '2025-09-05');
+    expect(day2).toMatchObject({ name: 'Công tác phí - Quảng Nam', price: 0 });
+  });
+});
+
 describe('extractVisitCandidates', () => {
   it('tách nhiều điểm và lột động từ dẫn nhập', () => {
     expect(extractVisitCandidates('Di Hue, tham Vinh Moc, Hien Luong\nTham Dai Noi, oto Thien Mu'))

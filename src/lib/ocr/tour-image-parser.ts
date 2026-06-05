@@ -104,15 +104,32 @@ const rowsFromLines = (lines: string[], year: number): ItineraryRow[] => {
 // Mỗi điểm tham quan trong OCR đều được đưa vào JSON: khớp token/fuzzy với DB,
 // nếu đạt ngưỡng tự động thì lấy tên + giá từ DB; nếu không, giữ nguyên tên OCR
 // (giá 0) để bước review gợi ý/cho người dùng chọn hoặc tạo mới.
-const buildDestinations = (rows: ItineraryRow[], matcher: Matcher<DestinationEntry>) => {
-  const result: Array<{ name: string; price: number; date: string; orderIndex: number }> = [];
+// Điểm khớp master `destinations_free` (điểm miễn phí) bị loại khỏi JSON; tỉnh
+// thành của mỗi ngày suy từ điểm thường khớp được ĐẦU TIÊN trong ngày để đặt
+// tên công tác phí ở buildAllowances.
+const buildDestinations = (
+  rows: ItineraryRow[],
+  matcher: Matcher<DestinationEntry>,
+  freeMatcher: Matcher<DestinationEntry>,
+) => {
+  const destinations: Array<{ name: string; price: number; date: string; orderIndex: number }> = [];
+  const provinceByDate = new Map<string, string>();
   let orderIndex = 0;
   for (const row of rows) {
     if (!row.date || isBlankOrZero(row.visit) || !looksLikeVisit(row.visit)) continue;
     for (const candidate of extractVisitCandidates(row.visit)) {
-      const best = matcher.best(candidate);
-      const matched = best && best.percent >= AUTO_MATCH_PCT ? best.item : null;
-      result.push({
+      const paidBest = matcher.best(candidate);
+      const freeBest = freeMatcher.best(candidate);
+      // Điểm free: khớp destinations_free đạt ngưỡng và không thua điểm thường.
+      const isFree = freeBest && freeBest.percent >= AUTO_MATCH_PCT
+        && (!paidBest || freeBest.percent >= paidBest.percent);
+      if (isFree) continue;
+
+      const matched = paidBest && paidBest.percent >= AUTO_MATCH_PCT ? paidBest.item : null;
+      if (matched?.province && !provinceByDate.has(row.date)) {
+        provinceByDate.set(row.date, matched.province);
+      }
+      destinations.push({
         name: matched ? matched.name : candidate,
         price: matched ? (matched.price ?? 0) : 0,
         date: row.date,
@@ -120,7 +137,7 @@ const buildDestinations = (rows: ItineraryRow[], matcher: Matcher<DestinationEnt
       });
     }
   }
-  return result;
+  return { destinations, provinceByDate };
 };
 
 const buildMeals = (rows: ItineraryRow[]) => {
@@ -141,7 +158,9 @@ const buildMeals = (rows: ItineraryRow[]) => {
 
 const PICKUP_PHRASES = ['don sb hue', 'don sb da nang', 'don san bay hue', 'don san bay da nang'];
 
-const buildAllowances = (rows: ItineraryRow[]) => {
+// Công tác phí theo ngày: tỉnh Huế (hoặc không xác định) -> "Công tác phí - Huế
+// 700k" giá 700k; tỉnh khác -> "Công tác phí - <tỉnh>" giá 0 để sửa tay khi review.
+const buildAllowances = (rows: ItineraryRow[], provinceByDate: Map<string, string>) => {
   const allowances: Array<{ name: string; price: number; date: string; orderIndex: number }> = [];
   let orderIndex = 0;
   for (const row of rows) {
@@ -149,9 +168,16 @@ const buildAllowances = (rows: ItineraryRow[]) => {
     const norm = normalize(row.visit);
     const isPickupDay = !norm.includes('no guide') && !looksLikeVisit(row.visit)
       && PICKUP_PHRASES.some((p) => norm.includes(p));
-    allowances.push(isPickupDay
-      ? { name: 'Đón or Tiễn sân bay 350k', price: 350000, date: row.date, orderIndex: orderIndex++ }
-      : { name: 'Công tác phí - Huế 700k', price: 700000, date: row.date, orderIndex: orderIndex++ });
+    if (isPickupDay) {
+      allowances.push({ name: 'Đón or Tiễn sân bay 350k', price: 350000, date: row.date, orderIndex: orderIndex++ });
+      continue;
+    }
+    const province = provinceByDate.get(row.date);
+    if (province && normalize(province) !== 'hue') {
+      allowances.push({ name: `Công tác phí - ${province}`, price: 0, date: row.date, orderIndex: orderIndex++ });
+    } else {
+      allowances.push({ name: 'Công tác phí - Huế 700k', price: 700000, date: row.date, orderIndex: orderIndex++ });
+    }
   }
   return allowances;
 };
@@ -160,6 +186,7 @@ export const buildTourImportJson = (
   analyzeResult: AnalyzeResult,
   destinations: DestinationEntry[],
   options: TourImportOptions = {},
+  freeDestinations: DestinationEntry[] = [],
 ) => {
   const year = Number(options.year) || new Date().getFullYear();
   const lines = collectLines(analyzeResult);
@@ -192,6 +219,9 @@ export const buildTourImportJson = (
   const endDate = lastReal?.date || startDate;
 
   const destinationMatcher = buildMatcher(destinations, true);
+  const freeMatcher = buildMatcher(freeDestinations, true);
+  const { destinations: builtDestinations, provinceByDate } =
+    buildDestinations(itineraryRows, destinationMatcher, freeMatcher);
 
   return [{
     tour: {
@@ -210,10 +240,10 @@ export const buildTourImportJson = (
       totalDays: dateDiffDays(startDate, endDate) || itineraryRows.length,
     },
     subcollections: {
-      destinations: buildDestinations(itineraryRows, destinationMatcher),
+      destinations: builtDestinations,
       expenses: [] as Array<{ name: string; price: number; date: string; orderIndex: number }>,
       meals: buildMeals(itineraryRows),
-      allowances: buildAllowances(itineraryRows),
+      allowances: buildAllowances(itineraryRows, provinceByDate),
       summary: {
         totalTabs: 0, advancePayment: 0, totalAfterAdvance: 0, companyTip: 0,
         totalAfterTip: 0, collectionsForCompany: 0, totalAfterCollections: 0, finalTotal: 0,

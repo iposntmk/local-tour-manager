@@ -8,4 +8,6 @@ export interface DestinationEntry {
   rawName?: string;
   /** price <= 0 được coi là "free" nhưng vẫn dùng để khớp. */
   price: number;
+  /** Tỉnh thành (nameAtBooking) — dùng suy ra công tác phí theo ngày. */
+  province?: string;
 }
