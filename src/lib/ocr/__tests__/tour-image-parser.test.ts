@@ -27,8 +27,8 @@ const sampleAnalyzeResult: AnalyzeResult = {
 };
 
 const destinations = [
-  { name: 'vé_Đại Nội', price: 100000 },
-  { name: 'vé_Hội An', price: 50000 },
+  { name: 'vé_Đại Nội', rawName: 'Imperial City', price: 100000 },
+  { name: 'vé_Hội An', rawName: 'Old Town', price: 50000 },
   { name: 'Hải Vân', price: 0 }, // price 0 -> "free", không thêm vào kết quả
 ];
 
@@ -59,6 +59,22 @@ describe('buildTourImportJson', () => {
     const byName = new Map(subcollections.destinations.map((d) => [d.name, d.price]));
     expect(byName.get('vé_Đại Nội')).toBe(100000);
     expect(byName.get('vé_Hội An')).toBe(50000);
+  });
+
+  it('khớp địa điểm OCR qua rawName của DB để lấy name chuẩn', () => {
+    const [rawNameResult] = buildTourImportJson({
+      tables: [{
+        cells: [
+          { rowIndex: 0, columnIndex: 0, content: 'Ngày' },
+          { rowIndex: 0, columnIndex: 1, content: 'Tham quan' },
+          { rowIndex: 1, columnIndex: 0, content: '4/9' },
+          { rowIndex: 1, columnIndex: 1, content: 'Tham Imperial City, Old Town' },
+        ],
+      }],
+    }, destinations, { year: 2025 });
+
+    expect(rawNameResult.subcollections.destinations.map((d) => d.name))
+      .toEqual(['vé_Đại Nội', 'vé_Hội An']);
   });
 });
 

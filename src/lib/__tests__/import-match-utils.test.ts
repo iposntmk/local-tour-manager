@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { buildMatcher, normalizeForMatch, SUGGEST_MIN_PCT } from '@/lib/import-match-utils';
 
-const dest = (id: string, name: string, price = 0, province = '') => ({
+const dest = (id: string, name: string, price = 0, province = '', rawName?: string) => ({
   id,
   name,
+  rawName,
   price,
   provinceRef: { id: `p-${id}`, nameAtBooking: province },
 });
@@ -39,6 +40,15 @@ describe('buildMatcher (destinations)', () => {
 
   it('matches a structured destination name by its base name', () => {
     expect(matcher.best('vé_Hội An_Quảng Nam')?.item.id).toBe('1');
+  });
+
+  it('matches comma and newline separated rawName aliases', () => {
+    const aliasMatcher = buildMatcher([
+      dest('1', 'vé_Đại Nội_Huế', 200000, 'Huế', 'Kinh thành, Citadel\nImperial City'),
+    ], true);
+
+    expect(aliasMatcher.best('Citadel')?.item.name).toBe('vé_Đại Nội_Huế');
+    expect(aliasMatcher.best('Imperial City')?.percent).toBe(100);
   });
 
   it('returns ranked suggestions for partial names', () => {

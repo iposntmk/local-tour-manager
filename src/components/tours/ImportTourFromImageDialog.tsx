@@ -151,6 +151,7 @@ export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTour
                 onCancel={reset}
                 onConfirm={handleConfirm}
                 preloadedEntities={entityCaches ?? undefined}
+                imageFile={file}
                 rawOcr={rawOcr}
               />
             </div>

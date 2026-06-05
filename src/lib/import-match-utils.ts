@@ -24,6 +24,8 @@ export interface Matcher<T> {
 
 type DestinationLike = {
   name: string;
+  rawName?: string | null;
+  raw_name?: string | null;
   provinceRef?: { nameAtBooking?: string | null };
 };
 
@@ -31,22 +33,29 @@ type DestinationLike = {
 const scoreToPercent = (score: number | undefined): number =>
   Math.round((1 - (score ?? 1)) * 100);
 
+const splitAliasNames = (value?: string | null): string[] =>
+  (value || '').split(/[\n,]+/).map((part) => part.trim()).filter(Boolean);
+
+const matchKeyForName = (item: DestinationLike, name: string, stripPrefix: boolean): string => {
+  const matchName = stripPrefix
+    ? getDestinationBaseName(name, [item.provinceRef?.nameAtBooking], true)
+    : name;
+  return normalizeForMatch(matchName);
+};
+
+const matchKeysForItem = <T extends { name: string }>(item: T, stripPrefix: boolean): string[] => {
+  const destination = item as DestinationLike;
+  const names = [item.name, ...splitAliasNames(destination.rawName), ...splitAliasNames(destination.raw_name)];
+  return [...new Set(names.map((name) => matchKeyForName(destination, name, stripPrefix)).filter(Boolean))];
+};
+
 /**
  * Build a reusable fuzzy matcher over master records. Matching runs on a
  * diacritic-insensitive, prefix-stripped normalization of each name so the
  * same logic powers both the preview suggestions and the final import.
  */
 export function buildMatcher<T extends { name: string }>(items: T[], stripPrefix = false): Matcher<T> {
-  const records = items.map((item) => {
-    const matchName = stripPrefix
-      ? getDestinationBaseName(
-        item.name,
-        [(item as DestinationLike).provinceRef?.nameAtBooking],
-        true,
-      )
-      : item.name;
-    return { item, key: normalizeForMatch(matchName) };
-  });
+  const records = items.flatMap((item) => matchKeysForItem(item, stripPrefix).map((key) => ({ item, key })));
   // threshold 0.6 -> returns everything down to ~40% similarity; we filter precisely below.
   const fuse = new Fuse(records, {
     keys: ['key'],

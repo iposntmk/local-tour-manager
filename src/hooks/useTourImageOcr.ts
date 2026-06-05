@@ -31,7 +31,7 @@ export function useTourImageOcr() {
 
       const importJson = buildTourImportJson(
         analyzeResult,
-        destinations.map((d) => ({ name: d.name, price: d.price })),
+        destinations.map((d) => ({ name: d.name, rawName: d.rawName, price: d.price })),
         options,
       );
       // Đính JSON parser sinh ra (sourceJson) vào từng item để tab JSON đối chiếu.

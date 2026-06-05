@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Search, LayoutList, Braces } from 'lucide-react';
+import { Search, LayoutList, Braces, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
@@ -13,6 +13,7 @@ import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedEx
 import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
 import { useEnhancedImportReview } from '@/hooks/useEnhancedImportReview';
 import { EnhancedImportTourCard } from './EnhancedImportTourCard';
+import { ImportReviewImageView } from './ImportReviewImageView';
 import { ImportReviewJsonView } from './ImportReviewJsonView';
 import { buildFinalTours } from '@/lib/import-review-utils';
 import type { Company, Guide, Nationality } from '@/types/master';
@@ -25,11 +26,13 @@ interface EnhancedImportReviewProps {
   onCancel: () => void;
   onConfirm: (tours: Partial<Tour>[]) => void;
   preloadedEntities?: { companies: Company[]; guides: Guide[]; nationalities: Nationality[] };
+  /** Ảnh/PDF đã gửi OCR để đối chiếu trong màn hình review. */
+  imageFile?: File | null;
   /** OCR thô của Azure (chỉ có ở luồng import từ ảnh) để hiển thị ở tab JSON. */
   rawOcr?: unknown;
 }
 
-export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEntities, rawOcr }: EnhancedImportReviewProps) {
+export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEntities, imageFile, rawOcr }: EnhancedImportReviewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const {
     companies, guides, nationalities, destinations, expenses, ctpAllowances,
@@ -82,6 +85,11 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
           <TabsTrigger value="data" className="gap-1.5">
             <LayoutList className="h-3.5 w-3.5" />Dữ liệu
           </TabsTrigger>
+          {imageFile && (
+            <TabsTrigger value="image" className="gap-1.5">
+              <ImageIcon className="h-3.5 w-3.5" />Ảnh
+            </TabsTrigger>
+          )}
           <TabsTrigger value="json" className="gap-1.5">
             <Braces className="h-3.5 w-3.5" />JSON
           </TabsTrigger>
@@ -128,6 +136,12 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
             </div>
           </ScrollArea>
         </TabsContent>
+
+        {imageFile && (
+          <TabsContent value="image" className="mt-0">
+            <ImportReviewImageView file={imageFile} />
+          </TabsContent>
+        )}
 
         <TabsContent value="json" className="mt-0">
           <ImportReviewJsonView draft={draft} rawOcr={rawOcr} />
