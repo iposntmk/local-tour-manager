@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Trash2, ChevronsUpDown } from 'lucide-react';
+import { Check, Trash2, ChevronsUpDown, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -391,6 +391,14 @@ export function SubcollectionSection({
       const matchedAllowance = matchFunction ? matchFunction(item.name) : null;
       const hasAllowanceMatch = matchedAllowance !== null;
 
+      const allowanceSugg = item.name && suggestFunction ? suggestFunction(item.name) : [];
+      const suggIdSet = new Set(allowanceSugg.map(s => s.item?.id).filter(Boolean));
+      const suggestedItems = allowanceSugg.map(s => s.item).filter(Boolean);
+      const allowanceOptions = [
+        ...suggestedItems,
+        ...masterData.filter((a: any) => a?.id && !suggIdSet.has(a.id)),
+      ];
+
       return (
         <TableRow key={index}>
           <TableCell className="text-xs font-medium">{index + 1}</TableCell>
@@ -418,7 +426,7 @@ export function SubcollectionSection({
                       <CommandList>
                         <CommandEmpty>No allowance found.</CommandEmpty>
                         <CommandGroup>
-                          {masterData.map((allowance: any) => (
+                          {allowanceOptions.map((allowance: any) => (
                             <CommandItem
                               key={allowance.id}
                               value={allowance.name}
@@ -463,6 +471,42 @@ export function SubcollectionSection({
                 </div>
               )}
               {renderSuggestions(item, index, hasAllowanceMatch)}
+              {item.provinceCandidates && item.provinceCandidates.length > 1 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <span className="text-[10px] text-muted-foreground self-center">
+                    <MapPin className="inline h-3 w-3 mr-0.5" />
+                    Tỉnh:
+                  </span>
+                    {item.provinceCandidates.map((prov: string) => {
+                      const currentProvince = (item.name || '').replace('Công tác phí - ', '');
+                      const isActive = currentProvince === prov;
+                      return (
+                        <Button
+                          key={prov}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newName = `Công tác phí - ${prov}`;
+                            const matched = matchFunction?.(newName);
+                            if (matched) {
+                              onUpdate(index, 'name', matched.name);
+                              if (matched.price !== undefined) onUpdate(index, 'price', matched.price);
+                            } else {
+                              onUpdate(index, 'name', newName);
+                            }
+                          }}
+                          className={`h-5 px-1.5 text-[10px] ${
+                            isActive
+                              ? 'border-blue-500 bg-blue-50 text-blue-800'
+                              : 'border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {prov}
+                        </Button>
+                      );
+                    })}
+                </div>
+              )}
             </div>
           </TableCell>
           <TableCell className="text-xs">

@@ -114,20 +114,26 @@ const buildDestinations = (
 ) => {
   const destinations: Array<{ name: string; price: number; date: string; orderIndex: number }> = [];
   const provinceByDate = new Map<string, string>();
+  const provinceCandidatesByDate = new Map<string, Set<string>>();
   let orderIndex = 0;
   for (const row of rows) {
     if (!row.date || isBlankOrZero(row.visit) || !looksLikeVisit(row.visit)) continue;
     for (const candidate of extractVisitCandidates(row.visit)) {
       const paidBest = matcher.best(candidate);
       const freeBest = freeMatcher.best(candidate);
-      // Điểm free: khớp destinations_free đạt ngưỡng và không thua điểm thường.
       const isFree = freeBest && freeBest.percent >= AUTO_MATCH_PCT
         && (!paidBest || freeBest.percent >= paidBest.percent);
       if (isFree) continue;
 
       const matched = paidBest && paidBest.percent >= AUTO_MATCH_PCT ? paidBest.item : null;
-      if (matched?.province && !provinceByDate.has(row.date)) {
-        provinceByDate.set(row.date, matched.province);
+      if (matched?.province) {
+        if (!provinceByDate.has(row.date)) {
+          provinceByDate.set(row.date, matched.province);
+        }
+        if (!provinceCandidatesByDate.has(row.date)) {
+          provinceCandidatesByDate.set(row.date, new Set());
+        }
+        provinceCandidatesByDate.get(row.date)!.add(matched.province);
       }
       destinations.push({
         name: matched ? matched.name : candidate,
@@ -137,7 +143,7 @@ const buildDestinations = (
       });
     }
   }
-  return { destinations, provinceByDate };
+  return { destinations, provinceByDate, provinceCandidatesByDate };
 };
 
 const buildMeals = (rows: ItineraryRow[]) => {
@@ -158,10 +164,15 @@ const buildMeals = (rows: ItineraryRow[]) => {
 
 const PICKUP_PHRASES = ['don sb hue', 'don sb da nang', 'don san bay hue', 'don san bay da nang'];
 
-// Công tác phí theo ngày: tỉnh Huế (hoặc không xác định) -> "Công tác phí - Huế
-// 700k" giá 700k; tỉnh khác -> "Công tác phí - <tỉnh>" giá 0 để sửa tay khi review.
-const buildAllowances = (rows: ItineraryRow[], provinceByDate: Map<string, string>) => {
-  const allowances: Array<{ name: string; price: number; date: string; orderIndex: number }> = [];
+// Công tác phí theo ngày: price luôn = 0 để user nhập tay khi review.
+// Nếu 1 ngày có điểm tham quan thuộc nhiều tỉnh, gắn provinceCandidates
+// để gợi ý user chọn tỉnh phù hợp.
+const buildAllowances = (
+  rows: ItineraryRow[],
+  provinceByDate: Map<string, string>,
+  provinceCandidatesByDate?: Map<string, Set<string>>,
+) => {
+  const allowances: Array<{ name: string; price: number; date: string; orderIndex: number; provinceCandidates?: string[] }> = [];
   let orderIndex = 0;
   for (const row of rows) {
     if (!row.date || isNonProgramDay(row.visit)) continue;
@@ -169,15 +180,21 @@ const buildAllowances = (rows: ItineraryRow[], provinceByDate: Map<string, strin
     const isPickupDay = !norm.includes('no guide') && !looksLikeVisit(row.visit)
       && PICKUP_PHRASES.some((p) => norm.includes(p));
     if (isPickupDay) {
-      allowances.push({ name: 'Đón or Tiễn sân bay 350k', price: 350000, date: row.date, orderIndex: orderIndex++ });
+      allowances.push({ name: 'Đón or Tiễn sân bay 350k', price: 0, date: row.date, orderIndex: orderIndex++ });
       continue;
     }
-    const province = provinceByDate.get(row.date);
-    if (province && normalize(province) !== 'hue') {
-      allowances.push({ name: `Công tác phí - ${province}`, price: 0, date: row.date, orderIndex: orderIndex++ });
-    } else {
-      allowances.push({ name: 'Công tác phí - Huế 700k', price: 700000, date: row.date, orderIndex: orderIndex++ });
+    const province = provinceByDate.get(row.date) || 'Huế';
+    const allowance: { name: string; price: number; date: string; orderIndex: number; provinceCandidates?: string[] } = {
+      name: `Công tác phí - ${province}`,
+      price: 0,
+      date: row.date,
+      orderIndex: orderIndex++,
+    };
+    const candidates = provinceCandidatesByDate?.get(row.date);
+    if (candidates && candidates.size > 1) {
+      allowance.provinceCandidates = Array.from(candidates);
     }
+    allowances.push(allowance);
   }
   return allowances;
 };
@@ -220,7 +237,7 @@ export const buildTourImportJson = (
 
   const destinationMatcher = buildMatcher(destinations, true);
   const freeMatcher = buildMatcher(freeDestinations, true);
-  const { destinations: builtDestinations, provinceByDate } =
+  const { destinations: builtDestinations, provinceByDate, provinceCandidatesByDate } =
     buildDestinations(itineraryRows, destinationMatcher, freeMatcher);
 
   return [{
@@ -243,7 +260,7 @@ export const buildTourImportJson = (
       destinations: builtDestinations,
       expenses: [] as Array<{ name: string; price: number; date: string; orderIndex: number }>,
       meals: buildMeals(itineraryRows),
-      allowances: buildAllowances(itineraryRows, provinceByDate),
+      allowances: buildAllowances(itineraryRows, provinceByDate, provinceCandidatesByDate),
       summary: {
         totalTabs: 0, advancePayment: 0, totalAfterAdvance: 0, companyTip: 0,
         totalAfterTip: 0, collectionsForCompany: 0, totalAfterCollections: 0, finalTotal: 0,

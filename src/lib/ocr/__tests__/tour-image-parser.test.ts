@@ -107,14 +107,42 @@ describe('buildTourImportJson — destinations_free & công tác phí theo tỉn
     expect(names).not.toContain('Cầu Vàng');
   });
 
-  it('ngày tỉnh Huế giữ mặc định Công tác phí - Huế 700k', () => {
-    const day1 = allowances.find((a) => a.date === '2025-09-04');
-    expect(day1).toMatchObject({ name: 'Công tác phí - Huế 700k', price: 700000 });
+  it('tất cả công tác phí đều có giá 0 để user nhập tay khi review', () => {
+    allowances.forEach((a) => {
+      expect(a.price).toBe(0);
+    });
   });
 
-  it('ngày tỉnh khác Huế đặt tên theo tỉnh, giá 0 để sửa tay', () => {
+  it('ngày tỉnh Huế đặt tên Công tác phí - Huế, giá 0', () => {
+    const day1 = allowances.find((a) => a.date === '2025-09-04');
+    expect(day1).toMatchObject({ name: 'Công tác phí - Huế', price: 0 });
+  });
+
+  it('ngày tỉnh khác Huế đặt tên theo tỉnh, giá 0', () => {
     const day2 = allowances.find((a) => a.date === '2025-09-05');
     expect(day2).toMatchObject({ name: 'Công tác phí - Quảng Nam', price: 0 });
+  });
+
+  it('ngày có điểm tham quan 2 tỉnh thì gắn provinceCandidates', () => {
+    const analyzeResult: AnalyzeResult = {
+      tables: [{
+        cells: [
+          { rowIndex: 0, columnIndex: 0, content: 'Ngày' },
+          { rowIndex: 0, columnIndex: 1, content: 'Tham quan' },
+          { rowIndex: 1, columnIndex: 0, content: '4/9' },
+          { rowIndex: 1, columnIndex: 1, content: 'Tham Đại Nội, Cầu Rồng' },
+        ],
+      }],
+    };
+    const multiProvinceDestinations = [
+      { name: 'vé_Đại Nội', price: 100000, province: 'Huế' },
+      { name: 'Cầu Rồng', price: 50000, province: 'Đà Nẵng' },
+    ];
+    const [result] = buildTourImportJson(analyzeResult, multiProvinceDestinations, { year: 2025 });
+    const day1 = result.subcollections.allowances.find((a) => a.date === '2025-09-04');
+    expect(day1?.provinceCandidates).toBeDefined();
+    expect(day1?.provinceCandidates).toEqual(expect.arrayContaining(['Huế', 'Đà Nẵng']));
+    expect(day1?.provinceCandidates?.length).toBe(2);
   });
 });
 

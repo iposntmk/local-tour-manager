@@ -115,6 +115,7 @@ export interface Allowance extends LineReviewFields {
   price: number;
   quantity?: number;
   categoryId?: string;
+  provinceCandidates?: string[];
 }
 
 export interface Shopping extends LineReviewFields {

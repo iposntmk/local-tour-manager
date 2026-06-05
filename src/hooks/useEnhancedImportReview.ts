@@ -78,21 +78,29 @@ export function useEnhancedImportReview(
           store.listShoppings({}),
           store.listProvinces({}),
         ]);
-        setCompanies(c); setGuides(g); setNationalities(n);
-        setDestinations(d); setExpenses(e); setShoppings(s); setProvinces(p);
+        const activeCompanies = c.filter(x => x.status === 'active');
+        const activeGuides = g.filter(x => x.status === 'active');
+        const activeNationalities = n.filter(x => x.status === 'active');
+        const activeDestinations = d.filter(x => x.status === 'active');
+        const activeExpenses = e.filter(x => x.status === 'active');
+        const activeShoppings = s.filter(x => x.status === 'active');
+        const activeProvinces = p.filter(x => x.status === 'active');
 
-        const ctp = e.filter(exp => exp.categoryRef?.nameAtBooking === 'CTP');
+        setCompanies(activeCompanies); setGuides(activeGuides); setNationalities(activeNationalities);
+        setDestinations(activeDestinations); setExpenses(activeExpenses); setShoppings(activeShoppings); setProvinces(activeProvinces);
+
+        const ctp = activeExpenses.filter(exp => exp.categoryRef?.nameAtBooking === 'CTP');
         setCtpAllowances(ctp);
 
         matcherRef.current = {
-          destinations: buildMatcher(d, true), // strip "vé_" prefix on destinations
-          expenses: buildMatcher(e),
+          destinations: buildMatcher(activeDestinations, true),
+          expenses: buildMatcher(activeExpenses),
           allowances: buildMatcher(ctp),
         };
 
-        const cFuse = new Fuse(c, { keys: ['name'], ...FUSE_OPTS });
-        const gFuse = new Fuse(g, { keys: ['name'], ...FUSE_OPTS });
-        const nFuse = new Fuse(n, { keys: ['name', 'iso2'], ...FUSE_OPTS });
+        const cFuse = new Fuse(activeCompanies, { keys: ['name'], ...FUSE_OPTS });
+        const gFuse = new Fuse(activeGuides, { keys: ['name'], ...FUSE_OPTS });
+        const nFuse = new Fuse(activeNationalities, { keys: ['name', 'iso2'], ...FUSE_OPTS });
 
         setDraft(items.map(item => {
           const tour = { ...item.tour };
