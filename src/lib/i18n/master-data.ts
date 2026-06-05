@@ -41,6 +41,7 @@ export const masterDataVi = {
       add: 'Thêm điểm đến',
       edit: 'Sửa điểm đến',
       name: 'Tên điểm đến',
+      rawName: 'Tên chưa chuẩn hóa',
       province: 'Tỉnh thành',
       price: 'Giá',
       searchPlaceholder: 'Tìm kiếm điểm đến...',

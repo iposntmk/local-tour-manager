@@ -71,6 +71,43 @@ npm run backfill:total-days   # Run total_days backfill script
 npm run upload:tour-images    # Upload tour images to Supabase storage
 ```
 
+### Installed Local CLI Tools
+```bash
+supabase --version       # Supabase CLI is available
+supabase status          # Check local Supabase services when applicable
+supabase db diff         # Inspect database schema changes before migrations
+supabase gen types typescript  # Regenerate Supabase TypeScript types when needed
+
+gh --version             # GitHub CLI is available
+gh auth status           # Verify GitHub authentication before operations
+gh pr view               # Inspect pull requests
+gh pr checks             # Inspect PR check status
+gh run view --log        # Inspect GitHub Actions run logs
+```
+
+Use `gh` for GitHub PRs, issues, Actions runs/logs, and repository metadata when needed. Verify `gh auth status` before GitHub operations.
+
+### Supabase Remote Access (already configured — do NOT ask)
+
+The Supabase CLI is **installed AND logged in**, and this repo is **already linked** to the
+remote project `tuypgzkejqbbvubwomov`. Treat this as a standing fact:
+
+- **Do not ask the user to run `supabase login` / `supabase link`, and do not ask them to
+  "verify auth/link" first.** It is done. Skip those preamble checks.
+- **Run database/SQL operations directly against the linked remote, without asking for
+  per-command confirmation.** This includes: `supabase db push`, `supabase migration up
+  --linked`, `supabase db execute`, `supabase db diff`, `supabase gen types typescript
+  --linked`, and applying SQL/migrations.
+- Prefer committing schema changes as migration files in `supabase/migrations/` and applying
+  them with `supabase db push` (so the change is reproducible), rather than one-off ad-hoc SQL.
+- Edge Functions deploy directly too: `supabase functions deploy <name>` (e.g.
+  `analyze-tour-image`). Set function secrets with `supabase secrets set ...`.
+- Standing exception — confirm first ONLY for clearly irreversible data loss against remote
+  (e.g. `drop table`, `truncate`, `delete`/`update` without a `WHERE`, dropping a column with
+  data). Normal additive migrations and DDL do not need confirmation.
+- All **application code** must still access the database through `store` from
+  `@/lib/datastore` — never the Supabase client directly in components.
+
 ## Architecture Overview
 
 ### Core Stack

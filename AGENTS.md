@@ -81,6 +81,8 @@ Only start writing after this is clear.
 - Toast notifications via `sonner`.
 - TanStack Query for async state; follow existing `staleTime` / `gcTime` config.
 - Do **not** add `optimizeDeps.force: true` to `vite.config.ts` (causes EPERM on Windows).
+- Supabase CLI is **installed AND logged in**, and this repo is **already linked** to the remote project `tuypgzkejqbbvubwomov`. Do **not** ask the user to `supabase login` / `supabase link` or to "verify auth/link" — it is done. Run DB/SQL operations directly against the linked remote **without asking for per-command confirmation** (`supabase db push`, `supabase migration up --linked`, `supabase db execute`, `supabase gen types typescript --linked`, `supabase functions deploy <name>`, `supabase secrets set ...`). Prefer migration files in `supabase/migrations/` applied via `supabase db push` over ad-hoc SQL. Confirm first ONLY for clearly irreversible remote data loss (`drop table`, `truncate`, `delete`/`update` without `WHERE`, dropping a populated column).
+- GitHub CLI is installed; use `gh` when PRs, issues, Actions runs/logs, or repository metadata are needed. Verify `gh auth status` before GitHub operations.
 
 ---
 

@@ -16,6 +16,8 @@
     "backfill:allowance-category": "node --env-file=.env scripts/backfill-allowance-category.mjs",
     "upload:tour-images": "node scripts/upload-tour-images.mjs",
     "bulk-close-tours": "node --env-file=.env scripts/bulk-close-tours.mjs",
+    "ocr:tour": "node --env-file=.env scripts/azure-tour-image-to-json.mjs",
+    "ocr:tour:ui": "node --env-file=.env scripts/azure-tour-image-ui.mjs",
     "deploy": "scripts/deploy-gh-pages.sh"
   },
   "dependencies": {

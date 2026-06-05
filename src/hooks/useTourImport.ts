@@ -5,6 +5,7 @@ import type { Tour, TourQuery, TourListResult } from '@/types/tour';
 import { toast } from 'sonner';
 import { handleImportError, validateTourData } from '@/lib/error-utils';
 import { getTourNationalityIds } from '@/pages/tours/tour-table-config';
+import { buildMatcher, AUTO_MATCH_PCT, type Matcher } from '@/lib/import-match-utils';
 
 // Define ProcessResult type for bulk import
 type ProcessResult =
@@ -139,14 +140,17 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
         store.listDetailedExpenses({}),
         store.listShoppings({}),
       ]);
-      // Create lookup maps for faster matching (much faster than Fuse.js for exact matches)
-      const destMap = new Map(masterDestinations.map(d => [d.name.toLowerCase(), d]));
-      const expMap = new Map(masterExpenses.map(e => [e.name.toLowerCase(), e]));
-      const mealMap = new Map(masterShoppings.map(m => [m.name.toLowerCase(), m]));
+      // Diacritic-insensitive, prefix-aware matchers so the fallback price-fill
+      // stays consistent with the preview (e.g. JSON "Hội An" -> DB "vé_Hội An").
+      const destMatcher = buildMatcher(masterDestinations, true); // strip "vé_" prefix
+      const expMatcher = buildMatcher(masterExpenses);
+      const mealMatcher = buildMatcher(masterShoppings);
 
-      const autoMatch = (name: string, map: Map<string, any>) => {
+      // Only fill in a price/name from master when the match is strong enough.
+      const autoMatch = <T extends { name: string; price?: number }>(name: string, matcher: Matcher<T>) => {
         if (!name?.trim()) return null;
-        return map.get(name.toLowerCase()) || null;
+        const top = matcher.best(name);
+        return top && top.percent >= AUTO_MATCH_PCT ? top.item : null;
       };
 
       // Process all tours in parallel with concurrency limit
@@ -193,7 +197,7 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
                 const cleanDestinations = tour.destinations?.map(({ matchedId, matchedPrice, ...dest }) => {
                   const normalized = { ...dest, date: normalizeDate(dest.date) } as any;
                   if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                    const m = autoMatch(normalized.name, destMap);
+                    const m = autoMatch(normalized.name, destMatcher);
                     if (m) {
                       normalized.name = m.name;
                       normalized.price = Number(m.price) || 0;
@@ -204,7 +208,7 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
                 const cleanExpenses = tour.expenses?.map(({ matchedId, matchedPrice, ...exp }) => {
                   const normalized = { ...exp, date: normalizeDate(exp.date) } as any;
                   if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                    const m = autoMatch(normalized.name, expMap);
+                    const m = autoMatch(normalized.name, expMatcher);
                     if (m) {
                       normalized.name = m.name;
                       normalized.price = Number(m.price) || 0;
@@ -215,7 +219,7 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
                 const cleanMeals = tour.meals?.map(({ matchedId, matchedPrice, ...meal }) => {
                   const normalized = { ...meal, date: normalizeDate(meal.date) } as any;
                   if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                    const m = autoMatch(normalized.name, mealMap);
+                    const m = autoMatch(normalized.name, mealMatcher);
                     if (m) {
                       normalized.name = m.name;
                       normalized.price = Number(m.price) || 0;
@@ -226,7 +230,7 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
                 const cleanAllowances = tour.allowances?.map(({ matchedId, matchedPrice, ...allow }: any) => {
                   const normalized = { ...allow, date: normalizeDate(allow.date) } as any;
                   if ((!normalized.price || normalized.price === 0) && normalized.name) {
-                    const m = autoMatch(normalized.name, expMap);
+                    const m = autoMatch(normalized.name, expMatcher);
                     if (m) {
                       normalized.name = m.name;
                       normalized.price = Number(m.price) || 0;
@@ -249,6 +253,7 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
                   clientPhone: tour.clientPhone,
                   startDate: normalizeDate(tour.startDate!)!,
                   endDate: normalizeDate(tour.endDate!)!,
+                  notes: tour.notes,
                   destinations: cleanDestinations,
                   expenses: cleanExpenses,
                   meals: cleanMeals,
@@ -327,5 +332,9 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
     importMutation.mutate(tours);
   };
 
-  return { importMutation, handleImport };
+  // Biến thể async trả về danh sách tour đã tạo — dùng cho luồng import-từ-ảnh
+  // để biết tourId mà đính ảnh gốc sau khi lưu.
+  const importToursAsync = (tours: Partial<Tour>[]) => importMutation.mutateAsync(tours);
+
+  return { importMutation, handleImport, importToursAsync };
 }

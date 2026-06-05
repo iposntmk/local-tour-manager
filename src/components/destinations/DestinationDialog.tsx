@@ -26,6 +26,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { TouristDestination, TouristDestinationInput } from '@/types/master';
@@ -52,6 +53,7 @@ export function DestinationDialog({
   const [fieldErrors, setFieldErrors] = useState<{ province?: boolean }>({});
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<TouristDestinationInput>();
+  const rawNameLabel = t('masterData.destinations.rawName');
 
   const { data: provinces = [] } = useQuery({
     queryKey: ['provinces'],
@@ -62,6 +64,7 @@ export function DestinationDialog({
     if (open) {
       reset({
         name: initialData?.name || '',
+        rawName: initialData?.rawName || '',
         price: initialData?.price || 0,
         provinceRef: initialData?.provinceRef || { id: '', nameAtBooking: '' },
       });
@@ -124,6 +127,15 @@ export function DestinationDialog({
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rawName">{rawNameLabel}</Label>
+            <Input
+              id="rawName"
+              {...register('rawName')}
+              placeholder="VD: tên gốc từ file import, OCR..."
+            />
           </div>
 
           <div className="space-y-2">

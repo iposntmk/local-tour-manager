@@ -126,6 +126,7 @@ export function mapTouristDestination(row: TouristDestinationRow): TouristDestin
   return {
     id: row.id,
     name: row.name,
+    rawName: row.raw_name || undefined,
     price: Number(row.price) || 0,
     provinceRef: {
       id: row.province_id || '',

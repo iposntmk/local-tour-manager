@@ -181,7 +181,7 @@ const Tours = () => {
     isAdmin,
   });
 
-  const { handleImport: handleImportFromHook } = useTourImport(queryClient, baseTourQuery);
+  const { handleImport: handleImportFromHook, importToursAsync } = useTourImport(queryClient, baseTourQuery);
 
   const handleImport = (tours: Partial<Tour>[]) => {
     if (!canImportTours) {
@@ -189,6 +189,15 @@ const Tours = () => {
       return;
     }
     handleImportFromHook(tours);
+  };
+
+  // Dùng cho luồng import-từ-ảnh: tạo tour rồi trả về để đính ảnh gốc.
+  const handleImportAsync = (tours: Partial<Tour>[]) => {
+    if (!canImportTours) {
+      toast.error('Bạn không có quyền nhập tour.');
+      return Promise.reject(new Error('Không có quyền nhập tour'));
+    }
+    return importToursAsync(tours);
   };
 
   const { classes: headerClasses } = useHeaderMode('tours.headerMode');
@@ -217,6 +226,7 @@ const Tours = () => {
             onBackup={tourActions.handleBackup}
             onDownloadAllImages={tourActions.handleDownloadAllImages}
             onImport={handleImport}
+            onImportAsync={handleImportAsync}
             onExportAll={tourActions.handleExportAll}
             onExportAllSingle={tourActions.handleExportAllSingle}
             onCreateTour={() => { if (isAdmin) { tourActions.setShowAdminCreateConfirm(true); } else { navigate('/tours/new'); } }}

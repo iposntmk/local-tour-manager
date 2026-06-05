@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Search, LayoutList, Braces } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompanyDialog } from '@/components/companies/CompanyDialog';
 import { NationalityDialog } from '@/components/nationalities/NationalityDialog';
@@ -12,6 +13,8 @@ import { DetailedExpenseDialog } from '@/components/detailed-expenses/DetailedEx
 import { ShoppingDialog } from '@/components/shopping/ShoppingDialog';
 import { useEnhancedImportReview } from '@/hooks/useEnhancedImportReview';
 import { EnhancedImportTourCard } from './EnhancedImportTourCard';
+import { ImportReviewJsonView } from './ImportReviewJsonView';
+import { buildFinalTours } from '@/lib/import-review-utils';
 import type { Company, Guide, Nationality } from '@/types/master';
 import type { Tour } from '@/types/tour';
 
@@ -22,15 +25,18 @@ interface EnhancedImportReviewProps {
   onCancel: () => void;
   onConfirm: (tours: Partial<Tour>[]) => void;
   preloadedEntities?: { companies: Company[]; guides: Guide[]; nationalities: Nationality[] };
+  /** OCR thô của Azure (chỉ có ở luồng import từ ảnh) để hiển thị ở tab JSON. */
+  rawOcr?: unknown;
 }
 
-export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEntities }: EnhancedImportReviewProps) {
+export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEntities, rawOcr }: EnhancedImportReviewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const {
     companies, guides, nationalities, destinations, expenses, ctpAllowances,
     draft, searchQuery, setSearchQuery,
     validationWarnings, filteredTours, validateForImport,
     matchDestination, matchExpense, matchAllowance,
+    suggestDestination, suggestExpense, suggestAllowance,
     updateDestination, updateExpense, updateMeal, updateAllowance,
     removeDestination, removeExpense, removeMeal, removeAllowance,
     updateTourField, updateEntityRef, removeTour,
@@ -52,31 +58,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         toast.error(`Cannot import: ${validation.errors.join(', ')}`, { duration: 8000 });
         return;
       }
-      const finalTours = draft.map(d => {
-        const tour = { ...d.tour };
-        if (tour.destinations) {
-          tour.destinations = tour.destinations.map(({ matchedId, matchedPrice, ...dest }: any) => ({
-            ...dest, price: matchedPrice !== undefined ? matchedPrice : dest.price,
-          }));
-        }
-        if (tour.expenses) {
-          tour.expenses = tour.expenses.map(({ matchedId, matchedPrice, ...exp }: any) => ({
-            ...exp, price: matchedPrice !== undefined ? matchedPrice : exp.price,
-          }));
-        }
-        if (tour.meals) {
-          tour.meals = tour.meals.map(({ matchedId, matchedPrice, ...meal }: any) => ({
-            ...meal, price: matchedPrice !== undefined ? matchedPrice : meal.price,
-          }));
-        }
-        if (tour.allowances) {
-          tour.allowances = tour.allowances.map(({ matchedId, matchedPrice, ...a }: any) => ({
-            ...a, price: matchedPrice !== undefined ? matchedPrice : a.price,
-          }));
-        }
-        return tour;
-      });
-      onConfirm(finalTours);
+      onConfirm(buildFinalTours(draft));
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error(`Import failed: ${msg}`, { duration: 8000 });
@@ -95,14 +77,25 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
         </Badge>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground h-3 w-3" />
-        <Input placeholder="Search tours..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-7 h-8 text-sm" />
-      </div>
+      <Tabs defaultValue="data" className="space-y-3">
+        <TabsList>
+          <TabsTrigger value="data" className="gap-1.5">
+            <LayoutList className="h-3.5 w-3.5" />Dữ liệu
+          </TabsTrigger>
+          <TabsTrigger value="json" className="gap-1.5">
+            <Braces className="h-3.5 w-3.5" />JSON
+          </TabsTrigger>
+        </TabsList>
 
-      <ScrollArea className="h-[calc(100vh-300px)]" ref={scrollContainerRef as any}>
-        <div className="space-y-4 pr-4">
+        <TabsContent value="data" className="space-y-3 mt-0">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground h-3 w-3" />
+            <Input placeholder="Search tours..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-7 h-8 text-sm" />
+          </div>
+
+          <ScrollArea className="h-[calc(100vh-300px)]" ref={scrollContainerRef as any}>
+            <div className="space-y-4 pr-4">
           {filteredTours.map((item, index) => {
             const originalIndex = draft.findIndex(d => d === item);
             const warnings = validationWarnings[originalIndex] || [];
@@ -113,6 +106,7 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
                   companies={companies} guides={guides} nationalities={nationalities}
                   destinations={destinations} expenses={expenses} ctpAllowances={ctpAllowances}
                   matchDestination={matchDestination} matchExpense={matchExpense} matchAllowance={matchAllowance}
+                  suggestDestination={suggestDestination} suggestExpense={suggestExpense} suggestAllowance={suggestAllowance}
                   onUpdateDestination={(di, f, v) => updateDestination(originalIndex, di, f, v)}
                   onUpdateExpense={(ei, f, v) => updateExpense(originalIndex, ei, f, v)}
                   onUpdateMeal={(mi, f, v) => updateMeal(originalIndex, mi, f, v)}
@@ -131,8 +125,14 @@ export function EnhancedImportReview({ items, onCancel, onConfirm, preloadedEnti
               </div>
             );
           })}
-        </div>
-      </ScrollArea>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="json" className="mt-0">
+          <ImportReviewJsonView draft={draft} rawOcr={rawOcr} />
+        </TabsContent>
+      </Tabs>
 
       <div className="flex justify-between">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>

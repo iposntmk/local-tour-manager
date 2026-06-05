@@ -105,7 +105,15 @@ export type Database = {
           status?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "detailed_expenses_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       diary_types: {
         Row: {
@@ -171,49 +179,15 @@ export type Database = {
           status?: string
           updated_at?: string | null
         }
-        Relationships: []
-      }
-      guides: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          id: string
-          is_default: boolean
-          is_shared: boolean
-          name: string
-          note: string | null
-          phone: string | null
-          search_keywords: string[] | null
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          is_default?: boolean
-          is_shared?: boolean
-          name: string
-          note?: string | null
-          phone?: string | null
-          search_keywords?: string[] | null
-          status?: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          is_default?: boolean
-          is_shared?: boolean
-          name?: string
-          note?: string | null
-          phone?: string | null
-          search_keywords?: string[] | null
-          status?: string
-          updated_at?: string | null
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guide_languages: {
         Row: {
@@ -256,6 +230,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      guides: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_default: boolean
+          is_shared: boolean
+          name: string
+          note: string | null
+          phone: string | null
+          search_keywords: string[] | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          is_shared?: boolean
+          name: string
+          note?: string | null
+          phone?: string | null
+          search_keywords?: string[] | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          is_shared?: boolean
+          name?: string
+          note?: string | null
+          phone?: string | null
+          search_keywords?: string[] | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       hotels: {
         Row: {
@@ -361,8 +377,8 @@ export type Database = {
           created_by: string | null
           emoji: string | null
           id: string
-          iso2: string | null
           is_shared: boolean
+          iso2: string | null
           name: string
           search_keywords: string[] | null
           status: string
@@ -373,8 +389,8 @@ export type Database = {
           created_by?: string | null
           emoji?: string | null
           id?: string
-          iso2?: string | null
           is_shared?: boolean
+          iso2?: string | null
           name: string
           search_keywords?: string[] | null
           status?: string
@@ -385,8 +401,8 @@ export type Database = {
           created_by?: string | null
           emoji?: string | null
           id?: string
-          iso2?: string | null
           is_shared?: boolean
+          iso2?: string | null
           name?: string
           search_keywords?: string[] | null
           status?: string
@@ -584,6 +600,47 @@ export type Database = {
           },
         ]
       }
+      shopping_commission_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          note: string | null
+          paid_at: string
+          payment_method: string
+          tour_shopping_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          paid_at: string
+          payment_method: string
+          tour_shopping_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string
+          payment_method?: string
+          tour_shopping_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_commission_payments_tour_shopping_id_fkey"
+            columns: ["tour_shopping_id"]
+            isOneToOne: false
+            referencedRelation: "tour_shoppings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shoppings: {
         Row: {
           address: string | null
@@ -636,7 +693,15 @@ export type Database = {
           updated_at?: string | null
           withholds_pit?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "shoppings_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tour_allowances: {
         Row: {
@@ -710,6 +775,7 @@ export type Database = {
           created_at: string | null
           date: string | null
           guests: number | null
+          guide_note: string | null
           id: string
           line_comment: string | null
           line_status: string
@@ -718,11 +784,14 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           tour_id: string | null
+          vat_amount: number
+          vat_rate: number
         }
         Insert: {
           created_at?: string | null
           date?: string | null
           guests?: number | null
+          guide_note?: string | null
           id?: string
           line_comment?: string | null
           line_status?: string
@@ -731,11 +800,14 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           tour_id?: string | null
+          vat_amount?: number
+          vat_rate?: number
         }
         Update: {
           created_at?: string | null
           date?: string | null
           guests?: number | null
+          guide_note?: string | null
           id?: string
           line_comment?: string | null
           line_status?: string
@@ -744,6 +816,8 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           tour_id?: string | null
+          vat_amount?: number
+          vat_rate?: number
         }
         Relationships: [
           {
@@ -817,6 +891,7 @@ export type Database = {
           created_at: string | null
           date: string | null
           guests: number | null
+          guide_note: string | null
           id: string
           line_comment: string | null
           line_status: string
@@ -825,11 +900,14 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           tour_id: string | null
+          vat_amount: number
+          vat_rate: number
         }
         Insert: {
           created_at?: string | null
           date?: string | null
           guests?: number | null
+          guide_note?: string | null
           id?: string
           line_comment?: string | null
           line_status?: string
@@ -838,11 +916,14 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           tour_id?: string | null
+          vat_amount?: number
+          vat_rate?: number
         }
         Update: {
           created_at?: string | null
           date?: string | null
           guests?: number | null
+          guide_note?: string | null
           id?: string
           line_comment?: string | null
           line_status?: string
@@ -851,6 +932,8 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           tour_id?: string | null
+          vat_amount?: number
+          vat_rate?: number
         }
         Relationships: [
           {
@@ -907,11 +990,66 @@ export type Database = {
           },
         ]
       }
+      tour_line_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          line_id: string
+          line_type: string
+          tour_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          line_id: string
+          line_type: string
+          tour_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          line_id?: string
+          line_type?: string
+          tour_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_line_attachments_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_line_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tour_meals: {
         Row: {
           created_at: string | null
           date: string | null
           guests: number | null
+          guide_note: string | null
           id: string
           line_comment: string | null
           line_status: string
@@ -920,11 +1058,14 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           tour_id: string | null
+          vat_amount: number
+          vat_rate: number
         }
         Insert: {
           created_at?: string | null
           date?: string | null
           guests?: number | null
+          guide_note?: string | null
           id?: string
           line_comment?: string | null
           line_status?: string
@@ -933,11 +1074,14 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           tour_id?: string | null
+          vat_amount?: number
+          vat_rate?: number
         }
         Update: {
           created_at?: string | null
           date?: string | null
           guests?: number | null
+          guide_note?: string | null
           id?: string
           line_comment?: string | null
           line_status?: string
@@ -946,6 +1090,8 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           tour_id?: string | null
+          vat_amount?: number
+          vat_rate?: number
         }
         Relationships: [
           {
@@ -1056,47 +1202,6 @@ export type Database = {
             columns: ["tour_id"]
             isOneToOne: false
             referencedRelation: "tours"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      shopping_commission_payments: {
-        Row: {
-          amount: number
-          created_at: string | null
-          id: string
-          note: string | null
-          paid_at: string
-          payment_method: string
-          tour_shopping_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          amount: number
-          created_at?: string | null
-          id?: string
-          note?: string | null
-          paid_at: string
-          payment_method: string
-          tour_shopping_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          amount?: number
-          created_at?: string | null
-          id?: string
-          note?: string | null
-          paid_at?: string
-          payment_method?: string
-          tour_shopping_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shopping_commission_payments_tour_shopping_id_fkey"
-            columns: ["tour_shopping_id"]
-            isOneToOne: false
-            referencedRelation: "tour_shoppings"
             referencedColumns: ["id"]
           },
         ]
@@ -1225,6 +1330,7 @@ export type Database = {
           price: number | null
           province_id: string | null
           province_name_at_booking: string | null
+          raw_name: string | null
           search_keywords: string[] | null
           status: string
           updated_at: string | null
@@ -1238,6 +1344,7 @@ export type Database = {
           price?: number | null
           province_id?: string | null
           province_name_at_booking?: string | null
+          raw_name?: string | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -1251,6 +1358,7 @@ export type Database = {
           price?: number | null
           province_id?: string | null
           province_name_at_booking?: string | null
+          raw_name?: string | null
           search_keywords?: string[] | null
           status?: string
           updated_at?: string | null
@@ -1303,7 +1411,7 @@ export type Database = {
           total_tabs: number | null
           tour_code: string
           updated_at: string | null
-          water_warning_dismissed: boolean | null
+          water_warning_dismissed: boolean
         }
         Insert: {
           adults?: number | null
@@ -1350,7 +1458,7 @@ export type Database = {
           total_tabs?: number | null
           tour_code: string
           updated_at?: string | null
-          water_warning_dismissed?: boolean | null
+          water_warning_dismissed?: boolean
         }
         Update: {
           adults?: number | null
@@ -1397,12 +1505,19 @@ export type Database = {
           total_tabs?: number | null
           tour_code?: string
           updated_at?: string | null
-          water_warning_dismissed?: boolean | null
+          water_warning_dismissed?: boolean
         }
         Relationships: [
           {
             foreignKeyName: "tours_approved_by_fkey"
             columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tours_guide_id_fkey"
+            columns: ["guide_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
@@ -1416,14 +1531,61 @@ export type Database = {
           },
         ]
       }
+      user_languages: {
+        Row: {
+          created_at: string
+          id: string
+          language_id: string
+          proficiency: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language_id: string
+          proficiency?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language_id?: string
+          proficiency?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_languages_language_id_fkey"
+            columns: ["language_id"]
+            isOneToOne: false
+            referencedRelation: "languages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_languages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           created_at: string | null
           created_by: string | null
           email: string
           full_name: string | null
+          guide_search_keywords: string[] | null
           id: string
+          is_default_guide: boolean
+          legacy_guide_id: string | null
+          note: string | null
           permissions: string[] | null
+          phone: string | null
           role: string
           settlement_role: string
           status: string
@@ -1434,8 +1596,13 @@ export type Database = {
           created_by?: string | null
           email: string
           full_name?: string | null
+          guide_search_keywords?: string[] | null
           id: string
+          is_default_guide?: boolean
+          legacy_guide_id?: string | null
+          note?: string | null
           permissions?: string[] | null
+          phone?: string | null
           role?: string
           settlement_role?: string
           status?: string
@@ -1446,8 +1613,13 @@ export type Database = {
           created_by?: string | null
           email?: string
           full_name?: string | null
+          guide_search_keywords?: string[] | null
           id?: string
+          is_default_guide?: boolean
+          legacy_guide_id?: string | null
+          note?: string | null
           permissions?: string[] | null
+          phone?: string | null
           role?: string
           settlement_role?: string
           status?: string
@@ -1468,14 +1640,79 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_edit_tour_content: { Args: { p_tour_id: string }; Returns: boolean }
+      can_modify_tour: { Args: { p_tour_id: string }; Returns: boolean }
+      can_modify_tour_image_object: {
+        Args: { p_name: string }
+        Returns: boolean
+      }
+      can_modify_tour_shopping: {
+        Args: { p_tour_shopping_id: string }
+        Returns: boolean
+      }
+      can_view_tour: { Args: { p_tour_id: string }; Returns: boolean }
+      can_view_tour_image_object: { Args: { p_name: string }; Returns: boolean }
+      can_view_tour_shopping: {
+        Args: { p_tour_shopping_id: string }
+        Returns: boolean
+      }
       check_user_permission: {
         Args: { required_permissions: string[]; user_id: string }
         Returns: boolean
       }
+      default_created_by: { Args: never; Returns: string }
+      default_permissions_for_profile: {
+        Args: { p_role: string; p_settlement_role: string }
+        Returns: string[]
+      }
+      default_permissions_for_role: {
+        Args: { p_role: string }
+        Returns: string[]
+      }
+      default_permissions_for_settlement_role: {
+        Args: { p_settlement_role: string }
+        Returns: string[]
+      }
+      is_active_user: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_admin_user: { Args: { p_user_id: string }; Returns: boolean }
+      is_guide_user: { Args: { p_user_id: string }; Returns: boolean }
+      is_tour_owner: { Args: { p_tour_id: string }; Returns: boolean }
       refresh_tour_payment_summary: {
         Args: { p_tour: string }
         Returns: undefined
+      }
+      storage_path_tour_id: { Args: { p_name: string }; Returns: string }
+      update_own_profile: {
+        Args: {
+          p_full_name?: string
+          p_language_ids?: string[]
+          p_note?: string
+          p_phone?: string
+        }
+        Returns: {
+          created_at: string | null
+          created_by: string | null
+          email: string
+          full_name: string | null
+          guide_search_keywords: string[] | null
+          id: string
+          is_default_guide: boolean
+          legacy_guide_id: string | null
+          note: string | null
+          permissions: string[] | null
+          phone: string | null
+          role: string
+          settlement_role: string
+          status: string
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

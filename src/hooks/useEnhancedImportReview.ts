@@ -5,6 +5,7 @@ import type { Company, Guide, Nationality, TouristDestination, DetailedExpense, 
 import { store } from '@/lib/datastore';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { buildMatcher, AUTO_MATCH_PCT, type Matcher, type MatchCandidate } from '@/lib/import-match-utils';
 
 export interface ReviewItem {
   tour: Partial<Tour>;
@@ -18,6 +19,8 @@ export interface ReviewItem {
     allowances?: any[];
     summary?: any;
   };
+  /** JSON nguồn trước khi map sang Tour (OCR: kết quả parser; JSON-paste: bản dán). */
+  sourceJson?: unknown;
 }
 
 type EntityType = 'companyRef' | 'guideRef' | 'clientNationalityRef';
@@ -57,10 +60,10 @@ export function useEnhancedImportReview(
   const [initialEntityName, setInitialEntityName] = useState('');
   const [targetItemIndex, setTargetItemIndex] = useState<number | null>(null);
 
-  const fuseRef = useRef<{
-    destinations?: Fuse<TouristDestination>;
-    expenses?: Fuse<DetailedExpense>;
-    allowances?: Fuse<DetailedExpense>;
+  const matcherRef = useRef<{
+    destinations?: Matcher<TouristDestination>;
+    expenses?: Matcher<DetailedExpense>;
+    allowances?: Matcher<DetailedExpense>;
   }>({});
 
   useEffect(() => {
@@ -81,10 +84,10 @@ export function useEnhancedImportReview(
         const ctp = e.filter(exp => exp.categoryRef?.nameAtBooking === 'CTP');
         setCtpAllowances(ctp);
 
-        fuseRef.current = {
-          destinations: new Fuse(d, { keys: ['name'], ...FUSE_OPTS }),
-          expenses: new Fuse(e, { keys: ['name'], ...FUSE_OPTS }),
-          allowances: new Fuse(ctp, { keys: ['name'], ...FUSE_OPTS }),
+        matcherRef.current = {
+          destinations: buildMatcher(d, true), // strip "vé_" prefix on destinations
+          expenses: buildMatcher(e),
+          allowances: buildMatcher(ctp),
         };
 
         const cFuse = new Fuse(c, { keys: ['name'], ...FUSE_OPTS });
@@ -117,32 +120,43 @@ export function useEnhancedImportReview(
             if (m) tour.clientNationalityRef = { id: m.id, nameAtBooking: m.name };
           }
 
+          // Only auto-apply a match when similarity clears AUTO_MATCH_PCT; weaker
+          // candidates stay as suggestions for the user to pick in the review UI.
+          const autoApply = <M extends { id: string; name: string; price?: number }>(
+            matcher: Matcher<M> | undefined, name: string, fallbackPrice?: number,
+          ) => {
+            const top = matcher?.best(name);
+            if (!top || top.percent < AUTO_MATCH_PCT) return null;
+            const m = top.item;
+            return { name: m.name, price: m.price ?? fallbackPrice, matchedId: m.id, matchedPrice: m.price };
+          };
+
           if (tour.destinations?.length) {
             tour.destinations = tour.destinations.map(dest => {
               if (!dest.name) return dest;
-              const m = fuseMatch(fuseRef.current.destinations, dest.name);
-              return m ? { ...dest, name: m.name, price: m.price || dest.price, matchedId: m.id, matchedPrice: m.price } : dest;
+              const m = autoApply(matcherRef.current.destinations, dest.name, dest.price);
+              return m ? { ...dest, ...m } : dest;
             });
           }
           if (tour.expenses?.length) {
             tour.expenses = tour.expenses.map(exp => {
               if (!exp.name) return exp;
-              const m = fuseMatch(fuseRef.current.expenses, exp.name);
-              return m ? { ...exp, name: m.name, price: m.price, matchedId: m.id, matchedPrice: m.price } : exp;
+              const m = autoApply(matcherRef.current.expenses, exp.name, exp.price);
+              return m ? { ...exp, ...m } : exp;
             });
           }
           if (tour.meals?.length) {
             tour.meals = tour.meals.map(meal => {
               if (!meal.name) return meal;
-              const m = fuseMatch(fuseRef.current.expenses, meal.name);
-              return m ? { ...meal, name: m.name, price: m.price, matchedId: m.id, matchedPrice: m.price } : meal;
+              const m = autoApply(matcherRef.current.expenses, meal.name, meal.price);
+              return m ? { ...meal, ...m } : meal;
             });
           }
           if (tour.allowances?.length) {
             tour.allowances = tour.allowances.map(a => {
               if (!a.name) return a;
-              const m = fuseMatch(fuseRef.current.allowances, a.name);
-              return m ? { ...a, name: m.name, price: m.price, matchedId: m.id, matchedPrice: m.price } : a;
+              const m = autoApply(matcherRef.current.allowances, a.name, a.price);
+              return m ? { ...a, ...m } : a;
             });
           }
 
@@ -206,10 +220,23 @@ export function useEnhancedImportReview(
     return { valid: errors.length === 0, errors };
   };
 
-  const matchDestination = (name: string) => fuseMatch(fuseRef.current.destinations, name);
-  const matchExpense = (name: string) => fuseMatch(fuseRef.current.expenses, name);
-  const matchShopping = (name: string) => fuseMatch(fuseRef.current.expenses, name);
-  const matchAllowance = (name: string) => fuseMatch(fuseRef.current.allowances, name);
+  // A row counts as "Matched" (green) only when a candidate clears AUTO_MATCH_PCT.
+  const autoMatch = <M extends { name: string }>(matcher: Matcher<M> | undefined, name: string): M | null => {
+    const top = matcher?.best(name);
+    return top && top.percent >= AUTO_MATCH_PCT ? top.item : null;
+  };
+  const matchDestination = (name: string) => autoMatch(matcherRef.current.destinations, name);
+  const matchExpense = (name: string) => autoMatch(matcherRef.current.expenses, name);
+  const matchShopping = (name: string) => autoMatch(matcherRef.current.expenses, name);
+  const matchAllowance = (name: string) => autoMatch(matcherRef.current.allowances, name);
+
+  // Ranked suggestions (40–100%) for rows without an automatic match.
+  const suggestDestination = (name: string): MatchCandidate<TouristDestination>[] =>
+    matcherRef.current.destinations?.suggest(name) ?? [];
+  const suggestExpense = (name: string): MatchCandidate<DetailedExpense>[] =>
+    matcherRef.current.expenses?.suggest(name) ?? [];
+  const suggestAllowance = (name: string): MatchCandidate<DetailedExpense>[] =>
+    matcherRef.current.allowances?.suggest(name) ?? [];
 
   const updateSubcollection = (tourIndex: number, key: keyof Tour, itemIndex: number, field: string, value: any) =>
     setDraft(prev => prev.map((item, i) => {
@@ -296,6 +323,7 @@ export function useEnhancedImportReview(
     draft, searchQuery, setSearchQuery,
     validationWarnings, filteredTours, validateForImport,
     matchDestination, matchExpense, matchShopping, matchAllowance,
+    suggestDestination, suggestExpense, suggestAllowance,
     updateDestination, updateExpense, updateMeal, updateAllowance,
     removeDestination, removeExpense, removeMeal, removeAllowance,
     updateTourField, updateEntityRef, removeTour,

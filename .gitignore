@@ -49,9 +49,16 @@ test-rls*.sql
 DEBUG_*.sql
 FIX_*.sql
 *_DEBUG.sql
+supabase/remote-public-schema.sql
+src/integrations/supabase/*.tmp.ts
 
 # Shell scripts (temporary)
 *.sh
+
+# OCR/import working artifacts
+scripts/all_photos/
+scripts/temp/
+scripts/~$*.xlsx
 
 # Supabase migrations (local only)
 supabase-migrations/

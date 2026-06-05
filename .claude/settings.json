@@ -7,7 +7,21 @@
       "mcp__codegraph__codegraph_callees",
       "mcp__codegraph__codegraph_impact",
       "mcp__codegraph__codegraph_node",
-      "mcp__codegraph__codegraph_status"
+      "mcp__codegraph__codegraph_status",
+      "Bash(supabase db push:*)",
+      "Bash(supabase db pull:*)",
+      "Bash(supabase db diff:*)",
+      "Bash(supabase db execute:*)",
+      "Bash(supabase migration up:*)",
+      "Bash(supabase migration list:*)",
+      "Bash(supabase migration new:*)",
+      "Bash(supabase gen types:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(supabase functions list:*)",
+      "Bash(supabase secrets set:*)",
+      "Bash(supabase secrets list:*)",
+      "Bash(supabase status:*)",
+      "Bash(supabase link:*)"
     ]
   },
   "hooks": {

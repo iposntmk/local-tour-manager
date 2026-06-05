@@ -9,6 +9,7 @@ import { EntitySelector } from './EntitySelector';
 import { SubcollectionSection } from './SubcollectionSection';
 import type { ReviewItem } from '@/hooks/useEnhancedImportReview';
 import type { Company, Guide, Nationality, TouristDestination, DetailedExpense } from '@/types/master';
+import type { MatchCandidate } from '@/lib/import-match-utils';
 
 type EntityType = 'companyRef' | 'guideRef' | 'clientNationalityRef';
 
@@ -25,6 +26,9 @@ interface Props {
   matchDestination: (name: string) => TouristDestination | null;
   matchExpense: (name: string) => DetailedExpense | null;
   matchAllowance: (name: string) => DetailedExpense | null;
+  suggestDestination: (name: string) => MatchCandidate<TouristDestination>[];
+  suggestExpense: (name: string) => MatchCandidate<DetailedExpense>[];
+  suggestAllowance: (name: string) => MatchCandidate<DetailedExpense>[];
   onUpdateDestination: (di: number, field: string, value: any) => void;
   onUpdateExpense: (ei: number, field: string, value: any) => void;
   onUpdateMeal: (mi: number, field: string, value: any) => void;
@@ -44,6 +48,7 @@ export function EnhancedImportTourCard({
   item, originalIndex, warnings,
   companies, guides, nationalities, destinations, expenses, ctpAllowances,
   matchDestination, matchExpense, matchAllowance,
+  suggestDestination, suggestExpense, suggestAllowance,
   onUpdateDestination, onUpdateExpense, onUpdateMeal, onUpdateAllowance,
   onRemoveDestination, onRemoveExpense, onRemoveMeal, onRemoveAllowance,
   onUpdateField, onUpdateEntityRef, onRemove,
@@ -165,7 +170,7 @@ export function EnhancedImportTourCard({
             <SubcollectionSection title="Destinations" icon={<MapPin className="h-3 w-3" />}
               items={tour.destinations || []} tourIndex={originalIndex} sectionKey="destinations"
               onUpdate={(i, f, v) => onUpdateDestination(i, f, v)} onRemove={onRemoveDestination}
-              matchFunction={matchDestination} matchType="destination"
+              matchFunction={matchDestination} suggestFunction={suggestDestination} matchType="destination"
               masterData={destinations} rawData={raw.destinations || []} />
           </TabsContent>
 
@@ -173,7 +178,7 @@ export function EnhancedImportTourCard({
             <SubcollectionSection title="Expenses" icon={<Receipt className="h-3 w-3" />}
               items={tour.expenses || []} tourIndex={originalIndex} sectionKey="expenses"
               onUpdate={(i, f, v) => onUpdateExpense(i, f, v)} onRemove={onRemoveExpense}
-              matchFunction={matchExpense} matchType="expense"
+              matchFunction={matchExpense} suggestFunction={suggestExpense} matchType="expense"
               masterData={expenses} rawData={raw.expenses || []} />
           </TabsContent>
 
@@ -181,7 +186,7 @@ export function EnhancedImportTourCard({
             <SubcollectionSection title="Meals" icon={<Utensils className="h-3 w-3" />}
               items={tour.meals || []} tourIndex={originalIndex} sectionKey="meals"
               onUpdate={(i, f, v) => onUpdateMeal(i, f, v)} onRemove={onRemoveMeal}
-              matchFunction={matchExpense} matchType="meal"
+              matchFunction={matchExpense} suggestFunction={suggestExpense} matchType="meal"
               masterData={expenses} rawData={raw.meals || []} />
           </TabsContent>
 
@@ -189,7 +194,7 @@ export function EnhancedImportTourCard({
             <SubcollectionSection title="Allowances" icon={<DollarSign className="h-3 w-3" />}
               items={tour.allowances || []} tourIndex={originalIndex} sectionKey="allowances"
               onUpdate={(i, f, v) => onUpdateAllowance(i, f, v)} onRemove={onRemoveAllowance}
-              matchFunction={matchAllowance} matchType="allowance"
+              matchFunction={matchAllowance} suggestFunction={suggestAllowance} matchType="allowance"
               masterData={ctpAllowances} rawData={raw.allowances || []} />
           </TabsContent>
 

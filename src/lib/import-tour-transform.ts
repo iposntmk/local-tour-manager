@@ -79,7 +79,7 @@ export const transformImportedTour = (
   const companyName = tourData.company || 'Việt Á';
   const guideName = tourData.tourGuide || 'Cao Hữu Tu';
   const clientNameValue = tourData.clientName || 'Client Tú';
-  const nationalityName = tourData.clientNationality?.trim() || 'Việt Nam';
+  const nationalityName = tourData.clientNationality?.trim() || '';
 
   const tour: Partial<Tour> = {
     tourCode: tourData.tourCode || '',
@@ -92,6 +92,7 @@ export const transformImportedTour = (
     startDate: tourData.startDate || '',
     endDate: tourData.endDate || '',
     totalDays: tourData.totalDays || 0,
+    notes: tourData.notes || '',
     companyRef: findEntityRef(caches, 'company', companyName) || { id: '', nameAtBooking: companyName },
     guideRef: findEntityRef(caches, 'guide', guideName) || { id: '', nameAtBooking: guideName },
     clientNationalityRef: findEntityRef(caches, 'nationality', nationalityName) || { id: '', nameAtBooking: nationalityName },

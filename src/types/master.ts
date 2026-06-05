@@ -106,6 +106,7 @@ export interface ProvinceInput {
 export interface TouristDestination {
   id: string;
   name: string;
+  rawName?: string;
   price: number;
   provinceRef: {
     id: string;
@@ -121,6 +122,7 @@ export interface TouristDestination {
 
 export interface TouristDestinationInput {
   name: string;
+  rawName?: string;
   price: number;
   provinceRef: {
     id: string;

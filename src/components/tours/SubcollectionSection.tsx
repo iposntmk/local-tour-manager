@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { MatchCandidate } from '@/lib/import-match-utils';
 
 export interface SubcollectionSectionProps {
   title: string;
@@ -19,6 +20,7 @@ export interface SubcollectionSectionProps {
   onUpdate: (index: number, field: string, value: any) => void;
   onRemove: (index: number) => void;
   matchFunction: ((name: string) => any) | null;
+  suggestFunction?: ((name: string) => MatchCandidate<any>[]) | null;
   matchType: string;
   masterData?: any[];
   rawData?: any[];
@@ -33,11 +35,43 @@ export function SubcollectionSection({
   onUpdate,
   onRemove,
   matchFunction,
+  suggestFunction,
   matchType,
   masterData = [],
   rawData = []
 }: SubcollectionSectionProps) {
   const [openCombobox, setOpenCombobox] = useState<{ [key: number]: boolean }>({});
+
+  // Apply a chosen master candidate to a row (name + price), which then
+  // re-triggers matchFunction and surfaces the green "Matched" badge.
+  const applyCandidate = (index: number, candidate: { id?: string; name: string; price?: number }) => {
+    onUpdate(index, 'name', candidate.name);
+    if (candidate.price !== undefined) onUpdate(index, 'price', candidate.price);
+  };
+
+  // Suggestion chips shown when a row has no automatic match.
+  const renderSuggestions = (item: any, index: number, hasMatch: boolean) => {
+    if (hasMatch || !suggestFunction || !item.name) return null;
+    const candidates = suggestFunction(item.name);
+    if (candidates.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-1 pt-0.5">
+        <span className="text-[10px] text-muted-foreground self-center">Gợi ý:</span>
+        {candidates.map((c) => (
+          <Button
+            key={c.item.id ?? c.item.name}
+            variant="outline"
+            size="sm"
+            onClick={() => applyCandidate(index, c.item)}
+            className="h-5 px-1.5 text-[10px] border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-800"
+            title={`${c.item.name} — ${c.percent}%`}
+          >
+            {c.item.name} · {c.percent}%
+          </Button>
+        ))}
+      </div>
+    );
+  };
 
   const renderItem = (item: any, index: number) => {
     if (matchType === 'summary') {
@@ -428,6 +462,7 @@ export function SubcollectionSection({
                   Matched: {matchedAllowance.name}
                 </div>
               )}
+              {renderSuggestions(item, index, hasAllowanceMatch)}
             </div>
           </TableCell>
           <TableCell className="text-xs">
@@ -541,6 +576,7 @@ export function SubcollectionSection({
                 Matched: {matchedItem.name}
               </Badge>
             )}
+            {renderSuggestions(item, index, hasMatch)}
           </div>
         </TableCell>
         <TableCell className="text-xs">

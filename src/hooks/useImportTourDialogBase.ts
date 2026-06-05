@@ -7,7 +7,7 @@ import {
   loadEntityCachesFromStore,
 } from '@/lib/import-tour-transform';
 
-export type ReviewItemRaw = { tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string } };
+export type ReviewItemRaw = { tour: Partial<Tour>; raw: { company: string; guide: string; nationality: string }; sourceJson?: unknown };
 
 export function useImportTourDialogBase(open: boolean) {
   const [jsonInput, setJsonInput] = useState('');
@@ -58,7 +58,7 @@ export function useImportTourDialogBase(open: boolean) {
       const caches = await loadEntityCaches();
       const transformed = rawTours.map((tour, index) => {
         try {
-          return transformImportedTour(tour, caches);
+          return { ...transformImportedTour(tour, caches), sourceJson: tour };
         } catch (error) {
           const code = tour.tour?.tourCode || tour.tourCode || `Tour ${index + 1}`;
           throw new Error(`${code}: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import JSZip from 'jszip';
 import type { TourImage } from '@/types/tour';
+import { generateTourImageStoragePath } from '@/lib/tour-image-path';
 import { TourImageViewerDialog } from './TourImageViewerDialog';
 
 interface TourImagesTabProps {
@@ -17,20 +18,6 @@ interface TourImagesTabProps {
 }
 
 export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = true }: TourImagesTabProps) {
-  const generateStoragePath = (file: File) => {
-    const safeTourCode = tourCode.replace(/[^a-zA-Z0-9-_]/g, '_') || 'tour';
-    const rawBaseName = file.name.replace(/\.[^/.]+$/, '');
-    const safeBaseName = rawBaseName.replace(/[^a-zA-Z0-9-_]/g, '-').slice(0, 40) || 'image';
-    const extension = file.name.includes('.') ? file.name.split('.').pop() : '';
-    const uniqueSuffix =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-    const fileName = `${safeBaseName}-${uniqueSuffix}${extension ? `.${extension}` : ''}`;
-    return `${tourId}/${safeTourCode}/${fileName}`;
-  };
-
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<TourImage | null>(null);
@@ -55,7 +42,7 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      const filePath = generateStoragePath(file);
+      const filePath = generateTourImageStoragePath(tourId, tourCode, file);
       await store.uploadTourImage(tourId, file, filePath);
     },
     onSuccess: () => {

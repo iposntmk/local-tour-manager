@@ -2,19 +2,14 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Copy, Trash2, Upload, Trash, Download } from 'lucide-react';
-import { ShareToggleButton, SharedBadge } from '@/components/master/ShareToggleButton';
+import { Plus, Upload, Trash, Download } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SearchInput } from '@/components/master/SearchInput';
-import MasterMobileCard from '@/components/master/MasterMobileCard';
 import { DestinationDialog } from '@/components/destinations/DestinationDialog';
-import { BulkImportDialog } from '@/components/master/BulkImportDialog';
+import { DestinationsList, type DestinationFilters } from '@/components/destinations/DestinationsList';
+import { DestinationImportDialog, type DestinationImportItem } from '@/components/destinations/DestinationImportDialog';
 import type { TouristDestination, TouristDestinationInput } from '@/types/master';
 import { toast } from 'sonner';
-import { formatDate } from '@/lib/utils';
-import { formatCurrency } from '@/lib/currency-utils';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureCanModifyOwnedEntity } from '@/lib/master-ownership';
@@ -26,6 +21,7 @@ const Destinations = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingDestination, setEditingDestination] = useState<TouristDestination | undefined>();
   const [nameFilter, setNameFilter] = useState('');
+  const [rawNameFilter, setRawNameFilter] = useState('');
   const [provinceFilter, setProvinceFilter] = useState('all');
   const [priceFilter, setPriceFilter] = useState('');
 
@@ -120,13 +116,14 @@ const Destinations = () => {
   });
 
   const bulkImportMutation = useMutation({
-    mutationFn: async (items: { name: string; price: number }[]) => {
+    mutationFn: async (items: DestinationImportItem[]) => {
       const provinces = await store.listProvinces();
       const defaultProvince = provinces[0] || { id: '', name: 'Unknown' };
 
       const inputs: TouristDestinationInput[] = items.map(item => ({
         name: item.name,
         price: item.price,
+        rawName: item.rawName,
         provinceRef: { id: defaultProvince.id, nameAtBooking: defaultProvince.name },
       }));
 
@@ -153,7 +150,12 @@ const Destinations = () => {
     if (editingDestination) {
       updateMutation.mutate({
         id: editingDestination.id,
-        patch: { name: input.name, price: input.price, provinceRef: input.provinceRef },
+        patch: {
+          name: input.name,
+          price: input.price,
+          rawName: input.rawName,
+          provinceRef: input.provinceRef,
+        },
       });
     }
   };
@@ -181,7 +183,7 @@ const Destinations = () => {
     }
   };
 
-  const handleBulkImport = async (items: { name: string; price: number }[]) => {
+  const handleBulkImport = async (items: DestinationImportItem[]) => {
     if (!canImport) {
       toast.error('Bạn không có quyền import điểm đến');
       return;
@@ -200,7 +202,7 @@ const Destinations = () => {
     }
 
     const txtContent = filteredDestinations
-      .map(dest => `${dest.name},${dest.price}`)
+      .map(dest => `${dest.name},${dest.price},${dest.rawName ?? ''}`)
       .join('\n');
 
     const blob = new Blob([txtContent], { type: 'text/plain' });
@@ -219,11 +221,33 @@ const Destinations = () => {
   const filteredDestinations = useMemo(() => {
     return destinations.filter(dest => {
       const matchesName = !nameFilter || dest.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesRawName = !rawNameFilter || (dest.rawName || '').toLowerCase().includes(rawNameFilter.toLowerCase());
       const matchesProvince = !provinceFilter || provinceFilter === 'all' || dest.provinceRef.nameAtBooking === provinceFilter;
       const matchesPrice = !priceFilter || dest.price.toString().includes(priceFilter);
-      return matchesName && matchesProvince && matchesPrice;
+      return matchesName && matchesRawName && matchesProvince && matchesPrice;
     });
-  }, [destinations, nameFilter, provinceFilter, priceFilter]);
+  }, [destinations, nameFilter, rawNameFilter, provinceFilter, priceFilter]);
+
+  const filters: DestinationFilters = {
+    name: nameFilter,
+    rawName: rawNameFilter,
+    province: provinceFilter,
+    price: priceFilter,
+  };
+
+  const handleFilterChange = (field: keyof DestinationFilters, value: string) => {
+    if (field === 'name') setNameFilter(value);
+    if (field === 'rawName') setRawNameFilter(value);
+    if (field === 'province') setProvinceFilter(value);
+    if (field === 'price') setPriceFilter(value);
+  };
+
+  const handleDeleteDestination = (destination: TouristDestination) => {
+    if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
+    if (confirm('Bạn có chắc chắn muốn xóa điểm đến này?')) {
+      deleteMutation.mutate(destination.id);
+    }
+  };
 
   const { classes: headerClasses } = useHeaderMode('destinations.headerMode');
 
@@ -284,149 +308,22 @@ const Destinations = () => {
             Không tìm thấy điểm đến nào. Hãy tạo điểm đến đầu tiên.
           </div>
         ) : (
-          <>
-            {/* Desktop Table */}
-            <div className="hidden md:block rounded-lg border">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left p-4 font-medium">Tên</th>
-                    <th className="text-left p-4 font-medium">Tỉnh</th>
-                    <th className="text-left p-4 font-medium">Đơn giá</th>
-                    <th className="text-left p-4 font-medium">Cập nhật</th>
-                    {isAdmin && <th className="text-left p-4 font-medium">Người tạo</th>}
-                    <th className="text-right p-4 font-medium">Thao tác</th>
-                  </tr>
-                  <tr>
-                    <th className="p-2">
-                      <Input
-                        placeholder="Lọc theo tên..."
-                        value={nameFilter}
-                        onChange={(e) => setNameFilter(e.target.value)}
-                        className="h-8"
-                      />
-                    </th>
-                    <th className="p-2">
-                      <Select value={provinceFilter} onValueChange={setProvinceFilter}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Tất cả tỉnh" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tất cả</SelectItem>
-                          {provinces.map((province) => (
-                            <SelectItem key={province.id} value={province.name}>
-                              {province.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </th>
-                    <th className="p-2">
-                      <Input
-                        placeholder="Lọc theo giá..."
-                        value={priceFilter}
-                        onChange={(e) => setPriceFilter(e.target.value)}
-                        className="h-8"
-                      />
-                    </th>
-                    <th className="p-2"></th>
-                    {isAdmin && <th className="p-2"></th>}
-                    <th className="p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDestinations.map((destination) => (
-                    <tr
-                      key={destination.id}
-                      className="border-t hover:bg-muted/50 cursor-pointer"
-                      onClick={() => canEdit && handleOpenDialog(destination)}
-                    >
-                      <td className="p-4 font-medium">
-                        <div className="flex items-center gap-2">
-                          {destination.name}
-                          <SharedBadge isShared={!!destination.isShared} />
-                        </div>
-                      </td>
-                      <td className="p-4 text-muted-foreground">{destination.provinceRef.nameAtBooking}</td>
-                      <td className="p-4 text-muted-foreground">
-                        {formatCurrency(destination.price)}
-                      </td>
-                      <td className="p-4 text-muted-foreground text-sm">
-                        {formatDate(destination.updatedAt.split("T")[0])}
-                      </td>
-                      {isAdmin && (
-                        <td className="p-4 text-sm text-muted-foreground">
-                          {destination.createdBy
-                            ? (profileMap.get(destination.createdBy)?.fullName || profileMap.get(destination.createdBy)?.email || destination.createdBy.slice(0, 8))
-                            : '-'}
-                        </td>
-                      )}
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          {isAdmin && destination.createdBy === user?.id && (
-                            <ShareToggleButton
-                              isShared={!!destination.isShared}
-                              onToggle={() => shareMutation.mutate({ id: destination.id, shared: !destination.isShared })}
-                            />
-                          )}
-                          {canEdit && (
-                            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(destination)} className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {canCreate && (
-                            <Button variant="ghost" size="sm" onClick={() => duplicateMutation.mutate(destination.id)} className="h-8 w-8 p-0">
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {canDelete && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
-                                if (confirm('Bạn có chắc chắn muốn xóa điểm đến này?')) {
-                                  deleteMutation.mutate(destination.id);
-                                }
-                              }}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="md:hidden space-y-2 md:space-y-3">
-              {filteredDestinations.map((destination) => (
-                <MasterMobileCard
-                  key={destination.id}
-                  title={destination.name}
-                  id={destination.id}
-                  subtitle={`Cập nhật ${formatDate(destination.updatedAt.split("T")[0])}`}
-                  metadata={`${destination.provinceRef.nameAtBooking} • ${formatCurrency(destination.price)}`}
-                  onClick={() => canEdit && handleOpenDialog(destination)}
-                  onEdit={canEdit ? () => handleOpenDialog(destination) : undefined}
-                  onDuplicate={canCreate ? () => duplicateMutation.mutate(destination.id) : undefined}
-                  onDelete={canDelete ? () => {
-                    if (!ensureCanModifyOwnedEntity(destination, user?.id, isAdmin)) return;
-                    if (confirm('Bạn có chắc chắn muốn xóa điểm đến này?')) {
-                      deleteMutation.mutate(destination.id);
-                    }
-                  } : undefined}
-                  canEdit={canEdit}
-                  canCreate={canCreate}
-                  canDelete={canDelete}
-                />
-              ))}
-            </div>
-          </>
+          <DestinationsList
+            destinations={filteredDestinations}
+            provinces={provinces}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            canEdit={canEdit}
+            canCreate={canCreate}
+            canDelete={canDelete}
+            isAdmin={isAdmin}
+            currentUserId={user?.id}
+            profileMap={profileMap}
+            onOpen={handleOpenDialog}
+            onDuplicate={(id) => duplicateMutation.mutate(id)}
+            onDelete={handleDeleteDestination}
+            onShareToggle={(destination) => shareMutation.mutate({ id: destination.id, shared: !destination.isShared })}
+          />
         )}
       </div>
 
@@ -438,23 +335,10 @@ const Destinations = () => {
         isEditing={!!editingDestination}
       />
 
-      <BulkImportDialog
+      <DestinationImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleBulkImport}
-        title="Import điểm đến"
-        description="Import điểm đến từ file hoặc dán dữ liệu. Mỗi dòng gồm: tên,đơn giá"
-        placeholder="Nhập điểm đến (mỗi dòng một điểm, định dạng: tên,đơn giá)&#10;Ví dụ:&#10;Vịnh Hạ Long,1500000&#10;Sa Pa,2000000&#10;Phố cổ Hội An,800000"
-        parseItem={(parts: string[]) => {
-          if (parts.length >= 2 && parts[0].trim()) {
-            const name = parts[0].trim();
-            const price = parseFloat(parts[1].replace(/[^\d.-]/g, ''));
-            if (!isNaN(price) && price > 0) {
-              return { name, price };
-            }
-          }
-          return null;
-        }}
       />
     </TooltipProvider>
   );

@@ -1,9 +1,10 @@
-import { ChevronDown, ChevronUp, Database, FileSpreadsheet, FolderArchive, Image as ImageIcon, Plus, Trash, Upload } from 'lucide-react';
+import { ChevronDown, ChevronUp, Database, FileSpreadsheet, FolderArchive, Image as ImageIcon, Plus, ScanLine, Trash, Upload } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ImportTourDialogEnhanced } from '@/components/tours/ImportTourDialogEnhanced';
+import { ImportTourFromImageDialog } from '@/components/tours/ImportTourFromImageDialog';
 import { cn } from '@/lib/utils';
 import type { Tour } from '@/types/tour';
 
@@ -26,6 +27,7 @@ type ToursHeaderControlsProps = {
   onBackup: () => void;
   onDownloadAllImages: () => void;
   onImport: (tours: Partial<Tour>[]) => void;
+  onImportAsync: (tours: Partial<Tour>[]) => Promise<{ imported: Tour[]; skipped: string[] }>;
   onExportAll: () => void;
   onExportAllSingle: () => void;
   onCreateTour: () => void;
@@ -54,6 +56,7 @@ export const ToursHeaderControls = ({
   onBackup,
   onDownloadAllImages,
   onImport,
+  onImportAsync,
   onExportAll,
   onExportAllSingle,
   onCreateTour,
@@ -89,6 +92,17 @@ export const ToursHeaderControls = ({
                 <Button variant="outline" size="sm" className={cn(topActionButtonClass, 'text-green-600 hover:text-green-700 border-green-600 hover:border-green-700')}>
                   <Upload className={topActionIconClass} />
                   <span className="max-w-full truncate">Nhập</span>
+                </Button>
+              }
+            />
+          )}
+          {canImportTours && (
+            <ImportTourFromImageDialog
+              onImportAsync={onImportAsync}
+              trigger={
+                <Button variant="outline" size="sm" className={cn(topActionButtonClass, 'text-teal-600 hover:text-teal-700 border-teal-600 hover:border-teal-700')}>
+                  <ScanLine className={topActionIconClass} />
+                  <span className="max-w-full truncate">Nhập ảnh</span>
                 </Button>
               }
             />
