@@ -21,21 +21,21 @@ export class TourImagesModule {
   declare protected supabase: SupabaseClient<Database>;
 
   /**
-   * Gửi ảnh/PDF chương trình tour tới Edge Function `analyze-tour-image`
-   * (giữ Azure key ở server) và nhận về `analyzeResult` thô để client tự parse.
+   * Gửi ảnh/PDF chương trình tour tới Edge Function `analyze-tour-image`.
+   * Hỗ trợ hai nhà cung cấp OCR: azure (mặc định) và google.
    */
-  async analyzeTourImage(file: File): Promise<AnalyzeResult> {
+  async analyzeTourImage(file: File, provider: 'azure' | 'google' = 'azure'): Promise<AnalyzeResult> {
     const dataBase64 = await fileToBase64(file);
     const { data, error } = await this.supabase.functions.invoke<{ analyzeResult?: AnalyzeResult; error?: string }>(
       'analyze-tour-image',
-      { body: { fileName: file.name, contentType: file.type, dataBase64 } },
+      { body: { provider, fileName: file.name, contentType: file.type, dataBase64 } },
     );
 
     if (error) {
+      const detail = (data as { error?: string })?.error || '';
       throw new Error(
-        (data as { error?: string })?.error ||
-          'Không thể phân tích ảnh. Hãy chắc chắn Edge Function "analyze-tour-image" đã được deploy ' +
-            '(supabase functions deploy analyze-tour-image) và đã set secret Azure.',
+        detail || 'Không thể phân tích ảnh. Hãy chắc chắn Edge Function "analyze-tour-image" đã được deploy ' +
+          'và đã set secret cho provider tương ứng (Azure hoặc Google Vision).',
       );
     }
     if (data?.error) throw new Error(data.error);

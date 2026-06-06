@@ -18,11 +18,14 @@ export function useTourImageOcr() {
   const [entityCaches, setEntityCaches] = useState<EntityCaches | null>(null);
   const [rawOcr, setRawOcr] = useState<unknown>(null);
 
-  const analyze = async (input: File, options: TourImportOptions = {}): Promise<boolean> => {
+  const analyze = async (
+    input: File,
+    options: TourImportOptions & { provider?: 'azure' | 'google' } = {},
+  ): Promise<boolean> => {
     setIsAnalyzing(true);
     try {
       const [analyzeResult, destinations, freeDestinations, caches] = await Promise.all([
-        store.analyzeTourImage(input),
+        store.analyzeTourImage(input, options.provider),
         store.listTouristDestinations({}),
         store.listDestinationsFree({}),
         loadEntityCachesFromStore(),

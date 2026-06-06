@@ -284,7 +284,7 @@ export interface DataStore {
   deleteCommissionPayment(id: string): Promise<void>;
 
   // Tour images
-  analyzeTourImage(file: File): Promise<import('@/lib/ocr/ocr-text-utils').AnalyzeResult>;
+  analyzeTourImage(file: File, provider?: 'azure' | 'google'): Promise<import('@/lib/ocr/ocr-text-utils').AnalyzeResult>;
   listTourImages(tourId: string): Promise<TourImage[]>;
   listAllTourImagesForDownload(): Promise<TourImageDownloadItem[]>;
   uploadTourImage(tourId: string, file: File, storagePath: string): Promise<void>;

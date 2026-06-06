@@ -23,8 +23,8 @@ export function ImportReviewImageView({ file }: ImportReviewImageViewProps) {
   }, [file]);
 
   return (
-    <div className="h-[calc(100vh-300px)] min-h-[360px] flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-1 min-h-0 flex-col gap-2 sm:gap-3 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 shrink-0">
         <div className="min-w-0 flex items-center gap-2 text-sm">
           {isPdf ? <FileText className="h-4 w-4 shrink-0" /> : <FileImage className="h-4 w-4 shrink-0" />}
           <span className="truncate font-medium">{file.name}</span>
@@ -37,9 +37,9 @@ export function ImportReviewImageView({ file }: ImportReviewImageViewProps) {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-muted/20">
+      <div className="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/20 touch-pan-y">
         {url && isPdf && (
-          <object data={url} type="application/pdf" className="h-full w-full">
+          <object data={url} type="application/pdf" className="h-full min-h-[60vh] w-full">
             <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
               Không thể xem PDF trong trình duyệt này.
             </div>
@@ -49,7 +49,7 @@ export function ImportReviewImageView({ file }: ImportReviewImageViewProps) {
           <img
             src={url}
             alt="Ảnh chương trình tour đã gửi OCR"
-            className="h-full w-full object-contain"
+            className="h-auto min-h-[40vh] w-full object-contain"
           />
         )}
       </div>

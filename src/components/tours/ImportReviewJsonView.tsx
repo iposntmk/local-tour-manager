@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Copy, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { buildFinalTour } from '@/lib/import-review-utils';
@@ -75,8 +74,8 @@ function RawOcrBlock({ value }: { value: unknown }) {
  */
 export function ImportReviewJsonView({ draft, rawOcr }: ImportReviewJsonViewProps) {
   return (
-    <ScrollArea className="h-[calc(100vh-300px)]">
-      <div className="space-y-6 pr-4">
+    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y">
+      <div className="space-y-4 sm:space-y-6 pr-2 sm:pr-4">
         {rawOcr != null && <RawOcrBlock value={rawOcr} />}
 
         {draft.map((item, index) => {
@@ -98,6 +97,6 @@ export function ImportReviewJsonView({ draft, rawOcr }: ImportReviewJsonViewProp
           );
         })}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
