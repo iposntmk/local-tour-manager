@@ -110,7 +110,7 @@ const Tours = () => {
     error,
   } = useQuery({
     queryKey: ['tours', baseTourQuery],
-    queryFn: () => store.listTours({ ...baseTourQuery }, { includeDetails: true }),
+    queryFn: () => store.listTours({ ...baseTourQuery }, { includeDetails: false }),
     placeholderData: keepPreviousData,
     staleTime: TOUR_LIST_STALE_TIME,
     gcTime: TOUR_LIST_GC_TIME,
@@ -122,7 +122,7 @@ const Tours = () => {
   const displayedTours = useMemo(() => {
     if (shoppingCommissionFilter === 'all') return tours;
     return tours.filter((tour) => {
-      const hasUnpaidShoppingCommission = getTourWarningInfo(tour).hasUnpaidShoppingCommission;
+      const hasUnpaidShoppingCommission = getTourWarningInfo(tour).hasUnpaidCommission;
       return shoppingCommissionFilter === 'unpaid' ? hasUnpaidShoppingCommission : !hasUnpaidShoppingCommission;
     });
   }, [shoppingCommissionFilter, tours]);

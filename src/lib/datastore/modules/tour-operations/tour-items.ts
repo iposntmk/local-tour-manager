@@ -210,6 +210,7 @@ export class TourItemsModule {
     if (data && shopping.payments && shopping.payments.length > 0) {
       await Promise.all(shopping.payments.map((p) => this.addCommissionPayment({ ...p, tourShoppingId: data.id })));
     }
+    await this.recalculateTourSummary(tourId);
   }
 
   async updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void> {
@@ -222,6 +223,7 @@ export class TourItemsModule {
         pit_amount: shopping.pitAmount ?? null, net_commission: shopping.netCommission ?? null,
       }).eq('id', rows[index].id);
       if (error) throw error;
+      await this.recalculateTourSummary(tourId);
     }
   }
 
@@ -231,6 +233,7 @@ export class TourItemsModule {
     if (rows && rows[index]) {
       const { error } = await this.supabase.from('tour_shoppings').delete().eq('id', rows[index].id);
       if (error) throw error;
+      await this.recalculateTourSummary(tourId);
     }
   }
 }

@@ -107,6 +107,39 @@ const rowsFromLines = (lines: string[], year: number): ItineraryRow[] => {
 // Điểm khớp master `destinations_free` (điểm miễn phí) bị loại khỏi JSON; tỉnh
 // thành của mỗi ngày suy từ điểm thường khớp được ĐẦU TIÊN trong ngày để đặt
 // tên công tác phí ở buildAllowances.
+
+/**
+ * Thử tách candidate gộp (OCR mất dấu phân cách) thành nhiều điểm riêng.
+ * Dùng matcher DB — thử mọi vị trí split 2-phần, nếu cả hai phần đều khớp
+ * DB ≥ AUTO_MATCH_PCT thì tách và đệ quy tiếp (xử lý gộp 3+ điểm).
+ */
+const decomposeCandidate = (
+  candidate: string,
+  matcher: Matcher<DestinationEntry>,
+  freeMatcher: Matcher<DestinationEntry>,
+): string[] => {
+  const tokens = candidate.split(/\s+/).filter(Boolean);
+  if (tokens.length < 3) return [candidate];
+
+  const ok = (text: string): boolean => {
+    const p = matcher.best(text);
+    const f = freeMatcher.best(text);
+    return Math.max(p?.percent ?? 0, f?.percent ?? 0) >= AUTO_MATCH_PCT;
+  };
+
+  for (let i = 1; i < tokens.length; i++) {
+    const left = tokens.slice(0, i).join(' ');
+    const right = tokens.slice(i).join(' ');
+    if (ok(left) && ok(right)) {
+      return [
+        ...decomposeCandidate(left, matcher, freeMatcher),
+        ...decomposeCandidate(right, matcher, freeMatcher),
+      ];
+    }
+  }
+  return [candidate];
+};
+
 const buildDestinations = (
   rows: ItineraryRow[],
   matcher: Matcher<DestinationEntry>,
@@ -126,21 +159,32 @@ const buildDestinations = (
       if (isFree) continue;
 
       const matched = paidBest && paidBest.percent >= AUTO_MATCH_PCT ? paidBest.item : null;
-      if (matched?.province) {
-        if (!provinceByDate.has(row.date)) {
-          provinceByDate.set(row.date, matched.province);
+
+      // Candidate không khớp DB → thử tách gộp (OCR mất dấu phân cách)
+      const parts = matched ? [candidate] : decomposeCandidate(candidate, matcher, freeMatcher);
+      for (const part of parts) {
+        const pPaid = matcher.best(part);
+        const pFree = freeMatcher.best(part);
+        if (pFree && pFree.percent >= AUTO_MATCH_PCT
+          && (!pPaid || pFree.percent >= pPaid.percent)) continue;
+
+        const pMatched = pPaid && pPaid.percent >= AUTO_MATCH_PCT ? pPaid.item : null;
+        if (pMatched?.province) {
+          if (!provinceByDate.has(row.date)) {
+            provinceByDate.set(row.date, pMatched.province);
+          }
+          if (!provinceCandidatesByDate.has(row.date)) {
+            provinceCandidatesByDate.set(row.date, new Set());
+          }
+          provinceCandidatesByDate.get(row.date)!.add(pMatched.province);
         }
-        if (!provinceCandidatesByDate.has(row.date)) {
-          provinceCandidatesByDate.set(row.date, new Set());
-        }
-        provinceCandidatesByDate.get(row.date)!.add(matched.province);
+        destinations.push({
+          name: pMatched ? pMatched.name : part,
+          price: pMatched ? (pMatched.price ?? 0) : 0,
+          date: row.date,
+          orderIndex: orderIndex++,
+        });
       }
-      destinations.push({
-        name: matched ? matched.name : candidate,
-        price: matched ? (matched.price ?? 0) : 0,
-        date: row.date,
-        orderIndex: orderIndex++,
-      });
     }
   }
   return { destinations, provinceByDate, provinceCandidatesByDate };

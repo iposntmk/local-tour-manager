@@ -197,6 +197,12 @@ export interface Tour {
   shoppings: Shopping[];
   summary: TourSummary;
   waterExpenseDismissed?: boolean;
+  // Denormalized warning flags (persisted to DB for fast list queries)
+  hasZeroPrice?: boolean;
+  hasDuplicateDestNames?: boolean;
+  missingWaterExpense?: boolean;
+  hasUnpaidCommission?: boolean;
+  allowanceTotal?: number;
 }
 
 export interface TourInput {

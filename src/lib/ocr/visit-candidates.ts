@@ -15,7 +15,7 @@ const stripInlineNoise = (segment: string): string =>
     .trim();
 
 // Cụm thuộc các nhóm này bị coi là nhiễu (di chuyển/đặt dịch vụ) → bỏ cả cụm.
-const NOISE = /\bbook\b|san bay|\bsb\b|no guide|reaching out|\bhdv\b|\bvat\b|khong oto/;
+const NOISE = /\bbook\b|san bay|\bsb\b|no guide|reaching out|\bhdv\b|khong oto/;
 
 // Từ dẫn nhập đứng đầu cụm (động từ/loại hình) — lột để còn lại tên điểm.
 const LEAD = new Set([

@@ -44,7 +44,7 @@ export function SummaryWorkflowFooter({ tour, canExport, onExport }: SummaryWork
   const canReturn = hasPermission('approve_settlement') && canReviewTour(tour) && hasFixLines;
   const canApprove = hasPermission('approve_settlement') && canReviewTour(tour);
   const canReopen = hasPermission('reopen_settlement') && (tour.settlementStatus === 'approved' || tour.settlementStatus === 'closed');
-  const canExportNow = canExport && allApproved && (tour.settlementStatus === 'approved' || tour.settlementStatus === 'closed');
+  const canExportNow = canExport;
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['tour', tour.id] });

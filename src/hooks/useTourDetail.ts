@@ -8,7 +8,6 @@ import { exportTourToExcel } from '@/lib/excel-utils';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { toVietnameseError } from '@/lib/error-messages';
 import { useAuth } from '@/contexts/AuthContext';
-import { areAllSettlementLinesApproved } from '@/lib/tour-line-utils';
 import { canEditTourData } from '@/lib/settlement-utils';
 import { canAuthViewTourShopping } from '@/lib/shopping-access';
 import { getTourInfoFieldAccess, getTourLineFieldAccess, getTourTabAccess } from '@/lib/tour-detail-permissions';
@@ -181,12 +180,6 @@ export function useTourDetail() {
   const handleExportExcel = async () => {
     if (!canExportTour) { toast.error('Bạn không có quyền xuất Excel.'); return; }
     if (!displayTour || isNewTour) { toast.error('Không thể xuất tour chưa được lưu'); return; }
-    const exportReady = areAllSettlementLinesApproved(displayTour as Tour)
-      && (displayTour.settlementStatus === 'approved' || displayTour.settlementStatus === 'closed');
-    if (!exportReady) {
-      toast.error('Chỉ xuất Excel khi tất cả dòng đã duyệt và hồ sơ đã chốt.');
-      return;
-    }
     try { await exportTourToExcel(displayTour as Tour); toast.success('Xuất tour ra Excel thành công'); }
     catch (error) { toast.error('Xuất tour ra Excel thất bại'); console.error('Export error:', error); }
   };

@@ -356,6 +356,11 @@ export function mapTour(row: TourRow): Tour {
     allowances: [],
     shoppings: [],
     waterExpenseDismissed: (row as any).water_warning_dismissed ?? false,
+    hasZeroPrice: (row as any).has_zero_price ?? false,
+    hasDuplicateDestNames: (row as any).has_duplicate_dest_names ?? false,
+    missingWaterExpense: (row as any).missing_water_expense ?? false,
+    hasUnpaidCommission: (row as any).has_unpaid_commission ?? false,
+    allowanceTotal: Number((row as any).allowance_total) || 0,
     summary: {
       totalTabs: Number(row.total_tabs) || 0,
       advancePayment: Number(row.advance_payment) || 0,

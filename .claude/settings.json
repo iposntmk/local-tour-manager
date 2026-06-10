@@ -1,4 +1,8 @@
 {
+  "env": {
+    "AGENTMEMORY_URL": "http://localhost:3113",
+    "III_REST_PORT": "3114"
+  },
   "permissions": {
     "allow": [
       "mcp__codegraph__codegraph_search",

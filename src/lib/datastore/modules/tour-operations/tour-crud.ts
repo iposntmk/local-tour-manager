@@ -7,6 +7,7 @@ import type {
 } from '@/types/tour';
 import { differenceInDays } from 'date-fns';
 import { enrichTourWithSummary, enrichToursWithSummaries } from '@/lib/tour-utils';
+import { getTourWarningInfo, getAllowanceTotal } from '@/pages/tours/tour-table-config';
 import { stripTourShoppingForProfile } from '@/lib/shopping-access';
 import { mapTour, mapTourPayment, mapTourShopping, mapLineReviewFields } from '../mappers';
 import type { TourRowWithDetails, TourNationalityRow, TourPaymentRow } from '../store-types';
@@ -84,11 +85,18 @@ export class TourCrudModule {
     const tour = await this.getTour(tourId);
     if (!tour) return;
     const summary = tour.summary;
+    const warningInfo = getTourWarningInfo(tour);
+    const allowanceTotal = getAllowanceTotal(tour);
     await this.supabase.from('tours').update({
       total_tabs: summary.totalTabs, advance_payment: summary.advancePayment,
       total_after_advance: summary.totalAfterAdvance, company_tip: summary.companyTip,
       total_after_tip: summary.totalAfterTip, collections_for_company: summary.collectionsForCompany,
       total_after_collections: summary.totalAfterCollections, final_total: summary.finalTotal,
+      has_zero_price: warningInfo.hasZeroPrice,
+      has_duplicate_dest_names: warningInfo.hasDuplicateDestNames,
+      missing_water_expense: warningInfo.missingWaterExpense,
+      has_unpaid_commission: warningInfo.hasUnpaidCommission,
+      allowance_total: allowanceTotal,
     }).eq('id', tourId);
   }
 
@@ -98,7 +106,7 @@ export class TourCrudModule {
     let queryBuilder = this.supabase.from('tours').select(
       includeDetails
         ? `*, tour_destinations(*), tour_expenses(*), tour_meals(*), tour_allowances(*), tour_shoppings(*, shopping_commission_payments(*)), tour_nationalities(*)`
-        : `*, tour_allowances(price, quantity), tour_nationalities(*), tour_shoppings(id, price, net_commission, shopping_commission_payments(amount))`,
+        : `*, tour_nationalities(*)`,
       { count: 'exact' }
     );
 
@@ -160,13 +168,6 @@ export class TourCrudModule {
         tour.meals = (typedRow.tour_meals || []).map(mapTourMealLine);
         tour.allowances = (typedRow.tour_allowances || []).map((a) => ({ date: a.date, name: a.name, price: Number(a.price) || 0, quantity: a.quantity || 1, categoryId: a.category_id ?? undefined, ...mapLineReviewFields(a) }));
         tour.shoppings = (typedRow.tour_shoppings || []).map((s) => mapTourShopping(s));
-      } else {
-        tour.allowances = (typedRow.tour_allowances || []).map((a) => ({ date: '', name: '', price: Number(a.price) || 0, quantity: a.quantity || 1 }));
-        tour.shoppings = ((typedRow as any).tour_shoppings || []).map((s: any) => ({
-          id: s.id, name: '', price: Number(s.price) || 0, date: '',
-          netCommission: s.net_commission !== null && s.net_commission !== undefined ? Number(s.net_commission) : undefined,
-          payments: (s.shopping_commission_payments || []).map((p: any) => ({ amount: Number(p.amount) || 0, paymentMethod: 'cash' as PaymentMethod, paidAt: '' })),
-        }));
       }
       return tour;
     });
@@ -225,6 +226,8 @@ export class TourCrudModule {
       total_after_advance: tour.summary?.totalAfterAdvance ?? 0, company_tip: tour.summary?.companyTip ?? 0,
       total_after_tip: tour.summary?.totalAfterTip ?? 0, collections_for_company: tour.summary?.collectionsForCompany ?? 0,
       total_after_collections: tour.summary?.totalAfterCollections ?? 0, final_total: tour.summary?.finalTotal ?? 0,
+      has_zero_price: false, has_duplicate_dest_names: false, missing_water_expense: true,
+      has_unpaid_commission: false, allowance_total: 0,
     }).select().single();
 
     if (error) {
@@ -283,6 +286,11 @@ export class TourCrudModule {
     if (tour.totalDays !== undefined) updates.total_days = tour.totalDays;
     if (tour.notes !== undefined) updates.notes = tour.notes;
     if (tour.waterExpenseDismissed !== undefined) updates.water_warning_dismissed = tour.waterExpenseDismissed;
+    if (tour.hasZeroPrice !== undefined) updates.has_zero_price = tour.hasZeroPrice;
+    if (tour.hasDuplicateDestNames !== undefined) updates.has_duplicate_dest_names = tour.hasDuplicateDestNames;
+    if (tour.missingWaterExpense !== undefined) updates.missing_water_expense = tour.missingWaterExpense;
+    if (tour.hasUnpaidCommission !== undefined) updates.has_unpaid_commission = tour.hasUnpaidCommission;
+    if (tour.allowanceTotal !== undefined) updates.allowance_total = tour.allowanceTotal;
     if (tour.summary !== undefined) {
       updates.total_tabs = tour.summary.totalTabs ?? 0; updates.advance_payment = tour.summary.advancePayment ?? 0;
       updates.total_after_advance = tour.summary.totalAfterAdvance ?? 0; updates.company_tip = tour.summary.companyTip ?? 0;

@@ -37,7 +37,9 @@ export const isBlankOrZero = (value = ''): boolean => {
 
 export const isNonProgramDay = (visit = ''): boolean => {
   const text = normalize(visit);
-  return text.includes('tu do') || text.includes('free') || text.startsWith('no guide');
+  if (text.includes('tu do') || text.includes('free')) return true;
+  if (text.startsWith('no guide')) return !looksLikeVisit(visit);
+  return false;
 };
 
 export const ymd = (year: number, month: number, day: number): string =>

@@ -43,7 +43,9 @@ export const formatTourNationalities = (tour: Tour) => {
 };
 
 export const getAllowanceTotal = (tour: Tour) =>
-  (tour.allowances || []).reduce((sum, allowance) => sum + (allowance.price * (allowance.quantity || 1)), 0);
+  tour.allowanceTotal !== undefined && tour.destinations === undefined
+    ? tour.allowanceTotal
+    : (tour.allowances || []).reduce((sum, allowance) => sum + (allowance.price * (allowance.quantity || 1)), 0);
 
 export const getUnpaidCommissionShoppingNames = (tour: Tour) =>
   (tour.shoppings || [])
@@ -56,28 +58,43 @@ export const getUnpaidCommissionShoppingNames = (tour: Tour) =>
     .map((shopping) => shopping.name || 'Không tên');
 
 export const getTourWarningInfo = (tour: Tour) => {
-  const hasZeroPrice = !!(
-    (tour.destinations || []).some(d => (d.price ?? 0) === 0) ||
-    (tour.expenses || []).some(e => (e.price ?? 0) === 0) ||
-    (tour.meals || []).some(m => (m.price ?? 0) === 0) ||
-    (tour.allowances || []).some(a => (a.price ?? 0) === 0)
-  );
+  // Use persisted flags when details are not loaded (list view)
+  const hasDetails = tour.destinations !== undefined && tour.expenses !== undefined &&
+    tour.meals !== undefined && tour.allowances !== undefined;
 
-  const destNames = (tour.destinations || []).map(d => (d.name || '').trim().toLowerCase()).filter(Boolean);
-  const nameCount = new Map<string, number>();
-  for (const name of destNames) nameCount.set(name, (nameCount.get(name) || 0) + 1);
-  const hasDuplicateDestNames = Array.from(nameCount.values()).some(count => count > 1);
+  const hasZeroPrice = hasDetails
+    ? !!(
+        (tour.destinations || []).some(d => (d.price ?? 0) === 0) ||
+        (tour.expenses || []).some(e => (e.price ?? 0) === 0) ||
+        (tour.meals || []).some(m => (m.price ?? 0) === 0) ||
+        (tour.allowances || []).some(a => (a.price ?? 0) === 0)
+      )
+    : !!tour.hasZeroPrice;
 
-  const hasWaterExpense = (tour.expenses || []).some(expense =>
-    WATER_EXPENSE_NAMES.includes((expense.name || '').trim().toLowerCase())
-  );
-  const missingWaterExpense = !hasWaterExpense && !tour.waterExpenseDismissed;
+  const hasDuplicateDestNames = hasDetails
+    ? (() => {
+        const destNames = (tour.destinations || []).map(d => (d.name || '').trim().toLowerCase()).filter(Boolean);
+        const nameCount = new Map<string, number>();
+        for (const name of destNames) nameCount.set(name, (nameCount.get(name) || 0) + 1);
+        return Array.from(nameCount.values()).some(count => count > 1);
+      })()
+    : !!tour.hasDuplicateDestNames;
+
+  const missingWaterExpense = hasDetails
+    ? (!(tour.expenses || []).some(expense =>
+        WATER_EXPENSE_NAMES.includes((expense.name || '').trim().toLowerCase())
+      ) && !tour.waterExpenseDismissed)
+    : !!tour.missingWaterExpense;
 
   const unpaidCommissionShoppingNames = getUnpaidCommissionShoppingNames(tour);
-  const hasUnpaidCommission = unpaidCommissionShoppingNames.length > 0;
+  const hasUnpaidCommission = hasDetails
+    ? unpaidCommissionShoppingNames.length > 0
+    : !!tour.hasUnpaidCommission;
 
   const warningTitle = [
-    hasUnpaidCommission && `Hoa hồng chưa nhận đủ: ${unpaidCommissionShoppingNames.join(', ')}`,
+    hasUnpaidCommission && (hasDetails
+      ? `Hoa hồng chưa nhận đủ: ${unpaidCommissionShoppingNames.join(', ')}`
+      : 'Hoa hồng chưa nhận đủ'),
     hasDuplicateDestNames && 'Tên điểm đến trùng lặp',
     hasZeroPrice && 'Có mục giá 0',
     missingWaterExpense && 'Thiếu chi phí nước uống',
