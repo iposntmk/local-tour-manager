@@ -118,236 +118,203 @@ export const ToursFilterBar = ({
   }
 
   return (
-    <>
-      <div className="flex items-center gap-2 sm:hidden mb-2">
+    <div className="space-y-2 sm:space-y-3">
+      {/* Search section — independently collapsible on mobile */}
+      <div className="flex items-center gap-2 sm:hidden">
         <h2 className="text-xs font-semibold flex items-center gap-1">
           <Filter className="h-3 w-3" />
-          Tìm kiếm & Lọc
+          Tìm kiếm
         </h2>
         <Button variant="ghost" size="sm" onClick={() => setSearchExpanded(!searchExpanded)} className="ml-auto h-7 w-7 p-0">
           {searchExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </Button>
       </div>
-
-      <div className={`space-y-2 sm:space-y-3 ${searchExpanded ? 'sm:block' : 'hidden sm:block'}`}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-          <SearchInput value={searchCode} onChange={setSearchCode} placeholder="Tìm kiếm mã tour..." />
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={`w-full justify-start text-left font-normal h-10 ${!dateRange?.from && !dateRange?.to ? 'text-muted-foreground' : ''}`}>
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {format(dateRange.from, 'dd/MM/yyyy')} - {format(dateRange.to, 'dd/MM/yyyy')}
-                    </>
-                  ) : (
-                    format(dateRange.from, 'dd/MM/yyyy')
-                  )
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 ${searchExpanded ? '' : 'hidden sm:grid'}`}>
+        <SearchInput value={searchCode} onChange={setSearchCode} placeholder="Tìm kiếm mã tour..." />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={`w-full justify-start text-left font-normal h-10 ${!dateRange?.from && !dateRange?.to ? 'text-muted-foreground' : ''}`}>
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange?.from ? (
+                dateRange.to ? (
+                  <>{format(dateRange.from, 'dd/MM/yyyy')} - {format(dateRange.to, 'dd/MM/yyyy')}</>
                 ) : (
-                  <span>Chọn khoảng thời gian</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} initialFocus />
-              {(dateRange?.from || dateRange?.to) && (
-                <div className="border-t p-3">
-                  <Button variant="ghost" className="w-full" onClick={() => setDateRange(undefined)}>
-                    <X className="h-4 w-4 mr-2" />
-                    Xóa ngày
-                  </Button>
-                </div>
+                  format(dateRange.from, 'dd/MM/yyyy')
+                )
+              ) : (
+                <span>Chọn khoảng thời gian</span>
               )}
-            </PopoverContent>
-          </Popover>
-          <Popover open={topCompanyFilterOpen} onOpenChange={setTopCompanyFilterOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={`w-full justify-start text-left font-normal h-10 ${!searchCompany ? 'text-muted-foreground' : ''}`} title={searchCompany || 'Tìm kiếm công ty...'}>
-                <span className="truncate">{searchCompany || 'Tìm kiếm công ty...'}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[260px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Tìm công ty..." />
-                <CommandList>
-                  <CommandEmpty>Không tìm thấy công ty.</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      value="__all_companies__"
-                      onSelect={() => {
-                        setSearchCompany('');
-                        setTopCompanyFilterOpen(false);
-                      }}
-                    >
-                      <Check className={`mr-2 h-4 w-4 ${searchCompany ? 'opacity-0' : 'opacity-100'}`} />
-                      Tất cả công ty
-                    </CommandItem>
-                    {topCompanyOptions.map((company) => (
-                      <CommandItem
-                        key={company}
-                        value={company}
-                        onSelect={() => {
-                          setSearchCompany(company);
-                          setTopCompanyFilterOpen(false);
-                        }}
-                      >
-                        <Check className={`mr-2 h-4 w-4 ${searchCompany === company ? 'opacity-100' : 'opacity-0'}`} />
-                        <span className="truncate">{company}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-          <Popover open={topLandOperatorFilterOpen} onOpenChange={setTopLandOperatorFilterOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={`w-full justify-start text-left font-normal h-10 ${!searchLandOperator ? 'text-muted-foreground' : ''}`} title={searchLandOperator || 'Tìm land tour...'}>
-                <span className="truncate">{searchLandOperator || 'Tìm land tour...'}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[260px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Tìm land tour..." />
-                <CommandList>
-                  <CommandEmpty>Không tìm thấy công ty land tour.</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      value="__all_land_operators__"
-                      onSelect={() => {
-                        setSearchLandOperator('');
-                        setTopLandOperatorFilterOpen(false);
-                      }}
-                    >
-                      <Check className={`mr-2 h-4 w-4 ${searchLandOperator ? 'opacity-0' : 'opacity-100'}`} />
-                      Tất cả land tour
-                    </CommandItem>
-                    {topLandOperatorOptions.map((name) => (
-                      <CommandItem
-                        key={name}
-                        value={name}
-                        onSelect={() => {
-                          setSearchLandOperator(name);
-                          setTopLandOperatorFilterOpen(false);
-                        }}
-                      >
-                        <Check className={`mr-2 h-4 w-4 ${searchLandOperator === name ? 'opacity-100' : 'opacity-0'}`} />
-                        <span className="truncate">{name}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-2 sm:space-y-3">
-          <div className="flex items-center gap-2 sm:hidden">
-            <h2 className="text-xs font-semibold flex items-center gap-1">
-              <Filter className="h-3 w-3" />
-              Bộ lọc nâng cao
-            </h2>
-            <Button variant="ghost" size="sm" onClick={() => setFiltersExpanded(!filtersExpanded)} className="ml-auto h-7 w-7 p-0">
-              {filtersExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </Button>
-          </div>
-
-          <div className={`${filtersExpanded ? 'block' : 'hidden sm:block'}`}>
-            <div className="overflow-y-auto max-h-[55dvh] sm:overflow-visible sm:max-h-none pb-1">
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3">
-                  <FilterSelect label="Trạng thái QT" icon="filter" value={settlementStatusFilter} onValueChange={setSettlementStatusFilter}>
-                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                    <SelectItem value="draft">Đang soạn</SelectItem>
-                    <SelectItem value="submitted">Đã gửi kế toán</SelectItem>
-                    <SelectItem value="need_changes">Cần bổ sung</SelectItem>
-                    <SelectItem value="approved">Đã duyệt</SelectItem>
-                    <SelectItem value="closed">Đã đóng</SelectItem>
-                  </FilterSelect>
-                  <FilterSelect label="Thanh toán" icon="filter" value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
-                    <SelectItem value="all">Tất cả thanh toán</SelectItem>
-                    <SelectItem value="pending">Chờ thanh toán</SelectItem>
-                    <SelectItem value="partial">Thanh toán một phần</SelectItem>
-                    <SelectItem value="paid">Đã thanh toán</SelectItem>
-                  </FilterSelect>
-                  <FilterSelect label="Hoa hồng" icon="filter" value={shoppingCommissionFilter} onValueChange={setShoppingCommissionFilter}>
-                    <SelectItem value="all">Tất cả hoa hồng</SelectItem>
-                    <SelectItem value="unpaid">Còn chưa nhận</SelectItem>
-                    <SelectItem value="paid">Đã nhận đủ</SelectItem>
-                  </FilterSelect>
-                  <FilterSelect label="Quốc tịch" icon="filter" value={nationalityFilter} onValueChange={setNationalityFilter}>
-                    <SelectItem value="all">Tất cả quốc tịch</SelectItem>
-                    {nationalities.map((nationality) => (
-                      <SelectItem key={nationality.id} value={nationality.id}>
-                        {nationality.emoji} {nationality.name}
-                      </SelectItem>
-                    ))}
-                  </FilterSelect>
-                  <FilterSelect label="Tháng" icon="calendar" value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    {months.map((month) => (
-                      <SelectItem key={month.value} value={month.value}>
-                        {month.label}
-                      </SelectItem>
-                    ))}
-                  </FilterSelect>
-                  <FilterSelect label="Năm" icon="calendar" value={selectedYear} onValueChange={setSelectedYear}>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    {availableYears.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </FilterSelect>
-                  <FilterSelect label="Sắp xếp" icon="sort" value={sortBy} onValueChange={setSortBy}>
-                    <SelectItem value="startDate-desc">Ngày bắt đầu (Mới nhất)</SelectItem>
-                    <SelectItem value="startDate-asc">Ngày bắt đầu (Cũ nhất)</SelectItem>
-                    <SelectItem value="endDate-desc">Ngày kết thúc (Mới nhất)</SelectItem>
-                    <SelectItem value="endDate-asc">Ngày kết thúc (Cũ nhất)</SelectItem>
-                    <SelectItem value="tourCode-asc">Mã tour (A-Z)</SelectItem>
-                    <SelectItem value="tourCode-desc">Mã tour (Z-A)</SelectItem>
-                    <SelectItem value="clientName-asc">Tên khách (A-Z)</SelectItem>
-                    <SelectItem value="clientName-desc">Tên khách (Z-A)</SelectItem>
-                    <SelectItem value="createdAt-desc">Ngày tạo (Mới nhất)</SelectItem>
-                    <SelectItem value="createdAt-asc">Ngày tạo (Cũ nhất)</SelectItem>
-                  </FilterSelect>
-                </div>
-
-                {hasActiveFilters && (
-                  <Button variant="outline" onClick={clearFilters} className="h-8 sm:h-10 sm:self-end">
-                    <X className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                    Xóa bộ lọc
-                  </Button>
-                )}
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} initialFocus />
+            {(dateRange?.from || dateRange?.to) && (
+              <div className="border-t p-3">
+                <Button variant="ghost" className="w-full" onClick={() => setDateRange(undefined)}>
+                  <X className="h-4 w-4 mr-2" />
+                  Xóa ngày
+                </Button>
               </div>
+            )}
+          </PopoverContent>
+        </Popover>
+        <Popover open={topCompanyFilterOpen} onOpenChange={setTopCompanyFilterOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={`w-full justify-start text-left font-normal h-10 ${!searchCompany ? 'text-muted-foreground' : ''}`} title={searchCompany || 'Tìm kiếm công ty...'}>
+              <span className="truncate">{searchCompany || 'Tìm kiếm công ty...'}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[260px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Tìm công ty..." />
+              <CommandList>
+                <CommandEmpty>Không tìm thấy công ty.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem value="__all_companies__" onSelect={() => { setSearchCompany(''); setTopCompanyFilterOpen(false); }}>
+                    <Check className={`mr-2 h-4 w-4 ${searchCompany ? 'opacity-0' : 'opacity-100'}`} />
+                    Tất cả công ty
+                  </CommandItem>
+                  {topCompanyOptions.map((company) => (
+                    <CommandItem key={company} value={company} onSelect={() => { setSearchCompany(company); setTopCompanyFilterOpen(false); }}>
+                      <Check className={`mr-2 h-4 w-4 ${searchCompany === company ? 'opacity-100' : 'opacity-0'}`} />
+                      <span className="truncate">{company}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        <Popover open={topLandOperatorFilterOpen} onOpenChange={setTopLandOperatorFilterOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={`w-full justify-start text-left font-normal h-10 ${!searchLandOperator ? 'text-muted-foreground' : ''}`} title={searchLandOperator || 'Tìm land tour...'}>
+              <span className="truncate">{searchLandOperator || 'Tìm land tour...'}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[260px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Tìm land tour..." />
+              <CommandList>
+                <CommandEmpty>Không tìm thấy công ty land tour.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem value="__all_land_operators__" onSelect={() => { setSearchLandOperator(''); setTopLandOperatorFilterOpen(false); }}>
+                    <Check className={`mr-2 h-4 w-4 ${searchLandOperator ? 'opacity-0' : 'opacity-100'}`} />
+                    Tất cả land tour
+                  </CommandItem>
+                  {topLandOperatorOptions.map((name) => (
+                    <CommandItem key={name} value={name} onSelect={() => { setSearchLandOperator(name); setTopLandOperatorFilterOpen(false); }}>
+                      <Check className={`mr-2 h-4 w-4 ${searchLandOperator === name ? 'opacity-100' : 'opacity-0'}`} />
+                      <span className="truncate">{name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
 
-              {hasActiveFilters && (
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <span className="text-base sm:text-lg font-semibold">Hiển thị {toursCount} tour</span>
-                  {nationalityFilter !== 'all' && (
-                    <Badge variant="secondary" className="text-sm font-medium">
-                      {nationalities.find((nationality) => nationality.id === nationalityFilter)?.name}
-                    </Badge>
-                  )}
-                  {selectedMonth !== 'all' && selectedYear !== 'all' && (
-                    <Badge variant="default" className="text-sm sm:text-base font-semibold px-3 py-1">
-                      {months.find((month) => month.value === selectedMonth)?.label} {selectedYear}
-                    </Badge>
-                  )}
-                  {shoppingCommissionFilter !== 'all' && (
-                    <Badge variant="secondary" className="text-sm font-medium">
-                      {shoppingCommissionFilter === 'unpaid' ? 'Hoa hồng chưa nhận' : 'Hoa hồng đã nhận đủ'}
-                    </Badge>
-                  )}
-                </div>
+      {/* Filter section — independently collapsible on mobile */}
+      <div className="flex items-center gap-2 sm:hidden">
+        <h2 className="text-xs font-semibold flex items-center gap-1">
+          <Filter className="h-3 w-3" />
+          Bộ lọc nâng cao
+          {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">Đang lọc</Badge>}
+        </h2>
+        <Button variant="ghost" size="sm" onClick={() => setFiltersExpanded(!filtersExpanded)} className="ml-auto h-7 w-7 p-0">
+          {filtersExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </Button>
+      </div>
+      <div className={`${filtersExpanded ? '' : 'hidden sm:block'}`}>
+        <div className="overflow-y-auto max-h-[calc(100dvh-12rem)] sm:overflow-visible sm:max-h-none">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3">
+              <FilterSelect label="Trạng thái QT" icon="filter" value={settlementStatusFilter} onValueChange={setSettlementStatusFilter}>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="draft">Đang soạn</SelectItem>
+                <SelectItem value="submitted">Đã gửi kế toán</SelectItem>
+                <SelectItem value="need_changes">Cần bổ sung</SelectItem>
+                <SelectItem value="approved">Đã duyệt</SelectItem>
+                <SelectItem value="closed">Đã đóng</SelectItem>
+              </FilterSelect>
+              <FilterSelect label="Thanh toán" icon="filter" value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                <SelectItem value="all">Tất cả thanh toán</SelectItem>
+                <SelectItem value="pending">Chờ thanh toán</SelectItem>
+                <SelectItem value="partial">Thanh toán một phần</SelectItem>
+                <SelectItem value="paid">Đã thanh toán</SelectItem>
+              </FilterSelect>
+              <FilterSelect label="Hoa hồng" icon="filter" value={shoppingCommissionFilter} onValueChange={setShoppingCommissionFilter}>
+                <SelectItem value="all">Tất cả hoa hồng</SelectItem>
+                <SelectItem value="unpaid">Còn chưa nhận</SelectItem>
+                <SelectItem value="paid">Đã nhận đủ</SelectItem>
+              </FilterSelect>
+              <FilterSelect label="Quốc tịch" icon="filter" value={nationalityFilter} onValueChange={setNationalityFilter}>
+                <SelectItem value="all">Tất cả quốc tịch</SelectItem>
+                {nationalities.map((nationality) => (
+                  <SelectItem key={nationality.id} value={nationality.id}>
+                    {nationality.emoji} {nationality.name}
+                  </SelectItem>
+                ))}
+              </FilterSelect>
+              <FilterSelect label="Tháng" icon="calendar" value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectItem value="all">Tất cả</SelectItem>
+                {months.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </FilterSelect>
+              <FilterSelect label="Năm" icon="calendar" value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectItem value="all">Tất cả</SelectItem>
+                {availableYears.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </FilterSelect>
+              <FilterSelect label="Sắp xếp" icon="sort" value={sortBy} onValueChange={setSortBy}>
+                <SelectItem value="startDate-desc">Ngày bắt đầu (Mới nhất)</SelectItem>
+                <SelectItem value="startDate-asc">Ngày bắt đầu (Cũ nhất)</SelectItem>
+                <SelectItem value="endDate-desc">Ngày kết thúc (Mới nhất)</SelectItem>
+                <SelectItem value="endDate-asc">Ngày kết thúc (Cũ nhất)</SelectItem>
+                <SelectItem value="tourCode-asc">Mã tour (A-Z)</SelectItem>
+                <SelectItem value="tourCode-desc">Mã tour (Z-A)</SelectItem>
+                <SelectItem value="clientName-asc">Tên khách (A-Z)</SelectItem>
+                <SelectItem value="clientName-desc">Tên khách (Z-A)</SelectItem>
+                <SelectItem value="createdAt-desc">Ngày tạo (Mới nhất)</SelectItem>
+                <SelectItem value="createdAt-asc">Ngày tạo (Cũ nhất)</SelectItem>
+              </FilterSelect>
+            </div>
+            {hasActiveFilters && (
+              <Button variant="outline" onClick={clearFilters} className="h-8 sm:h-10 sm:self-end shrink-0">
+                <X className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                Xóa bộ lọc
+              </Button>
+            )}
+          </div>
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <span className="text-base sm:text-lg font-semibold">Hiển thị {toursCount} tour</span>
+              {nationalityFilter !== 'all' && (
+                <Badge variant="secondary" className="text-sm font-medium">
+                  {nationalities.find((n) => n.id === nationalityFilter)?.name}
+                </Badge>
+              )}
+              {selectedMonth !== 'all' && selectedYear !== 'all' && (
+                <Badge variant="default" className="text-sm sm:text-base font-semibold px-3 py-1">
+                  {months.find((m) => m.value === selectedMonth)?.label} {selectedYear}
+                </Badge>
+              )}
+              {shoppingCommissionFilter !== 'all' && (
+                <Badge variant="secondary" className="text-sm font-medium">
+                  {shoppingCommissionFilter === 'unpaid' ? 'Hoa hồng chưa nhận' : 'Hoa hồng đã nhận đủ'}
+                </Badge>
               )}
             </div>
-          </div>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

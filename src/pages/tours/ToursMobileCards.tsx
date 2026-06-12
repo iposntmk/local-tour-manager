@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { Baby, Copy, FileDown, Flag, Trash2, WalletCards } from 'lucide-react';
+import { Baby, Copy, FileDown, Flag, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PaymentStatusBadge } from '@/components/tours/PaymentStatusBadge';
@@ -67,17 +67,6 @@ export const ToursMobileCards = ({
             </div>
           )}
           <div className="space-y-3">
-            {warningInfo.hasUnpaidCommission && (
-              <div
-                className={`mx-auto inline-flex min-w-0 items-start gap-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-medium leading-snug text-white ${hasChildren ? 'max-w-[calc(100%-2.5rem)]' : 'max-w-full'}`}
-                title={warningInfo.warningTitle}
-              >
-                <WalletCards className="mt-0.5 h-3 w-3 shrink-0" />
-                <span className="whitespace-normal break-words">
-                  Chưa nhận đủ: {warningInfo.unpaidCommissionShoppingNames.join(', ')}
-                </span>
-              </div>
-            )}
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onOpenTour(tour.id)}>
                 <div className="flex items-center gap-2 overflow-hidden flex-nowrap">
@@ -91,15 +80,6 @@ export const ToursMobileCards = ({
                   <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
                     {totalGuests}p
                   </Badge>
-                  {canViewShoppingSensitive && warningInfo.hasUnpaidCommission && (
-                    <span
-                      className="inline-flex items-center gap-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-full font-medium"
-                      title="Hoa hồng chưa nhận đủ"
-                    >
-                      <WalletCards className="h-3 w-3" />
-                      <span>Hoa hồng</span>
-                    </span>
-                  )}
                   {(warningInfo.hasZeroPrice || warningInfo.hasDuplicateDestNames || warningInfo.missingWaterExpense) && (
                     <span
                       className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm"
@@ -144,13 +124,14 @@ export const ToursMobileCards = ({
                 </div>
               </div>
               {canViewShoppingSensitive && shoppingInfo.hasShoppings && (
-                <div className="text-xs sm:text-sm">
+                <div className="text-xs">
                   {shoppingInfo.allPaid ? (
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Hoa hồng: đủ</span>
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Hoa hồng: đã nhận đủ</span>
                   ) : (
                     <div className="space-y-0.5">
+                      <span className="font-medium text-red-600 dark:text-red-400">Hoa hồng: chưa nhận đủ</span>
                       {shoppingInfo.unpaidItems.map((item, i) => (
-                        <div key={i} className="flex items-center gap-1 flex-wrap">
+                        <div key={i} className="flex items-center gap-1 flex-wrap pl-2">
                           <span className="text-muted-foreground">{item.name}:</span>
                           <span className="font-semibold text-red-600 dark:text-red-400">còn {Math.round(item.remaining / 1000).toLocaleString('vi-VN')}k</span>
                         </div>

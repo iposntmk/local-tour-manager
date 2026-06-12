@@ -65,15 +65,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>(() => localStorage.getItem('tours.paymentStatusFilter') || 'all');
   const [shoppingCommissionFilter, setShoppingCommissionFilter] = useState<string>(() => localStorage.getItem('tours.shoppingCommissionFilter') || 'all');
   const [selectedMonth, setSelectedMonth] = useState<string>(() => localStorage.getItem('tours.selectedMonth') || 'all');
-  const [selectedYear, setSelectedYear] = useState<string>(() => {
-    const saved = localStorage.getItem('tours.selectedYear');
-    if (!saved || saved === 'all') {
-      const currentYear = new Date().getFullYear().toString();
-      localStorage.setItem('tours.selectedYear', currentYear);
-      return currentYear;
-    }
-    return saved;
-  });
+  const [selectedYear, setSelectedYear] = useState<string>(() => localStorage.getItem('tours.selectedYear') || 'all');
   const [sortBy, setSortBy] = useState<string>(loadTourSort);
   const [filtersExpanded, setFiltersExpanded] = useState(() => {
     const saved = localStorage.getItem('tours.filtersExpanded');

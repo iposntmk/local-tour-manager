@@ -114,9 +114,9 @@ export class TourCrudModule {
     const sortColumnMap: Record<string, string> = { startDate: 'start_date', endDate: 'end_date', tourCode: 'tour_code', clientName: 'client_name', createdAt: 'created_at' };
     queryBuilder = queryBuilder.order(sortColumnMap[query?.sortBy || 'startDate'] || 'start_date', { ascending: (query?.sortOrder || 'desc') === 'asc' });
 
-    queryBuilder = queryBuilder.order('date', { foreignTable: 'tour_shoppings' });
     if (includeDetails) {
       queryBuilder = queryBuilder
+        .order('date', { foreignTable: 'tour_shoppings' })
         .order('date', { foreignTable: 'tour_destinations' }).order('date', { foreignTable: 'tour_expenses' })
         .order('date', { foreignTable: 'tour_meals' }).order('date', { foreignTable: 'tour_allowances' });
     }
