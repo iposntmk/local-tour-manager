@@ -28,6 +28,7 @@ type ToursFilterBarProps = {
   searchLandOperator: string;
   settlementStatusFilter: string;
   paymentStatusFilter: string;
+  shoppingCommissionFilter: string;
   nationalityFilter: string;
   selectedMonth: string;
   selectedYear: string;
@@ -50,6 +51,7 @@ type ToursFilterBarProps = {
   setSearchLandOperator: (value: string) => void;
   setSettlementStatusFilter: (value: string) => void;
   setPaymentStatusFilter: (value: string) => void;
+  setShoppingCommissionFilter: (value: string) => void;
   setNationalityFilter: (value: string) => void;
   setSelectedMonth: (value: string) => void;
   setSelectedYear: (value: string) => void;
@@ -69,6 +71,7 @@ export const ToursFilterBar = ({
   searchLandOperator,
   settlementStatusFilter,
   paymentStatusFilter,
+  shoppingCommissionFilter,
   nationalityFilter,
   selectedMonth,
   selectedYear,
@@ -91,6 +94,7 @@ export const ToursFilterBar = ({
   setSearchLandOperator,
   setSettlementStatusFilter,
   setPaymentStatusFilter,
+  setShoppingCommissionFilter,
   setNationalityFilter,
   setSelectedMonth,
   setSelectedYear,
@@ -125,7 +129,7 @@ export const ToursFilterBar = ({
         </Button>
       </div>
 
-      <div className={`space-y-2 sm:space-y-3 transition-all duration-200 overflow-hidden ${searchExpanded ? 'sm:block' : 'hidden sm:block'}`}>
+      <div className={`space-y-2 sm:space-y-3 ${searchExpanded ? 'sm:block' : 'hidden sm:block'}`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           <SearchInput value={searchCode} onChange={setSearchCode} placeholder="Tìm kiếm mã tour..." />
           <Popover>
@@ -146,7 +150,7 @@ export const ToursFilterBar = ({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} initialFocus />
+              <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={1} initialFocus />
               {(dateRange?.from || dateRange?.to) && (
                 <div className="border-t p-3">
                   <Button variant="ghost" className="w-full" onClick={() => setDateRange(undefined)}>
@@ -250,84 +254,96 @@ export const ToursFilterBar = ({
             </Button>
           </div>
 
-          <div className={`transition-all duration-200 overflow-hidden ${filtersExpanded ? 'block' : 'hidden sm:block'}`}>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3">
-                <FilterSelect label="Trạng thái QT" icon="filter" value={settlementStatusFilter} onValueChange={setSettlementStatusFilter}>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="draft">Đang soạn</SelectItem>
-                  <SelectItem value="submitted">Đã gửi kế toán</SelectItem>
-                  <SelectItem value="need_changes">Cần bổ sung</SelectItem>
-                  <SelectItem value="approved">Đã duyệt</SelectItem>
-                  <SelectItem value="closed">Đã đóng</SelectItem>
-                </FilterSelect>
-                <FilterSelect label="Thanh toán" icon="filter" value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
-                  <SelectItem value="all">Tất cả thanh toán</SelectItem>
-                  <SelectItem value="pending">Chờ thanh toán</SelectItem>
-                  <SelectItem value="partial">Thanh toán một phần</SelectItem>
-                  <SelectItem value="paid">Đã thanh toán</SelectItem>
-                </FilterSelect>
-                <FilterSelect label="Quốc tịch" icon="filter" value={nationalityFilter} onValueChange={setNationalityFilter}>
-                  <SelectItem value="all">Tất cả quốc tịch</SelectItem>
-                  {nationalities.map((nationality) => (
-                    <SelectItem key={nationality.id} value={nationality.id}>
-                      {nationality.emoji} {nationality.name}
-                    </SelectItem>
-                  ))}
-                </FilterSelect>
-                <FilterSelect label="Tháng" icon="calendar" value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  {months.map((month) => (
-                    <SelectItem key={month.value} value={month.value}>
-                      {month.label}
-                    </SelectItem>
-                  ))}
-                </FilterSelect>
-                <FilterSelect label="Năm" icon="calendar" value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  {availableYears.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </FilterSelect>
-                <FilterSelect label="Sắp xếp" icon="sort" value={sortBy} onValueChange={setSortBy}>
-                  <SelectItem value="startDate-desc">Ngày bắt đầu (Mới nhất)</SelectItem>
-                  <SelectItem value="startDate-asc">Ngày bắt đầu (Cũ nhất)</SelectItem>
-                  <SelectItem value="endDate-desc">Ngày kết thúc (Mới nhất)</SelectItem>
-                  <SelectItem value="endDate-asc">Ngày kết thúc (Cũ nhất)</SelectItem>
-                  <SelectItem value="tourCode-asc">Mã tour (A-Z)</SelectItem>
-                  <SelectItem value="tourCode-desc">Mã tour (Z-A)</SelectItem>
-                  <SelectItem value="clientName-asc">Tên khách (A-Z)</SelectItem>
-                  <SelectItem value="clientName-desc">Tên khách (Z-A)</SelectItem>
-                  <SelectItem value="createdAt-desc">Ngày tạo (Mới nhất)</SelectItem>
-                  <SelectItem value="createdAt-asc">Ngày tạo (Cũ nhất)</SelectItem>
-                </FilterSelect>
+          <div className={`${filtersExpanded ? 'block' : 'hidden sm:block'}`}>
+            <div className="overflow-y-auto max-h-[55dvh] sm:overflow-visible sm:max-h-none pb-1">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-3">
+                  <FilterSelect label="Trạng thái QT" icon="filter" value={settlementStatusFilter} onValueChange={setSettlementStatusFilter}>
+                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                    <SelectItem value="draft">Đang soạn</SelectItem>
+                    <SelectItem value="submitted">Đã gửi kế toán</SelectItem>
+                    <SelectItem value="need_changes">Cần bổ sung</SelectItem>
+                    <SelectItem value="approved">Đã duyệt</SelectItem>
+                    <SelectItem value="closed">Đã đóng</SelectItem>
+                  </FilterSelect>
+                  <FilterSelect label="Thanh toán" icon="filter" value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                    <SelectItem value="all">Tất cả thanh toán</SelectItem>
+                    <SelectItem value="pending">Chờ thanh toán</SelectItem>
+                    <SelectItem value="partial">Thanh toán một phần</SelectItem>
+                    <SelectItem value="paid">Đã thanh toán</SelectItem>
+                  </FilterSelect>
+                  <FilterSelect label="Hoa hồng" icon="filter" value={shoppingCommissionFilter} onValueChange={setShoppingCommissionFilter}>
+                    <SelectItem value="all">Tất cả hoa hồng</SelectItem>
+                    <SelectItem value="unpaid">Còn chưa nhận</SelectItem>
+                    <SelectItem value="paid">Đã nhận đủ</SelectItem>
+                  </FilterSelect>
+                  <FilterSelect label="Quốc tịch" icon="filter" value={nationalityFilter} onValueChange={setNationalityFilter}>
+                    <SelectItem value="all">Tất cả quốc tịch</SelectItem>
+                    {nationalities.map((nationality) => (
+                      <SelectItem key={nationality.id} value={nationality.id}>
+                        {nationality.emoji} {nationality.name}
+                      </SelectItem>
+                    ))}
+                  </FilterSelect>
+                  <FilterSelect label="Tháng" icon="calendar" value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </FilterSelect>
+                  <FilterSelect label="Năm" icon="calendar" value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    {availableYears.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </FilterSelect>
+                  <FilterSelect label="Sắp xếp" icon="sort" value={sortBy} onValueChange={setSortBy}>
+                    <SelectItem value="startDate-desc">Ngày bắt đầu (Mới nhất)</SelectItem>
+                    <SelectItem value="startDate-asc">Ngày bắt đầu (Cũ nhất)</SelectItem>
+                    <SelectItem value="endDate-desc">Ngày kết thúc (Mới nhất)</SelectItem>
+                    <SelectItem value="endDate-asc">Ngày kết thúc (Cũ nhất)</SelectItem>
+                    <SelectItem value="tourCode-asc">Mã tour (A-Z)</SelectItem>
+                    <SelectItem value="tourCode-desc">Mã tour (Z-A)</SelectItem>
+                    <SelectItem value="clientName-asc">Tên khách (A-Z)</SelectItem>
+                    <SelectItem value="clientName-desc">Tên khách (Z-A)</SelectItem>
+                    <SelectItem value="createdAt-desc">Ngày tạo (Mới nhất)</SelectItem>
+                    <SelectItem value="createdAt-asc">Ngày tạo (Cũ nhất)</SelectItem>
+                  </FilterSelect>
+                </div>
+
+                {hasActiveFilters && (
+                  <Button variant="outline" onClick={clearFilters} className="h-8 sm:h-10 sm:self-end">
+                    <X className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                    Xóa bộ lọc
+                  </Button>
+                )}
               </div>
 
               {hasActiveFilters && (
-                <Button variant="outline" onClick={clearFilters} className="h-8 sm:h-10 sm:self-end">
-                  <X className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                  Xóa bộ lọc
-                </Button>
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <span className="text-base sm:text-lg font-semibold">Hiển thị {toursCount} tour</span>
+                  {nationalityFilter !== 'all' && (
+                    <Badge variant="secondary" className="text-sm font-medium">
+                      {nationalities.find((nationality) => nationality.id === nationalityFilter)?.name}
+                    </Badge>
+                  )}
+                  {selectedMonth !== 'all' && selectedYear !== 'all' && (
+                    <Badge variant="default" className="text-sm sm:text-base font-semibold px-3 py-1">
+                      {months.find((month) => month.value === selectedMonth)?.label} {selectedYear}
+                    </Badge>
+                  )}
+                  {shoppingCommissionFilter !== 'all' && (
+                    <Badge variant="secondary" className="text-sm font-medium">
+                      {shoppingCommissionFilter === 'unpaid' ? 'Hoa hồng chưa nhận' : 'Hoa hồng đã nhận đủ'}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
-
-            {hasActiveFilters && (
-              <div className="flex items-center gap-2 mt-3">
-                <span className="text-base sm:text-lg font-semibold">Hiển thị {toursCount} tour</span>
-                {nationalityFilter !== 'all' && (
-                  <Badge variant="secondary" className="text-sm font-medium">
-                    {nationalities.find((nationality) => nationality.id === nationalityFilter)?.name}
-                  </Badge>
-                )}
-                {selectedMonth !== 'all' && selectedYear !== 'all' && (
-                  <Badge variant="default" className="text-sm sm:text-base font-semibold px-3 py-1">
-                    {months.find((month) => month.value === selectedMonth)?.label} {selectedYear}
-                  </Badge>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>

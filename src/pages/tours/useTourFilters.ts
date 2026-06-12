@@ -63,6 +63,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   const [nationalityFilter, setNationalityFilter] = useState<string>(() => localStorage.getItem('tours.nationalityFilter') || 'all');
   const [settlementStatusFilter, setSettlementStatusFilter] = useState<string>(() => localStorage.getItem('tours.settlementStatusFilter') || 'all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>(() => localStorage.getItem('tours.paymentStatusFilter') || 'all');
+  const [shoppingCommissionFilter, setShoppingCommissionFilter] = useState<string>(() => localStorage.getItem('tours.shoppingCommissionFilter') || 'all');
   const [selectedMonth, setSelectedMonth] = useState<string>(() => localStorage.getItem('tours.selectedMonth') || 'all');
   const [selectedYear, setSelectedYear] = useState<string>(() => {
     const saved = localStorage.getItem('tours.selectedYear');
@@ -96,6 +97,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   useEffect(() => { localStorage.setItem('tours.nationalityFilter', nationalityFilter); }, [nationalityFilter]);
   useEffect(() => { localStorage.setItem('tours.settlementStatusFilter', settlementStatusFilter); }, [settlementStatusFilter]);
   useEffect(() => { localStorage.setItem('tours.paymentStatusFilter', paymentStatusFilter); }, [paymentStatusFilter]);
+  useEffect(() => { localStorage.setItem('tours.shoppingCommissionFilter', shoppingCommissionFilter); }, [shoppingCommissionFilter]);
   useEffect(() => { localStorage.setItem('tours.selectedMonth', selectedMonth); }, [selectedMonth]);
   useEffect(() => { localStorage.setItem('tours.selectedYear', selectedYear); }, [selectedYear]);
   useEffect(() => { localStorage.setItem('tours.sortBy', sortBy); }, [sortBy]);
@@ -169,9 +171,10 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     setNationalityFilter('all');
     setSelectedMonth('all');
     setSelectedYear('all');
+    setShoppingCommissionFilter('all');
   };
 
-  const hasActiveFilters = nationalityFilter !== 'all' || (selectedMonth !== 'all' && selectedYear !== 'all');
+  const hasActiveFilters = nationalityFilter !== 'all' || (selectedMonth !== 'all' && selectedYear !== 'all') || shoppingCommissionFilter !== 'all';
 
   return {
     searchCode,
@@ -188,6 +191,8 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     setSettlementStatusFilter,
     paymentStatusFilter,
     setPaymentStatusFilter,
+    shoppingCommissionFilter,
+    setShoppingCommissionFilter,
     selectedMonth,
     setSelectedMonth,
     selectedYear,
