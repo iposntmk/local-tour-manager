@@ -13,6 +13,7 @@ import { isWaterExpense, normalizeWaterExpenseLine } from '@/lib/water-expense-u
 import { mapTour, mapTourPayment, mapTourShopping, mapLineReviewFields } from '../mappers';
 import type { TourRowWithDetails, TourNationalityRow, TourPaymentRow } from '../store-types';
 import type { UserProfile } from '@/types/user';
+import { MASTER_ADMIN_EMAIL } from '@/lib/auth-constants';
 import {
   attachTourLineAttachments,
   mapTourDestinationLine,
@@ -137,7 +138,8 @@ export class TourCrudModule {
     if (query?.clientName) queryBuilder = queryBuilder.ilike('client_name', `%${query.clientName}%`);
     if (query?.companyId) queryBuilder = queryBuilder.eq('company_id', query.companyId);
     if (query?.landOperatorId) queryBuilder = queryBuilder.eq('land_operator_id', query.landOperatorId);
-    if (currentProfile?.settlementRole === 'guide') queryBuilder = queryBuilder.eq('guide_id', currentProfile.id);
+    const isMasterAdmin = currentProfile?.email === MASTER_ADMIN_EMAIL;
+    if (!isMasterAdmin && currentProfile?.settlementRole === 'guide') queryBuilder = queryBuilder.eq('guide_id', currentProfile.id);
     else if (query?.guideId) queryBuilder = queryBuilder.eq('guide_id', query.guideId);
     if (query?.startDate) queryBuilder = queryBuilder.gte('end_date', query.startDate);
     if (query?.endDate) queryBuilder = queryBuilder.lte('start_date', query.endDate);

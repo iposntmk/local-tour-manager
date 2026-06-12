@@ -3,6 +3,7 @@ import type { Database } from '@/integrations/supabase/types';
 import type { Language, Guide, Company, Nationality, Province, TouristDestination, Shopping, ExpenseCategory, DetailedExpense } from '@/types/master';
 import type { Tour, Destination, Expense, Meal, Allowance, Shopping as TourShopping, TourQuery, TourListResult } from '@/types/tour';
 import type { SearchQuery } from '@/types/datastore';
+import { MASTER_ADMIN_EMAIL } from '@/lib/auth-constants';
 
 export class TourDataModule {
   declare protected supabase: SupabaseClient<Database>;
@@ -40,7 +41,8 @@ export class TourDataModule {
   async getToursGrandTotal(): Promise<{ count: number; grandTotal: number }> {
     const currentProfile = await this.getCurrentUserProfile();
     let queryBuilder = this.supabase.from('tours').select('final_total', { count: 'exact' });
-    if (currentProfile?.settlementRole === 'guide') {
+    const isMasterAdmin = currentProfile?.email === MASTER_ADMIN_EMAIL;
+    if (!isMasterAdmin && currentProfile?.settlementRole === 'guide') {
       queryBuilder = queryBuilder.eq('guide_id', currentProfile.id);
     }
     const { data, error, count } = await queryBuilder;
