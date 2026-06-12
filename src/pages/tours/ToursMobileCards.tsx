@@ -2,12 +2,15 @@ import type { MouseEvent } from 'react';
 import { Baby, Copy, FileDown, Flag, Trash2, WalletCards } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PaymentStatusBadge } from '@/components/tours/PaymentStatusBadge';
+import { SettlementStatusBadge } from '@/components/tours/SettlementStatusBadge';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
 import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import type { Tour } from '@/types/tour';
 import {
   formatTourNationalities,
   getAllowanceTotal,
+  getShoppingCommissionInfo,
   getTabsCostTotal,
   getTourDays,
   getTourGuests,
@@ -49,6 +52,7 @@ export const ToursMobileCards = ({
       const allowanceTotal = getAllowanceTotal(tour);
       const tabsCostTotal = getTabsCostTotal(tour);
       const totalTabs = tour.summary?.totalTabs ?? 0;
+      const shoppingInfo = getShoppingCommissionInfo(tour);
       const nationalities = formatTourNationalities(tour);
 
       return (
@@ -126,6 +130,35 @@ export const ToursMobileCards = ({
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="pt-3 border-t cursor-pointer space-y-1.5" onClick={() => onOpenTour(tour.id)}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground text-xs">QT:</span>
+                  <SettlementStatusBadge status={tour.settlementStatus} className="text-[11px] px-1.5 py-0 h-5" />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground text-xs">TT:</span>
+                  <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} className="text-[11px] px-1.5 py-0 h-5" />
+                </div>
+              </div>
+              {canViewShoppingSensitive && shoppingInfo.hasShoppings && (
+                <div className="text-xs sm:text-sm">
+                  {shoppingInfo.allPaid ? (
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Hoa hồng: đủ</span>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {shoppingInfo.unpaidItems.map((item, i) => (
+                        <div key={i} className="flex items-center gap-1 flex-wrap">
+                          <span className="text-muted-foreground">{item.name}:</span>
+                          <span className="font-semibold text-red-600 dark:text-red-400">còn {Math.round(item.remaining / 1000).toLocaleString('vi-VN')}k</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="pt-3 border-t">

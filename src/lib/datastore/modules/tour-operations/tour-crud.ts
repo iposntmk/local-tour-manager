@@ -107,18 +107,18 @@ export class TourCrudModule {
     let queryBuilder = this.supabase.from('tours').select(
       includeDetails
         ? `*, tour_destinations(*), tour_expenses(*), tour_meals(*), tour_allowances(*), tour_shoppings(*, shopping_commission_payments(*)), tour_nationalities(*)`
-        : `*, tour_nationalities(*)`,
+        : `*, tour_nationalities(*), tour_shoppings(id, name, price, net_commission, shopping_commission_payments(amount))`,
       { count: 'exact' }
     );
 
     const sortColumnMap: Record<string, string> = { startDate: 'start_date', endDate: 'end_date', tourCode: 'tour_code', clientName: 'client_name', createdAt: 'created_at' };
     queryBuilder = queryBuilder.order(sortColumnMap[query?.sortBy || 'startDate'] || 'start_date', { ascending: (query?.sortOrder || 'desc') === 'asc' });
 
+    queryBuilder = queryBuilder.order('date', { foreignTable: 'tour_shoppings' });
     if (includeDetails) {
       queryBuilder = queryBuilder
         .order('date', { foreignTable: 'tour_destinations' }).order('date', { foreignTable: 'tour_expenses' })
-        .order('date', { foreignTable: 'tour_meals' }).order('date', { foreignTable: 'tour_allowances' })
-        .order('date', { foreignTable: 'tour_shoppings' });
+        .order('date', { foreignTable: 'tour_meals' }).order('date', { foreignTable: 'tour_allowances' });
     }
 
     if (query?.tourCodeLike) queryBuilder = queryBuilder.ilike('tour_code', `%${query.tourCodeLike.trim()}%`);
@@ -168,8 +168,9 @@ export class TourCrudModule {
         tour.expenses = (typedRow.tour_expenses || []).map(mapTourExpenseLine);
         tour.meals = (typedRow.tour_meals || []).map(mapTourMealLine);
         tour.allowances = (typedRow.tour_allowances || []).map((a) => ({ date: a.date, name: a.name, price: Number(a.price) || 0, quantity: a.quantity || 1, categoryId: a.category_id ?? undefined, ...mapLineReviewFields(a) }));
-        tour.shoppings = (typedRow.tour_shoppings || []).map((s) => mapTourShopping(s));
       }
+      // Shoppings with commission payments are fetched in both list and detail views
+      tour.shoppings = (typedRow.tour_shoppings || []).map((s: any) => mapTourShopping(s));
       return tour;
     });
 

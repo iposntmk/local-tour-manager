@@ -51,6 +51,25 @@ export const getAllowanceTotal = (tour: Tour) => {
 export const getTabsCostTotal = (tour: Tour) =>
   (tour.summary?.totalTabs ?? 0) - getAllowanceTotal(tour);
 
+export interface ShoppingCommissionInfo {
+  hasShoppings: boolean;
+  allPaid: boolean;
+  unpaidItems: { name: string; remaining: number }[];
+}
+
+export const getShoppingCommissionInfo = (tour: Tour): ShoppingCommissionInfo => {
+  const withCommission = (tour.shoppings || []).filter(s => (s.price ?? 0) > 0);
+  if (withCommission.length === 0) return { hasShoppings: false, allPaid: true, unpaidItems: [] };
+  const unpaidItems = withCommission
+    .map(s => {
+      const net = s.netCommission ?? s.price;
+      const paid = (s.payments || []).reduce((sum, p) => sum + p.amount, 0);
+      return { name: s.name || 'Không tên', remaining: net - paid };
+    })
+    .filter(item => item.remaining > 0);
+  return { hasShoppings: true, allPaid: unpaidItems.length === 0, unpaidItems };
+};
+
 export const getUnpaidCommissionShoppingNames = (tour: Tour) =>
   (tour.shoppings || [])
     .filter((shopping) => {
