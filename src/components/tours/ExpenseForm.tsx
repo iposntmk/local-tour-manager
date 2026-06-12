@@ -9,6 +9,11 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { LineEvidenceFields } from '@/components/tours/LineEvidenceFields';
+import {
+  getWaterExpenseDays,
+  isWaterExpense,
+  normalizeWaterExpenseLine,
+} from '@/lib/water-expense-utils';
 import type { Expense, Tour } from '@/types/tour';
 import type { DetailedExpense } from '@/types/master';
 import {
@@ -55,6 +60,10 @@ export function ExpenseForm({
     editingIndex !== null
       ? canEditAnyTourLineField(lineFieldAccess)
       : canEdit('name') && canEdit('date') && canEdit('price');
+  const tourGuests = tour?.totalGuests || 0;
+  const tourDays = tour?.totalDays || 1;
+  const waterExpense = isWaterExpense(formData);
+  const waterDays = getWaterExpenseDays(formData, tourGuests, tourDays);
 
   useEffect(() => {
     if (editingIndex !== null) {
@@ -98,12 +107,13 @@ export function ExpenseForm({
                           value={exp.name}
                           onSelect={() => {
                             const today = new Date().toISOString().split('T')[0];
-                            onChange({
+                            const nextExpense = {
                               ...formData,
                               ...(canEdit('name') ? { name: exp.name } : {}),
                               ...(canEdit('price') ? { price: exp.price } : {}),
                               ...(canEdit('date') ? { date: formData.date || tour?.endDate || today } : {}),
-                            });
+                            };
+                            onChange(normalizeWaterExpenseLine(nextExpense, tourGuests, tourDays));
                             setOpenExpense(false);
                           }}
                         >
@@ -139,10 +149,22 @@ export function ExpenseForm({
           )}
           {canView('quantity') && (
           <NumberInputMobile
-            value={formData.guests}
+            value={waterExpense ? tourGuests : formData.guests}
             onChange={(val) => onChange({ ...formData, guests: val })}
             min={0}
+            max={waterExpense || !tourGuests ? undefined : tourGuests}
             placeholder="Số khách"
+            className="w-full"
+            disabled={!canEdit('quantity') || waterExpense}
+          />
+          )}
+          {canView('quantity') && waterExpense && (
+          <NumberInputMobile
+            value={waterDays}
+            onChange={(val) => onChange({ ...formData, guests: tourGuests, days: val ?? 0 })}
+            min={0}
+            step={0.5}
+            placeholder="Số ngày tính nước"
             className="w-full"
             disabled={!canEdit('quantity')}
           />

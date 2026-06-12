@@ -1,6 +1,11 @@
 import type { Alignment, Row, Worksheet, Workbook } from 'exceljs';
 import type { Tour, Allowance } from '@/types/tour';
 import { formatDateDisplay, formatDateRangeDisplay } from '@/lib/date-utils';
+import {
+  getExpenseGuestCount,
+  getWaterExpenseDays,
+  isWaterExpense,
+} from '@/lib/water-expense-utils';
 
 export const currencyFormat = '#,##0';
 export const workbookMimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -60,6 +65,7 @@ export const validateTourNumbers = (tour: Tour): string[] => {
   (tour.expenses || []).forEach((e, i) => {
     if (isBad(Number(e.price))) issues.push(`Expense #${i + 1} has invalid price.`);
     if (e.guests !== undefined && isBad(Number(e.guests))) issues.push(`Expense #${i + 1} has invalid guests.`);
+    if (e.days !== undefined && isBad(Number(e.days))) issues.push(`Expense #${i + 1} has invalid days.`);
   });
   (tour.meals || []).forEach((m, i) => {
     if (isBad(Number(m.price))) issues.push(`Meal #${i + 1} has invalid price.`);
@@ -85,7 +91,7 @@ export const getDuplicateNames = (names: string[]): Set<string> => {
 };
 
 export const sanitizeSheetName = (name: string) => {
-  const cleaned = name.replace(/[\[\]:\\/?*]/g, ' ').trim() || 'Tour';
+  const cleaned = name.replace(/[[\]:\\/?*]/g, ' ').trim() || 'Tour';
   return cleaned.length > 31 ? cleaned.slice(0, 31) : cleaned;
 };
 
@@ -158,13 +164,9 @@ export const formatNgayRangeForExcel = (startDate: string, endDate: string): str
   return formatDateRangeDisplay(startDate, endDate);
 };
 
-const MERGE_EXPENSE_NAMES = [
-  'Nước uống cho khách 15k/1 khách / 1 ngày',
-  'Nước uống cho khách 10k/1 khách / 1 ngày',
-];
-
 export const buildServiceItems = (tour: Tour): { serviceItems: ServiceItem[]; allowanceItems: Allowance[] } => {
   const serviceItems: ServiceItem[] = [];
+  const totalGuests = tour.totalGuests || tour.adults + tour.children;
   (tour.destinations || []).forEach(d => {
     serviceItems.push({
       kind: 'dest', name: `vé ${d.name || ''}`, baseName: d.name || '', date: d.date,
@@ -174,26 +176,14 @@ export const buildServiceItems = (tour: Tour): { serviceItems: ServiceItem[]; al
     });
   });
   if (tour.expenses && tour.expenses.length > 0) {
-    tour.expenses.filter(e => !MERGE_EXPENSE_NAMES.includes(e.name || '')).forEach(e => {
+    tour.expenses.forEach(e => {
+      const waterQuantity = getExpenseGuestCount(e, totalGuests) * getWaterExpenseDays(e, totalGuests, tour.totalDays || 1);
       serviceItems.push({
-        kind: 'exp', name: e.name || '', date: e.date, price: e.price || 0, guests: e.guests,
+        kind: 'exp', name: e.name || '', date: e.date, price: e.price || 0,
+        guests: isWaterExpense(e) ? waterQuantity : e.guests,
         vatRate: e.vatRate || 0, vatAmount: e.vatAmount || 0,
         guideNote: e.guideNote || '', attachmentCount: e.attachments?.length || 0,
       });
-    });
-    MERGE_EXPENSE_NAMES.forEach(NAME => {
-      const mergeList = tour.expenses!.filter(e => (e.name || '') === NAME);
-      if (mergeList.length > 0) {
-        const sumGuests = mergeList.reduce((sum, e) => sum + (typeof e.guests === 'number' ? e.guests : 0), 0);
-        const earliestDate = mergeList.reduce<string | undefined>((min, e) => (!e.date ? min : !min || e.date < min ? e.date : min), undefined);
-        const guideNote = mergeList.map(e => e.guideNote?.trim()).filter(Boolean).join('\n');
-        serviceItems.push({
-          kind: 'exp', name: NAME, date: earliestDate, price: mergeList[0].price || 0, guests: sumGuests,
-          vatRate: mergeList[0].vatRate || 0,
-          vatAmount: mergeList.reduce((sum, e) => sum + (e.vatAmount || 0), 0),
-          guideNote, attachmentCount: mergeList.reduce((sum, e) => sum + (e.attachments?.length || 0), 0),
-        });
-      }
     });
   }
   (tour.meals || []).forEach(m => {

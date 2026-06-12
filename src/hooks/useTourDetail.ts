@@ -11,12 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { canEditTourData } from '@/lib/settlement-utils';
 import { canAuthViewTourShopping } from '@/lib/shopping-access';
 import { getTourInfoFieldAccess, getTourLineFieldAccess, getTourTabAccess } from '@/lib/tour-detail-permissions';
+import { isWaterExpense } from '@/lib/water-expense-utils';
 import type { Tour, TourInput, TourSummary } from '@/types/tour';
-
-const WATER_EXPENSE_NAMES = [
-  'Nước uống cho khách 10k/1 khách / 1 ngày',
-  'Nước uống cho khách 15k/1 khách / 1 ngày',
-];
 
 const calcTotalDays = (startDate: string | undefined, endDate: string | undefined) => {
   if (!startDate || !endDate) return 0;
@@ -147,7 +143,7 @@ export function useTourDetail() {
     if ((s.price ?? 0) <= 0) return false;
     return (s.payments || []).reduce((sum, p) => sum + p.amount, 0) < (s.netCommission ?? s.price);
   });
-  const hasWaterExpense = (displayTour?.expenses || []).some((e) => WATER_EXPENSE_NAMES.includes(e.name || ''));
+  const hasWaterExpense = (displayTour?.expenses || []).some(isWaterExpense);
   const isWaterDismissed = displayTour?.waterExpenseDismissed === true;
   const showWaterWarning = !isNewTour && !hasWaterExpense && !isWaterDismissed && !waterDismissedLocal;
 

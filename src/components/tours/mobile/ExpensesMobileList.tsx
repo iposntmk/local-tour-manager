@@ -7,6 +7,12 @@ import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowIcon } from '@/components/tours/TourRowIcon';
+import {
+  getExpenseGuestCount,
+  getExpenseLineTotal,
+  getWaterExpenseDays,
+  isWaterExpense,
+} from '@/lib/water-expense-utils';
 import type { Expense } from '@/types/tour';
 import {
   canEditAnyTourLineField,
@@ -18,7 +24,6 @@ import {
 
 interface ExpenseItem extends Expense {
   originalIndex: number;
-  merged?: boolean;
 }
 
 interface Props {
@@ -29,10 +34,25 @@ interface Props {
   onDuplicate: (idx: number) => void;
   onDelete: (idx: number) => void;
   onGuestsChange: (originalIndex: number, val: number | undefined) => void;
+  onWaterDaysChange: (originalIndex: number, val: number | undefined) => void;
   totalAmount: number;
+  tourGuests: number;
+  tourDays: number;
 }
 
-export function ExpensesMobileList({ items, readOnly, lineFieldAccess, onEdit, onDuplicate, onDelete, onGuestsChange, totalAmount }: Props) {
+export function ExpensesMobileList({
+  items,
+  readOnly,
+  lineFieldAccess,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  onGuestsChange,
+  onWaterDaysChange,
+  totalAmount,
+  tourGuests,
+  tourDays,
+}: Props) {
   const showName = canViewTourLineField(lineFieldAccess, 'name');
   const showPrice = canViewTourLineField(lineFieldAccess, 'price');
   const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
@@ -44,12 +64,14 @@ export function ExpensesMobileList({ items, readOnly, lineFieldAccess, onEdit, o
   return (
     <div className="p-3 space-y-2">
       {items.map((expense) => {
-        const rowGuests = typeof expense.guests === 'number' ? expense.guests : 0;
-        const total = expense.price * rowGuests;
+        const waterExpense = isWaterExpense(expense);
+        const rowGuests = getExpenseGuestCount(expense, tourGuests);
+        const waterDays = getWaterExpenseDays(expense, tourGuests, tourDays);
+        const total = getExpenseLineTotal(expense, tourGuests, tourDays);
         const isZeroPrice = expense.price === 0;
         return (
           <div
-            key={`${expense.originalIndex}-${expense.date}-${expense.merged ? 'merged' : 'row'}`}
+            key={`${expense.originalIndex}-${expense.date}-row`}
             className={`rounded-lg border p-2.5 space-y-1.5 ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : 'bg-card'}`}
           >
             {/* Row 1: icon + name + date + actions */}
@@ -65,7 +87,7 @@ export function ExpensesMobileList({ items, readOnly, lineFieldAccess, onEdit, o
               {showDate && (
               <span className="shrink-0 text-xs text-muted-foreground pl-1">{formatDate(expense.date)}</span>
               )}
-              {canUseActions && !expense.merged && (
+              {canUseActions && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
@@ -97,7 +119,13 @@ export function ExpensesMobileList({ items, readOnly, lineFieldAccess, onEdit, o
               {showQuantity && (
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">Khách: </span>
-                <NumberInputMobile value={expense.guests} onChange={(val) => onGuestsChange(expense.originalIndex, val)} min={0} disabled={!canEditQuantity || !!expense.merged} className="w-14 h-6 text-xs" />
+                <NumberInputMobile value={rowGuests} onChange={(val) => onGuestsChange(expense.originalIndex, val)} min={0} max={waterExpense || !tourGuests ? undefined : tourGuests} disabled={!canEditQuantity || waterExpense} className="w-14 h-6 text-xs" />
+              </span>
+              )}
+              {showQuantity && waterExpense && (
+              <span className="flex items-center gap-1">
+                <span className="text-muted-foreground">Ngày: </span>
+                <NumberInputMobile value={waterDays} onChange={(val) => onWaterDaysChange(expense.originalIndex, val)} min={0} step={0.5} disabled={!canEditQuantity} className="w-14 h-6 text-xs" />
               </span>
               )}
               {showTotal && (

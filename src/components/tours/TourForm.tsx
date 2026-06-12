@@ -14,6 +14,7 @@ import { MealsTab } from '@/components/tours/MealsTab';
 import { ShoppingsTab } from '@/components/tours/ShoppingsTab';
 import { AllowancesTab } from '@/components/tours/AllowancesTab';
 import { SummaryTab } from '@/components/tours/SummaryTab';
+import { getLineTotal } from '@/lib/tour-line-utils';
 import type { Tour, TourInput, Destination, Expense, Meal, Allowance, Shopping, TourSummary, TourNationality } from '@/types/tour';
 
 interface TourFormProps {
@@ -79,9 +80,9 @@ export function TourForm({ initialData, onSubmit }: TourFormProps) {
   const totalGuests = (adults || 0) + (children || 0);
 
   useEffect(() => {
-    const td = destinations.reduce((s, d) => s + d.price * totalGuests, 0);
-    const te = expenses.reduce((s, e) => s + e.price * totalGuests, 0);
-    const tm = meals.reduce((s, m) => s + m.price * totalGuests, 0);
+    const td = destinations.reduce((s, d) => s + getLineTotal(d, totalGuests), 0);
+    const te = expenses.reduce((s, e) => s + getLineTotal(e, totalGuests), 0);
+    const tm = meals.reduce((s, m) => s + getLineTotal(m, totalGuests), 0);
     const ts = shoppings.reduce((s, sh) => s + sh.price, 0);
     const ta = allowances.reduce((s, a) => s + a.price * (a.quantity || 1), 0);
     const totalTabs = td + te + tm + ts + ta;

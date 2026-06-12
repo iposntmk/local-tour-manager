@@ -9,6 +9,7 @@ import { differenceInDays } from 'date-fns';
 import { enrichTourWithSummary, enrichToursWithSummaries } from '@/lib/tour-utils';
 import { getTourWarningInfo, getAllowanceTotal } from '@/pages/tours/tour-table-config';
 import { stripTourShoppingForProfile } from '@/lib/shopping-access';
+import { isWaterExpense, normalizeWaterExpenseLine } from '@/lib/water-expense-utils';
 import { mapTour, mapTourPayment, mapTourShopping, mapLineReviewFields } from '../mappers';
 import type { TourRowWithDetails, TourNationalityRow, TourPaymentRow } from '../store-types';
 import type { UserProfile } from '@/types/user';
@@ -242,7 +243,10 @@ export class TourCrudModule {
 
     try {
       if (tour.destinations?.length) await Promise.all(tour.destinations.map((d) => this.addDestination(createdTour.id, d)));
-      await this.addExpense(createdTour.id, { name: 'Nước uống cho khách 10k/1 khách / 1 ngày', price: 10000, date: tour.startDate, guests: totalGuests * totalDays });
+      await this.addExpense(createdTour.id, {
+        name: 'Nước uống cho khách 10k/1 khách / 1 ngày',
+        price: 10000, date: tour.startDate, guests: totalGuests, days: totalDays,
+      });
       if (tour.expenses?.length) await Promise.all(tour.expenses.map((e) => this.addExpense(createdTour.id, e)));
       if (tour.meals?.length) await Promise.all(tour.meals.map((m) => this.addMeal(createdTour.id, m)));
       if (tour.allowances?.length) await Promise.all(tour.allowances.map((a) => this.addAllowance(createdTour.id, a)));
@@ -298,23 +302,23 @@ export class TourCrudModule {
       updates.total_after_collections = tour.summary.totalAfterCollections ?? 0; updates.final_total = tour.summary.finalTotal ?? 0;
     }
 
+    const guestsChanged = tour.totalGuests !== undefined || tour.adults !== undefined || tour.children !== undefined;
+    const daysChanged = tour.totalDays !== undefined || tour.startDate !== undefined || tour.endDate !== undefined;
+    const previousTour = guestsChanged || daysChanged ? await this.getTour(id) : null;
     const { error } = await this.supabase.from('tours').update(updates).eq('id', id);
     if (error) throw error;
     if (nextNationalityEntries) await this.replaceTourNationalities(id, nextNationalityEntries);
 
-    const guestsChanged = tour.totalGuests !== undefined || tour.adults !== undefined || tour.children !== undefined;
-    const daysChanged = tour.totalDays !== undefined || tour.startDate !== undefined || tour.endDate !== undefined;
     if (guestsChanged || daysChanged) {
       try {
         const currentTour = await this.getTour(id);
         if (currentTour) {
-          const newGuestsValue = (currentTour.totalGuests || 0) * (currentTour.totalDays || 0);
-          const waterNames = ['Nước uống cho khách 10k/1 khách / 1 ngày', 'Nước uống cho khách 15k/1 khách / 1 ngày'];
           const expenses = currentTour.expenses || [];
           for (let i = 0; i < expenses.length; i++) {
-            if (waterNames.includes(expenses[i].name || '')) {
-              await this.updateExpense(id, i, { ...expenses[i], guests: newGuestsValue });
-              break;
+            if (isWaterExpense(expenses[i])) {
+              const keepManualDays = typeof expenses[i].days === 'number' && expenses[i].days !== previousTour?.totalDays;
+              const days = keepManualDays ? expenses[i].days : currentTour.totalDays || 0;
+              await this.updateExpense(id, i, normalizeWaterExpenseLine({ ...expenses[i], days }, currentTour.totalGuests || 0, days));
             }
           }
         }

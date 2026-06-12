@@ -7,6 +7,12 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
 import {
+  getExpenseGuestCount,
+  getExpenseLineTotal,
+  getWaterExpenseDays,
+  isWaterExpense,
+} from '@/lib/water-expense-utils';
+import {
   canEditAnyTourLineField,
   canEditTourLineField,
   canViewTourLineField,
@@ -22,7 +28,10 @@ interface ExpensesDesktopTableProps {
   onDuplicate: (originalIndex: number) => void;
   onDelete: (originalIndex: number) => void;
   onGuestsChange: (originalIndex: number, value: number | undefined) => void;
+  onWaterDaysChange: (originalIndex: number, value: number | undefined) => void;
   totalAmount: number;
+  tourGuests: number;
+  tourDays: number;
 }
 
 export function ExpensesDesktopTable({
@@ -33,13 +42,17 @@ export function ExpensesDesktopTable({
   onDuplicate,
   onDelete,
   onGuestsChange,
+  onWaterDaysChange,
   totalAmount,
+  tourGuests,
+  tourDays,
 }: ExpensesDesktopTableProps) {
   const showName = canViewTourLineField(lineFieldAccess, 'name');
   const showPrice = canViewTourLineField(lineFieldAccess, 'price');
   const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
   const showDate = canViewTourLineField(lineFieldAccess, 'date');
   const showTotal = showPrice && showQuantity;
+  const showWaterDays = showQuantity && displayExpenses.some(isWaterExpense);
   const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
   const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
 
@@ -64,6 +77,9 @@ export function ExpensesDesktopTable({
               <span className="hidden sm:inline">Tổng khách</span>
             </TableHead>
             )}
+            {showWaterDays && (
+            <TableHead className="w-16 sm:w-[80px] p-1 sm:p-4">Số ngày</TableHead>
+            )}
             {showTotal && (
             <TableHead className="min-w-[60px] sm:min-w-[80px] p-1 sm:p-4">
               <span className="sm:hidden">Tổng</span>
@@ -83,12 +99,14 @@ export function ExpensesDesktopTable({
         </TableHeader>
         <TableBody>
           {displayExpenses.map((expense: any, rowIndex: number) => {
-            const expenseGuests = typeof expense.guests === 'number' ? expense.guests : 0;
-            const totalAmt = expense.price * expenseGuests;
+            const waterExpense = isWaterExpense(expense);
+            const expenseGuests = getExpenseGuestCount(expense, tourGuests);
+            const waterDays = getWaterExpenseDays(expense, tourGuests, tourDays);
+            const totalAmt = getExpenseLineTotal(expense, tourGuests, tourDays);
             const isZeroPrice = (expense.price ?? 0) === 0;
             return (
               <TableRow
-                key={`${expense.originalIndex}-${expense.date}-${expense.merged ? 'merged' : 'row'}`}
+                key={`${expense.originalIndex}-${expense.date}-row`}
                 className={cn('animate-fade-in', isZeroPrice && 'bg-red-50 dark:bg-red-950')}
               >
                 <TableCell className="font-medium">{rowIndex + 1}</TableCell>
@@ -106,15 +124,32 @@ export function ExpensesDesktopTable({
                 {showQuantity && (
                 <TableCell>
                   <NumberInputMobile
-                    value={expense.guests}
+                    value={expenseGuests}
                     onChange={(val) => {
-                      if (!canEditQuantity || expense.merged) return;
+                      if (!canEditQuantity || waterExpense) return;
                       onGuestsChange(expense.originalIndex, val);
                     }}
                     min={0}
-                    disabled={!canEditQuantity || !!expense.merged}
+                    max={waterExpense || !tourGuests ? undefined : tourGuests}
+                    disabled={!canEditQuantity || waterExpense}
                     className="w-16 sm:w-24"
                   />
+                </TableCell>
+                )}
+                {showWaterDays && (
+                <TableCell>
+                  {waterExpense ? (
+                    <NumberInputMobile
+                      value={waterDays}
+                      onChange={(val) => onWaterDaysChange(expense.originalIndex, val)}
+                      min={0}
+                      step={0.5}
+                      disabled={!canEditQuantity}
+                      className="w-16 sm:w-24"
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </TableCell>
                 )}
                 {showTotal && (

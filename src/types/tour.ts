@@ -96,6 +96,7 @@ export interface Expense extends LineReviewFields, LineEvidenceFields {
   price: number;
   date: string;
   guests?: number; // Number of guests for this expense (defaults to total guests)
+  days?: number;
   matchedId?: string;
   matchedPrice?: number;
 }

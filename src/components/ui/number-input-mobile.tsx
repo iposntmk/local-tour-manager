@@ -7,6 +7,7 @@ interface NumberInputMobileProps {
   onChange: (value: number | undefined) => void;
   min?: number;
   max?: number;
+  step?: number;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -17,6 +18,7 @@ export function NumberInputMobile({
   onChange,
   min = 0,
   max,
+  step = 1,
   placeholder,
   className = '',
   disabled = false,
@@ -25,7 +27,7 @@ export function NumberInputMobile({
 
   const handleIncrement = () => {
     const current = numValue ?? min;
-    const newValue = current + 1;
+    const newValue = current + step;
     if (max === undefined || newValue <= max) {
       onChange(newValue);
     }
@@ -33,7 +35,7 @@ export function NumberInputMobile({
 
   const handleDecrement = () => {
     const current = numValue ?? min;
-    const newValue = current - 1;
+    const newValue = current - step;
     if (newValue >= min) {
       onChange(newValue);
     }
@@ -70,6 +72,7 @@ export function NumberInputMobile({
         type="number"
         min={min}
         max={max}
+        step={step}
         placeholder={placeholder}
         className={className}
         value={value ?? ''}

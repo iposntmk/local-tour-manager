@@ -1,4 +1,5 @@
 import type { Tour, TourSummary } from '@/types/tour';
+import { getLineTotal } from '@/lib/tour-line-utils';
 
 /**
  * Calculate the complete summary for a tour based on its destinations, expenses, meals, and allowances
@@ -6,26 +7,17 @@ import type { Tour, TourSummary } from '@/types/tour';
 export function calculateTourSummary(tour: Tour): TourSummary {
   const tourGuests = tour.totalGuests || 0;
 
-  const clampGuests = (g: number | undefined) => {
-    if (typeof g !== 'number') return tourGuests;
-    if (!tourGuests) return g; // if tourGuests = 0, keep g
-    return Math.min(Math.max(g, 0), tourGuests);
-  };
-
   // Calculate totals for each tab
   const totalDestinations = (tour.destinations || []).reduce((sum, d) => {
-    const g = clampGuests(d.guests as any);
-    return sum + (d.price * g);
+    return sum + getLineTotal(d, tourGuests);
   }, 0);
 
   const totalExpenses = (tour.expenses || []).reduce((sum, e) => {
-    const g = clampGuests(e.guests as any);
-    return sum + (e.price * g);
+    return sum + getLineTotal(e, tourGuests);
   }, 0);
 
   const totalMeals = (tour.meals || []).reduce((sum, m) => {
-    const g = clampGuests(m.guests as any);
-    return sum + (m.price * g);
+    return sum + getLineTotal(m, tourGuests);
   }, 0);
 
   const totalAllowances = (tour.allowances || []).reduce(

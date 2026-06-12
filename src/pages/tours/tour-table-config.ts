@@ -2,6 +2,7 @@ import { differenceInDays, format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import type { Tour } from '@/types/tour';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
+import { isWaterExpense } from '@/lib/water-expense-utils';
 
 // Truncate helper with ellipsis included in `max` length
 export const truncateText = (text: string | undefined | null, max = 15): string => {
@@ -10,11 +11,6 @@ export const truncateText = (text: string | undefined | null, max = 15): string 
   if (max <= 3) return text.slice(0, max);
   return text.slice(0, max - 3) + '...';
 };
-
-export const WATER_EXPENSE_NAMES = [
-  'nước uống cho khách 10k/1 khách / 1 ngày',
-  'nước uống cho khách 15k/1 khách / 1 ngày',
-];
 
 export const getTourDays = (tour: Tour) =>
   tour.totalDays || (tour.startDate && tour.endDate ? Math.max(0, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1) : 0);
@@ -81,9 +77,7 @@ export const getTourWarningInfo = (tour: Tour) => {
     : !!tour.hasDuplicateDestNames;
 
   const missingWaterExpense = hasDetails
-    ? (!(tour.expenses || []).some(expense =>
-        WATER_EXPENSE_NAMES.includes((expense.name || '').trim().toLowerCase())
-      ) && !tour.waterExpenseDismissed)
+    ? (!(tour.expenses || []).some(isWaterExpense) && !tour.waterExpenseDismissed)
     : !!tour.missingWaterExpense;
 
   const unpaidCommissionShoppingNames = getUnpaidCommissionShoppingNames(tour);

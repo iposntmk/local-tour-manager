@@ -5,7 +5,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import type { Expense, Tour } from '@/types/tour';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
-import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
+import { getLineTotal, hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
+import {
+  isWaterExpense,
+  normalizeWaterExpenseLine,
+} from '@/lib/water-expense-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useAuth } from '@/contexts/AuthContext';
 import { ExpenseForm } from '@/components/tours/ExpenseForm';
@@ -18,11 +22,6 @@ import {
   type Access,
   type TourLineFieldKey,
 } from '@/lib/tour-detail-permissions';
-
-const WATER_EXPENSE_NAMES = [
-  'Nước uống cho khách 15k/1 khách / 1 ngày',
-  'Nước uống cho khách 10k/1 khách / 1 ngày',
-];
 
 interface ExpensesTabProps {
   tourId?: string;
@@ -47,6 +46,10 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     canEditTourLineField(lineFieldAccess, 'name') &&
     canEditTourLineField(lineFieldAccess, 'date') &&
     canEditTourLineField(lineFieldAccess, 'price');
+  const tourGuests = tour?.totalGuests || 0;
+  const tourDays = tour?.totalDays || 1;
+  const normalizeExpense = (expense: Expense) =>
+    normalizeWaterExpenseLine(expense, tourGuests, tourDays);
 
   const { data: detailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses', guideId ?? null],
@@ -129,7 +132,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     if (readOnly || !canEditLine) return;
     clearPendingFiles();
     setEditingIndex(index);
-    setFormData(expenses[index]);
+    setFormData(normalizeExpense(expenses[index]));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -145,27 +148,32 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     if (editingIndex === null && !canCreateLine) { toast.error('Bạn không có quyền thêm dòng chi phí.'); return; }
     if (editingIndex !== null && !canEditLine) { toast.error('Bạn không có quyền sửa trường trong dòng chi phí.'); return; }
     if (!formData.name || !formData.date) { toast.error('Vui lòng điền đầy đủ các trường bắt buộc'); return; }
-    if (!isVatAmountValid(formData, tour?.totalGuests || 0)) { toast.error('Tiền VAT không được vượt quá thành tiền.'); return; }
-    if ((formData.vatRate || 0) > 0 && !hasLineAttachments(formData, pendingFiles)) {
+    const nextExpense = normalizeExpense(formData);
+    if (!isVatAmountValid(nextExpense, tourGuests)) { toast.error('Tiền VAT không được vượt quá thành tiền.'); return; }
+    if ((nextExpense.vatRate || 0) > 0 && !hasLineAttachments(nextExpense, pendingFiles)) {
       toast.warning('VAT lớn hơn 0 nhưng chưa có chứng từ.');
     }
     if (editingIndex !== null) {
-      updateMutation.mutate({ index: editingIndex, expense: formData });
+      updateMutation.mutate({ index: editingIndex, expense: nextExpense });
     } else {
-      addMutation.mutate(formData);
+      addMutation.mutate(nextExpense);
     }
   };
 
   const handleDuplicate = (index: number) => {
     if (readOnly || !canCreateLine) return;
-    addMutation.mutate(expenses[index]);
+    addMutation.mutate(normalizeExpense(expenses[index]));
   };
 
   const handleGuestsChange = (originalIndex: number, val: number | undefined) => {
     if (readOnly || !canEditTourLineField(lineFieldAccess, 'quantity')) return;
-    const totalGuests = tour?.totalGuests || 0;
-    if (val !== undefined && val > totalGuests) {
-      toast.error(`Số khách không được vượt quá tổng khách (${totalGuests})`);
+    const current = expenses[originalIndex];
+    if (isWaterExpense(current)) {
+      updateMutation.mutate({ index: originalIndex, expense: normalizeExpense(current) });
+      return;
+    }
+    if (val !== undefined && val > tourGuests) {
+      toast.error(`Số khách không được vượt quá tổng khách (${tourGuests})`);
       return;
     }
     if (val !== undefined && val < 0) {
@@ -176,67 +184,41 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     updateMutation.mutate({ index: originalIndex, expense: updatedExpense as Expense });
   };
 
-  const handleMobileGuestsChange = (originalIndex: number, val: number | undefined) => {
+  const handleWaterDaysChange = (originalIndex: number, val: number | undefined) => {
     if (readOnly || !canEditTourLineField(lineFieldAccess, 'quantity')) return;
-    const updated = { ...expenses[originalIndex], guests: val };
-    if (tourId) {
-      updateMutation.mutate({ index: originalIndex, expense: updated as Expense });
-    } else {
-      const newExps = [...expenses];
-      newExps[originalIndex] = updated as Expense;
-      onChange?.(newExps);
+    if (val !== undefined && val < 0) {
+      toast.error('Số ngày không thể âm');
+      return;
     }
+    const updated = normalizeExpense({ ...expenses[originalIndex], days: val ?? 0 });
+    updateMutation.mutate({ index: originalIndex, expense: updated });
   };
 
   // Default guests for new rows
-  if (editingIndex === null && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {
-    formData.guests = tour!.totalGuests;
+  if (editingIndex === null && formData.guests === undefined && tourGuests > 0) {
+    formData.guests = tourGuests;
   }
 
   const displayExpenses = useMemo(() => {
-    const withIndex = expenses.map((e, i) => ({ ...e, originalIndex: i }));
-    const toMergeByName = WATER_EXPENSE_NAMES.map((name) => ({
-      name,
-      rows: withIndex.filter((e) => (e.name || '') === name),
-    }));
-    const others = withIndex.filter((e) => !WATER_EXPENSE_NAMES.includes(e.name || ''));
-    const mergedBlock: any[] = [];
-    for (const group of toMergeByName) {
-      if (group.rows.length > 0) {
-        const totalGuests = group.rows.reduce((sum, e) => sum + (typeof e.guests === 'number' ? e.guests : 0), 0);
-        const unitPrice = group.rows[0].price || 0;
-        const earliestDate = group.rows.reduce((min: string | undefined, e) => {
-          if (!e.date) return min;
-          if (!min) return e.date;
-          return e.date < min ? e.date : min;
-        }, undefined as string | undefined);
-        mergedBlock.push({
-          name: group.name,
-          price: unitPrice,
-          guests: totalGuests,
-          date: earliestDate,
-          originalIndex: group.rows[0].originalIndex,
-          originalIndices: group.rows.map((e) => e.originalIndex),
-          merged: true,
-        });
-      }
-    }
-    return [...others, ...mergedBlock].sort((a, b) => {
+    return expenses.map((expense, i) => ({
+      ...normalizeWaterExpenseLine(expense, tourGuests, tourDays),
+      originalIndex: i,
+    })).sort((a, b) => {
       const da = a.date ? new Date(a.date).getTime() : Infinity;
       const db = b.date ? new Date(b.date).getTime() : Infinity;
       return da - db;
     });
-  }, [expenses]);
+  }, [expenses, tourGuests, tourDays]);
 
   const expensesTotalAmount = useMemo(
-    () => expenses.reduce((sum, exp) => {
-      const g = typeof exp.guests === 'number' ? exp.guests : 0;
-      return sum + exp.price * g;
-    }, 0),
-    [expenses]
+    () => expenses.reduce(
+      (sum, exp) => sum + getLineTotal(normalizeWaterExpenseLine(exp, tourGuests, tourDays), tourGuests),
+      0,
+    ),
+    [expenses, tourGuests, tourDays]
   );
 
-  const hasWaterExpense = expenses.some((exp) => WATER_EXPENSE_NAMES.includes(exp.name || ''));
+  const hasWaterExpense = expenses.some(isWaterExpense);
   const isDismissed = tour?.waterExpenseDismissed === true;
   const showWaterWarning = tourId && !hasWaterExpense && !isDismissed;
 
@@ -302,7 +284,10 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
                 onDuplicate={handleDuplicate}
                 onDelete={(idx) => deleteMutation.mutate(idx)}
                 onGuestsChange={handleGuestsChange}
+                onWaterDaysChange={handleWaterDaysChange}
                 totalAmount={expensesTotalAmount}
+                tourGuests={tourGuests}
+                tourDays={tourDays}
               />
             </div>
             <div className="md:hidden">
@@ -313,8 +298,11 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
                 onEdit={handleEdit}
                 onDuplicate={handleDuplicate}
                 onDelete={(idx) => deleteMutation.mutate(idx)}
-                onGuestsChange={handleMobileGuestsChange}
+                onGuestsChange={handleGuestsChange}
+                onWaterDaysChange={handleWaterDaysChange}
                 totalAmount={expensesTotalAmount}
+                tourGuests={tourGuests}
+                tourDays={tourDays}
               />
             </div>
           </>

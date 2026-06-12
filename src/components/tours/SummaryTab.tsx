@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/currency-utils';
 import { cn } from '@/lib/utils';
+import { getLineTotal } from '@/lib/tour-line-utils';
 import type { Tour, TourSummary } from '@/types/tour';
 import { TourPaymentsPanel } from './TourPaymentsPanel';
 import { SummaryLineReviewTable, type SummaryLineType } from './SummaryLineReviewTable';
@@ -69,15 +70,9 @@ export function SummaryTab({
   onExport,
 }: SummaryTabProps) {
   const tourGuests = tour.totalGuests || 0;
-  const clampGuests = (guests: number | undefined) => {
-    if (typeof guests !== 'number') return tourGuests;
-    if (!tourGuests) return guests;
-    return Math.min(Math.max(guests, 0), tourGuests);
-  };
-
-  const totalDestinations = tour.destinations.reduce((sum, line) => sum + line.price * clampGuests(line.guests), 0);
-  const totalExpenses = tour.expenses.reduce((sum, line) => sum + line.price * clampGuests(line.guests), 0);
-  const totalMeals = tour.meals.reduce((sum, line) => sum + line.price * clampGuests(line.guests), 0);
+  const totalDestinations = tour.destinations.reduce((sum, line) => sum + getLineTotal(line, tourGuests), 0);
+  const totalExpenses = tour.expenses.reduce((sum, line) => sum + getLineTotal(line, tourGuests), 0);
+  const totalMeals = tour.meals.reduce((sum, line) => sum + getLineTotal(line, tourGuests), 0);
   const totalAllowances = tour.allowances.reduce((sum, line) => sum + line.price * (line.quantity || 1), 0);
   const calculatedTotal = totalDestinations + totalExpenses + totalMeals + totalAllowances;
 

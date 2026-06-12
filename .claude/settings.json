@@ -1,7 +1,6 @@
 {
   "env": {
-    "AGENTMEMORY_URL": "http://localhost:3113",
-    "III_REST_PORT": "3114"
+    "AGENTMEMORY_URL": "http://localhost:3111"
   },
   "permissions": {
     "allow": [

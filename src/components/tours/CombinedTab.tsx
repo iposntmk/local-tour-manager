@@ -1,18 +1,13 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
+import { getLineGuests, getLineTotal } from '@/lib/tour-line-utils';
+import { getWaterExpenseDays, isWaterExpense } from '@/lib/water-expense-utils';
 import type { Tour } from '@/types/tour';
 
 interface CombinedTabProps {
   tour: Tour | null | undefined;
 }
-
-// Helper function to clamp guests (same logic as SummaryTab)
-const clampGuests = (guestValue: number | undefined, tourGuests: number): number => {
-  if (typeof guestValue !== 'number') return tourGuests;
-  if (!tourGuests) return guestValue;
-  return Math.min(Math.max(guestValue, 0), tourGuests);
-};
 
 export function CombinedTab({ tour }: CombinedTabProps) {
   const tourGuests = tour?.totalGuests || 0;
@@ -23,18 +18,15 @@ export function CombinedTab({ tour }: CombinedTabProps) {
 
   // Calculate totals
   const totalDestinations = destinations.reduce((sum, d) => {
-    const g = clampGuests(d.guests as any, tourGuests);
-    return sum + (d.price * g);
+    return sum + getLineTotal(d, tourGuests);
   }, 0);
 
   const totalExpenses = expenses.reduce((sum, e) => {
-    const g = clampGuests(e.guests as any, tourGuests);
-    return sum + (e.price * g);
+    return sum + getLineTotal(e, tourGuests);
   }, 0);
 
   const totalMeals = meals.reduce((sum, m) => {
-    const g = clampGuests(m.guests as any, tourGuests);
-    return sum + (m.price * g);
+    return sum + getLineTotal(m, tourGuests);
   }, 0);
 
   const grandTotal = totalDestinations + totalExpenses + totalMeals;
@@ -65,8 +57,8 @@ export function CombinedTab({ tour }: CombinedTabProps) {
               </TableHeader>
               <TableBody>
                 {destinations.map((destination, index) => {
-                  const rowGuests = typeof destination.guests === 'number' ? destination.guests : tourGuests;
-                  const totalAmount = destination.price * rowGuests;
+                  const rowGuests = getLineGuests(destination, tourGuests);
+                  const totalAmount = getLineTotal(destination, tourGuests);
                   return (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
@@ -116,14 +108,15 @@ export function CombinedTab({ tour }: CombinedTabProps) {
               </TableHeader>
               <TableBody>
                 {expenses.map((expense, index) => {
-                  const rowGuests = typeof expense.guests === 'number' ? expense.guests : tourGuests;
-                  const totalAmount = expense.price * rowGuests;
+                  const rowGuests = getLineGuests(expense, tourGuests);
+                  const days = getWaterExpenseDays(expense, tourGuests, tour?.totalDays || 1);
+                  const totalAmount = getLineTotal(expense, tourGuests);
                   return (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell>{expense.name}</TableCell>
                       <TableCell>{formatCurrency(expense.price)}</TableCell>
-                      <TableCell>{rowGuests}</TableCell>
+                      <TableCell>{isWaterExpense(expense) ? `${rowGuests} x ${days}` : rowGuests}</TableCell>
                       <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
                       <TableCell>{formatDate(expense.date)}</TableCell>
                     </TableRow>
@@ -167,8 +160,8 @@ export function CombinedTab({ tour }: CombinedTabProps) {
               </TableHeader>
               <TableBody>
                 {meals.map((meal, index) => {
-                  const rowGuests = typeof meal.guests === 'number' ? meal.guests : tourGuests;
-                  const totalAmount = meal.price * rowGuests;
+                  const rowGuests = getLineGuests(meal, tourGuests);
+                  const totalAmount = getLineTotal(meal, tourGuests);
                   return (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{index + 1}</TableCell>

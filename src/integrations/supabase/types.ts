@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       companies: {
@@ -972,6 +947,7 @@ export type Database = {
         Row: {
           created_at: string | null
           date: string | null
+          days: number | null
           guests: number | null
           guide_note: string | null
           id: string
@@ -988,6 +964,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           date?: string | null
+          days?: number | null
           guests?: number | null
           guide_note?: string | null
           id?: string
@@ -1004,6 +981,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           date?: string | null
+          days?: number | null
           guests?: number | null
           guide_note?: string | null
           id?: string
@@ -1451,6 +1429,7 @@ export type Database = {
         Row: {
           adults: number | null
           advance_payment: number | null
+          allowance_total: number
           approved_at: string | null
           approved_by: string | null
           children: number | null
@@ -1467,12 +1446,16 @@ export type Database = {
           final_total: number | null
           guide_id: string | null
           guide_name_at_booking: string | null
+          has_duplicate_dest_names: boolean
+          has_unpaid_commission: boolean
+          has_zero_price: boolean
           id: string
           land_operator_id: string | null
           land_operator_name_at_booking: string | null
           last_paid_at: string | null
           last_payment_method: string | null
           locked_at: string | null
+          missing_water_expense: boolean
           nationality_id: string | null
           nationality_name_at_booking: string | null
           note: string | null
@@ -1498,6 +1481,7 @@ export type Database = {
         Insert: {
           adults?: number | null
           advance_payment?: number | null
+          allowance_total?: number
           approved_at?: string | null
           approved_by?: string | null
           children?: number | null
@@ -1514,12 +1498,16 @@ export type Database = {
           final_total?: number | null
           guide_id?: string | null
           guide_name_at_booking?: string | null
+          has_duplicate_dest_names?: boolean
+          has_unpaid_commission?: boolean
+          has_zero_price?: boolean
           id?: string
           land_operator_id?: string | null
           land_operator_name_at_booking?: string | null
           last_paid_at?: string | null
           last_payment_method?: string | null
           locked_at?: string | null
+          missing_water_expense?: boolean
           nationality_id?: string | null
           nationality_name_at_booking?: string | null
           note?: string | null
@@ -1545,6 +1533,7 @@ export type Database = {
         Update: {
           adults?: number | null
           advance_payment?: number | null
+          allowance_total?: number
           approved_at?: string | null
           approved_by?: string | null
           children?: number | null
@@ -1561,12 +1550,16 @@ export type Database = {
           final_total?: number | null
           guide_id?: string | null
           guide_name_at_booking?: string | null
+          has_duplicate_dest_names?: boolean
+          has_unpaid_commission?: boolean
+          has_zero_price?: boolean
           id?: string
           land_operator_id?: string | null
           land_operator_name_at_booking?: string | null
           last_paid_at?: string | null
           last_payment_method?: string | null
           locked_at?: string | null
+          missing_water_expense?: boolean
           nationality_id?: string | null
           nationality_name_at_booking?: string | null
           note?: string | null
@@ -1924,9 +1917,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

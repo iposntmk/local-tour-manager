@@ -6,11 +6,6 @@
   },
   "general": {},
   "mcpServers": {
-    "agentmemory": {
-      "type": "stdio",
-      "command": "agentmemory",
-      "args": ["mcp"]
-    },
     "codegraph": {
       "type": "stdio",
       "command": "codegraph",

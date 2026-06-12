@@ -1,15 +1,19 @@
 import type { Allowance, Destination, Expense, Meal, Tour } from '@/types/tour';
+import { getExpenseGuestCount, getExpenseLineTotal, isWaterExpense } from '@/lib/water-expense-utils';
 
 export type CostLine = Destination | Expense | Meal;
 export type SummaryReviewLine = CostLine | Allowance;
 
 export const getLineGuests = (line: CostLine, tourGuests: number): number => {
+  if (isWaterExpense(line)) return getExpenseGuestCount(line, tourGuests);
   if (typeof line.guests === 'number') return line.guests;
   return tourGuests || 0;
 };
 
-export const getLineTotal = (line: CostLine, tourGuests: number): number =>
-  (Number(line.price) || 0) * getLineGuests(line, tourGuests);
+export const getLineTotal = (line: CostLine, tourGuests: number): number => {
+  if (isWaterExpense(line)) return getExpenseLineTotal(line, tourGuests);
+  return (Number(line.price) || 0) * getLineGuests(line, tourGuests);
+};
 
 export const getSuggestedVatAmount = (line: CostLine, tourGuests: number, vatRate: number): number =>
   Math.round((getLineTotal(line, tourGuests) * (Number(vatRate) || 0)) / 100);

@@ -71,3 +71,9 @@ data/
 .codegraph/
 nul
 supabase/.temp/
+
+# agentmemory runtime / sensitive files
+.agentmemory/engine-state.json
+.agentmemory/*.pid
+.agentmemory/*api-key*
+.agentmemory/preferences.json

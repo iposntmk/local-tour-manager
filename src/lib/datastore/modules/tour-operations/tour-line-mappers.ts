@@ -30,6 +30,7 @@ export const mapTourExpenseLine = (row: any): Expense => ({
   price: Number(row.price) || 0,
   date: row.date,
   guests: row.guests !== null && row.guests !== undefined ? Number(row.guests) : undefined,
+  days: row.days !== null && row.days !== undefined ? Number(row.days) : undefined,
   ...mapEvidenceFields(row),
   ...mapLineReviewFields(row),
 });
@@ -70,6 +71,7 @@ export const buildLineWritePayload = (line: TourLine) => ({
   price: line.price,
   date: line.date,
   guests: line.guests ?? null,
+  ...('days' in line ? { days: line.days ?? null } : {}),
   guide_note: line.guideNote?.trim() || null,
   vat_rate: line.vatRate ?? 0,
   vat_amount: line.vatAmount ?? 0,
