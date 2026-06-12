@@ -251,7 +251,10 @@ export class TourCrudModule {
       if (tour.meals?.length) await Promise.all(tour.meals.map((m) => this.addMeal(createdTour.id, m)));
       if (tour.allowances?.length) await Promise.all(tour.allowances.map((a) => this.addAllowance(createdTour.id, a)));
       if (tour.shoppings?.length) await Promise.all(tour.shoppings.map((s) => this.addTourShopping(createdTour.id, s)));
-      if (tour.summary) await this.updateTour(createdTour.id, { summary: tour.summary });
+      // Always recalculate after all sub-collections are added so total_tabs reflects the
+      // auto-added water expense and any import-provided items. Do NOT use tour.summary here —
+      // it was calculated before createTour added the water expense, so it is already stale.
+      await this.recalculateTourSummary(createdTour.id);
     } catch (subcollectionError) {
       console.error('Error adding subcollections:', subcollectionError);
     }
