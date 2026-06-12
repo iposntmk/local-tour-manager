@@ -38,9 +38,12 @@ export class TourDataModule {
   declare addAllowance: (tourId: string, allowance: Allowance) => Promise<void>;
 
   async getToursGrandTotal(): Promise<{ count: number; grandTotal: number }> {
-    const { data, error, count } = await this.supabase
-      .from('tours')
-      .select('final_total', { count: 'exact' });
+    const currentProfile = await this.getCurrentUserProfile();
+    let queryBuilder = this.supabase.from('tours').select('final_total', { count: 'exact' });
+    if (currentProfile?.settlementRole === 'guide') {
+      queryBuilder = queryBuilder.eq('guide_id', currentProfile.id);
+    }
+    const { data, error, count } = await queryBuilder;
 
     if (error) throw error;
 
