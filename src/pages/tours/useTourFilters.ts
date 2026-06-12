@@ -60,6 +60,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(loadDateRange);
   const [searchCompany, setSearchCompany] = useState(() => localStorage.getItem('tours.search.company') || '');
   const [searchLandOperator, setSearchLandOperator] = useState(() => localStorage.getItem('tours.search.landOperator') || '');
+  const [guideFilter, setGuideFilter] = useState<string>(() => localStorage.getItem('tours.guideFilter') || 'all');
   const [nationalityFilter, setNationalityFilter] = useState<string>(() => localStorage.getItem('tours.nationalityFilter') || 'all');
   const [settlementStatusFilter, setSettlementStatusFilter] = useState<string>(() => localStorage.getItem('tours.settlementStatusFilter') || 'all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>(() => localStorage.getItem('tours.paymentStatusFilter') || 'all');
@@ -67,14 +68,6 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   const [selectedMonth, setSelectedMonth] = useState<string>(() => localStorage.getItem('tours.selectedMonth') || 'all');
   const [selectedYear, setSelectedYear] = useState<string>(() => localStorage.getItem('tours.selectedYear') || 'all');
   const [sortBy, setSortBy] = useState<string>(loadTourSort);
-  const [filtersExpanded, setFiltersExpanded] = useState(() => {
-    const saved = localStorage.getItem('tours.filtersExpanded');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-  const [searchExpanded, setSearchExpanded] = useState(() => {
-    const saved = localStorage.getItem('tours.searchExpanded');
-    return saved !== null ? JSON.parse(saved) : false;
-  });
   const [topControlsExpanded, setTopControlsExpanded] = useState(() => {
     const saved = localStorage.getItem('tours.topControlsExpanded');
     return saved !== null ? JSON.parse(saved) : true;
@@ -86,6 +79,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   useEffect(() => { localStorage.setItem('tours.search.dateRange', JSON.stringify(dateRange || {})); }, [dateRange]);
   useEffect(() => { localStorage.setItem('tours.search.company', searchCompany); }, [searchCompany]);
   useEffect(() => { localStorage.setItem('tours.search.landOperator', searchLandOperator); }, [searchLandOperator]);
+  useEffect(() => { localStorage.setItem('tours.guideFilter', guideFilter); }, [guideFilter]);
   useEffect(() => { localStorage.setItem('tours.nationalityFilter', nationalityFilter); }, [nationalityFilter]);
   useEffect(() => { localStorage.setItem('tours.settlementStatusFilter', settlementStatusFilter); }, [settlementStatusFilter]);
   useEffect(() => { localStorage.setItem('tours.paymentStatusFilter', paymentStatusFilter); }, [paymentStatusFilter]);
@@ -93,8 +87,6 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   useEffect(() => { localStorage.setItem('tours.selectedMonth', selectedMonth); }, [selectedMonth]);
   useEffect(() => { localStorage.setItem('tours.selectedYear', selectedYear); }, [selectedYear]);
   useEffect(() => { localStorage.setItem('tours.sortBy', sortBy); }, [sortBy]);
-  useEffect(() => { localStorage.setItem('tours.filtersExpanded', JSON.stringify(filtersExpanded)); }, [filtersExpanded]);
-  useEffect(() => { localStorage.setItem('tours.searchExpanded', JSON.stringify(searchExpanded)); }, [searchExpanded]);
   useEffect(() => { localStorage.setItem('tours.topControlsExpanded', JSON.stringify(topControlsExpanded)); }, [topControlsExpanded]);
 
   const baseTourQuery = useMemo((): TourQuery => {
@@ -108,6 +100,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     if (dateRange?.to) query.endDate = format(dateRange.to, 'yyyy-MM-dd');
     if (company) query.companyNameLike = company;
     if (landOperator) query.landOperatorNameLike = landOperator;
+    if (guideFilter !== 'all') query.guideId = guideFilter;
     if (nationalityFilter !== 'all') query.nationalityId = nationalityFilter;
     if (settlementStatusFilter !== 'all') query.settlementStatus = settlementStatusFilter as TourQuery['settlementStatus'];
     if (paymentStatusFilter !== 'all') query.paymentStatus = paymentStatusFilter as TourQuery['paymentStatus'];
@@ -128,7 +121,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     query.sortOrder = order as 'asc' | 'desc';
 
     return query;
-  }, [searchCode, dateRange, searchCompany, searchLandOperator, nationalityFilter, settlementStatusFilter, paymentStatusFilter, selectedMonth, selectedYear, sortBy]);
+  }, [searchCode, dateRange, searchCompany, searchLandOperator, guideFilter, nationalityFilter, settlementStatusFilter, paymentStatusFilter, selectedMonth, selectedYear, sortBy]);
 
   const topCompanyOptions = useMemo(() => {
     const companyNames = new Set<string>();
@@ -160,13 +153,32 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   }, [tours]);
 
   const clearFilters = () => {
+    setSearchCode('');
+    setDateRange(undefined);
+    setSearchCompany('');
+    setSearchLandOperator('');
+    setGuideFilter('all');
     setNationalityFilter('all');
+    setSettlementStatusFilter('all');
+    setPaymentStatusFilter('all');
+    setShoppingCommissionFilter('all');
     setSelectedMonth('all');
     setSelectedYear('all');
-    setShoppingCommissionFilter('all');
+    setSortBy(DEFAULT_TOUR_SORT);
   };
 
-  const hasActiveFilters = nationalityFilter !== 'all' || (selectedMonth !== 'all' && selectedYear !== 'all') || shoppingCommissionFilter !== 'all';
+  const hasActiveFilters =
+    searchCode !== '' ||
+    dateRange !== undefined ||
+    searchCompany !== '' ||
+    searchLandOperator !== '' ||
+    guideFilter !== 'all' ||
+    nationalityFilter !== 'all' ||
+    settlementStatusFilter !== 'all' ||
+    paymentStatusFilter !== 'all' ||
+    shoppingCommissionFilter !== 'all' ||
+    selectedMonth !== 'all' ||
+    selectedYear !== 'all';
 
   return {
     searchCode,
@@ -177,6 +189,8 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     setSearchCompany,
     searchLandOperator,
     setSearchLandOperator,
+    guideFilter,
+    setGuideFilter,
     nationalityFilter,
     setNationalityFilter,
     settlementStatusFilter,
@@ -191,10 +205,6 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     setSelectedYear,
     sortBy,
     setSortBy,
-    filtersExpanded,
-    setFiltersExpanded,
-    searchExpanded,
-    setSearchExpanded,
     topControlsExpanded,
     setTopControlsExpanded,
     topCompanyFilterOpen,

@@ -68,6 +68,8 @@ const Tours = () => {
     setSearchCompany,
     searchLandOperator,
     setSearchLandOperator,
+    guideFilter,
+    setGuideFilter,
     nationalityFilter,
     setNationalityFilter,
     settlementStatusFilter,
@@ -82,10 +84,6 @@ const Tours = () => {
     setSelectedYear,
     sortBy,
     setSortBy,
-    filtersExpanded,
-    setFiltersExpanded,
-    searchExpanded,
-    setSearchExpanded,
     topControlsExpanded,
     setTopControlsExpanded,
     topCompanyFilterOpen,
@@ -99,6 +97,14 @@ const Tours = () => {
     clearFilters,
     hasActiveFilters,
   } = useTourFilters([], companies);
+
+  const { data: guideUsers = [] } = useQuery({
+    queryKey: ['guideUsers'],
+    queryFn: () => store.listGuideUsers(),
+    enabled: isAdmin,
+    staleTime: TOUR_REFERENCE_STALE_TIME,
+    gcTime: TOUR_REFERENCE_GC_TIME,
+  });
 
   // Disable pagination entirely: always fetch ALL matching tours
 
@@ -206,7 +212,7 @@ const Tours = () => {
     <>
       <div className="animate-fade-in">
         {/* Sticky Header - Always pinned to top */}
-        <div className={`${headerClasses} border-b pb-4 pt-4 bg-gray-100 dark:bg-gray-900 z-40 space-y-4`}>
+        <div className={`${headerClasses} border-b pb-2 pt-2 sm:pb-4 sm:pt-4 bg-gray-100 dark:bg-gray-900 z-40 space-y-2 sm:space-y-4`}>
           <ToursHeaderControls
             topControlsExpanded={topControlsExpanded}
             onToggleTopControls={() => setTopControlsExpanded(!topControlsExpanded)}
@@ -233,14 +239,16 @@ const Tours = () => {
           />
           <ToursFilterBar
             topControlsExpanded={topControlsExpanded}
-            searchExpanded={searchExpanded}
-            filtersExpanded={filtersExpanded}
             topCompanyFilterOpen={topCompanyFilterOpen}
             topLandOperatorFilterOpen={topLandOperatorFilterOpen}
             searchCode={searchCode}
             dateRange={dateRange}
             searchCompany={searchCompany}
             searchLandOperator={searchLandOperator}
+            guideFilter={guideFilter}
+            setGuideFilter={setGuideFilter}
+            guides={guideUsers}
+            isAdmin={isAdmin}
             settlementStatusFilter={settlementStatusFilter}
             paymentStatusFilter={paymentStatusFilter}
             shoppingCommissionFilter={shoppingCommissionFilter}
@@ -256,8 +264,6 @@ const Tours = () => {
             toursCount={displayedTours.length}
             hasActiveFilters={hasActiveFilters}
             showToursBackgroundRefresh={showToursBackgroundRefresh}
-            setSearchExpanded={setSearchExpanded}
-            setFiltersExpanded={setFiltersExpanded}
             setTopCompanyFilterOpen={setTopCompanyFilterOpen}
             setTopLandOperatorFilterOpen={setTopLandOperatorFilterOpen}
             setSearchCode={setSearchCode}
