@@ -38,10 +38,18 @@ export const formatTourNationalities = (tour: Tour) => {
     .join(', ');
 };
 
-export const getAllowanceTotal = (tour: Tour) =>
-  tour.allowanceTotal !== undefined && tour.destinations === undefined
-    ? tour.allowanceTotal
-    : (tour.allowances || []).reduce((sum, allowance) => sum + (allowance.price * (allowance.quantity || 1)), 0);
+export const getAllowanceTotal = (tour: Tour) => {
+  // In list view, tour.allowances is always [] (not fetched); use the persisted allowanceTotal column.
+  // In detail view, the array is populated — compute directly so we reflect unsaved edits.
+  if (tour.allowances && tour.allowances.length > 0) {
+    return tour.allowances.reduce((sum, a) => sum + (a.price * (a.quantity || 1)), 0);
+  }
+  return tour.allowanceTotal ?? 0;
+};
+
+// Tổng chi phí = destinations + expenses + meals (excludes allowances)
+export const getTabsCostTotal = (tour: Tour) =>
+  (tour.summary?.totalTabs ?? 0) - getAllowanceTotal(tour);
 
 export const getUnpaidCommissionShoppingNames = (tour: Tour) =>
   (tour.shoppings || [])

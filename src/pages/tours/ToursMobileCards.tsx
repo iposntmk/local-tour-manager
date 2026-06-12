@@ -8,6 +8,7 @@ import type { Tour } from '@/types/tour';
 import {
   formatTourNationalities,
   getAllowanceTotal,
+  getTabsCostTotal,
   getTourDays,
   getTourGuests,
   getTourWarningInfo,
@@ -46,6 +47,8 @@ export const ToursMobileCards = ({
       const totalDays = getTourDays(tour);
       const totalGuests = getTourGuests(tour);
       const allowanceTotal = getAllowanceTotal(tour);
+      const tabsCostTotal = getTabsCostTotal(tour);
+      const totalTabs = tour.summary?.totalTabs ?? 0;
       const nationalities = formatTourNationalities(tour);
 
       return (
@@ -107,23 +110,20 @@ export const ToursMobileCards = ({
             </div>
 
             <div className="pt-3 border-t cursor-pointer" onClick={() => onOpenTour(tour.id)}>
-              <div className="flex items-center gap-2 text-xs sm:text-sm flex-wrap">
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">CTP:</span>
-                  <span className="font-semibold">
-                    {Math.round(allowanceTotal / 1000)}k
-                  </span>
+              <div className="space-y-1 text-xs sm:text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Tổng chi phí:</span>
+                  <span className="font-semibold">{Math.round(tabsCostTotal / 1000).toLocaleString('vi-VN')}k</span>
                 </div>
-                {(tour.summary?.finalTotal !== undefined && tour.summary.finalTotal !== null && tour.summary.finalTotal !== 0) && (
-                  <>
-                    <span className="text-muted-foreground">|</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Tổng kết:</span>
-                      <span className="font-semibold text-primary">
-                        {Math.round(tour.summary.finalTotal / 1000)}k
-                      </span>
-                    </div>
-                  </>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Tổng công tác phí:</span>
+                  <span className="font-semibold">{Math.round(allowanceTotal / 1000).toLocaleString('vi-VN')}k</span>
+                </div>
+                {totalTabs > 0 && (
+                  <div className="flex items-center justify-between border-t pt-1">
+                    <span className="font-medium">Tổng:</span>
+                    <span className="font-bold text-primary">{Math.round(totalTabs / 1000).toLocaleString('vi-VN')}k</span>
+                  </div>
                 )}
               </div>
             </div>
