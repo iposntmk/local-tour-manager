@@ -31,12 +31,12 @@ export const SUMMARY_STATUS_LABELS: Partial<Record<LineStatus, string>> = {
   invalid: 'Chưa đúng',
 };
 
-export const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: 'hide_approved', label: 'Chưa xong' },
-  { value: 'all', label: 'Tất cả' },
-  { value: 'approved', label: 'Đã duyệt' },
-  { value: 'pending', label: 'Chưa duyệt' },
-  { value: 'invalid', label: 'Chưa đúng' },
+export const STATUS_FILTERS: { value: StatusFilter; label: string; shortLabel: string }[] = [
+  { value: 'hide_approved', label: 'Chưa xong', shortLabel: 'Lọc' },
+  { value: 'all', label: 'Tất cả', shortLabel: 'Tất cả' },
+  { value: 'approved', label: 'Đã duyệt', shortLabel: 'OK' },
+  { value: 'pending', label: 'Chưa duyệt', shortLabel: 'Chờ' },
+  { value: 'invalid', label: 'Chưa đúng', shortLabel: 'Lỗi' },
 ];
 
 export const buildGroups = (tour: Tour): SummaryLineGroup[] => [

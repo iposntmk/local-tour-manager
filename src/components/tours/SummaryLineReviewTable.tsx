@@ -139,11 +139,12 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
                   key={f.value}
                   size="sm"
                   variant={statusFilter === f.value ? 'secondary' : 'ghost'}
-                  className="h-7 min-w-0 gap-1 px-1 text-[11px] sm:px-2 sm:text-xs"
+                  className="h-7 min-w-0 gap-0.5 px-1 text-[11px] sm:gap-1 sm:px-2 sm:text-xs"
                   onClick={() => setStatusFilter(f.value)}
                   title={f.label}
                 >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <Icon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+                  <span className="sm:hidden">{f.shortLabel}</span>
                   <span className="hidden sm:inline">{f.label}</span>
                 </Button>
               );
