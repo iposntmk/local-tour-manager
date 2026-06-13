@@ -76,60 +76,102 @@ export function LineQuickReview({
 
   const approveLabel = currentStatus === 'valid' ? (compact ? 'OK' : labelFor('valid')) : (compact ? 'OK' : 'Duyệt');
   const rejectLabel = compact ? 'Lỗi' : labelFor('invalid');
-  const btnBase = compact
-    ? 'h-[5px] min-w-0 flex-none gap-px px-[2px] text-[5px] leading-none'
-    : 'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2';
-  const iconSize = compact ? 'h-[4px] w-[4px]' : 'h-3.5 w-3.5';
-  const textClass = compact ? '' : 'hidden truncate sm:inline';
+
+  const rejectForm = rejecting && (
+    <div className="space-y-2 rounded-md border bg-background p-2">
+      <Textarea
+        autoFocus
+        rows={2}
+        placeholder="Lý do không hợp lệ: thiếu hóa đơn, số tiền không khớp..."
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+      />
+      <div className="flex justify-end gap-1.5">
+        <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setRejecting(false)} disabled={busy}>
+          Hủy
+        </Button>
+        <Button type="button" size="sm" className="h-7 bg-red-600 hover:bg-red-700" onClick={confirmReject} disabled={busy}>
+          {busy ? 'Đang lưu...' : 'Lưu lý do'}
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <div className="space-y-1">
+        <div className="flex flex-nowrap items-center gap-0.5">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={approve}
+            title={approveLabel}
+            className={cn(
+              'inline-flex flex-col items-center justify-center gap-0 rounded border px-[3px] py-[1px] leading-none',
+              currentStatus === 'valid'
+                ? 'border-green-600 bg-green-600 text-white'
+                : 'border-border bg-background text-foreground',
+            )}
+          >
+            <Check className="h-[3px] w-[3px]" />
+            <span className="text-[3px]">{approveLabel}</span>
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={openReject}
+            title={rejectLabel}
+            className={cn(
+              'inline-flex flex-col items-center justify-center gap-0 rounded border px-[3px] py-[1px] leading-none',
+              currentStatus === 'invalid'
+                ? 'border-red-600 bg-red-600 text-white'
+                : 'border-border bg-background text-foreground',
+            )}
+          >
+            <X className="h-[3px] w-[3px]" />
+            <span className="text-[3px]">{rejectLabel}</span>
+          </button>
+        </div>
+        {rejectForm}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-nowrap items-center gap-1">
+      <div className="flex w-full flex-nowrap items-center gap-1.5 sm:w-auto">
         <Button
           type="button"
           size="sm"
           variant={currentStatus === 'valid' ? 'default' : 'outline'}
-          className={cn(btnBase, currentStatus === 'valid' && 'bg-green-600 hover:bg-green-700')}
+          className={cn(
+            'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2',
+            currentStatus === 'valid' && 'bg-green-600 hover:bg-green-700',
+          )}
           disabled={busy}
           onClick={approve}
           title={approveLabel}
         >
-          <Check className={iconSize} />
-          <span className={textClass}>{approveLabel}</span>
+          <Check className="h-3.5 w-3.5" />
+          <span className="hidden truncate sm:inline">{approveLabel}</span>
         </Button>
         <Button
           type="button"
           size="sm"
           variant={currentStatus === 'invalid' ? 'default' : 'outline'}
-          className={cn(btnBase, currentStatus === 'invalid' && 'bg-red-600 hover:bg-red-700')}
+          className={cn(
+            'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2',
+            currentStatus === 'invalid' && 'bg-red-600 hover:bg-red-700',
+          )}
           disabled={busy}
           onClick={openReject}
           title={rejectLabel}
         >
-          <X className={iconSize} />
-          <span className={textClass}>{rejectLabel}</span>
+          <X className="h-3.5 w-3.5" />
+          <span className="hidden truncate sm:inline">{rejectLabel}</span>
         </Button>
       </div>
-
-      {rejecting && (
-        <div className="space-y-2 rounded-md border bg-background p-2">
-          <Textarea
-            autoFocus
-            rows={2}
-            placeholder="Lý do không hợp lệ: thiếu hóa đơn, số tiền không khớp..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-          <div className="flex justify-end gap-1.5">
-            <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setRejecting(false)} disabled={busy}>
-              Hủy
-            </Button>
-            <Button type="button" size="sm" className="h-7 bg-red-600 hover:bg-red-700" onClick={confirmReject} disabled={busy}>
-              {busy ? 'Đang lưu...' : 'Lưu lý do'}
-            </Button>
-          </div>
-        </div>
-      )}
+      {rejectForm}
     </div>
   );
 }
