@@ -21,6 +21,7 @@ import type { Tour } from '@/types/tour';
 import { areAllSettlementLinesApproved } from '@/lib/tour-line-utils';
 import { canReviewTour, canSubmitTour, validateSettlementReady } from '@/lib/settlement-utils';
 import { canRecordPayment, isTourPaymentEligible } from '@/lib/payment-utils';
+import { getTourCacheSnapshot, patchTourSettlementStatusInCache, restoreTourCacheSnapshot } from '@/lib/tour-cache-updates';
 import { SettlementStatusBadge } from './SettlementStatusBadge';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
@@ -47,27 +48,30 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
   };
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['tour', tour.id] });
-    await queryClient.invalidateQueries({ queryKey: ['tours'] });
-    await queryClient.invalidateQueries({ queryKey: ['settlement-pending-count'] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['tour', tour.id] }),
+      queryClient.invalidateQueries({ queryKey: ['tours'] }),
+      queryClient.invalidateQueries({ queryKey: ['settlement-pending-count'] }),
+    ]);
     onChanged?.();
   };
 
   const handleSubmit = async () => {
+    const validation = validateSettlementReady(tour);
+    if (!validation.ok) {
+      toast.error('Chưa đủ điều kiện gửi', { description: validation.errors.join('\n') });
+      return;
+    }
     setBusy(true);
+    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    patchTourSettlementStatusInCache(queryClient, tour.id, 'submitted');
     try {
-      const validation = validateSettlementReady(tour);
-      if (!validation.ok) {
-        toast.error('Chưa đủ điều kiện gửi', {
-          description: validation.errors.join('\n'),
-        });
-        return;
-      }
       await store.submitTourSettlement(tour.id, note || undefined);
       toast.success('Đã gửi kế toán kiểm tra.');
       await refresh();
       closeDialog();
     } catch (e) {
+      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể gửi hồ sơ.'));
     } finally {
       setBusy(false);
@@ -76,12 +80,15 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
 
   const handleReturn = async () => {
     setBusy(true);
+    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    patchTourSettlementStatusInCache(queryClient, tour.id, 'need_changes');
     try {
       await store.returnTourSettlement(tour.id, note || undefined);
       toast.success('Đã trả hồ sơ về HDV.');
       await refresh();
       closeDialog();
     } catch (e) {
+      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể trả hồ sơ.'));
     } finally {
       setBusy(false);
@@ -94,12 +101,15 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
       return;
     }
     setBusy(true);
+    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    patchTourSettlementStatusInCache(queryClient, tour.id, 'approved');
     try {
       await store.approveTourSettlement(tour.id, note || undefined);
       toast.success('Đã duyệt hồ sơ. Hồ sơ đã được khóa.');
       await refresh();
       closeDialog();
     } catch (e) {
+      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể duyệt hồ sơ.'));
     } finally {
       setBusy(false);
@@ -108,12 +118,15 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
 
   const handleReopen = async () => {
     setBusy(true);
+    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    patchTourSettlementStatusInCache(queryClient, tour.id, 'draft');
     try {
       await store.reopenTourSettlement(tour.id, note || undefined);
       toast.success('Đã mở khóa hồ sơ.');
       await refresh();
       closeDialog();
     } catch (e) {
+      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể mở khóa hồ sơ.'));
     } finally {
       setBusy(false);
@@ -191,7 +204,7 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
         </>
       )}
       {showPaymentCTA && (
-        <Button size="sm" variant="secondary" onClick={() => setPaymentDialogOpen(true)}>
+        <Button size="sm" variant="outline" onClick={() => setPaymentDialogOpen(true)} className="border-2 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-950/20 dark:text-blue-300 dark:hover:bg-blue-900/30 font-medium shadow-sm">
           <Wallet className="h-4 w-4 mr-1" />
           Ghi nhận thanh toán
         </Button>

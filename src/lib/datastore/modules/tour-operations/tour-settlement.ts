@@ -1,10 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-import type { Tour, LineType, LineStatus, SettlementStatus, SubmissionHistoryEvent } from '@/types/tour';
+import type { LineType, LineStatus, SettlementStatus, SubmissionHistoryEvent } from '@/types/tour';
 
 export class TourSettlementModule {
   declare protected supabase: SupabaseClient<Database>;
-  declare getTour: (id: string) => Promise<Tour | null>;
 
   private lineTypeToTable(lineType: LineType): string {
     switch (lineType) {
@@ -19,10 +18,9 @@ export class TourSettlementModule {
   private async insertSubmissionHistory(
     tourId: string,
     event: 'submitted' | 'returned' | 'approved' | 'reopened',
+    actorId: string | undefined,
     note?: string
   ): Promise<void> {
-    const { data: authUser } = await this.supabase.auth.getUser();
-    const actorId = authUser.user?.id;
     let actorRole: string | undefined;
     if (actorId) {
       const { data: profile } = await this.supabase
@@ -35,69 +33,102 @@ export class TourSettlementModule {
     if (error) throw error;
   }
 
-  async submitTourSettlement(tourId: string, note?: string): Promise<Tour> {
-    const { data: current, error: fetchError } = await this.supabase
-      .from('tours').select('settlement_status, submission_count').eq('id', tourId).single();
+  async submitTourSettlement(tourId: string, note?: string): Promise<void> {
+    const [{ data: current, error: fetchError }, { data: authUser }] = await Promise.all([
+      this.supabase.from('tours').select('settlement_status, submission_count').eq('id', tourId).single(),
+      this.supabase.auth.getUser(),
+    ]);
     if (fetchError) throw fetchError;
     const status = (current as any)?.settlement_status as string;
     if (status === 'approved' || status === 'closed') {
       throw new Error('Hồ sơ đã được duyệt hoặc đã đóng — không thể gửi lại.');
     }
     const nextCount = (Number((current as any)?.submission_count) || 0) + 1;
-    const { error } = await this.supabase.from('tours')
-      .update({ settlement_status: 'submitted', submitted_at: new Date().toISOString(), submission_count: nextCount } as any)
-      .eq('id', tourId);
-    if (error) throw error;
-    await this.insertSubmissionHistory(tourId, 'submitted', note);
-    const tour = await this.getTour(tourId);
-    if (!tour) throw new Error('Không tìm thấy tour sau khi cập nhật.');
-    return tour;
+    const actorId = authUser.user?.id;
+    const [{ error: updateError }, profile] = await Promise.all([
+      this.supabase.from('tours')
+        .update({ settlement_status: 'submitted', submitted_at: new Date().toISOString(), submission_count: nextCount } as any)
+        .eq('id', tourId),
+      actorId
+        ? this.supabase.from('user_profiles').select('role, settlement_role').eq('id', actorId).maybeSingle().then((r) => r.data)
+        : Promise.resolve(null),
+    ]);
+    if (updateError) throw updateError;
+    const actorRole = profile ? ((profile as any).settlement_role || (profile as any).role || undefined) : undefined;
+    const { error: historyError } = await this.supabase.from('tour_submission_history').insert({
+      tour_id: tourId, event: 'submitted', actor_id: actorId ?? null, actor_role: actorRole ?? null, note: note ?? null,
+    });
+    if (historyError) throw historyError;
   }
 
-  async returnTourSettlement(tourId: string, note?: string): Promise<Tour> {
-    const { data: current, error: fetchError } = await this.supabase
-      .from('tours').select('settlement_status').eq('id', tourId).single();
+  async returnTourSettlement(tourId: string, note?: string): Promise<void> {
+    const [{ data: current, error: fetchError }, { data: authUser }] = await Promise.all([
+      this.supabase.from('tours').select('settlement_status').eq('id', tourId).single(),
+      this.supabase.auth.getUser(),
+    ]);
     if (fetchError) throw fetchError;
     if ((current as any)?.settlement_status !== 'submitted') {
       throw new Error('Chỉ có thể trả lại hồ sơ ở trạng thái "Đã gửi".');
     }
-    const { error } = await this.supabase.from('tours')
-      .update({ settlement_status: 'need_changes' } as any).eq('id', tourId);
-    if (error) throw error;
-    await this.insertSubmissionHistory(tourId, 'returned', note);
-    const tour = await this.getTour(tourId);
-    if (!tour) throw new Error('Không tìm thấy tour sau khi cập nhật.');
-    return tour;
+    const actorId = authUser.user?.id;
+    const [{ error: updateError }, profile] = await Promise.all([
+      this.supabase.from('tours').update({ settlement_status: 'need_changes' } as any).eq('id', tourId),
+      actorId
+        ? this.supabase.from('user_profiles').select('role, settlement_role').eq('id', actorId).maybeSingle().then((r) => r.data)
+        : Promise.resolve(null),
+    ]);
+    if (updateError) throw updateError;
+    const actorRole = profile ? ((profile as any).settlement_role || (profile as any).role || undefined) : undefined;
+    const { error: historyError } = await this.supabase.from('tour_submission_history').insert({
+      tour_id: tourId, event: 'returned', actor_id: actorId ?? null, actor_role: actorRole ?? null, note: note ?? null,
+    });
+    if (historyError) throw historyError;
   }
 
-  async approveTourSettlement(tourId: string, note?: string): Promise<Tour> {
-    const { data: current, error: fetchError } = await this.supabase
-      .from('tours').select('settlement_status').eq('id', tourId).single();
+  async approveTourSettlement(tourId: string, note?: string): Promise<void> {
+    const [{ data: current, error: fetchError }, { data: authUser }] = await Promise.all([
+      this.supabase.from('tours').select('settlement_status').eq('id', tourId).single(),
+      this.supabase.auth.getUser(),
+    ]);
     if (fetchError) throw fetchError;
     if ((current as any)?.settlement_status !== 'submitted') {
       throw new Error('Chỉ duyệt được hồ sơ ở trạng thái "Đã gửi".');
     }
-    const { data: authUser } = await this.supabase.auth.getUser();
+    const actorId = authUser.user?.id;
     const now = new Date().toISOString();
-    const { error } = await this.supabase.from('tours')
-      .update({ settlement_status: 'approved', approved_at: now, approved_by: authUser.user?.id ?? null, locked_at: now } as any)
-      .eq('id', tourId);
-    if (error) throw error;
-    await this.insertSubmissionHistory(tourId, 'approved', note);
-    const tour = await this.getTour(tourId);
-    if (!tour) throw new Error('Không tìm thấy tour sau khi duyệt.');
-    return tour;
+    const [{ error: updateError }, profile] = await Promise.all([
+      this.supabase.from('tours')
+        .update({ settlement_status: 'approved', approved_at: now, approved_by: actorId ?? null, locked_at: now } as any)
+        .eq('id', tourId),
+      actorId
+        ? this.supabase.from('user_profiles').select('role, settlement_role').eq('id', actorId).maybeSingle().then((r) => r.data)
+        : Promise.resolve(null),
+    ]);
+    if (updateError) throw updateError;
+    const actorRole = profile ? ((profile as any).settlement_role || (profile as any).role || undefined) : undefined;
+    const { error: historyError } = await this.supabase.from('tour_submission_history').insert({
+      tour_id: tourId, event: 'approved', actor_id: actorId ?? null, actor_role: actorRole ?? null, note: note ?? null,
+    });
+    if (historyError) throw historyError;
   }
 
-  async reopenTourSettlement(tourId: string, note?: string): Promise<Tour> {
-    const { error } = await this.supabase.from('tours')
-      .update({ settlement_status: 'draft', approved_at: null, approved_by: null, locked_at: null } as any)
-      .eq('id', tourId);
-    if (error) throw error;
-    await this.insertSubmissionHistory(tourId, 'reopened', note);
-    const tour = await this.getTour(tourId);
-    if (!tour) throw new Error('Không tìm thấy tour sau khi mở khóa.');
-    return tour;
+  async reopenTourSettlement(tourId: string, note?: string): Promise<void> {
+    const { data: authUser } = await this.supabase.auth.getUser();
+    const actorId = authUser.user?.id;
+    const [{ error: updateError }, profile] = await Promise.all([
+      this.supabase.from('tours')
+        .update({ settlement_status: 'draft', approved_at: null, approved_by: null, locked_at: null } as any)
+        .eq('id', tourId),
+      actorId
+        ? this.supabase.from('user_profiles').select('role, settlement_role').eq('id', actorId).maybeSingle().then((r) => r.data)
+        : Promise.resolve(null),
+    ]);
+    if (updateError) throw updateError;
+    const actorRole = profile ? ((profile as any).settlement_role || (profile as any).role || undefined) : undefined;
+    const { error: historyError } = await this.supabase.from('tour_submission_history').insert({
+      tour_id: tourId, event: 'reopened', actor_id: actorId ?? null, actor_role: actorRole ?? null, note: note ?? null,
+    });
+    if (historyError) throw historyError;
   }
 
   async updateLineReview(

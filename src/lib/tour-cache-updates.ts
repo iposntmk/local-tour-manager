@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { enrichTourWithSummary } from '@/lib/tour-utils';
-import type { LineStatus, LineType, Tour } from '@/types/tour';
+import type { LineStatus, LineType, SettlementStatus, Tour } from '@/types/tour';
 
 export type TourCollectionKey = 'destinations' | 'expenses' | 'meals' | 'allowances' | 'shoppings';
 
@@ -30,6 +30,17 @@ export const replaceTourCacheLine = (
     const previous = rows[index] as { id?: string } | undefined;
     rows[index] = { ...(line as object), id: (line as { id?: string }).id ?? previous?.id };
     return enrichTourWithSummary({ ...current, [collection]: rows });
+  });
+};
+
+export const patchTourSettlementStatusInCache = (
+  queryClient: QueryClient,
+  tourId: string,
+  status: SettlementStatus,
+) => {
+  queryClient.setQueryData<Tour>(tourQueryKey(tourId), (current) => {
+    if (!current) return current;
+    return { ...current, settlementStatus: status };
   });
 };
 

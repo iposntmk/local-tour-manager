@@ -248,10 +248,10 @@ export interface DataStore {
   removeTourShopping(tourId: string, index: number): Promise<void>;
 
   // Settlement workflow
-  submitTourSettlement(tourId: string, note?: string): Promise<Tour>;
-  returnTourSettlement(tourId: string, note?: string): Promise<Tour>;
-  approveTourSettlement(tourId: string, note?: string): Promise<Tour>;
-  reopenTourSettlement(tourId: string, note?: string): Promise<Tour>;
+  submitTourSettlement(tourId: string, note?: string): Promise<void>;
+  returnTourSettlement(tourId: string, note?: string): Promise<void>;
+  approveTourSettlement(tourId: string, note?: string): Promise<void>;
+  reopenTourSettlement(tourId: string, note?: string): Promise<void>;
   updateLineReview(
     tourId: string,
     lineType: LineType,
