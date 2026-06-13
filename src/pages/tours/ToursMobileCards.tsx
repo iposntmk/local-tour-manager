@@ -152,22 +152,25 @@ export const ToursMobileCards = ({
                   <span className="text-muted-foreground text-xs">TT:</span>
                   <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} className="text-[11px] px-1.5 py-0 h-5" />
                 </div>
+                {canViewShoppingSensitive && shoppingInfo.hasShoppings && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground text-xs">HH:</span>
+                    {shoppingInfo.allPaid ? (
+                      <span className="inline-flex items-center rounded-full border border-emerald-500 bg-emerald-100 px-1.5 h-5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-600">đã nhận đủ</span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full border border-red-500 bg-red-100 px-1.5 h-5 text-[11px] font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-400 dark:border-red-600">chưa nhận đủ</span>
+                    )}
+                  </div>
+                )}
               </div>
-              {canViewShoppingSensitive && shoppingInfo.hasShoppings && (
-                <div className="text-xs">
-                  {shoppingInfo.allPaid ? (
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Hoa hồng: đã nhận đủ</span>
-                  ) : (
-                    <div className="space-y-0.5">
-                      <span className="font-medium text-red-600 dark:text-red-400">Hoa hồng: chưa nhận đủ</span>
-                      {shoppingInfo.unpaidItems.map((item, i) => (
-                        <div key={i} className="flex items-center gap-1 flex-wrap pl-2">
-                          <span className="text-muted-foreground">{item.name}:</span>
-                          <span className="font-semibold text-red-600 dark:text-red-400">còn {Math.round(item.remaining / 1000).toLocaleString('vi-VN')}k</span>
-                        </div>
-                      ))}
+              {canViewShoppingSensitive && shoppingInfo.hasShoppings && !shoppingInfo.allPaid && (
+                <div className="text-xs space-y-0.5">
+                  {shoppingInfo.unpaidItems.map((item, i) => (
+                    <div key={i} className="flex items-center gap-1 flex-wrap pl-4">
+                      <span className="text-muted-foreground">{item.name}:</span>
+                      <span className="font-semibold text-red-600 dark:text-red-400">còn {Math.round(item.remaining / 1000).toLocaleString('vi-VN')}k</span>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>

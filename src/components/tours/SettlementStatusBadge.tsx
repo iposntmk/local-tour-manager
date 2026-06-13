@@ -9,11 +9,11 @@ interface SettlementStatusBadgeProps {
 }
 
 const STATUS_STYLES: Record<SettlementStatus, string> = {
-  draft: 'bg-gray-200 text-gray-800 hover:bg-gray-200',
-  submitted: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-  need_changes: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
-  approved: 'bg-green-100 text-green-800 hover:bg-green-100',
-  closed: 'bg-slate-200 text-slate-800 hover:bg-slate-200',
+  draft: 'bg-gray-100 text-gray-700 hover:bg-gray-100 border border-gray-400',
+  submitted: 'bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-400',
+  need_changes: 'bg-orange-100 text-orange-800 hover:bg-orange-100 border border-orange-500',
+  approved: 'bg-green-100 text-green-800 hover:bg-green-100 border border-green-500',
+  closed: 'bg-slate-200 text-slate-800 hover:bg-slate-200 border border-slate-500',
 };
 
 export function SettlementStatusBadge({ status, className }: SettlementStatusBadgeProps) {

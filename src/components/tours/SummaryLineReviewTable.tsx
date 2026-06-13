@@ -56,7 +56,7 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
   const { busy: reviewBusy, updateMany } = useLineReview(tour.id);
   const [dialogAttachments, setDialogAttachments] = useState<TourLineAttachment[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('hide_approved');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const canReviewLines = !!tour.id && hasPermission('review_settlement_line');
 
   const approveSection = async (group: SummaryLineGroup) => {
@@ -75,13 +75,13 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
         type="button"
         size="sm"
         variant="outline"
-        className="h-7 w-7 gap-1 bg-background p-0 sm:w-auto sm:px-2"
+        className="h-7 gap-1 border-emerald-400 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50 sm:text-xs dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
         disabled={reviewBusy || allApproved}
         onClick={() => approveSection(group)}
         title={allApproved ? 'Đã duyệt tất cả dòng' : 'Duyệt tất cả dòng trong mục'}
       >
         <CheckCheck className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Duyệt mục</span>
+        <span>Duyệt mục</span>
       </Button>
     ) : null;
   };
@@ -121,6 +121,20 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
   }), [groups, statusFilter]);
   const tourGuests = tour.totalGuests || 0;
 
+  const allGroupsApproved = groups.every((g) =>
+    g.rows.length > 0 && g.rows.every(({ line }) => line.lineStatus === 'valid')
+  );
+
+  const approveAll = async () => {
+    const targets = groups.flatMap((group) =>
+      group.rows
+        .filter(({ line }) => line.id && line.lineStatus !== 'valid')
+        .map(({ line }) => ({ lineType: group.lineType as LineType, lineId: line.id as string }))
+    );
+    if (!targets.length) return;
+    await updateMany(targets, { lineStatus: 'valid' });
+  };
+
   const openAttachments = (attachments: TourLineAttachment[]) => {
     setDialogAttachments(attachments);
     setDialogOpen(true);
@@ -131,24 +145,40 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
       <div className="border-b bg-muted/40 p-2 sm:bg-muted/50 sm:p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
-          <div className="grid w-full grid-cols-5 gap-1 sm:w-auto sm:flex">
-            {STATUS_FILTERS.map((f) => {
-              const Icon = FILTER_ICONS[f.value];
-              return (
-                <Button
-                  key={f.value}
-                  size="sm"
-                  variant={statusFilter === f.value ? 'secondary' : 'ghost'}
-                  className="h-7 min-w-0 gap-0.5 px-1 text-[11px] sm:gap-1 sm:px-2 sm:text-xs"
-                  onClick={() => setStatusFilter(f.value)}
-                  title={f.label}
-                >
-                  <Icon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
-                  <span className="sm:hidden">{f.shortLabel}</span>
-                  <span className="hidden sm:inline">{f.label}</span>
-                </Button>
-              );
-            })}
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+            <div className="grid w-full grid-cols-5 gap-1 sm:w-auto sm:flex">
+              {STATUS_FILTERS.map((f) => {
+                const Icon = FILTER_ICONS[f.value];
+                return (
+                  <Button
+                    key={f.value}
+                    size="sm"
+                    variant={statusFilter === f.value ? 'secondary' : 'ghost'}
+                    className="h-7 min-w-0 gap-0.5 px-1 text-[11px] sm:gap-1 sm:px-2 sm:text-xs"
+                    onClick={() => setStatusFilter(f.value)}
+                    title={f.label}
+                  >
+                    <Icon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+                    <span className="sm:hidden">{f.shortLabel}</span>
+                    <span className="hidden sm:inline">{f.label}</span>
+                  </Button>
+                );
+              })}
+            </div>
+            {canReviewLines && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1 border-emerald-400 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50 sm:text-xs dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                disabled={reviewBusy || allGroupsApproved}
+                onClick={approveAll}
+                title="Duyệt tất cả dòng chưa duyệt"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Duyệt tất cả
+              </Button>
+            )}
           </div>
         </div>
       </div>

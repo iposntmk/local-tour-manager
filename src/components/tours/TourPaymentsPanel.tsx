@@ -83,7 +83,7 @@ export function TourPaymentsPanel({ tour }: TourPaymentsPanelProps) {
         <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} />
         <div className="flex-1" />
         {canAdd && (
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" onClick={openCreate} className="shadow ring-2 ring-offset-2 ring-primary/40">
             <Plus className="h-4 w-4 mr-1" />
             Ghi nhận thanh toán
           </Button>
