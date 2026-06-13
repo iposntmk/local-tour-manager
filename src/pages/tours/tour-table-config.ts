@@ -81,9 +81,7 @@ export const getUnpaidCommissionShoppingNames = (tour: Tour) =>
     .map((shopping) => shopping.name || 'Không tên');
 
 export const getTourWarningInfo = (tour: Tour) => {
-  // Use persisted flags when details are not loaded (list view)
-  const hasDetails = tour.destinations !== undefined && tour.expenses !== undefined &&
-    tour.meals !== undefined && tour.allowances !== undefined;
+  const hasDetails = tour.detailsLoaded === true;
 
   const hasZeroPrice = hasDetails
     ? !!(

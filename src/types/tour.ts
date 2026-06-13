@@ -190,6 +190,7 @@ export interface Tour {
   lastPaidAt?: string;
   lastPaymentMethod?: PaymentMethod;
   payments?: TourPayment[];
+  detailsLoaded?: boolean;
   // Subcollections stored as nested arrays
   destinations: Destination[];
   expenses: Expense[];

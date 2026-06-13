@@ -54,18 +54,10 @@ export function calculateTourSummary(tour: Tour): TourSummary {
 
 /**
  * Enrich a tour with calculated summary if it's missing or incomplete
- * Only enriches tours that have full details loaded (destinations, expenses, meals, allowances)
+ * Only enriches tours that have full subcollection details loaded.
  */
 export function enrichTourWithSummary(tour: Tour): Tour {
-  // Only enrich if tour has detailed data loaded
-  // Check if destinations/expenses/meals arrays exist (they're undefined when details not loaded)
-  const hasDetails =
-    tour.destinations !== undefined &&
-    tour.expenses !== undefined &&
-    tour.meals !== undefined &&
-    tour.allowances !== undefined;
-
-  if (!hasDetails) {
+  if (tour.detailsLoaded !== true) {
     // Return tour as-is, use database summary values
     return tour;
   }

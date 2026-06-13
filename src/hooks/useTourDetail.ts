@@ -5,7 +5,13 @@ import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import { differenceInDays } from 'date-fns';
 import { exportTourToExcel } from '@/lib/excel-utils';
-import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import {
+  invalidateTourAggregateCaches,
+  TOUR_DETAIL_GC_TIME,
+  TOUR_DETAIL_STALE_TIME,
+  TOUR_IMAGE_GC_TIME,
+  TOUR_IMAGE_STALE_TIME,
+} from '@/lib/query-cache';
 import { toVietnameseError } from '@/lib/error-messages';
 import { useAuth } from '@/contexts/AuthContext';
 import { enrichTourWithSummary } from '@/lib/tour-utils';
@@ -52,12 +58,16 @@ export function useTourDetail() {
     queryKey: ['tour', id],
     queryFn: () => store.getTour(id!),
     enabled: !isNewTour,
+    staleTime: TOUR_DETAIL_STALE_TIME,
+    gcTime: TOUR_DETAIL_GC_TIME,
   });
 
   const { data: tourImages = [] } = useQuery({
     queryKey: ['tourImages', id],
     queryFn: () => store.listTourImages(id!),
-    enabled: !isNewTour && !!id,
+    enabled: !isNewTour && !!id && activeTab === 'images',
+    staleTime: TOUR_IMAGE_STALE_TIME,
+    gcTime: TOUR_IMAGE_GC_TIME,
   });
 
   const createMutation = useMutation({

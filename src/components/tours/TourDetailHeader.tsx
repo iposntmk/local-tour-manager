@@ -170,7 +170,7 @@ export function TourDetailHeader({
             </div>
           </TabsTrigger>}
           {canViewTab('shoppings') && canViewShoppings && (
-            <TabsTrigger value="shoppings" className={cn(TAB_TRIGGER_CLASS, hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
+            <TabsTrigger value="shoppings" className={cn(TAB_TRIGGER_CLASS, 'order-7 lg:order-none', hasUnpaidShoppings && 'text-red-600 dark:text-red-400')}>
               <div className="flex flex-col items-center">
                 <div className="flex items-center gap-1">
                   <span className="sm:hidden">Mua</span><span className="hidden sm:inline">Mua sắm</span>
@@ -182,13 +182,13 @@ export function TourDetailHeader({
               </div>
             </TabsTrigger>
           )}
-          {canViewTab('summary') && <TabsTrigger value="summary" className={TAB_TRIGGER_CLASS}>
+          {canViewTab('summary') && <TabsTrigger value="summary" className={cn(TAB_TRIGGER_CLASS, 'order-8 lg:order-none')}>
             <div className="flex flex-col items-center">
               <span className="sm:hidden">TH</span><span className="hidden sm:inline">Tổng hợp</span>
               <span className={TAB_COUNT_CLASS}>{formatCurrency(displayTour?.summary?.finalTotal ?? 0)}</span>
             </div>
           </TabsTrigger>}
-          {canViewTab('images') && <TabsTrigger value="images" className={TAB_TRIGGER_CLASS}>
+          {canViewTab('images') && <TabsTrigger value="images" className={cn(TAB_TRIGGER_CLASS, 'order-9 lg:order-none')}>
             <div className="flex flex-col items-center">
               <span className="sm:hidden">Ảnh</span><span className="hidden sm:inline">Hình ảnh</span>
               <span className={TAB_COUNT_CLASS}>{isNewTour ? '' : tourImagesCount}</span>

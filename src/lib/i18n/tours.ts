@@ -42,6 +42,12 @@ export const tourVi = {
     createError: 'Lỗi khi tạo tour',
     updateSuccess: 'Cập nhật tour thành công',
     updateError: 'Lỗi khi cập nhật tour',
+    mobileWarnings: {
+      title: 'Cần kiểm tra',
+      missingWaterExpense: 'Thiếu chi phí nước uống',
+      zeroPrice: 'Có mục giá bằng 0',
+      duplicateDestinationNames: 'Tên điểm đến bị trùng',
+    },
   },
 
   destinations: {

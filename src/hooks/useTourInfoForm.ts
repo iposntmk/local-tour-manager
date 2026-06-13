@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { upsertById } from '@/lib/query-cache';
+import { TOUR_REFERENCE_GC_TIME, TOUR_REFERENCE_STALE_TIME, upsertById } from '@/lib/query-cache';
 import type { Tour, TourInput, TourNationality } from '@/types/tour';
 import type { Company, CompanyInput, Nationality, NationalityInput } from '@/types/master';
 
@@ -49,9 +49,10 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
     } : { adults: 1, children: 0 },
   });
 
-  const { data: companies = [] } = useQuery({ queryKey: ['companies'], queryFn: () => store.listCompanies({ status: 'active' }) });
-  const { data: guides = [] } = useQuery({ queryKey: ['guide-users'], queryFn: () => store.listGuideUsers({ status: 'active' }) });
-  const { data: nationalities = [] } = useQuery({ queryKey: ['nationalities'], queryFn: () => store.listNationalities({ status: 'active' }) });
+  const referenceQueryOptions = { staleTime: TOUR_REFERENCE_STALE_TIME, gcTime: TOUR_REFERENCE_GC_TIME };
+  const { data: companies = [] } = useQuery({ queryKey: ['companies'], queryFn: () => store.listCompanies({ status: 'active' }), ...referenceQueryOptions });
+  const { data: guides = [] } = useQuery({ queryKey: ['guide-users'], queryFn: () => store.listGuideUsers({ status: 'active' }), ...referenceQueryOptions });
+  const { data: nationalities = [] } = useQuery({ queryKey: ['nationalities'], queryFn: () => store.listNationalities({ status: 'active' }), ...referenceQueryOptions });
 
   useEffect(() => {
     if (initialData || selectedCompanyId || companies.length === 0) return;

@@ -1,10 +1,14 @@
 import type { MouseEvent } from 'react';
-import { Baby, Copy, FileDown, Flag, Trash2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, Baby, Copy, FileDown, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PaymentStatusBadge } from '@/components/tours/PaymentStatusBadge';
 import { SettlementStatusBadge } from '@/components/tours/SettlementStatusBadge';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
+import { store } from '@/lib/datastore';
+import { t } from '@/lib/i18n';
+import { TOUR_DETAIL_GC_TIME, TOUR_DETAIL_STALE_TIME } from '@/lib/query-cache';
 import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import type { Tour } from '@/types/tour';
 import {
@@ -30,6 +34,14 @@ type ToursMobileCardsProps = {
   onDelete: (tourId: string, event: MouseEvent) => void;
 };
 
+const getMobileWarningItems = (warningInfo: ReturnType<typeof getTourWarningInfo>) => {
+  const items: string[] = [];
+  if (warningInfo.missingWaterExpense) items.push(t('tours.mobileWarnings.missingWaterExpense'));
+  if (warningInfo.hasZeroPrice) items.push(t('tours.mobileWarnings.zeroPrice'));
+  if (warningInfo.hasDuplicateDestNames) items.push(t('tours.mobileWarnings.duplicateDestinationNames'));
+  return items;
+};
+
 export const ToursMobileCards = ({
   tours,
   canExportTours,
@@ -42,10 +54,21 @@ export const ToursMobileCards = ({
   onDelete,
 }: ToursMobileCardsProps) => {
   const canViewShoppingSensitive = useCanViewShoppingSensitive();
+  const queryClient = useQueryClient();
+  const prefetchTour = (tourId: string) => {
+    void queryClient.prefetchQuery({
+      queryKey: ['tour', tourId],
+      queryFn: () => store.getTour(tourId),
+      staleTime: TOUR_DETAIL_STALE_TIME,
+      gcTime: TOUR_DETAIL_GC_TIME,
+    });
+  };
+
   return (
   <div className="grid grid-cols-1 gap-4 mt-6 md:hidden">
-    {tours.map((tour, index) => {
+    {tours.map((tour) => {
       const warningInfo = getTourWarningInfo(tour);
+      const warningItems = getMobileWarningItems(warningInfo);
       const hasChildren = (tour.children || 0) > 0;
       const totalDays = getTourDays(tour);
       const totalGuests = getTourGuests(tour);
@@ -58,8 +81,10 @@ export const ToursMobileCards = ({
       return (
         <div
           key={tour.id}
-          className={`rounded-lg border bg-card p-4 sm:p-6 transition-all hover-scale animate-fade-in relative ${canViewShoppingSensitive && warningInfo.hasUnpaidCommission ? 'border-red-600 dark:border-red-500 border-2' : warningInfo.showRedFlag ? 'border-red-500 dark:border-red-600' : ''}`}
-          style={{ animationDelay: `${index * 0.1}s` }}
+          className="relative cursor-pointer rounded-lg border-2 border-slate-300 bg-card p-4 shadow-sm transition-all hover:shadow-md sm:p-6 dark:border-slate-700 [content-visibility:auto] [contain-intrinsic-size:260px]"
+          onClick={() => onOpenTour(tour.id)}
+          onPointerEnter={() => prefetchTour(tour.id)}
+          onTouchStart={() => prefetchTour(tour.id)}
         >
           {hasChildren && (
             <div className="absolute top-2 right-2 bg-blue-500 dark:bg-blue-600 text-white rounded-full p-1.5 shadow-lg" title={`${tour.children} trẻ em`}>
@@ -68,7 +93,7 @@ export const ToursMobileCards = ({
           )}
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onOpenTour(tour.id)}>
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 overflow-hidden flex-nowrap">
                   <h3 className="font-bold text-sm sm:text-base truncate" title={tour.tourCode}>{truncateText(tour.tourCode, 15)}</h3>
                   <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
@@ -80,20 +105,25 @@ export const ToursMobileCards = ({
                   <Badge variant="outline" className="text-xs shrink-0 whitespace-nowrap">
                     {totalGuests}p
                   </Badge>
-                  {(warningInfo.hasZeroPrice || warningInfo.hasDuplicateDestNames || warningInfo.missingWaterExpense) && (
-                    <span
-                      className="inline-flex items-center gap-1 text-destructive text-xs sm:text-sm"
-                      title={warningInfo.warningTitle}
-                    >
-                      <Flag className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">Kiểm tra</span>
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t cursor-pointer" onClick={() => onOpenTour(tour.id)}>
+            {warningItems.length > 0 && (
+              <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                <div className="mb-1 flex items-center gap-1.5 font-semibold">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>{t('tours.mobileWarnings.title')}</span>
+                </div>
+                <ul className="list-disc space-y-0.5 pl-5">
+                  {warningItems.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="pt-3 border-t">
               <div className="space-y-1 text-xs sm:text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Tổng chi phí:</span>
@@ -112,7 +142,7 @@ export const ToursMobileCards = ({
               </div>
             </div>
 
-            <div className="pt-3 border-t cursor-pointer space-y-1.5" onClick={() => onOpenTour(tour.id)}>
+            <div className="pt-3 border-t space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground text-xs">QT:</span>
@@ -144,8 +174,7 @@ export const ToursMobileCards = ({
 
             <div className="pt-3 border-t">
               <div
-                className="grid grid-cols-2 gap-2 text-xs sm:text-sm cursor-pointer"
-                onClick={() => onOpenTour(tour.id)}
+                className="grid grid-cols-2 gap-2 text-xs sm:text-sm"
               >
                 <div className="min-w-0 overflow-hidden">
                   <p className="truncate" title={tour.companyRef.nameAtBooking}>

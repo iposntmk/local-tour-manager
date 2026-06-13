@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTourImport } from '@/hooks/useTourImport';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { Tour, TourListResult } from '@/types/tour';
 import {
   TOUR_GRAND_TOTAL_GC_TIME,
@@ -32,6 +33,7 @@ const Tours = () => {
   // Pagination disabled; show all results
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const { hasPermission, isAdmin } = useAuth();
   const canCreateTours = hasPermission('create_tours');
   const canDeleteTours = hasPermission('delete_tours');
@@ -308,32 +310,31 @@ const Tours = () => {
               ? 'Không tìm thấy tour nào. Tạo tour đầu tiên để bắt đầu.'
               : 'Không có tour nào phù hợp với bộ lọc.'}
           </div>
+        ) : isMobile ? (
+          <ToursMobileCards
+            tours={displayedTours}
+            canExportTours={canExportTours}
+            canDuplicateTours={canDuplicateTours}
+            canDeleteTours={canDeleteTours}
+            deletePending={tourActions.deleteMutation.isPending}
+            onOpenTour={(tourId) => navigate(`/tours/${tourId}`)}
+            onExportSingle={tourActions.handleExportSingle}
+            onDuplicate={tourActions.handleDuplicate}
+            onDelete={tourActions.handleDelete}
+          />
         ) : (
-          <>
-            <ToursDesktopTable
-              tours={displayedTours}
-              canExportTours={canExportTours}
-              canDuplicateTours={canDuplicateTours}
-              canDeleteTours={canDeleteTours}
-              deletePending={tourActions.deleteMutation.isPending}
-              userProfileMap={isAdmin ? userProfileMap : undefined}
-              onOpenTour={(tourId) => navigate(`/tours/${tourId}`)}
-              onExportSingle={tourActions.handleExportSingle}
-              onDuplicate={tourActions.handleDuplicate}
-              onDelete={tourActions.handleDelete}
-            />
-            <ToursMobileCards
-              tours={displayedTours}
-              canExportTours={canExportTours}
-              canDuplicateTours={canDuplicateTours}
-              canDeleteTours={canDeleteTours}
-              deletePending={tourActions.deleteMutation.isPending}
-              onOpenTour={(tourId) => navigate(`/tours/${tourId}`)}
-              onExportSingle={tourActions.handleExportSingle}
-              onDuplicate={tourActions.handleDuplicate}
-              onDelete={tourActions.handleDelete}
-            />
-          </>
+          <ToursDesktopTable
+            tours={displayedTours}
+            canExportTours={canExportTours}
+            canDuplicateTours={canDuplicateTours}
+            canDeleteTours={canDeleteTours}
+            deletePending={tourActions.deleteMutation.isPending}
+            userProfileMap={isAdmin ? userProfileMap : undefined}
+            onOpenTour={(tourId) => navigate(`/tours/${tourId}`)}
+            onExportSingle={tourActions.handleExportSingle}
+            onDuplicate={tourActions.handleDuplicate}
+            onDelete={tourActions.handleDelete}
+          />
         )}
 
         <ToursConfirmDialogs

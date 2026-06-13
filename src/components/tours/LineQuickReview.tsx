@@ -99,22 +99,22 @@ export function LineQuickReview({
 
   if (compact) {
     return (
-      <div className="space-y-1">
-        <div className="flex flex-nowrap items-center gap-0.5">
+      <div className="relative flex h-full flex-col items-end gap-1">
+        <div className="flex h-full min-h-[2.75rem] flex-nowrap items-stretch gap-1">
           <button
             type="button"
             disabled={busy}
             onClick={openReject}
             title={rejectLabel}
             className={cn(
-              'inline-flex flex-col items-center justify-center gap-0 rounded border px-1 py-0.5 leading-none',
+              'inline-flex h-full w-10 flex-col items-center justify-center gap-0.5 rounded-md border px-1 py-1 text-[9px] leading-none',
               currentStatus === 'invalid'
                 ? 'border-red-600 bg-red-600 text-white'
                 : 'border-border bg-background text-foreground',
             )}
           >
-            <X className="h-2 w-2" />
-            <span className="text-[8px]">{rejectLabel}</span>
+            <X className="h-3 w-3" />
+            <span>{rejectLabel}</span>
           </button>
           <button
             type="button"
@@ -122,17 +122,21 @@ export function LineQuickReview({
             onClick={approve}
             title={approveLabel}
             className={cn(
-              'inline-flex flex-col items-center justify-center gap-0 rounded border px-1 py-0.5 leading-none',
+              'inline-flex h-full w-10 flex-col items-center justify-center gap-0.5 rounded-md border px-1 py-1 text-[9px] leading-none',
               currentStatus === 'valid'
                 ? 'border-green-600 bg-green-600 text-white'
                 : 'border-border bg-background text-foreground',
             )}
           >
-            <Check className="h-2 w-2" />
-            <span className="text-[8px]">{approveLabel}</span>
+            <Check className="h-3 w-3" />
+            <span>{approveLabel}</span>
           </button>
         </div>
-        {rejectForm}
+        {rejectForm && (
+          <div className="absolute right-0 top-full z-20 mt-1 w-72 max-w-[calc(100vw_-_1rem)]">
+            {rejectForm}
+          </div>
+        )}
       </div>
     );
   }

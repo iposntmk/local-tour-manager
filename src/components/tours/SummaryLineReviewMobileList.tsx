@@ -73,50 +73,53 @@ export function SummaryLineReviewMobileList({
 
                   return (
                     <div key={`${group.lineType}-mobile-${line.id || index}`} className="px-2 py-1.5">
-                      {/* Row 1: index · name · total · edit */}
-                      <div className="flex items-baseline gap-1">
-                        <span className="shrink-0 text-[10px] text-muted-foreground">{index + 1}.</span>
-                        <p className="min-w-0 flex-1 truncate text-[11px] font-medium">
-                          {showName ? line.name : `Dòng #${index + 1}`}
-                        </p>
-                        {showTotal && (
-                          <span className="shrink-0 text-[11px] font-bold tabular-nums">
-                            {formatCurrency(getTotal(line, tourGuests))}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          className="shrink-0 p-0 leading-none opacity-50 disabled:opacity-20"
-                          onClick={() => onEditLine?.(group.lineType, index)}
-                          disabled={!onEditLine || canEditLine?.(group.lineType) === false}
-                        >
-                          <Edit2 className="h-2.5 w-2.5" />
-                        </button>
-                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-baseline gap-1">
+                            <span className="shrink-0 text-[10px] text-muted-foreground">{index + 1}.</span>
+                            <p className="min-w-0 flex-1 truncate text-[11px] font-medium">
+                              {showName ? line.name : `Dòng #${index + 1}`}
+                            </p>
+                          </div>
 
-                      {/* Row 2: price · attachments · VAT + approve/reject buttons */}
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-                          {showPrice && <span>{formatCurrency(line.price)}</span>}
-                          {showEvidence && attachments.length > 0 && (
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-0.5 text-primary"
-                              onClick={() => onOpenAttachments(attachments)}
-                            >
-                              <Paperclip className="h-2.5 w-2.5" />
-                              {attachments.length}
-                            </button>
-                          )}
-                          {showEvidence && 'vatRate' in line && (line.vatRate || 0) > 0 && (
-                            <span>VAT {line.vatRate}%</span>
-                          )}
-                          {showEvidence && 'guideNote' in line && line.guideNote && (
-                            <span className="italic">{line.guideNote}</span>
-                          )}
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                            {showPrice && <span>Giá: {formatCurrency(line.price)}</span>}
+                            {showTotal && (
+                              <span className="font-bold tabular-nums text-foreground">
+                                Tổng: {formatCurrency(getTotal(line, tourGuests))}
+                              </span>
+                            )}
+                            {showEvidence && attachments.length > 0 && (
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-0.5 text-primary"
+                                onClick={() => onOpenAttachments(attachments)}
+                              >
+                                <Paperclip className="h-2.5 w-2.5" />
+                                {attachments.length}
+                              </button>
+                            )}
+                            {showEvidence && 'vatRate' in line && (line.vatRate || 0) > 0 && (
+                              <span>VAT {line.vatRate}%</span>
+                            )}
+                            {showEvidence && 'guideNote' in line && line.guideNote && (
+                              <span className="italic">{line.guideNote}</span>
+                            )}
+                          </div>
                         </div>
-                        {tour.id && line.id ? (
-                          <div className="shrink-0">
+
+                        <div className="flex min-h-[2.75rem] shrink-0 items-stretch justify-end gap-1">
+                          <button
+                            type="button"
+                            title="Sửa"
+                            className="inline-flex h-full w-9 flex-col items-center justify-center gap-0.5 rounded-md border border-border bg-background px-1 py-1 text-[9px] leading-none text-foreground disabled:opacity-30"
+                            onClick={() => onEditLine?.(group.lineType, index)}
+                            disabled={!onEditLine || canEditLine?.(group.lineType) === false}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                            <span>Sửa</span>
+                          </button>
+                          {tour.id && line.id ? (
                             <LineQuickReview
                               tourId={tour.id}
                               lineType={group.lineType as LineType}
@@ -128,10 +131,10 @@ export function SummaryLineReviewMobileList({
                               statusLabels={SUMMARY_STATUS_LABELS}
                               onApproved={onApproved}
                             />
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">-</span>
-                        )}
+                          ) : (
+                            <span className="self-center text-[10px] text-muted-foreground">-</span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Reject form (appears when user taps Lỗi — outside the 2-row display) */}

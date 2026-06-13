@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
+import { TOUR_IMAGE_GC_TIME, TOUR_IMAGE_STALE_TIME } from '@/lib/query-cache';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Upload, Image as ImageIcon, Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -28,6 +29,8 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
     queryKey: ['tourImages', tourId],
     queryFn: () => store.listTourImages(tourId),
     enabled: !!tourId,
+    staleTime: TOUR_IMAGE_STALE_TIME,
+    gcTime: TOUR_IMAGE_GC_TIME,
   });
   const imagePathKey = images.map((image) => `${image.id}:${image.storage_path}`).join('|');
   const { data: imageUrls = {} } = useQuery({

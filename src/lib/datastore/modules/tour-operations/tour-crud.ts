@@ -170,6 +170,7 @@ export class TourCrudModule {
         tour.expenses = (typedRow.tour_expenses || []).map(mapTourExpenseLine);
         tour.meals = (typedRow.tour_meals || []).map(mapTourMealLine);
         tour.allowances = (typedRow.tour_allowances || []).map((a) => ({ date: a.date, name: a.name, price: Number(a.price) || 0, quantity: a.quantity || 1, categoryId: a.category_id ?? undefined, ...mapLineReviewFields(a) }));
+        tour.detailsLoaded = true;
       }
       // Shoppings with commission payments are fetched in both list and detail views
       tour.shoppings = (typedRow.tour_shoppings || []).map((s: any) => mapTourShopping(s));
@@ -201,6 +202,7 @@ export class TourCrudModule {
     tour.meals = (row.tour_meals || []).map(mapTourMealLine);
     tour.allowances = (row.tour_allowances || []).map((a: any) => ({ date: a.date, name: a.name, price: Number(a.price) || 0, quantity: a.quantity || 1, categoryId: a.category_id ?? undefined, ...mapLineReviewFields(a) }));
     tour.shoppings = (row.tour_shoppings || []).map((s: any) => mapTourShopping(s));
+    tour.detailsLoaded = true;
     attachTourLineAttachments(tour, await this.listTourLineAttachments(id));
     const currentProfile = await this.getCurrentUserProfile();
     return enrichTourWithSummary(stripTourShoppingForProfile(tour, currentProfile));
