@@ -11,6 +11,7 @@ import {
   normalizeWaterExpenseLine,
 } from '@/lib/water-expense-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
+import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useAuth } from '@/contexts/AuthContext';
 import { ExpenseForm } from '@/components/tours/ExpenseForm';
 import { NewExpenseDialog } from '@/components/tours/NewExpenseDialog';
@@ -99,6 +100,15 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     },
   });
 
+  const autosaveExpense = useTourLineAutosave<Expense>({
+    tourId,
+    collection: 'expenses',
+    items: expenses,
+    onChange,
+    saveLine: (index, expense) => store.updateExpense(tourId!, index, expense),
+    successMessage: 'Đã tự động lưu chi phí',
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (index: number) => {
       if (tourId) return store.removeExpense(tourId, index);
@@ -169,7 +179,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     if (readOnly || !canEditTourLineField(lineFieldAccess, 'quantity')) return;
     const current = expenses[originalIndex];
     if (isWaterExpense(current)) {
-      updateMutation.mutate({ index: originalIndex, expense: normalizeExpense(current) });
+      autosaveExpense(originalIndex, normalizeExpense(current));
       return;
     }
     if (val !== undefined && val > tourGuests) {
@@ -181,7 +191,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
       return;
     }
     const updatedExpense = { ...expenses[originalIndex], guests: val };
-    updateMutation.mutate({ index: originalIndex, expense: updatedExpense as Expense });
+    autosaveExpense(originalIndex, updatedExpense as Expense);
   };
 
   const handleWaterDaysChange = (originalIndex: number, val: number | undefined) => {
@@ -191,7 +201,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
       return;
     }
     const updated = normalizeExpense({ ...expenses[originalIndex], days: val ?? 0 });
-    updateMutation.mutate({ index: originalIndex, expense: updated });
+    autosaveExpense(originalIndex, updated);
   };
 
   // Default guests for new rows

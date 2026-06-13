@@ -23,7 +23,7 @@ export interface FilteredSummaryLineGroup extends SummaryLineGroup {
   filteredRows: Array<{ line: ReviewLine; index: number }>;
 }
 
-export type StatusFilter = 'hide_approved' | 'all' | 'pending' | 'invalid';
+export type StatusFilter = 'hide_approved' | 'all' | 'approved' | 'pending' | 'invalid';
 
 export const SUMMARY_STATUS_LABELS: Partial<Record<LineStatus, string>> = {
   valid: 'Đã duyệt',
@@ -32,8 +32,9 @@ export const SUMMARY_STATUS_LABELS: Partial<Record<LineStatus, string>> = {
 };
 
 export const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: 'hide_approved', label: 'Ẩn đã duyệt' },
+  { value: 'hide_approved', label: 'Chưa xong' },
   { value: 'all', label: 'Tất cả' },
+  { value: 'approved', label: 'Đã duyệt' },
   { value: 'pending', label: 'Chưa duyệt' },
   { value: 'invalid', label: 'Chưa đúng' },
 ];

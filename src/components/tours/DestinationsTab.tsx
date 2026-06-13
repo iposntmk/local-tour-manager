@@ -6,6 +6,7 @@ import type { Destination, Tour } from '@/types/tour';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
+import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { DestinationForm } from '@/components/tours/DestinationForm';
 import { NewDestinationDialog } from '@/components/tours/NewDestinationDialog';
 import { DestinationsDesktopTable } from '@/components/tours/DestinationsDesktopTable';
@@ -145,6 +146,15 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     },
   });
 
+  const autosaveDestination = useTourLineAutosave<Destination>({
+    tourId,
+    collection: 'destinations',
+    items: destinations,
+    onChange,
+    saveLine: (index, destination) => store.updateDestination(tourId!, index, destination),
+    successMessage: 'Đã tự động lưu điểm đến',
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (index: number) => {
       if (tourId) return store.removeDestination(tourId, index);
@@ -207,13 +217,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
       guestsVal = tourGuests;
     }
     const updated = { ...destination, guests: guestsVal };
-    if (tourId) {
-      updateMutation.mutate({ index: originalIndex, destination: updated });
-    } else {
-      const newDests = [...destinations];
-      newDests[originalIndex] = updated;
-      onChange?.(newDests);
-    }
+    autosaveDestination(originalIndex, updated);
   };
 
   useEffect(() => {

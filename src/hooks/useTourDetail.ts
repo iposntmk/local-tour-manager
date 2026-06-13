@@ -8,6 +8,7 @@ import { exportTourToExcel } from '@/lib/excel-utils';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { toVietnameseError } from '@/lib/error-messages';
 import { useAuth } from '@/contexts/AuthContext';
+import { enrichTourWithSummary } from '@/lib/tour-utils';
 import { canEditTourData } from '@/lib/settlement-utils';
 import { canAuthViewTourShopping } from '@/lib/shopping-access';
 import { getTourInfoFieldAccess, getTourLineFieldAccess, getTourTabAccess } from '@/lib/tour-detail-permissions';
@@ -86,12 +87,26 @@ export function useTourDetail() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Tour> }) => store.updateTour(id, patch),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tour', id] });
-      void invalidateTourAggregateCaches(queryClient, 'none');
-      toast.success('Cập nhật tour thành công');
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: ['tour', id] });
+      const previous = queryClient.getQueryData<Tour>(['tour', id]);
+      queryClient.setQueryData<Tour>(['tour', id], (current) =>
+        current ? enrichTourWithSummary({ ...current, ...patch }) : current
+      );
+      return { previous };
     },
-    onError: (error: Error) => {
+    onSuccess: (_, { id, patch }) => {
+      const needsActiveRefetch =
+        patch.totalGuests !== undefined ||
+        patch.totalDays !== undefined ||
+        patch.startDate !== undefined ||
+        patch.endDate !== undefined;
+      queryClient.invalidateQueries({ queryKey: ['tour', id], refetchType: needsActiveRefetch ? 'active' : 'none' });
+      void invalidateTourAggregateCaches(queryClient, 'none');
+      toast.success('Đã tự động lưu tour');
+    },
+    onError: (error: Error, variables, context) => {
+      if (variables?.id && context?.previous) queryClient.setQueryData(['tour', variables.id], context.previous);
       const msg = error.message.toLowerCase();
       toast.error(
         msg.includes('unique') || msg.includes('duplicate') || msg.includes('tour_code')

@@ -8,19 +8,7 @@ import {
   formatNgayRangeForExcel, buildServiceItems, appendSummarySection,
 } from './excel-helpers';
 import { buildTourWorksheet } from './excel-worksheet';
-
-const COLUMN_DEFS = [
-  { key: 'code', width: 14 }, { key: 'date', width: 10 }, { key: 'service', width: 24 },
-  { key: 'serviceDate', width: 8 }, { key: 'price', width: 12 }, { key: 'quantity', width: 10 },
-  { key: 'total', width: 12 }, { key: 'location', width: 22 }, { key: 'locationDate', width: 8 },
-  { key: 'days', width: 8 }, { key: 'ctp', width: 8 }, { key: 'ctpTotal', width: 10 }, { key: 'tourTotal', width: 14 },
-  { key: 'vatRate', width: 8 }, { key: 'vatAmount', width: 12 }, { key: 'guideNote', width: 24 }, { key: 'attachmentCount', width: 12 },
-];
-const HEADER2_LABELS = [
-  'code', 'ngày', 'vé/ăn/uống/chi phí', 'ngày', 'giá vé/đơn giá',
-  'số khách/ số ngày/ tổng số chai nước uống', 'thành tiền', 'Địa điểm/tỉnh', 'ngày', 'số ngày', 'CTP', 'thành tiền', '',
-  'VAT %', 'Tiền VAT', 'Ghi chú HDV', 'Số chứng từ/ảnh',
-];
+import { TOUR_SHEET_COLUMNS, TOUR_SHEET_HEADER2_LABELS } from './tour-sheet-layout';
 
 const writeTourTotalsRow = (
   worksheet: Worksheet,
@@ -88,7 +76,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
     worksheet.headerFooter.evenHeader = worksheet.headerFooter.oddHeader;
   }
   worksheet.properties.defaultRowHeight = 20;
-  worksheet.columns = COLUMN_DEFS;
+  worksheet.columns = TOUR_SHEET_COLUMNS.map(({ key, width }) => ({ key, width }));
 
   const h1 = worksheet.getRow(1);
   h1.height = 40;
@@ -112,7 +100,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
 
   const h2 = worksheet.getRow(2);
   h2.height = 40;
-  HEADER2_LABELS.forEach((label, idx) => {
+  TOUR_SHEET_HEADER2_LABELS.forEach((label, idx) => {
     const cell = h2.getCell(idx + 1);
     cell.value = label; cell.font = { bold: true }; cell.fill = headerFill;
     cell.border = thinBorder; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };

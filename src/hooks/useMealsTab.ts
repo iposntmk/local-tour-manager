@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
 import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
+import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Meal, Tour } from '@/types/tour';
 import type { DetailedExpense, ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
@@ -92,6 +93,15 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
       clearPendingFiles();
       setEditingIndex(null);
     },
+  });
+
+  const autosaveMeal = useTourLineAutosave<Meal>({
+    tourId,
+    collection: 'meals',
+    items: meals,
+    onChange,
+    saveLine: (index, meal) => store.updateMeal(tourId!, index, meal),
+    successMessage: 'Đã tự động lưu bữa ăn',
   });
 
   const deleteMutation = useMutation({
@@ -183,8 +193,7 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
       gv = tourGuests;
     }
     const updated = { ...meals[originalIndex], guests: gv };
-    if (tourId) updateMutation.mutate({ index: originalIndex, meal: updated as Meal });
-    else { const m = [...meals]; m[originalIndex] = updated as Meal; onChange?.(m); }
+    autosaveMeal(originalIndex, updated as Meal);
   };
 
   const sortedMeals = useMemo(() =>
@@ -213,6 +222,6 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     handleCreateNewCategory: (data: ExpenseCategoryInput) => createCategoryMutation.mutate(data),
     sortedMeals, mealsTotalAmount,
     pendingFiles, setPendingFiles,
-    updateMutation, tourId,
+    updateMutation, autosaveMeal, tourId,
   };
 }

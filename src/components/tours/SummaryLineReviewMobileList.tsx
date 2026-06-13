@@ -47,9 +47,15 @@ export function SummaryLineReviewMobileList({
         <section key={`${group.lineType}-mobile`} className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="h-px flex-1 bg-border" />
-            <span className="whitespace-nowrap text-xs font-semibold text-muted-foreground">
-              {group.title} ({group.filteredRows.length}{group.filteredRows.length < group.rows.length ? `/${group.rows.length}` : ''})
-            </span>
+            <div className="min-w-0 text-center text-xs font-semibold text-muted-foreground">
+              <div>{group.title} ({group.filteredRows.length}{group.filteredRows.length < group.rows.length ? `/${group.rows.length}` : ''})</div>
+              <div className="font-bold text-foreground">
+                {formatCurrency(group.rows.reduce((sum, { line }) => sum + getTotal(line, tourGuests), 0))}
+                <span className="ml-2 text-muted-foreground">
+                  {group.rows.filter(({ line }) => line.lineStatus === 'valid').length}/{group.rows.length}
+                </span>
+              </div>
+            </div>
             <span className="h-px flex-1 bg-border" />
           </div>
           <div className="flex justify-end">{reviewAction(group)}</div>

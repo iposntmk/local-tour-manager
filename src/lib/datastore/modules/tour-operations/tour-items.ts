@@ -3,8 +3,7 @@ import type { Database } from '@/integrations/supabase/types';
 import type { Destination, Expense, Meal, Allowance, Shopping as TourShopping, Tour, CommissionPayment } from '@/types/tour';
 import type { UserProfile } from '@/types/user';
 import { canProfileViewTourShopping } from '@/lib/shopping-access';
-import type { CommissionPaymentRow } from '../store-types';
-import { mapCommissionPayment } from '../mappers';
+import { mapLineReviewFields, mapTourShopping } from '../mappers';
 import {
   buildLineWritePayload,
   mapTourDestinationLine,
@@ -33,6 +32,30 @@ export class TourItemsModule {
     throw new Error('Bạn không có quyền thao tác dữ liệu mua sắm của tour này.');
   }
 
+  private async getIndexedRowId(table: string, tourId: string, index: number): Promise<string | undefined> {
+    const { data, error } = await (this.supabase as any)
+      .from(table)
+      .select('id')
+      .eq('tour_id', tourId)
+      .order('date');
+    if (error) throw error;
+    return data?.[index]?.id;
+  }
+
+  private async updateTourLineRow(
+    table: string,
+    tourId: string,
+    index: number,
+    rowId: string | undefined,
+    payload: Record<string, unknown>,
+  ): Promise<boolean> {
+    const id = rowId || await this.getIndexedRowId(table, tourId, index);
+    if (!id) return false;
+    const { error } = await (this.supabase as any).from(table).update(payload).eq('id', id).eq('tour_id', tourId);
+    if (error) throw error;
+    return true;
+  }
+
   async getDestinations(tourId: string): Promise<Destination[]> {
     const { data, error } = await this.supabase.from('tour_destinations').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
@@ -58,12 +81,7 @@ export class TourItemsModule {
   }
 
   async updateDestination(tourId: string, index: number, destination: Destination): Promise<void> {
-    const { data: rows } = await this.supabase.from('tour_destinations').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await (this.supabase as any).from('tour_destinations').update({
-        ...buildLineWritePayload(destination),
-      }).eq('id', rows[index].id);
-      if (error) throw error;
+    if (await this.updateTourLineRow('tour_destinations', tourId, index, destination.id, buildLineWritePayload(destination))) {
       await this.recalculateTourSummary(tourId);
     }
   }
@@ -95,14 +113,7 @@ export class TourItemsModule {
   }
 
   async updateExpense(tourId: string, index: number, expense: Expense): Promise<void> {
-    const { data: rows } = await this.supabase.from('tour_expenses').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      console.log('Updating expense in DB - ID:', rows[index].id, 'Guests:', expense.guests);
-      const { error } = await (this.supabase as any).from('tour_expenses').update({
-        ...buildLineWritePayload(expense),
-      }).eq('id', rows[index].id);
-      if (error) { console.error('Error updating expense:', error); throw error; }
-      console.log('Expense updated successfully in DB');
+    if (await this.updateTourLineRow('tour_expenses', tourId, index, expense.id, buildLineWritePayload(expense))) {
       await this.recalculateTourSummary(tourId);
     }
   }
@@ -134,12 +145,7 @@ export class TourItemsModule {
   }
 
   async updateMeal(tourId: string, index: number, meal: Meal): Promise<void> {
-    const { data: rows } = await this.supabase.from('tour_meals').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await (this.supabase as any).from('tour_meals').update({
-        ...buildLineWritePayload(meal),
-      }).eq('id', rows[index].id);
-      if (error) throw error;
+    if (await this.updateTourLineRow('tour_meals', tourId, index, meal.id, buildLineWritePayload(meal))) {
       await this.recalculateTourSummary(tourId);
     }
   }
@@ -159,6 +165,7 @@ export class TourItemsModule {
     return (data || []).map((row) => ({
       date: row.date, name: row.name, price: Number(row.price) || 0,
       quantity: row.quantity || 1, categoryId: row.category_id ?? undefined,
+      ...mapLineReviewFields(row),
     }));
   }
 
@@ -172,13 +179,10 @@ export class TourItemsModule {
   }
 
   async updateAllowance(tourId: string, index: number, allowance: Allowance): Promise<void> {
-    const { data: rows } = await this.supabase.from('tour_allowances').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_allowances').update({
+    if (await this.updateTourLineRow('tour_allowances', tourId, index, allowance.id, {
         date: allowance.date, name: allowance.name,
         price: allowance.price, quantity: allowance.quantity || 1, category_id: allowance.categoryId ?? null,
-      }).eq('id', rows[index].id);
-      if (error) throw error;
+      })) {
       await this.recalculateTourSummary(tourId);
     }
   }
@@ -196,7 +200,7 @@ export class TourItemsModule {
     if (!(await this.canManageTourShopping(tourId))) return [];
     const { data, error } = await this.supabase.from('tour_shoppings').select('*').eq('tour_id', tourId).order('date');
     if (error) throw error;
-    return (data || []).map((row) => ({ name: row.name, price: Number(row.price) || 0, date: row.date }));
+    return (data || []).map((row) => mapTourShopping(row as any));
   }
 
   async addTourShopping(tourId: string, shopping: TourShopping): Promise<void> {
@@ -215,14 +219,11 @@ export class TourItemsModule {
 
   async updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void> {
     await this.assertCanManageTourShopping(tourId);
-    const { data: rows } = await this.supabase.from('tour_shoppings').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_shoppings').update({
+    if (await this.updateTourLineRow('tour_shoppings', tourId, index, shopping.id, {
         name: shopping.name, price: shopping.price, date: shopping.date,
         withholds_pit: shopping.withholdsPit ?? null, pit_rate: shopping.pitRate ?? null,
         pit_amount: shopping.pitAmount ?? null, net_commission: shopping.netCommission ?? null,
-      }).eq('id', rows[index].id);
-      if (error) throw error;
+      })) {
       await this.recalculateTourSummary(tourId);
     }
   }

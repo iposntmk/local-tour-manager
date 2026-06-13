@@ -3,6 +3,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { toVietnameseError } from '@/lib/error-messages';
+import {
+  getTourCacheSnapshot,
+  patchTourLineReviewInCache,
+  restoreTourCacheSnapshot,
+} from '@/lib/tour-cache-updates';
 import type { LineStatus, LineType } from '@/types/tour';
 
 export interface LineReviewTarget {
@@ -23,11 +28,13 @@ export function useLineReview(tourId: string | undefined) {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
 
   const updateLine = async (target: LineReviewTarget, value: LineReviewValue): Promise<boolean> => {
     if (!tourId || !target.lineId) return false;
     setBusy(true);
+    const snapshot = getTourCacheSnapshot(queryClient, tourId);
+    patchTourLineReviewInCache(queryClient, tourId, [target], value);
     try {
       await store.updateLineReview(tourId, target.lineType, target.lineId, {
         lineStatus: value.lineStatus,
@@ -37,6 +44,7 @@ export function useLineReview(tourId: string | undefined) {
       await invalidate();
       return true;
     } catch (e) {
+      restoreTourCacheSnapshot(queryClient, tourId, snapshot);
       toast.error(toVietnameseError(e, 'Không thể cập nhật.'));
       return false;
     } finally {
@@ -50,6 +58,8 @@ export function useLineReview(tourId: string | undefined) {
     const pending = targets.filter((t) => t.lineId);
     if (!pending.length) return false;
     setBusy(true);
+    const snapshot = getTourCacheSnapshot(queryClient, tourId);
+    patchTourLineReviewInCache(queryClient, tourId, pending, value);
     try {
       await Promise.all(
         pending.map((t) =>
@@ -63,6 +73,7 @@ export function useLineReview(tourId: string | undefined) {
       await invalidate();
       return true;
     } catch (e) {
+      restoreTourCacheSnapshot(queryClient, tourId, snapshot);
       toast.error(toVietnameseError(e, 'Không thể cập nhật.'));
       return false;
     } finally {

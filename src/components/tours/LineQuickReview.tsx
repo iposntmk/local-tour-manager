@@ -80,28 +80,30 @@ export function LineQuickReview({
           size="sm"
           variant={currentStatus === 'valid' ? 'default' : 'outline'}
           className={cn(
-            'h-7 min-w-0 flex-1 gap-1 px-1.5 text-xs sm:flex-none sm:px-2',
+            'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2',
             currentStatus === 'valid' && 'bg-green-600 hover:bg-green-700'
           )}
           disabled={busy}
           onClick={approve}
+          title={currentStatus === 'valid' ? labelFor('valid') : 'Duyệt'}
         >
           <Check className="h-3.5 w-3.5" />
-          <span className="truncate">{currentStatus === 'valid' ? labelFor('valid') : 'Duyệt'}</span>
+          <span className="hidden truncate sm:inline">{currentStatus === 'valid' ? labelFor('valid') : 'Duyệt'}</span>
         </Button>
         <Button
           type="button"
           size="sm"
           variant={currentStatus === 'invalid' ? 'default' : 'outline'}
           className={cn(
-            'h-7 min-w-0 flex-1 gap-1 px-1.5 text-xs sm:flex-none sm:px-2',
+            'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2',
             currentStatus === 'invalid' && 'bg-red-600 hover:bg-red-700'
           )}
           disabled={busy}
           onClick={openReject}
+          title={labelFor('invalid')}
         >
           <X className="h-3.5 w-3.5" />
-          <span className="truncate">{labelFor('invalid')}</span>
+          <span className="hidden truncate sm:inline">{labelFor('invalid')}</span>
         </Button>
       </div>
 

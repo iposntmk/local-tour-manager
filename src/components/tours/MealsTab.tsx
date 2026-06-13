@@ -44,7 +44,7 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
     deleteMutation, createMealMutation,
     handleSubmit, handleEdit, handleCancel, handleDuplicate,
     handleCreateNewMeal, handleMobileGuestsChange, handleCreateNewCategory,
-    sortedMeals, mealsTotalAmount, updateMutation,
+    sortedMeals, mealsTotalAmount, autosaveMeal,
     pendingFiles, setPendingFiles,
   } = useMealsTab({ tourId, meals, onChange, tour, readOnly, lineFieldAccess });
   const canView = (field: TourLineFieldKey) => canViewTourLineField(lineFieldAccess, field);
@@ -165,8 +165,7 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
               onDelete={(idx) => deleteMutation.mutate(idx)}
               onGuestsChange={(idx, val) => {
                 const updated = { ...meals[idx], guests: val };
-                if (tourId) updateMutation.mutate({ index: idx, meal: updated as Meal });
-                else { const m = [...meals]; m[idx] = updated as Meal; onChange?.(m); }
+                autosaveMeal(idx, updated as Meal);
               }}
               tourId={tourId}
             />

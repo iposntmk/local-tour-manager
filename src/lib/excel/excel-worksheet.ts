@@ -8,19 +8,11 @@ import {
   isTourDraftForExport, applyRowBorder, styleMergedRange, downloadWorkbook,
   formatNgayRangeForExcel, buildServiceItems, appendSummarySection, formatTourNationalities,
 } from './excel-helpers';
-
-const COLUMN_WIDTHS = [14, 10, 24, 8, 12, 10, 12, 22, 8, 8, 8, 10, 14, 8, 12, 24, 12];
-const COLUMN_KEYS = [
-  'code', 'date', 'service', 'serviceDate', 'price', 'quantity', 'total',
-  'location', 'locationDate', 'days', 'ctp', 'ctpTotal', 'tourTotal',
-  'vatRate', 'vatAmount', 'guideNote', 'attachmentCount',
-];
-const HEADER2_LABELS = [
-  'code', 'ngày', 'vé/ăn/uống/chi phí', 'ngày', 'giá vé/đơn giá',
-  'số khách/ số ngày/ tổng số chai nước uống',
-  'thành tiền', 'Địa điểm/tỉnh', 'ngày', 'số ngày', 'CTP', 'thành tiền', '',
-  'VAT %', 'Tiền VAT', 'Ghi chú HDV', 'Số chứng từ/ảnh',
-];
+import {
+  TOUR_SHEET_COLUMN_KEYS,
+  TOUR_SHEET_COLUMN_WIDTHS,
+  TOUR_SHEET_HEADER2_LABELS,
+} from './tour-sheet-layout';
 
 const writeWorksheetHeaders = (worksheet: Worksheet, isDraft: boolean) => {
   if (isDraft) {
@@ -28,7 +20,7 @@ const writeWorksheetHeaders = (worksheet: Worksheet, isDraft: boolean) => {
     worksheet.headerFooter.evenHeader = worksheet.headerFooter.oddHeader;
   }
   worksheet.properties.defaultRowHeight = 20;
-  worksheet.columns = COLUMN_KEYS.map((key, i) => ({ key, width: COLUMN_WIDTHS[i] }));
+  worksheet.columns = TOUR_SHEET_COLUMN_KEYS.map((key, i) => ({ key, width: TOUR_SHEET_COLUMN_WIDTHS[i] }));
 
   const h1 = worksheet.getRow(1);
   h1.height = 40;
@@ -53,7 +45,7 @@ const writeWorksheetHeaders = (worksheet: Worksheet, isDraft: boolean) => {
 
   const h2 = worksheet.getRow(2);
   h2.height = 40;
-  HEADER2_LABELS.forEach((label, idx) => {
+  TOUR_SHEET_HEADER2_LABELS.forEach((label, idx) => {
     const cell = h2.getCell(idx + 1);
     cell.value = label; cell.font = { bold: true }; cell.fill = headerFill;
     cell.border = thinBorder; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -120,7 +112,7 @@ export const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBui
       row.getCell(8).value = allowance.name;
       row.getCell(8).alignment = { vertical: 'middle', horizontal: 'left' };
       row.getCell(9).value = allowance.date ? formatDateDisplay(allowance.date) : '';
-      row.getCell(10).value = 1;
+      row.getCell(10).value = allowance.quantity && allowance.quantity > 0 ? allowance.quantity : 1;
       row.getCell(10).alignment = { horizontal: 'center', vertical: 'middle' };
       row.getCell(11).value = allowance.price;
       row.getCell(11).numFmt = currencyFormat;

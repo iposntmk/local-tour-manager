@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCheck, Edit2, FileText, MessageSquare, Paperclip } from 'lucide-react';
+import { AlertTriangle, CheckCheck, CheckCircle2, Circle, Edit2, EyeOff, FileText, ListFilter, MessageSquare, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -37,6 +37,20 @@ interface SummaryLineReviewTableProps {
   title?: string;
 }
 
+const FILTER_ICONS: Record<StatusFilter, typeof EyeOff> = {
+  hide_approved: EyeOff,
+  all: ListFilter,
+  approved: CheckCircle2,
+  pending: Circle,
+  invalid: AlertTriangle,
+};
+
+const getGroupAmount = (group: SummaryLineGroup, tourGuests: number) =>
+  group.rows.reduce((sum, { line }) => sum + getTotal(line, tourGuests), 0);
+
+const getApprovedCount = (group: SummaryLineGroup) =>
+  group.rows.filter(({ line }) => line.lineStatus === 'valid').length;
+
 export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidenceAccess, lineFieldAccess, lineTypes, title = 'Đối chiếu VAT, ghi chú và chứng từ' }: SummaryLineReviewTableProps) {
   const { hasPermission } = useAuth();
   const { busy: reviewBusy, updateMany } = useLineReview(tour.id);
@@ -54,20 +68,23 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
     if (ok) setStatusFilter('hide_approved');
   };
 
-  const renderApproveAll = (group: SummaryLineGroup) =>
-    canReviewLines && group.rows.some(({ line }) => line.id) ? (
+  const renderApproveAll = (group: SummaryLineGroup) => {
+    const allApproved = group.rows.length > 0 && getApprovedCount(group) === group.rows.length;
+    return canReviewLines && group.rows.some(({ line }) => line.id) ? (
       <Button
         type="button"
         size="sm"
         variant="outline"
-        className="h-7 gap-1 bg-background px-2"
-        disabled={reviewBusy}
+        className="h-7 w-7 gap-1 bg-background p-0 sm:w-auto sm:px-2"
+        disabled={reviewBusy || allApproved}
         onClick={() => approveSection(group)}
+        title={allApproved ? 'Đã duyệt tất cả dòng' : 'Duyệt tất cả dòng trong mục'}
       >
         <CheckCheck className="h-3.5 w-3.5" />
-        Duyệt cả mục
+        <span className="hidden sm:inline">Duyệt mục</span>
       </Button>
     ) : null;
+  };
   const showName = canViewTourLineField(lineFieldAccess, 'name');
   const showDate = canViewTourLineField(lineFieldAccess, 'date');
   const showPrice = canViewTourLineField(lineFieldAccess, 'price');
@@ -88,16 +105,17 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
     true,
     true,
   ].filter(Boolean).length;
-  const lineTypeKey = lineTypes?.join('|') || 'all';
+  const lineTypeSet = useMemo(() => new Set(lineTypes || []), [lineTypes]);
   const groups = useMemo(() => {
     const allGroups = buildGroups(tour);
-    if (!lineTypes?.length) return allGroups;
-    return allGroups.filter((group) => lineTypes.includes(group.lineType));
-  }, [tour, lineTypeKey]);
+    if (!lineTypeSet.size) return allGroups;
+    return allGroups.filter((group) => lineTypeSet.has(group.lineType));
+  }, [tour, lineTypeSet]);
   const filteredGroups = useMemo(() => groups.map((g) => {
     let rows = g.rows;
     if (statusFilter === 'hide_approved') rows = rows.filter(({ line }) => line.lineStatus !== 'valid');
     else if (statusFilter === 'pending') rows = rows.filter(({ line }) => !line.lineStatus || line.lineStatus === 'unchecked');
+    else if (statusFilter === 'approved') rows = rows.filter(({ line }) => line.lineStatus === 'valid');
     else if (statusFilter === 'invalid') rows = rows.filter(({ line }) => line.lineStatus === 'need_more' || line.lineStatus === 'invalid');
     return { ...g, filteredRows: rows } as FilteredSummaryLineGroup;
   }), [groups, statusFilter]);
@@ -113,18 +131,23 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
       <div className="border-b bg-muted/40 p-2 sm:bg-muted/50 sm:p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
-          <div className="grid w-full grid-cols-4 gap-1 sm:w-auto sm:flex">
-            {STATUS_FILTERS.map((f) => (
-              <Button
-                key={f.value}
-                size="sm"
-                variant={statusFilter === f.value ? 'secondary' : 'ghost'}
-                className="h-6 min-w-0 px-1 text-[11px] sm:h-7 sm:px-2 sm:text-xs"
-                onClick={() => setStatusFilter(f.value)}
-              >
-                {f.label}
-              </Button>
-            ))}
+          <div className="grid w-full grid-cols-5 gap-1 sm:w-auto sm:flex">
+            {STATUS_FILTERS.map((f) => {
+              const Icon = FILTER_ICONS[f.value];
+              return (
+                <Button
+                  key={f.value}
+                  size="sm"
+                  variant={statusFilter === f.value ? 'secondary' : 'ghost'}
+                  className="h-7 min-w-0 gap-1 px-1 text-[11px] sm:px-2 sm:text-xs"
+                  onClick={() => setStatusFilter(f.value)}
+                  title={f.label}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="hidden sm:inline">{f.label}</span>
+                </Button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -175,9 +198,13 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
               <Fragment key={group.lineType}>
                 <TableRow className={group.className}>
                   <TableCell colSpan={columnCount} className="font-semibold">
-                    <div className="flex items-center justify-between gap-2">
-                      <span>{group.title} ({group.filteredRows.length}{group.filteredRows.length < group.rows.length ? `/${group.rows.length}` : ''})</span>
-                      {renderApproveAll(group)}
+                    <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                        <span>{group.title} ({group.filteredRows.length}{group.filteredRows.length < group.rows.length ? `/${group.rows.length}` : ''})</span>
+                        <span>Tổng: {formatCurrency(getGroupAmount(group, tourGuests))}</span>
+                        <span>Đã duyệt: {getApprovedCount(group)}/{group.rows.length}</span>
+                      </div>
+                      <div className="shrink-0">{renderApproveAll(group)}</div>
                     </div>
                   </TableCell>
                 </TableRow>
