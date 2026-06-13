@@ -88,11 +88,11 @@ export function SummaryLineReviewMobileList({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-5 w-5 shrink-0"
+                          className="h-[10px] w-[10px] shrink-0"
                           onClick={() => onEditLine?.(group.lineType, index)}
                           disabled={!onEditLine || canEditLine?.(group.lineType) === false}
                         >
-                          <Edit2 className="h-2.5 w-2.5" />
+                          <Edit2 className="h-2 w-2" />
                         </Button>
                       </div>
 
