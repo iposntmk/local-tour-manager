@@ -90,7 +90,7 @@ export function SummaryLineReviewMobileList({
                           onClick={() => onEditLine?.(group.lineType, index)}
                           disabled={!onEditLine || canEditLine?.(group.lineType) === false}
                         >
-                          <Edit2 className="h-[4px] w-[4px]" />
+                          <Edit2 className="h-[8px] w-[8px]" />
                         </button>
                       </div>
 

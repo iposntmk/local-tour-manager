@@ -107,14 +107,14 @@ export function LineQuickReview({
             onClick={approve}
             title={approveLabel}
             className={cn(
-              'inline-flex flex-col items-center justify-center gap-0 rounded border px-[3px] py-[1px] leading-none',
+              'inline-flex flex-col items-center justify-center gap-0 rounded border px-[6px] py-[2px] leading-none',
               currentStatus === 'valid'
                 ? 'border-green-600 bg-green-600 text-white'
                 : 'border-border bg-background text-foreground',
             )}
           >
-            <Check className="h-[3px] w-[3px]" />
-            <span className="text-[3px]">{approveLabel}</span>
+            <Check className="h-[6px] w-[6px]" />
+            <span className="text-[6px]">{approveLabel}</span>
           </button>
           <button
             type="button"
@@ -122,14 +122,14 @@ export function LineQuickReview({
             onClick={openReject}
             title={rejectLabel}
             className={cn(
-              'inline-flex flex-col items-center justify-center gap-0 rounded border px-[3px] py-[1px] leading-none',
+              'inline-flex flex-col items-center justify-center gap-0 rounded border px-[6px] py-[2px] leading-none',
               currentStatus === 'invalid'
                 ? 'border-red-600 bg-red-600 text-white'
                 : 'border-border bg-background text-foreground',
             )}
           >
-            <X className="h-[3px] w-[3px]" />
-            <span className="text-[3px]">{rejectLabel}</span>
+            <X className="h-[6px] w-[6px]" />
+            <span className="text-[6px]">{rejectLabel}</span>
           </button>
         </div>
         {rejectForm}
