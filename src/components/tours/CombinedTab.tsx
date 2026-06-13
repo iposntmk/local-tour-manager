@@ -5,6 +5,7 @@ import { buildServiceItems, formatNgayRangeForExcel } from '@/lib/excel/excel-he
 import { TOUR_SHEET_COLUMNS, TOUR_SHEET_HEADER_GROUPS } from '@/lib/excel/tour-sheet-layout';
 import { cn } from '@/lib/utils';
 import type { Allowance, Tour } from '@/types/tour';
+import { CombinedTabMobile } from './CombinedTabMobile';
 
 interface CombinedTabProps {
   tour: Tour | null | undefined;
@@ -58,7 +59,23 @@ export function CombinedTab({ tour }: CombinedTabProps) {
           BẢN NHÁP - CHƯA DUYỆT
         </div>
       )}
-      <div className="overflow-x-auto border bg-background">
+
+      {/* Mobile card view */}
+      <div className="md:hidden">
+        <CombinedTabMobile
+          tour={tour}
+          totalGuests={totalGuests}
+          serviceItems={serviceItems}
+          allowanceItems={allowanceItems}
+          serviceTotal={serviceTotal}
+          allowanceTotal={allowanceTotal}
+          totalTabs={totalTabs}
+          summaryRows={summaryRows}
+        />
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden overflow-x-auto border bg-background md:block">
         <Table className="min-w-[1560px] border-collapse text-xs">
           <TableHeader>
             <TableRow>
