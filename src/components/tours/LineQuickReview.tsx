@@ -77,9 +77,9 @@ export function LineQuickReview({
   const approveLabel = currentStatus === 'valid' ? (compact ? 'OK' : labelFor('valid')) : (compact ? 'OK' : 'Duyệt');
   const rejectLabel = compact ? 'Lỗi' : labelFor('invalid');
   const btnBase = compact
-    ? 'h-3 min-w-0 flex-none gap-0.5 px-1 text-[9px]'
+    ? 'h-[5px] min-w-0 flex-none gap-px px-[2px] text-[5px] leading-none'
     : 'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2';
-  const iconSize = compact ? 'h-2 w-2' : 'h-3.5 w-3.5';
+  const iconSize = compact ? 'h-[4px] w-[4px]' : 'h-3.5 w-3.5';
   const textClass = compact ? '' : 'hidden truncate sm:inline';
 
   return (

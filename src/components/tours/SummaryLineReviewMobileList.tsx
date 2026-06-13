@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { Edit2, Paperclip } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/currency-utils';
 import { LineQuickReview } from './LineQuickReview';
 import type { Destination, Expense, LineType, Meal, Tour, TourLineAttachment } from '@/types/tour';
@@ -85,15 +84,14 @@ export function SummaryLineReviewMobileList({
                             {formatCurrency(getTotal(line, tourGuests))}
                           </span>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-[10px] w-[10px] shrink-0"
+                        <button
+                          type="button"
+                          className="shrink-0 p-0 leading-none opacity-50 disabled:opacity-20"
                           onClick={() => onEditLine?.(group.lineType, index)}
                           disabled={!onEditLine || canEditLine?.(group.lineType) === false}
                         >
-                          <Edit2 className="h-2 w-2" />
-                        </Button>
+                          <Edit2 className="h-[4px] w-[4px]" />
+                        </button>
                       </div>
 
                       {/* Row 2: price · attachments · VAT + approve/reject buttons */}
