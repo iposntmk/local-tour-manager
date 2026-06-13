@@ -75,7 +75,7 @@ export function LineQuickReview({
   };
 
   const approveLabel = currentStatus === 'valid' ? (compact ? 'OK' : labelFor('valid')) : (compact ? 'OK' : 'Duyệt');
-  const rejectLabel = compact ? 'Lỗi' : labelFor('invalid');
+  const rejectLabel = compact ? 'not ok' : labelFor('invalid');
 
   const rejectForm = rejecting && (
     <div className="space-y-2 rounded-md border bg-background p-2">
@@ -104,21 +104,6 @@ export function LineQuickReview({
           <button
             type="button"
             disabled={busy}
-            onClick={approve}
-            title={approveLabel}
-            className={cn(
-              'inline-flex flex-col items-center justify-center gap-0 rounded border px-1 py-0.5 leading-none',
-              currentStatus === 'valid'
-                ? 'border-green-600 bg-green-600 text-white'
-                : 'border-border bg-background text-foreground',
-            )}
-          >
-            <Check className="h-2 w-2" />
-            <span className="text-[8px]">{approveLabel}</span>
-          </button>
-          <button
-            type="button"
-            disabled={busy}
             onClick={openReject}
             title={rejectLabel}
             className={cn(
@@ -130,6 +115,21 @@ export function LineQuickReview({
           >
             <X className="h-2 w-2" />
             <span className="text-[8px]">{rejectLabel}</span>
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={approve}
+            title={approveLabel}
+            className={cn(
+              'inline-flex flex-col items-center justify-center gap-0 rounded border px-1 py-0.5 leading-none',
+              currentStatus === 'valid'
+                ? 'border-green-600 bg-green-600 text-white'
+                : 'border-border bg-background text-foreground',
+            )}
+          >
+            <Check className="h-2 w-2" />
+            <span className="text-[8px]">{approveLabel}</span>
           </button>
         </div>
         {rejectForm}
