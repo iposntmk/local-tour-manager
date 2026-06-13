@@ -18,6 +18,7 @@ interface LineQuickReviewProps {
   editable: boolean;
   statusLabels?: Partial<Record<LineStatus, string>>;
   onApproved?: () => void;
+  compact?: boolean;
 }
 
 const STATUS_STYLES: Record<LineStatus, string> = {
@@ -40,6 +41,7 @@ export function LineQuickReview({
   editable,
   statusLabels,
   onApproved,
+  compact = false,
 }: LineQuickReviewProps) {
   const { hasPermission } = useAuth();
   const { busy, updateLine } = useLineReview(tourId);
@@ -72,38 +74,40 @@ export function LineQuickReview({
     if (ok) setRejecting(false);
   };
 
+  const approveLabel = currentStatus === 'valid' ? (compact ? 'OK' : labelFor('valid')) : (compact ? 'OK' : 'Duyệt');
+  const rejectLabel = compact ? 'Lỗi' : labelFor('invalid');
+  const btnBase = compact
+    ? 'h-6 min-w-0 flex-none gap-0.5 px-1.5 text-[11px]'
+    : 'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2';
+  const iconSize = compact ? 'h-3 w-3' : 'h-3.5 w-3.5';
+  const textClass = compact ? '' : 'hidden truncate sm:inline';
+
   return (
     <div className="space-y-2">
-      <div className="flex w-full flex-nowrap items-center gap-1.5 sm:w-auto">
+      <div className="flex flex-nowrap items-center gap-1">
         <Button
           type="button"
           size="sm"
           variant={currentStatus === 'valid' ? 'default' : 'outline'}
-          className={cn(
-            'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2',
-            currentStatus === 'valid' && 'bg-green-600 hover:bg-green-700'
-          )}
+          className={cn(btnBase, currentStatus === 'valid' && 'bg-green-600 hover:bg-green-700')}
           disabled={busy}
           onClick={approve}
-          title={currentStatus === 'valid' ? labelFor('valid') : 'Duyệt'}
+          title={approveLabel}
         >
-          <Check className="h-3.5 w-3.5" />
-          <span className="hidden truncate sm:inline">{currentStatus === 'valid' ? labelFor('valid') : 'Duyệt'}</span>
+          <Check className={iconSize} />
+          <span className={textClass}>{approveLabel}</span>
         </Button>
         <Button
           type="button"
           size="sm"
           variant={currentStatus === 'invalid' ? 'default' : 'outline'}
-          className={cn(
-            'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2',
-            currentStatus === 'invalid' && 'bg-red-600 hover:bg-red-700'
-          )}
+          className={cn(btnBase, currentStatus === 'invalid' && 'bg-red-600 hover:bg-red-700')}
           disabled={busy}
           onClick={openReject}
-          title={labelFor('invalid')}
+          title={rejectLabel}
         >
-          <X className="h-3.5 w-3.5" />
-          <span className="hidden truncate sm:inline">{labelFor('invalid')}</span>
+          <X className={iconSize} />
+          <span className={textClass}>{rejectLabel}</span>
         </Button>
       </div>
 
