@@ -20,7 +20,12 @@ import { toVietnameseError } from '@/lib/error-messages';
 import { useAuth } from '@/contexts/AuthContext';
 import { areAllSettlementLinesApproved, getReviewableSettlementLines, hasSettlementLinesNeedingFix } from '@/lib/tour-line-utils';
 import { canReviewTour } from '@/lib/settlement-utils';
-import { getTourCacheSnapshot, patchTourSettlementStatusInCache, restoreTourCacheSnapshot } from '@/lib/tour-cache-updates';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import {
+  patchTourSettlementStatusInCache,
+  restoreTourAggregateCaches,
+  snapshotTourAggregateCaches,
+} from '@/lib/tour-cache-updates';
 import type { Tour } from '@/types/tour';
 
 type ActionKind = 'approve' | 'reopen' | null;
@@ -44,11 +49,11 @@ export function SummaryWorkflowFooter({ tour, canExport, onExport }: SummaryWork
   const canApprove = hasPermission('approve_settlement') && canReviewTour(tour);
   const canReopen = hasPermission('reopen_settlement') && (tour.settlementStatus === 'approved' || tour.settlementStatus === 'closed');
 
-  const refresh = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['tour', tour.id] }),
-      queryClient.invalidateQueries({ queryKey: ['tours'] }),
-      queryClient.invalidateQueries({ queryKey: ['settlement-pending-count'] }),
+  const refresh = () => {
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['tour', tour.id], refetchType: 'none' }),
+      invalidateTourAggregateCaches(queryClient, 'none'),
+      queryClient.invalidateQueries({ queryKey: ['settlement-pending-count'], refetchType: 'none' }),
     ]);
   };
 
@@ -58,7 +63,7 @@ export function SummaryWorkflowFooter({ tour, canExport, onExport }: SummaryWork
       return;
     }
     setBusy(true);
-    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    const snapshot = await snapshotTourAggregateCaches(queryClient, tour.id);
     patchTourSettlementStatusInCache(queryClient, tour.id, action === 'approve' ? 'approved' : 'draft');
     try {
       if (action === 'approve') {
@@ -68,11 +73,11 @@ export function SummaryWorkflowFooter({ tour, canExport, onExport }: SummaryWork
         await store.reopenTourSettlement(tour.id, note || undefined);
         toast.success('Đã mở lại hồ sơ.');
       }
-      await refresh();
+      refresh();
       setPending(null);
       setNote('');
     } catch (error) {
-      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
+      restoreTourAggregateCaches(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(error, 'Không thể cập nhật luồng.'));
     } finally {
       setBusy(false);

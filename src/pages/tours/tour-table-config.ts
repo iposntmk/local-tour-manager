@@ -3,6 +3,9 @@ import type { DateRange } from 'react-day-picker';
 import type { Tour } from '@/types/tour';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
 import { isWaterExpense } from '@/lib/water-expense-utils';
+import { getShoppingCommissionInfo } from '@/lib/shopping-commission-utils';
+
+export { getShoppingCommissionInfo } from '@/lib/shopping-commission-utils';
 
 // Truncate helper with ellipsis included in `max` length
 export const truncateText = (text: string | undefined | null, max = 15): string => {
@@ -51,35 +54,6 @@ export const getAllowanceTotal = (tour: Tour) => {
 export const getTabsCostTotal = (tour: Tour) =>
   (tour.summary?.totalTabs ?? 0) - getAllowanceTotal(tour);
 
-export interface ShoppingCommissionInfo {
-  hasShoppings: boolean;
-  allPaid: boolean;
-  unpaidItems: { name: string; remaining: number }[];
-}
-
-export const getShoppingCommissionInfo = (tour: Tour): ShoppingCommissionInfo => {
-  const withCommission = (tour.shoppings || []).filter(s => (s.price ?? 0) > 0);
-  if (withCommission.length === 0) return { hasShoppings: false, allPaid: true, unpaidItems: [] };
-  const unpaidItems = withCommission
-    .map(s => {
-      const net = s.netCommission ?? s.price;
-      const paid = (s.payments || []).reduce((sum, p) => sum + p.amount, 0);
-      return { name: s.name || 'Không tên', remaining: net - paid };
-    })
-    .filter(item => item.remaining > 0);
-  return { hasShoppings: true, allPaid: unpaidItems.length === 0, unpaidItems };
-};
-
-export const getUnpaidCommissionShoppingNames = (tour: Tour) =>
-  (tour.shoppings || [])
-    .filter((shopping) => {
-      if ((shopping.price ?? 0) <= 0) return false;
-      const netCommission = shopping.netCommission ?? shopping.price;
-      const paidTotal = (shopping.payments || []).reduce((sum, payment) => sum + payment.amount, 0);
-      return paidTotal < netCommission;
-    })
-    .map((shopping) => shopping.name || 'Không tên');
-
 export const getTourWarningInfo = (tour: Tour) => {
   const hasDetails = tour.detailsLoaded === true;
 
@@ -105,13 +79,16 @@ export const getTourWarningInfo = (tour: Tour) => {
     ? (!(tour.expenses || []).some(isWaterExpense) && !tour.waterExpenseDismissed)
     : !!tour.missingWaterExpense;
 
-  const unpaidCommissionShoppingNames = getUnpaidCommissionShoppingNames(tour);
-  const hasUnpaidCommission = hasDetails
-    ? unpaidCommissionShoppingNames.length > 0
+  const shoppingCommissionInfo = getShoppingCommissionInfo(tour.shoppings || []);
+  const unpaidCommissionShoppingNames = shoppingCommissionInfo.unpaidItems.map((item) => item.name);
+  const hasUnpaidCommission = shoppingCommissionInfo.hasShoppings
+    ? !shoppingCommissionInfo.allPaid
+    : hasDetails
+      ? false
     : !!tour.hasUnpaidCommission;
 
   const warningTitle = [
-    hasUnpaidCommission && (hasDetails
+    hasUnpaidCommission && (unpaidCommissionShoppingNames.length > 0
       ? `Hoa hồng chưa nhận đủ: ${unpaidCommissionShoppingNames.join(', ')}`
       : 'Hoa hồng chưa nhận đủ'),
     hasDuplicateDestNames && 'Tên điểm đến trùng lặp',

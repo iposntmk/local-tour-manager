@@ -14,6 +14,7 @@ import { ShoppingDesktopTable } from '@/components/tours/ShoppingDesktopTable';
 import { NewShoppingDialog } from '@/components/tours/NewShoppingDialog';
 import { ShoppingsMobileList } from '@/components/tours/mobile/ShoppingsMobileList';
 import { getNetCommission, getPaymentRemaining, isFullyReceived } from '@/lib/shopping-commission-utils';
+import { useShoppingCommissionMutations } from '@/hooks/useShoppingCommissionMutations';
 
 const REQUIRED_PIN = '0829101188';
 const DEFAULT_RECEIVE_FULL = true;
@@ -56,6 +57,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     queryKey: ['shoppings', guideId ?? null],
     queryFn: () => store.listShoppings({ status: 'active', guideId }),
   });
+  const { addPaymentMutation, deletePaymentMutation, clearPaymentsMutation } = useShoppingCommissionMutations(tourId);
 
   useEffect(() => {
     if (tour?.startDate) {
@@ -113,49 +115,6 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     },
   });
 
-  const addPaymentMutation = useMutation({
-    mutationFn: async ({ shopping, payment }: { shopping: Shopping; payment: Omit<CommissionPayment, 'id' | 'tourShoppingId'> }) => {
-      if (!shopping.id) throw new Error('Chỉ thêm thanh toán sau khi mục mua sắm đã được lưu.');
-      return store.addCommissionPayment({ ...payment, tourShoppingId: shopping.id });
-    },
-    onSuccess: () => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      setPaymentForm({ amount: 0, paymentMethod: 'cash', paidAt: new Date().toISOString().split('T')[0], note: '' });
-      toast.success('Đã thêm khoản nhận hoa hồng');
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const deletePaymentMutation = useMutation({
-    mutationFn: (id: string) => store.deleteCommissionPayment(id),
-    onSuccess: () => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã xóa khoản nhận hoa hồng');
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const clearPaymentsMutation = useMutation({
-    mutationFn: async (shopping: Shopping) => {
-      const ids = (shopping.payments || []).map((p) => p.id).filter((id): id is string => Boolean(id));
-      await Promise.all(ids.map((id) => store.deleteCommissionPayment(id)));
-    },
-    onSuccess: () => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã bỏ ghi nhận hoa hồng');
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
   const handleAddPayment = (
     shopping: Shopping,
     amount: number,
@@ -166,7 +125,10 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     const paidAt = paymentPatch?.paidAt ?? paymentForm.paidAt;
     if (!amount || amount <= 0 || !paidAt) { toast.error('Vui lòng nhập số tiền và ngày nhận.'); return; }
     if (amount > remaining) { toast.error('Số tiền nhận không được vượt quá số tiền còn lại.'); return; }
-    addPaymentMutation.mutate({ shopping, payment: { ...paymentForm, ...paymentPatch, amount } });
+    addPaymentMutation.mutate(
+      { shopping, payment: { ...paymentForm, ...paymentPatch, amount } },
+      { onSuccess: () => setPaymentForm({ amount: 0, paymentMethod: 'cash', paidAt: new Date().toISOString().split('T')[0], note: '' }) }
+    );
   };
 
   const handleClearPayments = (shopping: Shopping): boolean => {

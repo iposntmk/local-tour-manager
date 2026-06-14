@@ -17,6 +17,12 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { store } from '@/lib/datastore';
 import { toVietnameseError } from '@/lib/error-messages';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import {
+  patchTourPaymentRowsInCache,
+  restoreTourAggregateCaches,
+  snapshotTourAggregateCaches,
+} from '@/lib/tour-cache-updates';
 import { computePaymentRemaining, formatPaymentMethod, getTourFinalTotal } from '@/lib/payment-utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import type { PaymentMethod, Tour, TourPayment } from '@/types/tour';
@@ -89,29 +95,41 @@ export function RecordPaymentDialog({
       return;
     }
     setBusy(true);
+    const snapshot = await snapshotTourAggregateCaches(queryClient, tour.id);
+    const paymentPatch = {
+      amount,
+      method,
+      paidAt: toIsoTimestamp(paidAt),
+      note: note || undefined,
+    };
+    const previousPayments = tour.payments ?? [];
+    const optimisticPayment: TourPayment = isEdit && payment
+      ? { ...payment, ...paymentPatch }
+      : { ...paymentPatch, id: `optimistic-${Date.now()}`, tourId: tour.id };
+    const optimisticPayments = isEdit && payment
+      ? previousPayments.map((row) => (row.id === payment.id ? optimisticPayment : row))
+      : [optimisticPayment, ...previousPayments];
+    patchTourPaymentRowsInCache(queryClient, tour.id, optimisticPayments);
+
     try {
       if (isEdit && payment) {
-        await store.updateTourPayment(payment.id, {
-          amount,
-          method,
-          paidAt: toIsoTimestamp(paidAt),
-          note: note || undefined,
-        });
+        await store.updateTourPayment(payment.id, paymentPatch);
         toast.success('Đã cập nhật khoản thanh toán.');
       } else {
-        await store.addTourPayment(tour.id, {
-          amount,
-          method,
-          paidAt: toIsoTimestamp(paidAt),
-          note: note || undefined,
-        });
+        const createdPayment = await store.addTourPayment(tour.id, paymentPatch);
+        patchTourPaymentRowsInCache(
+          queryClient,
+          tour.id,
+          optimisticPayments.map((row) => (row.id === optimisticPayment.id ? createdPayment : row))
+        );
         toast.success('Đã ghi nhận thanh toán.');
       }
-      await queryClient.invalidateQueries({ queryKey: ['tour', tour.id] });
-      await queryClient.invalidateQueries({ queryKey: ['tours'] });
+      void queryClient.invalidateQueries({ queryKey: ['tour', tour.id], refetchType: 'none' });
+      void invalidateTourAggregateCaches(queryClient, 'none');
       onSaved?.();
       onOpenChange(false);
     } catch (e) {
+      restoreTourAggregateCaches(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể lưu khoản thanh toán.'));
     } finally {
       setBusy(false);

@@ -21,7 +21,12 @@ import type { Tour } from '@/types/tour';
 import { areAllSettlementLinesApproved } from '@/lib/tour-line-utils';
 import { canReviewTour, canSubmitTour, validateSettlementReady } from '@/lib/settlement-utils';
 import { canRecordPayment, isTourPaymentEligible } from '@/lib/payment-utils';
-import { getTourCacheSnapshot, patchTourSettlementStatusInCache, restoreTourCacheSnapshot } from '@/lib/tour-cache-updates';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import {
+  patchTourSettlementStatusInCache,
+  restoreTourAggregateCaches,
+  snapshotTourAggregateCaches,
+} from '@/lib/tour-cache-updates';
 import { SettlementStatusBadge } from './SettlementStatusBadge';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
@@ -47,11 +52,11 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
     setNote('');
   };
 
-  const refresh = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['tour', tour.id] }),
-      queryClient.invalidateQueries({ queryKey: ['tours'] }),
-      queryClient.invalidateQueries({ queryKey: ['settlement-pending-count'] }),
+  const refresh = () => {
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['tour', tour.id], refetchType: 'none' }),
+      invalidateTourAggregateCaches(queryClient, 'none'),
+      queryClient.invalidateQueries({ queryKey: ['settlement-pending-count'], refetchType: 'none' }),
     ]);
     onChanged?.();
   };
@@ -63,15 +68,15 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
       return;
     }
     setBusy(true);
-    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    const snapshot = await snapshotTourAggregateCaches(queryClient, tour.id);
     patchTourSettlementStatusInCache(queryClient, tour.id, 'submitted');
     try {
       await store.submitTourSettlement(tour.id, note || undefined);
       toast.success('Đã gửi kế toán kiểm tra.');
-      await refresh();
+      refresh();
       closeDialog();
     } catch (e) {
-      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
+      restoreTourAggregateCaches(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể gửi hồ sơ.'));
     } finally {
       setBusy(false);
@@ -80,15 +85,15 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
 
   const handleReturn = async () => {
     setBusy(true);
-    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    const snapshot = await snapshotTourAggregateCaches(queryClient, tour.id);
     patchTourSettlementStatusInCache(queryClient, tour.id, 'need_changes');
     try {
       await store.returnTourSettlement(tour.id, note || undefined);
       toast.success('Đã trả hồ sơ về HDV.');
-      await refresh();
+      refresh();
       closeDialog();
     } catch (e) {
-      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
+      restoreTourAggregateCaches(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể trả hồ sơ.'));
     } finally {
       setBusy(false);
@@ -101,15 +106,15 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
       return;
     }
     setBusy(true);
-    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    const snapshot = await snapshotTourAggregateCaches(queryClient, tour.id);
     patchTourSettlementStatusInCache(queryClient, tour.id, 'approved');
     try {
       await store.approveTourSettlement(tour.id, note || undefined);
       toast.success('Đã duyệt hồ sơ. Hồ sơ đã được khóa.');
-      await refresh();
+      refresh();
       closeDialog();
     } catch (e) {
-      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
+      restoreTourAggregateCaches(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể duyệt hồ sơ.'));
     } finally {
       setBusy(false);
@@ -118,15 +123,15 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
 
   const handleReopen = async () => {
     setBusy(true);
-    const snapshot = getTourCacheSnapshot(queryClient, tour.id);
+    const snapshot = await snapshotTourAggregateCaches(queryClient, tour.id);
     patchTourSettlementStatusInCache(queryClient, tour.id, 'draft');
     try {
       await store.reopenTourSettlement(tour.id, note || undefined);
       toast.success('Đã mở khóa hồ sơ.');
-      await refresh();
+      refresh();
       closeDialog();
     } catch (e) {
-      restoreTourCacheSnapshot(queryClient, tour.id, snapshot);
+      restoreTourAggregateCaches(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể mở khóa hồ sơ.'));
     } finally {
       setBusy(false);

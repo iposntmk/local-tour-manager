@@ -75,7 +75,7 @@ export const ToursMobileCards = ({
       const allowanceTotal = getAllowanceTotal(tour);
       const tabsCostTotal = getTabsCostTotal(tour);
       const totalTabs = tour.summary?.totalTabs ?? 0;
-      const shoppingInfo = getShoppingCommissionInfo(tour);
+      const shoppingInfo = getShoppingCommissionInfo(tour.shoppings || []);
       const nationalities = formatTourNationalities(tour);
 
       return (

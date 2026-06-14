@@ -19,6 +19,12 @@ import { RecordPaymentDialog } from './RecordPaymentDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { store } from '@/lib/datastore';
 import { toVietnameseError } from '@/lib/error-messages';
+import { invalidateTourAggregateCaches } from '@/lib/query-cache';
+import {
+  patchTourPaymentRowsInCache,
+  restoreTourAggregateCaches,
+  snapshotTourAggregateCaches,
+} from '@/lib/tour-cache-updates';
 import {
   canRecordPayment,
   computePaymentRemaining,
@@ -62,13 +68,20 @@ export function TourPaymentsPanel({ tour }: TourPaymentsPanelProps) {
   const handleDelete = async () => {
     if (!deleting) return;
     setBusy(true);
+    const snapshot = await snapshotTourAggregateCaches(queryClient, tour.id);
+    patchTourPaymentRowsInCache(
+      queryClient,
+      tour.id,
+      payments.filter((payment) => payment.id !== deleting.id)
+    );
     try {
       await store.deleteTourPayment(deleting.id);
       toast.success('Đã xóa khoản thanh toán.');
-      await queryClient.invalidateQueries({ queryKey: ['tour', tour.id] });
-      await queryClient.invalidateQueries({ queryKey: ['tours'] });
+      void queryClient.invalidateQueries({ queryKey: ['tour', tour.id], refetchType: 'none' });
+      void invalidateTourAggregateCaches(queryClient, 'none');
       setDeleting(undefined);
     } catch (e) {
+      restoreTourAggregateCaches(queryClient, tour.id, snapshot);
       toast.error(toVietnameseError(e, 'Không thể xóa khoản thanh toán.'));
     } finally {
       setBusy(false);

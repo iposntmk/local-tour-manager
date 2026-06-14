@@ -7,6 +7,7 @@ import { SettlementStatusBadge } from '@/components/tours/SettlementStatusBadge'
 import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
 import { isTourPaymentEligible } from '@/lib/payment-utils';
+import { getShoppingCommissionInfo } from '@/lib/shopping-commission-utils';
 import type { Tour } from '@/types/tour';
 import {
   formatTourNationalities,
@@ -97,16 +98,27 @@ export const ToursDesktopTableCellContent = ({
       ) : (
         <span className="text-muted-foreground">-</span>
       );
-    case 'commission':
+    case 'commission': {
+      const shoppingInfo = getShoppingCommissionInfo(tour.shoppings || []);
+      if (shoppingInfo.hasShoppings && shoppingInfo.allPaid) {
+        return (
+          <Badge className="gap-1 border border-emerald-500 bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-600">
+            <WalletCards className="h-3 w-3" />
+            Đã nhận đủ
+          </Badge>
+        );
+      }
       if (!row.warningInfo.hasUnpaidCommission) return <span className="text-muted-foreground">-</span>;
+      const unpaidNames = row.warningInfo.unpaidCommissionShoppingNames;
       return (
         <Badge className="max-w-full items-start gap-1 whitespace-normal break-words bg-red-600 text-left text-[11px] leading-snug hover:bg-red-700 sm:text-xs text-white" title={row.warningInfo.warningTitle}>
           <WalletCards className="mt-0.5 h-3 w-3 shrink-0" />
           <span>
-            Chưa nhận đủ: {row.warningInfo.unpaidCommissionShoppingNames.join(', ')}
+            {unpaidNames.length > 0 ? `Chưa nhận đủ: ${unpaidNames.join(', ')}` : 'Hoa hồng chưa nhận đủ'}
           </span>
         </Badge>
       );
+    }
     case 'warning':
       return (row.warningInfo.hasZeroPrice || row.warningInfo.hasDuplicateDestNames || row.warningInfo.missingWaterExpense) ? (
         <Badge variant="destructive" className="gap-1" title={row.warningInfo.warningTitle}>

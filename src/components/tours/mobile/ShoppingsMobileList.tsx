@@ -15,32 +15,17 @@ import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { TourRowIcon } from '@/components/tours/TourRowIcon';
 import type { CommissionPayment, PaymentMethod, Shopping } from '@/types/tour';
+import {
+  getCommissionBadgeVariant,
+  getCommissionCardClass,
+  getCommissionStatusLabel,
+  getNetCommission,
+  getPaidTotal,
+  getPaymentRemaining,
+  isFullyReceived,
+} from '@/lib/shopping-commission-utils';
 
 const paymentMethodLabels: Record<PaymentMethod, string> = { cash: 'Tiền mặt', bank_transfer: 'Chuyển khoản' };
-const getNetCommission = (s: Shopping) => s.netCommission ?? Math.max(0, s.price - (s.pitAmount || 0));
-const getPaidTotal = (s: Shopping) => (s.payments || []).reduce((sum, p) => sum + p.amount, 0);
-const getPaymentRemaining = (s: Shopping) => Math.max(0, getNetCommission(s) - getPaidTotal(s));
-const isFullyReceived = (s: Shopping) => getPaymentRemaining(s) <= 0 && (s.payments || []).length > 0;
-const getStatus = (s: Shopping) => {
-  const p = s.payments || [];
-  if (p.length === 0) return 'pending';
-  return getPaidTotal(s) >= getNetCommission(s) ? 'paid' : 'partial';
-};
-const getStatusLabel = (s: Shopping) => {
-  const st = s.commissionStatus || getStatus(s);
-  return st === 'paid' ? 'Đã nhận đủ' : st === 'partial' ? 'Một phần' : 'Chưa nhận';
-};
-const getBadgeVariant = (s: Shopping): 'default' | 'secondary' | 'outline' => {
-  const st = s.commissionStatus || getStatus(s);
-  return st === 'paid' ? 'default' : st === 'partial' ? 'secondary' : 'outline';
-};
-const getCardClass = (s: Shopping) => {
-  if ((s.price ?? 0) === 0) return 'border-red-200 bg-red-50 dark:bg-red-950/30';
-  const st = s.commissionStatus || getStatus(s);
-  if (st === 'paid') return 'border-emerald-200 bg-emerald-50/80 dark:bg-emerald-950/30';
-  if (st === 'partial') return 'border-amber-300 bg-amber-100 dark:bg-amber-900/40';
-  return 'border-red-300 bg-red-100 dark:bg-red-800/50';
-};
 
 interface Props {
   shoppings: Shopping[];
@@ -76,7 +61,7 @@ export function ShoppingsMobileList({ shoppings, readOnly, isPendingAdd, isPendi
         const isCash = !!quickCashByKey[cashKey];
         const isZeroPrice = (shopping.price ?? 0) === 0;
         return (
-          <div key={`card-${index}`} className={`rounded-lg border p-2.5 space-y-1.5 ${getCardClass(shopping)}`}>
+          <div key={`card-${index}`} className={`rounded-lg border p-2.5 space-y-1.5 ${getCommissionCardClass(shopping)}`}>
             {/* Row 1: icon + name + date + "..." dropdown */}
             <div className="flex items-center gap-1.5 min-w-0">
               <TourRowIcon kind="shopping" label={shopping.name} className="shrink-0" />
@@ -119,7 +104,7 @@ export function ShoppingsMobileList({ shoppings, readOnly, isPendingAdd, isPendi
             {/* Row 3: status + quick actions */}
             <div className="flex items-center justify-between gap-2 flex-wrap pl-9">
               <Button type="button" variant="ghost" className="h-auto gap-1.5 px-0 py-0.5" onClick={() => setExpandedIndex(isExpanded ? null : index)}>
-                <Badge variant={getBadgeVariant(shopping)}>{getStatusLabel(shopping)}</Badge>
+                <Badge variant={getCommissionBadgeVariant(shopping)}>{getCommissionStatusLabel(shopping)}</Badge>
                 <WalletCards className="h-3.5 w-3.5" />
               </Button>
               {remaining > 0 && (

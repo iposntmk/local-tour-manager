@@ -19,6 +19,7 @@ import { canEditTourData } from '@/lib/settlement-utils';
 import { canAuthViewTourShopping } from '@/lib/shopping-access';
 import { getTourInfoFieldAccess, getTourLineFieldAccess, getTourTabAccess } from '@/lib/tour-detail-permissions';
 import { isWaterExpense } from '@/lib/water-expense-utils';
+import { getShoppingCommissionInfo } from '@/lib/shopping-commission-utils';
 import type { Tour, TourInput, TourSummary } from '@/types/tour';
 
 const calcTotalDays = (startDate: string | undefined, endDate: string | undefined) => {
@@ -164,10 +165,8 @@ export function useTourDetail() {
   const isSettlementLocked = !isNewTour && !settlementUnlocked;
   const settlementStatus = displayTour?.settlementStatus;
   const totalGuests = displayTour?.totalGuests || (displayTour?.adults || 0) + (displayTour?.children || 0) || 0;
-  const hasUnpaidShoppings = canViewShoppings && (displayTour?.shoppings || []).some((s) => {
-    if ((s.price ?? 0) <= 0) return false;
-    return (s.payments || []).reduce((sum, p) => sum + p.amount, 0) < (s.netCommission ?? s.price);
-  });
+  const shoppingCommissionInfo = getShoppingCommissionInfo(displayTour?.shoppings || []);
+  const hasUnpaidShoppings = canViewShoppings && shoppingCommissionInfo.hasShoppings && !shoppingCommissionInfo.allPaid;
   const hasWaterExpense = (displayTour?.expenses || []).some(isWaterExpense);
   const isWaterDismissed = displayTour?.waterExpenseDismissed === true;
   const showWaterWarning = !isNewTour && !hasWaterExpense && !isWaterDismissed && !waterDismissedLocal;
