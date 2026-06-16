@@ -13,6 +13,7 @@ interface VisibilityContextType extends VisibilityState {
 }
 
 const STORAGE_KEY = 'ltm_view_visibility';
+const DEFAULT_VISIBILITY: VisibilityState = { showTopMenu: true, showHeaderInfo: true, showTabs: true };
 
 function loadState(): VisibilityState {
   try {
@@ -25,8 +26,10 @@ function loadState(): VisibilityState {
         showTabs: parsed.showTabs !== false,
       };
     }
-  } catch {}
-  return { showTopMenu: true, showHeaderInfo: true, showTabs: true };
+  } catch {
+    return DEFAULT_VISIBILITY;
+  }
+  return DEFAULT_VISIBILITY;
 }
 
 const VisibilityContext = createContext<VisibilityContextType | null>(null);

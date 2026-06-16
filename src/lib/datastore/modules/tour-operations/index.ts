@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import { TourCrudModule } from './tour-crud';
 import { TourItemsModule } from './tour-items';
 import { TourSettlementModule } from './tour-settlement';

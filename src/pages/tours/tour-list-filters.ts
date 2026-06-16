@@ -1,5 +1,5 @@
 import type { Tour, TourQuery } from '@/types/tour';
-import { getTourWarningInfo } from '@/pages/tours/tour-table-config';
+import { getTourNationalityIds, getTourWarningInfo } from '@/pages/tours/tour-table-config';
 
 type MonthYearFilter = {
   selectedMonth: string;
@@ -8,6 +8,9 @@ type MonthYearFilter = {
 };
 
 type TourListFilters = MonthYearFilter & {
+  settlementStatusFilter: string;
+  paymentStatusFilter: string;
+  nationalityFilter: string;
   shoppingCommissionFilter: string;
 };
 
@@ -60,20 +63,30 @@ export const isTourInMonthYearFilter = (tour: Tour, filters: MonthYearFilter) =>
 export const filterToursByMonthYear = (tours: Tour[], filters: MonthYearFilter) =>
   tours.filter((tour) => isTourInMonthYearFilter(tour, filters));
 
-export const filterToursForList = (tours: Tour[], filters: TourListFilters) => {
-  let result = tours;
-
-  if (filters.shoppingCommissionFilter !== 'all') {
-    result = result.filter((tour) => {
-      const hasUnpaidShoppingCommission = getTourWarningInfo(tour).hasUnpaidCommission;
-      return filters.shoppingCommissionFilter === 'unpaid'
-        ? hasUnpaidShoppingCommission
-        : !hasUnpaidShoppingCommission;
-    });
+export const isTourInListFilters = (tour: Tour, filters: TourListFilters) => {
+  if (filters.settlementStatusFilter !== 'all' && tour.settlementStatus !== filters.settlementStatusFilter) {
+    return false;
   }
 
-  return filterToursByMonthYear(result, filters);
+  if (filters.paymentStatusFilter !== 'all' && tour.paymentStatus !== filters.paymentStatusFilter) {
+    return false;
+  }
+
+  if (filters.shoppingCommissionFilter !== 'all') {
+    const hasUnpaidShoppingCommission = getTourWarningInfo(tour).hasUnpaidCommission;
+    if (filters.shoppingCommissionFilter === 'unpaid' && !hasUnpaidShoppingCommission) return false;
+    if (filters.shoppingCommissionFilter === 'paid' && hasUnpaidShoppingCommission) return false;
+  }
+
+  if (filters.nationalityFilter !== 'all' && !getTourNationalityIds(tour).has(filters.nationalityFilter)) {
+    return false;
+  }
+
+  return isTourInMonthYearFilter(tour, filters);
 };
+
+export const filterToursForList = (tours: Tour[], filters: TourListFilters) =>
+  tours.filter((tour) => isTourInListFilters(tour, filters));
 
 export const getTourStartYears = (tours: Tour[]) => {
   const years = new Set<number>();

@@ -24,7 +24,7 @@ export function SearchInput({ value, onChange, placeholder = 'Tìm kiếm...', d
     }, debounceMs);
 
     return () => clearTimeout(timer);
-  }, [localValue, debounceMs]);
+  }, [localValue, value, onChange, debounceMs]);
 
   const handleClear = () => {
     setLocalValue('');
@@ -45,6 +45,7 @@ export function SearchInput({ value, onChange, placeholder = 'Tìm kiếm...', d
         <button
           type="button"
           onClick={handleClear}
+          aria-label="Xóa tìm kiếm"
           className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground"
         >
           <X className="h-4 w-4" />

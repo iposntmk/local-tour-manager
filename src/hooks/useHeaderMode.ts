@@ -10,7 +10,9 @@ export function useHeaderMode(storageKey: string, defaultMode: HeaderMode = 'pin
     try {
       const saved = localStorage.getItem(storageKey) as HeaderMode | null;
       if (saved === 'pin' || saved === 'dock' || saved === 'freeze') return saved;
-    } catch {}
+    } catch {
+      return defaultMode;
+    }
     return defaultMode;
   });
 
@@ -20,7 +22,9 @@ export function useHeaderMode(storageKey: string, defaultMode: HeaderMode = 'pin
     
     try {
       localStorage.setItem(storageKey, mode);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }, [mode, storageKey, alwaysPin]);
 
   const classes = useMemo(() => {

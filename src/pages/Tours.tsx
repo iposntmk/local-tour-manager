@@ -24,7 +24,7 @@ import { ToursTotalsBar } from '@/pages/tours/ToursTotalsBar';
 import { useTourFilters } from '@/pages/tours/useTourFilters';
 import { ToursConfirmDialogs } from '@/pages/tours/ToursConfirmDialogs';
 import { useTourPageActions } from '@/pages/tours/useTourPageActions';
-import { filterToursForList, isTourInMonthYearFilter } from '@/pages/tours/tour-list-filters';
+import { filterToursForList, isTourInListFilters } from '@/pages/tours/tour-list-filters';
 import { useStableTourYears } from '@/pages/tours/useStableTourYears';
 import { useTourImportActions } from '@/pages/tours/useTourImportActions';
 
@@ -124,17 +124,25 @@ const Tours = () => {
 
   const tours = useMemo(() => (toursResult as TourListResult | undefined)?.tours ?? [], [toursResult]);
   const hasDateRangeFilter = !!(dateRange?.from || dateRange?.to);
+  const listFilters = useMemo(() => ({
+    settlementStatusFilter,
+    paymentStatusFilter,
+    nationalityFilter,
+    shoppingCommissionFilter,
+    selectedMonth,
+    selectedYear,
+    hasDateRangeFilter,
+  }), [
+    hasDateRangeFilter,
+    nationalityFilter,
+    paymentStatusFilter,
+    selectedMonth,
+    selectedYear,
+    settlementStatusFilter,
+    shoppingCommissionFilter,
+  ]);
 
-  const displayedTours = useMemo(() => {
-    return filterToursForList(tours, {
-      shoppingCommissionFilter,
-      selectedMonth,
-      selectedYear,
-      hasDateRangeFilter,
-    });
-  }, [shoppingCommissionFilter, tours, selectedMonth, selectedYear, hasDateRangeFilter]);
-
-  const totalTours = (toursResult as TourListResult | undefined)?.total ?? 0;
+  const displayedTours = useMemo(() => filterToursForList(tours, listFilters), [tours, listFilters]);
 
   const filteredToursTotal = useMemo(() => {
     return displayedTours.reduce((sum, tour) => {
@@ -162,15 +170,14 @@ const Tours = () => {
 
   const availableYears = useStableTourYears(tours);
   const exportTourFilter = useMemo(() => {
-    if (hasDateRangeFilter || selectedMonth === 'all' || selectedYear !== 'all') return undefined;
-    return (tour: Tour) => isTourInMonthYearFilter(tour, { selectedMonth, selectedYear, hasDateRangeFilter });
-  }, [hasDateRangeFilter, selectedMonth, selectedYear]);
+    return (tour: Tour) => isTourInListFilters(tour, listFilters);
+  }, [listFilters]);
 
   const tourActions = useTourPageActions({
     queryClient,
     exportTourQuery,
     exportTourFilter,
-    totalTours,
+    totalTours: displayedTours.length,
     canExportTours,
     canDuplicateTours,
     canDeleteTours,

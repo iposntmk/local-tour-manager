@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import { getSupabaseClient } from './supabase-client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -29,7 +30,6 @@ export class SupabaseStore implements DataStore {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface SupabaseStore extends MasterDataModule, AuxiliaryDataModule, TourOperationsModule, UserProfilesModule {}
 
 applyMixins(SupabaseStore, [MasterDataModule, AuxiliaryDataModule, TourOperationsModule, UserProfilesModule]);

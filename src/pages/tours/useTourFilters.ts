@@ -109,16 +109,13 @@ export const useTourFilters = (companies: CompanyOption[]) => {
     if (company) query.companyNameLike = company;
     if (landOperator) query.landOperatorNameLike = landOperator;
     if (guideFilter !== 'all') query.guideId = guideFilter;
-    if (nationalityFilter !== 'all') query.nationalityId = nationalityFilter;
-    if (settlementStatusFilter !== 'all') query.settlementStatus = settlementStatusFilter as TourQuery['settlementStatus'];
-    if (paymentStatusFilter !== 'all') query.paymentStatus = paymentStatusFilter as TourQuery['paymentStatus'];
 
     const [field, order] = sortBy.split('-');
     query.sortBy = field as TourQuery['sortBy'];
     query.sortOrder = order as 'asc' | 'desc';
 
     return query;
-  }, [searchCode, dateRange, searchCompany, searchLandOperator, guideFilter, nationalityFilter, settlementStatusFilter, paymentStatusFilter, sortBy]);
+  }, [searchCode, dateRange, searchCompany, searchLandOperator, guideFilter, sortBy]);
 
   const exportTourQuery = useMemo((): TourQuery => {
     const monthYearQuery = getTourMonthYearDateQuery({
@@ -126,10 +123,23 @@ export const useTourFilters = (companies: CompanyOption[]) => {
       selectedYear,
       hasDateRangeFilter: !!(dateRange?.from || dateRange?.to),
     });
-    return Object.keys(monthYearQuery).length > 0
-      ? { ...baseTourQuery, ...monthYearQuery }
-      : baseTourQuery;
-  }, [baseTourQuery, dateRange, selectedMonth, selectedYear]);
+    const advancedQuery: TourQuery = {};
+    if (nationalityFilter !== 'all') advancedQuery.nationalityId = nationalityFilter;
+    if (settlementStatusFilter !== 'all') {
+      advancedQuery.settlementStatus = settlementStatusFilter as TourQuery['settlementStatus'];
+    }
+    if (paymentStatusFilter !== 'all') advancedQuery.paymentStatus = paymentStatusFilter as TourQuery['paymentStatus'];
+
+    return { ...baseTourQuery, ...advancedQuery, ...monthYearQuery };
+  }, [
+    baseTourQuery,
+    dateRange,
+    nationalityFilter,
+    paymentStatusFilter,
+    selectedMonth,
+    selectedYear,
+    settlementStatusFilter,
+  ]);
 
   const topCompanyOptions = useMemo(() => {
     const companyNames = new Set<string>();
