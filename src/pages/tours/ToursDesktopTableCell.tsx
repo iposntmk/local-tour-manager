@@ -54,7 +54,7 @@ export const ToursDesktopTableCellContent = ({
     case 'stt':
       return row.index + 1;
     case 'tourCode':
-      return <span className="block truncate" title={tour.tourCode}>{tour.tourCode}</span>;
+      return <span className="block whitespace-normal break-words">{tour.tourCode}</span>;
     case 'date':
       return formatDateRangeDisplay(tour.startDate, tour.endDate);
     case 'days':

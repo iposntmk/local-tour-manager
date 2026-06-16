@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -22,16 +23,12 @@ interface LineQuickReviewProps {
 }
 
 const STATUS_STYLES: Record<LineStatus, string> = {
-  unchecked: 'bg-gray-100 text-gray-700 hover:bg-gray-100',
-  valid: 'bg-green-100 text-green-800 hover:bg-green-100',
-  need_more: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
-  invalid: 'bg-red-100 text-red-800 hover:bg-red-100',
+  unchecked: 'bg-gray-100 text-gray-700',
+  valid: 'bg-green-100 text-green-800',
+  need_more: 'bg-orange-100 text-orange-800',
+  invalid: 'bg-red-100 text-red-800',
 };
 
-/**
- * Inline valid / invalid quick-review buttons for a single settlement line.
- * Clicking "Không hợp lệ" reveals a reason box so accountants can act in one place.
- */
 export function LineQuickReview({
   tourId,
   lineType,
@@ -50,6 +47,8 @@ export function LineQuickReview({
 
   const labelFor = (status: LineStatus) => statusLabels?.[status] || LINE_STATUS_LABELS[status];
   const canEdit = editable && hasPermission('review_settlement_line') && !!lineId;
+  const isApproved = currentStatus === 'valid';
+  const isUnreviewed = !currentStatus || currentStatus === 'unchecked';
 
   if (!canEdit) {
     return (
@@ -59,25 +58,26 @@ export function LineQuickReview({
     );
   }
 
-  const approve = async () => {
+  const handleApprove = async () => {
     const ok = await updateLine({ lineType, lineId }, { lineStatus: 'valid' });
     if (ok) onApproved?.();
   };
 
-  const openReject = () => {
-    setComment(currentComment ?? '');
-    setRejecting(true);
-  };
-
-  const confirmReject = async () => {
-    const ok = await updateLine({ lineType, lineId }, { lineStatus: 'invalid', lineComment: comment });
+  const handleConfirmReject = async () => {
+    const ok = await updateLine({ lineType, lineId }, { lineStatus: 'need_more', lineComment: comment });
     if (ok) setRejecting(false);
   };
 
-  const approveLabel = currentStatus === 'valid' ? (compact ? 'OK' : labelFor('valid')) : (compact ? 'OK' : 'Duyệt');
-  const rejectLabel = compact ? 'not ok' : labelFor('invalid');
+  const handleToggle = (checked: boolean) => {
+    if (checked) {
+      handleApprove();
+    } else {
+      setComment(currentComment ?? '');
+      setRejecting(true);
+    }
+  };
 
-  const rejectForm = rejecting && (
+  const rejectForm = (
     <div className="space-y-2 rounded-md border bg-background p-2">
       <Textarea
         autoFocus
@@ -90,92 +90,55 @@ export function LineQuickReview({
         <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setRejecting(false)} disabled={busy}>
           Hủy
         </Button>
-        <Button type="button" size="sm" className="h-7 bg-red-600 hover:bg-red-700" onClick={confirmReject} disabled={busy}>
+        <Button type="button" size="sm" className="h-7 bg-red-600 hover:bg-red-700" onClick={handleConfirmReject} disabled={busy}>
           {busy ? 'Đang lưu...' : 'Lưu lý do'}
         </Button>
       </div>
     </div>
   );
 
-  if (compact) {
-    return (
-      <div className="relative flex h-full flex-col items-end gap-1">
-        <div className="flex h-full min-h-[2.75rem] flex-nowrap items-stretch gap-1">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={openReject}
-            title={rejectLabel}
-            className={cn(
-              'inline-flex h-full w-10 flex-col items-center justify-center gap-0.5 rounded-md border px-1 py-1 text-[9px] leading-none',
-              currentStatus === 'invalid'
-                ? 'border-red-600 bg-red-600 text-white'
-                : 'border-border bg-background text-foreground',
-            )}
-          >
-            <X className="h-3 w-3" />
-            <span>{rejectLabel}</span>
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={approve}
-            title={approveLabel}
-            className={cn(
-              'inline-flex h-full w-10 flex-col items-center justify-center gap-0.5 rounded-md border px-1 py-1 text-[9px] leading-none',
-              currentStatus === 'valid'
-                ? 'border-green-600 bg-green-600 text-white'
-                : 'border-border bg-background text-foreground',
-            )}
-          >
-            <Check className="h-3 w-3" />
-            <span>{approveLabel}</span>
-          </button>
-        </div>
-        {rejectForm && (
-          <div className="absolute right-0 top-full z-20 mt-1 w-72 max-w-[calc(100vw_-_1rem)]">
-            {rejectForm}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-2">
-      <div className="flex w-full flex-nowrap items-center gap-1.5 sm:w-auto">
-        <Button
+    <div className={cn('space-y-1', compact ? 'w-full' : 'space-y-2')}>
+      <div className={cn('flex items-center gap-1', compact ? 'justify-center' : 'gap-2')}>
+        <button
           type="button"
-          size="sm"
-          variant={currentStatus === 'valid' ? 'default' : 'outline'}
-          className={cn(
-            'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2',
-            currentStatus === 'valid' && 'bg-green-600 hover:bg-green-700',
-          )}
           disabled={busy}
-          onClick={approve}
-          title={approveLabel}
+          onClick={handleApprove}
+          className={cn(
+            'whitespace-nowrap font-medium transition-colors hover:text-green-700',
+            compact ? 'text-[10px]' : 'text-xs',
+            isApproved ? 'text-green-700' : 'text-muted-foreground',
+          )}
+          title="Duyệt dòng này"
         >
-          <Check className="h-3.5 w-3.5" />
-          <span className="hidden truncate sm:inline">{approveLabel}</span>
-        </Button>
-        <Button
+          {compact && <Check className="mr-0.5 inline h-3 w-3" />}
+          Duyệt
+        </button>
+        <Switch
+          checked={isApproved}
+          onCheckedChange={handleToggle}
+          disabled={busy}
+          className={cn(
+            isApproved ? 'data-[state=checked]:bg-green-500' : 'data-[state=unchecked]:bg-input',
+            compact && 'h-5 w-9 [&>span]:h-4 [&>span]:w-4 [&>span]:data-[state=checked]:translate-x-4',
+          )}
+        />
+        <button
           type="button"
-          size="sm"
-          variant={currentStatus === 'invalid' ? 'default' : 'outline'}
-          className={cn(
-            'h-7 w-7 min-w-0 flex-none gap-1 p-0 text-xs sm:w-auto sm:px-2',
-            currentStatus === 'invalid' && 'bg-red-600 hover:bg-red-700',
-          )}
           disabled={busy}
-          onClick={openReject}
-          title={rejectLabel}
+          onClick={() => { setComment(currentComment ?? ''); setRejecting(true); }}
+          className={cn(
+            'whitespace-nowrap font-medium transition-colors hover:text-red-700',
+            compact ? 'text-[10px]' : 'text-xs',
+            !isApproved ? 'text-red-700' : 'text-muted-foreground',
+          )}
+          title="Không duyệt dòng này"
         >
-          <X className="h-3.5 w-3.5" />
-          <span className="hidden truncate sm:inline">{rejectLabel}</span>
-        </Button>
+          {compact && <X className="mr-0.5 inline h-3 w-3" />}
+          {isApproved ? 'Không duyệt' : (isUnreviewed ? 'Chưa duyệt' : labelFor(currentStatus))}
+        </button>
       </div>
-      {rejectForm}
+      {rejecting && rejectForm}
     </div>
   );
 }

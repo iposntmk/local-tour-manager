@@ -35,6 +35,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
+import { useViewVisibility } from '@/contexts/ViewVisibilityContext';
 import type { Permission } from '@/types/user';
 
 interface LayoutProps {
@@ -260,6 +261,8 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const isTourListRoute = location.pathname === '/tours';
+  const { showTopMenu } = useViewVisibility();
+  const mainPaddingClass = showTopMenu ? 'pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-12' : 'pb-4 md:pb-12';
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -280,7 +283,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Navigation - desktop only */}
-      <nav className="hidden md:block border-b bg-card sticky top-0 z-50">
+      <nav className={cn('border-b bg-card sticky top-0 z-50', showTopMenu ? 'hidden md:block' : 'hidden')}>
         <div className="mx-auto flex items-center justify-between gap-1 px-2 py-1.5 max-w-7xl">
           <div className="flex items-center gap-0.5 overflow-x-auto">
             <NavLinks isMobile={false} user={user} onLogout={handleLogout} />
@@ -305,7 +308,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Bottom Navigation - mobile only */}
       <div
-        className="fixed inset-x-0 bottom-0 z-50 border-t bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80 md:hidden"
+        className={cn('fixed inset-x-0 bottom-0 z-50 border-t bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80', showTopMenu ? 'md:hidden' : 'hidden')}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto flex min-h-16 max-w-md items-stretch justify-evenly px-1 py-2">
@@ -317,7 +320,7 @@ export function Layout({ children }: LayoutProps) {
       <main className="flex-1 w-full">
         <div
           className={cn(
-            'mx-auto w-full px-4 sm:px-6 lg:px-8 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 md:pb-12 md:pt-0',
+            `mx-auto w-full px-4 sm:px-6 lg:px-8 ${mainPaddingClass} pt-4 md:pt-0`,
             isTourListRoute ? 'max-w-[100rem]' : 'max-w-7xl',
           )}
         >

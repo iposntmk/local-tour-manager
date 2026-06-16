@@ -128,7 +128,7 @@ export type TourTableColumnKey =
   | 'warning'
   | 'actions';
 
-export type TourTableFilterKey = Exclude<TourTableColumnKey, 'stt' | 'actions' | 'commission'>;
+export type TourTableFilterKey = Exclude<TourTableColumnKey, 'stt' | 'actions'>;
 
 export type TourTableFilters = Record<TourTableFilterKey, string> & {
   warning: 'all' | 'warning' | 'ok';
@@ -141,28 +141,28 @@ export interface TourTableColumn {
   width: number;
   headerClassName?: string;
   cellClassName?: string;
-  filterType: 'text' | 'date' | 'company' | 'landOperator' | 'warning' | 'settlement' | 'payment' | 'none';
+  filterType: 'text' | 'textPopover' | 'date' | 'company' | 'landOperator' | 'warning' | 'settlement' | 'payment' | 'commission' | 'none';
   filterPlaceholder?: string;
 }
 
 export const TOUR_TABLE_COLUMNS: TourTableColumn[] = [
   { key: 'stt', label: 'STT', width: 52, headerClassName: 'text-center', cellClassName: 'text-center text-muted-foreground tabular-nums', filterType: 'none' },
-  { key: 'tourCode', label: 'Mã tour', width: 96, cellClassName: 'font-semibold', filterType: 'text', filterPlaceholder: 'Lọc mã' },
+  { key: 'tourCode', label: 'Mã tour', width: 48, cellClassName: 'font-semibold whitespace-normal break-words', filterType: 'text', filterPlaceholder: 'Lọc mã' },
   { key: 'date', label: 'Ngày', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'date' },
   { key: 'days', label: 'Ngày đi', width: 70, cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số ngày' },
   { key: 'guests', label: 'Khách', width: 72, cellClassName: 'whitespace-nowrap', filterType: 'text', filterPlaceholder: 'Số khách' },
   { key: 'company', label: 'Công ty', width: 136, filterType: 'company' },
   { key: 'landOperator', label: 'Land tour', width: 128, filterType: 'landOperator' },
-  { key: 'guide', label: 'HDV', width: 116, filterType: 'text', filterPlaceholder: 'Lọc HDV' },
-  { key: 'nationality', label: 'Quốc tịch', width: 136, filterType: 'text', filterPlaceholder: 'Lọc quốc tịch' },
-  { key: 'clientName', label: 'Khách hàng', width: 126, filterType: 'text', filterPlaceholder: 'Lọc khách' },
+  { key: 'guide', label: 'HDV', width: 116, filterType: 'textPopover', filterPlaceholder: 'Lọc HDV' },
+  { key: 'nationality', label: 'Quốc tịch', width: 136, filterType: 'textPopover', filterPlaceholder: 'Lọc quốc tịch' },
+  { key: 'clientName', label: 'Khách hàng', width: 126, filterType: 'textPopover', filterPlaceholder: 'Lọc khách' },
   { key: 'clientPhone', label: 'SĐT khách', width: 110, filterType: 'text', filterPlaceholder: 'Lọc SĐT' },
-  { key: 'driverName', label: 'Tài xế', width: 110, filterType: 'text', filterPlaceholder: 'Lọc tài xế' },
+  { key: 'driverName', label: 'Tài xế', width: 110, filterType: 'textPopover', filterPlaceholder: 'Lọc tài xế' },
   { key: 'ctp', label: 'CTP', width: 92, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-medium', filterType: 'text', filterPlaceholder: 'Lọc CTP' },
   { key: 'total', label: 'Tổng', width: 102, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right font-semibold text-primary', filterType: 'text', filterPlaceholder: 'Lọc tổng' },
   { key: 'settlement', label: 'Quyết toán', width: 116, cellClassName: 'whitespace-nowrap', filterType: 'settlement' },
   { key: 'payment', label: 'Thanh toán', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'payment' },
-  { key: 'commission', label: 'Hoa hồng', width: 180, filterType: 'none' },
+  { key: 'commission', label: 'Hoa hồng', width: 180, filterType: 'commission' },
   { key: 'warning', label: 'Cảnh báo', title: 'Cảnh báo, tour thiếu nước uống', width: 108, cellClassName: 'whitespace-nowrap', filterType: 'warning' },
   { key: 'actions', label: 'Hành động', width: 124, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right', filterType: 'none' },
 ];
@@ -191,6 +191,7 @@ export const createDefaultTourTableFilters = (): TourTableFilters => ({
   total: '',
   settlement: '',
   payment: '',
+  commission: '',
   warning: 'all',
 });
 
@@ -232,6 +233,7 @@ export const loadTourTableFilters = (): TourTableFilters => {
       total: parsed.total || '',
       settlement: parsed.settlement || '',
       payment: parsed.payment || '',
+      commission: parsed.commission || '',
       warning: parsed.warning === 'warning' || parsed.warning === 'ok' ? parsed.warning : 'all',
     };
   } catch (error) {

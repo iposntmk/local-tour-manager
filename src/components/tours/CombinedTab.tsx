@@ -11,8 +11,11 @@ interface CombinedTabProps {
   tour: Tour | null | undefined;
 }
 
-const sheetCellClass = 'border border-slate-300 px-2 py-1 align-middle text-xs';
-const totalCellClass = 'border border-slate-300 bg-yellow-200 px-2 py-1 text-xs font-bold';
+const DESKTOP_COLUMNS = TOUR_SHEET_COLUMNS.slice(0, 13);
+const DESKTOP_HEADER_GROUPS = TOUR_SHEET_HEADER_GROUPS.slice(0, 4);
+
+const sheetCellClass = 'border border-slate-300 px-2 py-1 align-middle text-[12px]';
+const totalCellClass = 'border border-slate-300 bg-yellow-200 px-2 py-1 text-[12px] font-bold';
 
 const formatSheetDate = (date?: string) => date ? formatDateDisplay(date) : '';
 
@@ -75,11 +78,11 @@ export function CombinedTab({ tour }: CombinedTabProps) {
       </div>
 
       {/* Desktop table view */}
-      <div className="hidden overflow-x-auto border bg-background md:block">
-        <Table className="min-w-[1560px] border-collapse text-xs">
+      <div className="hidden border bg-background md:block">
+        <Table className="w-full border-collapse text-[10px]">
           <TableHeader>
             <TableRow>
-              {TOUR_SHEET_HEADER_GROUPS.map((group) => (
+              {DESKTOP_HEADER_GROUPS.map((group) => (
                 <TableHead
                   key={group.label}
                   colSpan={group.colSpan}
@@ -90,13 +93,16 @@ export function CombinedTab({ tour }: CombinedTabProps) {
               ))}
             </TableRow>
             <TableRow className="bg-sky-400">
-              {TOUR_SHEET_COLUMNS.map((column) => (
+              {DESKTOP_COLUMNS.map((column) => (
                 <TableHead
                   key={column.key}
-                  className="border border-slate-300 px-2 py-2 text-center text-xs font-bold text-slate-950"
-                  style={{ width: `${column.width * 8}px` }}
+                  className={cn(
+                    'border border-slate-300 px-2 py-1 text-center text-[3px] font-bold text-slate-950',
+                    'whitespace-normal break-words leading-tight'
+                  )}
+                  style={{ width: column.key === 'quantity' ? '10px' : column.key === 'code' ? '20px' : ['total', 'ctpTotal', 'location', 'days'].includes(column.key) ? `${column.width * 2.75}px` : `${column.width * 5.5}px`, maxWidth: column.key === 'quantity' ? '10px' : column.key === 'code' ? '20px' : ['total', 'ctpTotal', 'location', 'days'].includes(column.key) ? `${column.width * 2.75}px` : `${column.width * 5.5}px` }}
                 >
-                  {column.label}
+                  {column.key === 'quantity' ? 'khách/ ngày/ tổng nước uống' : column.label}
                 </TableHead>
               ))}
             </TableRow>
@@ -110,7 +116,7 @@ export function CombinedTab({ tour }: CombinedTabProps) {
 
               return (
                 <TableRow key={`combined-${index}`}>
-                  <TableCell className={sheetCellClass}>
+                  <TableCell className={cn(sheetCellClass, 'whitespace-normal break-words')}>
                     {index === 0 ? `${tour.tourCode} x ${totalGuests} pax` : ''}
                   </TableCell>
                   <TableCell className={sheetCellClass}>
@@ -139,12 +145,6 @@ export function CombinedTab({ tour }: CombinedTabProps) {
                     {allowance ? formatCurrency(allowance.price * (allowanceDays ?? 1)) : ''}
                   </TableCell>
                   <TableCell className={sheetCellClass} />
-                  <TableCell className={cn(sheetCellClass, 'text-center')}>{service ? service.vatRate || 0 : ''}</TableCell>
-                  <TableCell className={cn(sheetCellClass, 'text-right')}>
-                    {service ? formatCurrency(service.vatAmount || 0) : ''}
-                  </TableCell>
-                  <TableCell className={cn(sheetCellClass, 'whitespace-pre-wrap')}>{service?.guideNote || ''}</TableCell>
-                  <TableCell className={cn(sheetCellClass, 'text-center')}>{service ? service.attachmentCount || 0 : ''}</TableCell>
                 </TableRow>
               );
             })}
@@ -156,13 +156,11 @@ export function CombinedTab({ tour }: CombinedTabProps) {
               <TableCell colSpan={3} className={totalCellClass} />
               <TableCell className={cn(totalCellClass, 'text-right')}>{formatCurrency(allowanceTotal)}</TableCell>
               <TableCell className={cn(totalCellClass, 'text-right')}>{formatCurrency(totalTabs)}</TableCell>
-              <TableCell colSpan={4} className={totalCellClass} />
             </TableRow>
             {summaryRows.length > 0 && (
               <TableRow>
                 <TableCell colSpan={11} className={sheetCellClass} />
                 <TableCell colSpan={2} className={totalCellClass + ' text-center'}>TỔNG KẾT</TableCell>
-                <TableCell colSpan={4} className={sheetCellClass} />
               </TableRow>
             )}
             {summaryRows.map((row) => (
@@ -170,12 +168,11 @@ export function CombinedTab({ tour }: CombinedTabProps) {
                 <TableCell colSpan={11} className={sheetCellClass} />
                 <TableCell className={cn(sheetCellClass, 'text-right font-bold', row.labelClass)}>{row.label}</TableCell>
                 <TableCell className={cn(sheetCellClass, 'text-right font-bold')}>{formatCurrency(row.value)}</TableCell>
-                <TableCell colSpan={4} className={sheetCellClass} />
               </TableRow>
             ))}
             {tour.notes && (
               <TableRow>
-                <TableCell colSpan={17} className="border border-slate-300 bg-slate-100 px-2 py-2 text-sm text-red-600">
+                <TableCell colSpan={13} className="border border-slate-300 bg-slate-100 px-2 py-2 text-sm text-red-600">
                   Ghi chú: {tour.notes}
                 </TableCell>
               </TableRow>

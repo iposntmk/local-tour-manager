@@ -52,8 +52,8 @@ export function useLineReview(tourId: string | undefined) {
     }
   };
 
-  /** Set many lines to the same status at once (e.g. approve a whole section). */
-  const updateMany = async (targets: LineReviewTarget[], value: LineReviewValue): Promise<boolean> => {
+  /** Set many lines to the same status at once (e.g. approve / reject a whole section). */
+  const updateMany = async (targets: LineReviewTarget[], value: LineReviewValue, successMessage?: string): Promise<boolean> => {
     if (!tourId) return false;
     const pending = targets.filter((t) => t.lineId);
     if (!pending.length) return false;
@@ -69,7 +69,7 @@ export function useLineReview(tourId: string | undefined) {
           })
         )
       );
-      toast.success(`Đã duyệt ${pending.length} dòng.`);
+      toast.success(successMessage || `Đã duyệt ${pending.length} dòng.`);
       await invalidate();
       return true;
     } catch (e) {

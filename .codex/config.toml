@@ -5,3 +5,9 @@ args = ["-y", "@agentmemory/mcp"]
 [mcp_servers.agentmemory.env]
 AGENTMEMORY_URL = "http://localhost:3111"
 AGENT_ID = "codex"
+
+[mcp_servers.agentmemory.tools.memory_smart_search]
+approval_mode = "approve"
+
+[mcp_servers.agentmemory.tools.memory_recall]
+approval_mode = "approve"

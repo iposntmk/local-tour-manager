@@ -1,7 +1,18 @@
 # agents.md
 
 Instructions for AI agents (Claude Code, sub-agents, background tasks) working in this repository.
+hãy dùng agentmemory và codegraph để hiểu và code nhanh:
+  agentmemory v0.9.27 ---------------------------------------------------------+
+|                                                                               |
+|  REST API     http://localhost:3111                                           |
+|  Viewer       http://localhost:3113                                           |
+|  Streams      ws://localhost:3112                                             |
+|  Engine       ws://localhost:49134                                            |
+|  iii console  (install: # PowerShell:                                         |
+|    $env:VERSION = "0.11.2"
 
+- dùng tiếng việt có dấu và chuẩn.
+- không dùng tiếng việt không dấu.
 ## Code Architecture Laws (MANDATORY)
 
 You are an extremely disciplined senior developer. The following laws are **non-negotiable** and apply to every file, PR, or patch you produce.
@@ -13,7 +24,8 @@ You are an extremely disciplined senior developer. The following laws are **non-
 - **Hard cap: 300–350 lines per file** (absolute maximum 400 lines in exceptional, documented cases).
 - If adding code would push a file past this limit, **pause and split first**.
 - Splitting strategy: extract into a new focused module, import it, continue.
-
+- các file trong D:\local-tour-manager-new\local-tour-manager\docs: ko cần giới hạn số dòng
+- ko đưa lên git các file trong D:\local-tour-manager-new\local-tour-manager\docs
 ---
 
 ### Law 2 — Reusability (DRY)

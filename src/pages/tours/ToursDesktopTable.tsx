@@ -14,6 +14,7 @@ import { useSyncedHorizontalScroll } from './useSyncedHorizontalScroll';
 import {
   formatTourNationalities,
   getAllowanceTotal,
+  getShoppingCommissionInfo,
   getTourDays,
   getTourGuests,
   getTourWarningInfo,
@@ -107,6 +108,56 @@ export const ToursDesktopTable = ({
     return Array.from(landOperators).sort((a, b) => a.localeCompare(b));
   }, [tableFilters.landOperator, tours]);
 
+  const [textPopoverOpen, setTextPopoverOpen] = useState<Partial<Record<TourTableFilterKey, boolean>>>({});
+
+  const guideOptions = useMemo(() => {
+    const names = new Set<string>();
+    tours.forEach((tour) => {
+      const name = tour.guideRef?.nameAtBooking?.trim();
+      if (name) names.add(name);
+    });
+    const filter = tableFilters.guide?.trim();
+    if (filter) names.add(filter);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [tableFilters.guide, tours]);
+
+  const clientNameOptions = useMemo(() => {
+    const names = new Set<string>();
+    tours.forEach((tour) => {
+      const name = tour.clientName?.trim();
+      if (name) names.add(name);
+    });
+    const filter = tableFilters.clientName?.trim();
+    if (filter) names.add(filter);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [tableFilters.clientName, tours]);
+
+  const driverNameOptions = useMemo(() => {
+    const names = new Set<string>();
+    tours.forEach((tour) => {
+      const name = tour.driverName?.trim();
+      if (name) names.add(name);
+    });
+    const filter = tableFilters.driverName?.trim();
+    if (filter) names.add(filter);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [tableFilters.driverName, tours]);
+
+  const nationalityOptions = useMemo(() => {
+    const names = new Set<string>();
+    tours.forEach((tour) => {
+      (tour.clientNationalities || []).forEach((n) => {
+        if (n.nameAtBooking?.trim()) names.add(n.nameAtBooking.trim());
+      });
+      if (tour.clientNationalityRef?.nameAtBooking?.trim()) {
+        names.add(tour.clientNationalityRef.nameAtBooking.trim());
+      }
+    });
+    const filter = tableFilters.nationality?.trim();
+    if (filter) names.add(filter);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [tableFilters.nationality, tours]);
+
   const tableColumnFilterCount = useMemo(() => {
     return Object.entries(tableFilters).reduce((count, [key, value]) => {
       if (key === 'warning') return count + (value !== 'all' ? 1 : 0);
@@ -124,6 +175,14 @@ export const ToursDesktopTable = ({
 
       if (tableFilters.warning === 'warning' && !warningInfo.showRedFlag) return false;
       if (tableFilters.warning === 'ok' && warningInfo.showRedFlag) return false;
+
+      const commissionFilter = tableFilters.commission;
+      if (commissionFilter) {
+        const shoppingInfo = getShoppingCommissionInfo(tour.shoppings || []);
+        if (commissionFilter === 'paid' && !(shoppingInfo.hasShoppings && shoppingInfo.allPaid)) return false;
+        if (commissionFilter === 'unpaid' && !(shoppingInfo.hasShoppings && !shoppingInfo.allPaid)) return false;
+        if (commissionFilter === 'none' && shoppingInfo.hasShoppings) return false;
+      }
 
       return (
         includesTableFilter(tour.tourCode, tableFilters.tourCode) &&
@@ -231,7 +290,7 @@ export const ToursDesktopTable = ({
             <Table
               unwrapped
               ref={tableRef}
-              className="w-full table-auto border-separate border-spacing-0 text-xs"
+              className="w-full table-auto border-separate border-spacing-0 text-xs border border-border"
               style={{ minWidth: tableMinWidth }}
             >
               <ToursDesktopTableHeader
@@ -246,6 +305,12 @@ export const ToursDesktopTable = ({
                 onCompanyFilterOpenChange={setTableCompanyFilterOpen}
                 onLandOperatorFilterOpenChange={setTableLandOperatorFilterOpen}
                 onUpdateFilter={updateTableFilter}
+                textPopoverFilters={{
+                  guide: { options: guideOptions, open: textPopoverOpen.guide ?? false, onOpenChange: (open) => setTextPopoverOpen((prev) => ({ ...prev, guide: open })) },
+                  nationality: { options: nationalityOptions, open: textPopoverOpen.nationality ?? false, onOpenChange: (open) => setTextPopoverOpen((prev) => ({ ...prev, nationality: open })) },
+                  clientName: { options: clientNameOptions, open: textPopoverOpen.clientName ?? false, onOpenChange: (open) => setTextPopoverOpen((prev) => ({ ...prev, clientName: open })) },
+                  driverName: { options: driverNameOptions, open: textPopoverOpen.driverName ?? false, onOpenChange: (open) => setTextPopoverOpen((prev) => ({ ...prev, driverName: open })) },
+                }}
               />
               <TableBody>
                 {tableFilteredTours.length === 0 ? (
@@ -275,7 +340,7 @@ export const ToursDesktopTable = ({
                         {visibleColumns.map((column) => (
                           <TableCell
                             key={column.key}
-                            className={cn('min-w-0 px-2 py-2 text-xs align-top', column.cellClassName)}
+                            className={cn('min-w-0 px-2 py-2 text-xs align-top border border-border', column.cellClassName)}
                             style={{ minWidth: column.width, width: column.width }}
                           >
                             <ToursDesktopTableCellContent

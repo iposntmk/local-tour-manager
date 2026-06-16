@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { ViewVisibilityProvider } from "@/contexts/ViewVisibilityContext";
 import { Layout } from "@/components/Layout";
 import { InactiveUserBanner } from "@/components/auth/InactiveUserBanner";
 import { RemovedUserBanner } from "@/components/auth/RemovedUserBanner";
@@ -126,7 +127,7 @@ const App = () => {
           <HashRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
             <Routes>
               <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/dashboard" />} />
-              <Route element={user ? <Layout /> : <Navigate to="/auth" />}>
+              <Route element={user ? <ViewVisibilityProvider><Layout /></ViewVisibilityProvider> : <Navigate to="/auth" />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="profile" element={<Profile />} />

@@ -16,6 +16,12 @@ import {
   type TourTableFilters,
 } from './tour-table-config';
 
+type TextPopoverFilterState = {
+  options: string[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
 type ToursDesktopTableHeaderProps = {
   columns: TourTableColumn[];
   filters: TourTableFilters;
@@ -28,10 +34,67 @@ type ToursDesktopTableHeaderProps = {
   onCompanyFilterOpenChange: (open: boolean) => void;
   onLandOperatorFilterOpenChange: (open: boolean) => void;
   onUpdateFilter: (key: keyof TourTableFilters, value: string) => void;
+  textPopoverFilters?: Partial<Record<TourTableFilterKey, TextPopoverFilterState>>;
 };
 
 const stickyHeadClassName =
-  'sticky top-0 z-20 bg-muted px-2 py-2 align-top shadow-[inset_0_-1px_0_hsl(var(--border))]';
+  'sticky top-0 z-20 bg-muted px-2 py-2 align-top border border-border';
+
+function renderTextPopoverFilter(
+  column: TourTableColumn,
+  filters: TourTableFilters,
+  config: TextPopoverFilterState,
+  onUpdateFilter: (key: keyof TourTableFilters, value: string) => void,
+) {
+  const value = filters[column.key as TourTableFilterKey] || '';
+  const label = column.label.toLowerCase();
+  return (
+    <Popover open={config.open} onOpenChange={config.onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-7 w-full min-w-0 justify-start px-2 text-left text-xs font-normal"
+          title={value || `Tất cả ${label}`}
+        >
+          <span className="truncate">{value || `Tất cả ${label}`}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[260px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={column.filterPlaceholder || `Tìm ${label}...`} />
+          <CommandList>
+            <CommandEmpty>Không tìm thấy.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__all__"
+                onSelect={() => {
+                  onUpdateFilter(column.key as TourTableFilterKey, '');
+                  config.onOpenChange(false);
+                }}
+              >
+                <Check className={cn('mr-2 h-4 w-4', value ? 'opacity-0' : 'opacity-100')} />
+                Tất cả
+              </CommandItem>
+              {config.options.map((option) => (
+                <CommandItem
+                  key={option}
+                  value={option}
+                  onSelect={() => {
+                    onUpdateFilter(column.key as TourTableFilterKey, option);
+                    config.onOpenChange(false);
+                  }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', value === option ? 'opacity-100' : 'opacity-0')} />
+                  <span className="truncate">{option}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function ToursDesktopTableHeader({
   columns,
@@ -45,6 +108,7 @@ export function ToursDesktopTableHeader({
   onCompanyFilterOpenChange,
   onLandOperatorFilterOpenChange,
   onUpdateFilter,
+  textPopoverFilters,
 }: ToursDesktopTableHeaderProps) {
   const renderColumnHeader = (column: TourTableColumn) => {
     const alignRight = column.headerClassName?.includes('text-right');
@@ -62,6 +126,9 @@ export function ToursDesktopTableHeader({
             placeholder={column.filterPlaceholder || 'Lọc'}
             className={cn('h-7 min-w-0 px-2 text-xs font-normal', alignRight && 'text-right')}
           />
+        )}
+        {column.filterType === 'textPopover' && textPopoverFilters?.[column.key as TourTableFilterKey] && (
+          renderTextPopoverFilter(column, filters, textPopoverFilters[column.key as TourTableFilterKey]!, onUpdateFilter)
         )}
         {column.filterType === 'date' && (
           <Popover open={dateFilterOpen} onOpenChange={onDateFilterOpenChange}>
@@ -237,6 +304,22 @@ export function ToursDesktopTableHeader({
               <SelectItem value="pending">Chờ TT</SelectItem>
               <SelectItem value="partial">Một phần</SelectItem>
               <SelectItem value="paid">Đã TT</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {column.filterType === 'commission' && (
+          <Select
+            value={filters.commission || 'all'}
+            onValueChange={(value) => onUpdateFilter('commission', value === 'all' ? '' : value)}
+          >
+            <SelectTrigger className="h-7 min-w-0 px-2 text-xs font-normal">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="paid">Đã nhận đủ</SelectItem>
+              <SelectItem value="unpaid">Chưa nhận đủ</SelectItem>
+              <SelectItem value="none">Không có</SelectItem>
             </SelectContent>
           </Select>
         )}

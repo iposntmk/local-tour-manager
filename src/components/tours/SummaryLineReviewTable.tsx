@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCheck, CheckCircle2, Circle, Edit2, EyeOff, FileText, ListFilter, MessageSquare, Paperclip } from 'lucide-react';
+import { AlertTriangle, CheckCheck, CheckCircle2, Circle, Edit2, EyeOff, FileText, ListFilter, MessageSquare, Paperclip, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDate } from '@/lib/utils';
@@ -35,6 +36,7 @@ interface SummaryLineReviewTableProps {
   lineFieldAccess?: Partial<Record<TourLineFieldKey, Access>>;
   lineTypes?: SummaryLineType[];
   title?: string;
+  hideGlobalActions?: boolean;
 }
 
 const FILTER_ICONS: Record<StatusFilter, typeof EyeOff> = {
@@ -51,7 +53,7 @@ const getGroupAmount = (group: SummaryLineGroup, tourGuests: number) =>
 const getApprovedCount = (group: SummaryLineGroup) =>
   group.rows.filter(({ line }) => line.lineStatus === 'valid').length;
 
-export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidenceAccess, lineFieldAccess, lineTypes, title = 'Đối chiếu VAT, ghi chú và chứng từ' }: SummaryLineReviewTableProps) {
+export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidenceAccess, lineFieldAccess, lineTypes, title = 'Đối chiếu VAT, ghi chú và chứng từ', hideGlobalActions = false }: SummaryLineReviewTableProps) {
   const { hasPermission } = useAuth();
   const { busy: reviewBusy, updateMany } = useLineReview(tour.id);
   const [dialogAttachments, setDialogAttachments] = useState<TourLineAttachment[]>([]);
@@ -68,22 +70,39 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
     if (ok) setStatusFilter('hide_approved');
   };
 
-  const renderApproveAll = (group: SummaryLineGroup) => {
+  const renderSectionActions = (group: SummaryLineGroup) => {
+    const targets = group.rows
+      .filter(({ line }) => line.id)
+      .map(({ line }) => ({ lineType: group.lineType as LineType, lineId: line.id as string }));
+    if (!canReviewLines || !targets.length) return null;
     const allApproved = group.rows.length > 0 && getApprovedCount(group) === group.rows.length;
-    return canReviewLines && group.rows.some(({ line }) => line.id) ? (
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="h-7 gap-1 border-emerald-400 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50 sm:text-xs dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-        disabled={reviewBusy || allApproved}
-        onClick={() => approveSection(group)}
-        title={allApproved ? 'Đã duyệt tất cả dòng' : 'Duyệt tất cả dòng trong mục'}
-      >
-        <CheckCheck className="h-3.5 w-3.5" />
-        <span>Duyệt mục</span>
-      </Button>
-    ) : null;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 border-emerald-400 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50 sm:text-xs dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+            disabled={reviewBusy || allApproved}
+            title={allApproved ? 'Đã duyệt tất cả dòng' : 'Duyệt / không duyệt tất cả dòng trong mục'}
+          >
+            <CheckCheck className="h-3.5 w-3.5" />
+            <span>Duyệt mục</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => approveSection(group)}>
+            <CheckCheck className="mr-2 h-4 w-4 text-emerald-600" />
+            Duyệt mục
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => rejectSection(group)}>
+            <XCircle className="mr-2 h-4 w-4 text-destructive" />
+            Không duyệt
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   };
   const showName = canViewTourLineField(lineFieldAccess, 'name');
   const showDate = canViewTourLineField(lineFieldAccess, 'date');
@@ -135,6 +154,24 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
     await updateMany(targets, { lineStatus: 'valid' });
   };
 
+  const rejectSection = async (group: SummaryLineGroup) => {
+    const targets = group.rows
+      .filter(({ line }) => line.id && (!line.lineStatus || line.lineStatus === 'unchecked'))
+      .map(({ line }) => ({ lineType: group.lineType as LineType, lineId: line.id as string }));
+    if (!targets.length) return;
+    await updateMany(targets, { lineStatus: 'need_more' }, `Đã từ chối ${targets.length} dòng.`);
+  };
+
+  const rejectAll = async () => {
+    const targets = groups.flatMap((group) =>
+      group.rows
+        .filter(({ line }) => line.id && (!line.lineStatus || line.lineStatus === 'unchecked'))
+        .map(({ line }) => ({ lineType: group.lineType as LineType, lineId: line.id as string }))
+    );
+    if (!targets.length) return;
+    await updateMany(targets, { lineStatus: 'need_more' }, `Đã từ chối ${targets.length} dòng.`);
+  };
+
   const openAttachments = (attachments: TourLineAttachment[]) => {
     setDialogAttachments(attachments);
     setDialogOpen(true);
@@ -165,19 +202,32 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
                 );
               })}
             </div>
-            {canReviewLines && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 gap-1 border-emerald-400 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50 sm:text-xs dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-                disabled={reviewBusy || allGroupsApproved}
-                onClick={approveAll}
-                title="Duyệt tất cả dòng chưa duyệt"
-              >
-                <CheckCheck className="h-3.5 w-3.5" />
-                Duyệt tất cả
-              </Button>
+            {canReviewLines && !hideGlobalActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1 border-emerald-400 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50 sm:text-xs dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                    disabled={reviewBusy || allGroupsApproved}
+                    title="Duyệt / không duyệt tất cả dòng"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Duyệt tất cả
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={approveAll}>
+                    <CheckCheck className="mr-2 h-4 w-4 text-emerald-600" />
+                    Duyệt tất cả
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={rejectAll}>
+                    <XCircle className="mr-2 h-4 w-4 text-destructive" />
+                    Không duyệt tất cả
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
@@ -189,7 +239,7 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
         showPrice={showPrice}
         showTotal={showTotal}
         showEvidence={showEvidence}
-        reviewAction={renderApproveAll}
+        reviewAction={renderSectionActions}
         onOpenAttachments={openAttachments}
         onApproved={() => setStatusFilter('hide_approved')}
         onEditLine={onEditLine}
@@ -235,7 +285,7 @@ export function SummaryLineReviewTable({ tour, onEditLine, canEditLine, evidence
                         <span>Tổng: {formatCurrency(getGroupAmount(group, tourGuests))}</span>
                         <span>Đã duyệt: {getApprovedCount(group)}/{group.rows.length}</span>
                       </div>
-                      <div className="shrink-0">{renderApproveAll(group)}</div>
+                      <div className="shrink-0">{renderSectionActions(group)}</div>
                     </div>
                   </TableCell>
                 </TableRow>
