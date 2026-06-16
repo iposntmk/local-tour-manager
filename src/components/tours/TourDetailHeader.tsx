@@ -159,7 +159,7 @@ export function TourDetailHeader({
           )}
 
           {!isNewTour && tour && (
-            <div className="rounded-lg border bg-background/60 px-3 py-2">
+            <div className="rounded-lg border-2 border-blue-300 dark:border-blue-600 bg-background/60 px-3 py-2">
               <SettlementActionsBar tour={tour} onShowHistory={onShowHistory} />
             </div>
           )}

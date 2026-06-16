@@ -126,9 +126,9 @@ const App = () => {
           <RemovedUserBanner />
           <HashRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
             <Routes>
-              <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/dashboard" />} />
+              <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/tours" />} />
               <Route element={user ? <ViewVisibilityProvider><Layout /></ViewVisibilityProvider> : <Navigate to="/auth" />}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route index element={<Navigate to="/tours" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="languages" element={<RequirePermissionRoute permission="view_languages"><Languages /></RequirePermissionRoute>} />

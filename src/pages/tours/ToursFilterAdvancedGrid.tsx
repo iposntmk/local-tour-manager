@@ -150,6 +150,16 @@ export const ToursFilterAdvancedGrid = memo(function ToursFilterAdvancedGrid({
               {months.find((m) => m.value === selectedMonth)?.label} {selectedYear}
             </Badge>
           )}
+          {selectedMonth !== 'all' && selectedYear === 'all' && (
+            <Badge variant="default" className="text-sm sm:text-base font-semibold px-3 py-1">
+              {months.find((m) => m.value === selectedMonth)?.label}
+            </Badge>
+          )}
+          {selectedMonth === 'all' && selectedYear !== 'all' && (
+            <Badge variant="default" className="text-sm sm:text-base font-semibold px-3 py-1">
+              {selectedYear}
+            </Badge>
+          )}
           {shoppingCommissionFilter !== 'all' && (
             <Badge variant="secondary" className="text-sm font-medium">
               {shoppingCommissionFilter === 'unpaid' ? 'Hoa hồng chưa nhận' : 'Hoa hồng đã nhận đủ'}

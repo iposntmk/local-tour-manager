@@ -109,7 +109,7 @@ export class TourCrudModule {
       includeDetails
         ? `*, tour_destinations(*), tour_expenses(*), tour_meals(*), tour_allowances(*), tour_shoppings(*, shopping_commission_payments(*)), tour_nationalities(*)`
         : `*, tour_nationalities(*), tour_shoppings(id, name, price, net_commission, shopping_commission_payments(amount))`,
-      { count: 'exact' }
+      { count: 'estimated' }
     );
 
     const sortColumnMap: Record<string, string> = { startDate: 'start_date', endDate: 'end_date', tourCode: 'tour_code', clientName: 'client_name', createdAt: 'created_at' };

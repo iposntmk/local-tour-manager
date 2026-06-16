@@ -22,6 +22,7 @@ import {
   TOUR_TABLE_COLUMNS,
   TOUR_TABLE_COLUMN_KEYS,
   type TourTableColumnKey,
+  type TourTableFilterKey,
   type TourTableFilters,
   createDefaultTourTableColumnVisibility,
   createDefaultTourTableFilters,

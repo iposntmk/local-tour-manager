@@ -110,15 +110,15 @@ export default function Users() {
           Quay về trang chủ
         </Button>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <UsersIcon className="h-8 w-8" />
-            <h1 className="text-3xl font-bold">Quản lý người dùng</h1>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <UsersIcon className="h-6 w-6 md:h-8 w-8 shrink-0" />
+            <h1 className="text-xl md:text-3xl font-bold truncate">Quản lý người dùng</h1>
           </div>
           {canCreateUsers && (
-            <Button onClick={handleCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Thêm người dùng
+            <Button onClick={handleCreate} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Thêm
             </Button>
           )}
         </div>
@@ -137,13 +137,13 @@ export default function Users() {
             </div>
           </div>
           <Tabs value={statusTab} onValueChange={(v) => setStatusTab(v as StatusTab)}>
-            <TabsList>
-              <TabsTrigger value="all">Tất cả</TabsTrigger>
-              <TabsTrigger value="active">Đang hoạt động</TabsTrigger>
-              <TabsTrigger value="inactive" className="relative">
+            <TabsList className="flex w-full sm:inline-flex sm:w-auto overflow-x-auto scrollbar-hide flex-nowrap justify-start">
+              <TabsTrigger value="all" className="shrink-0">Tất cả</TabsTrigger>
+              <TabsTrigger value="active" className="shrink-0">Đang hoạt động</TabsTrigger>
+              <TabsTrigger value="inactive" className="relative shrink-0">
                 Chờ duyệt
                 {pendingCount > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                  <span className="ml-1.5 inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
                     {pendingCount > 99 ? '99+' : pendingCount}
                   </span>
                 )}
@@ -152,11 +152,20 @@ export default function Users() {
           </Tabs>
         </div>
         <Tabs value={settlementRoleTab} onValueChange={(v) => setSettlementRoleTab(v as SettlementRoleTab)}>
-          <TabsList>
-            <TabsTrigger value="all">Tất cả vai trò</TabsTrigger>
-            <TabsTrigger value="guide">{SETTLEMENT_ROLE_LABELS.guide}</TabsTrigger>
-            <TabsTrigger value="accountant">{SETTLEMENT_ROLE_LABELS.accountant}</TabsTrigger>
-            <TabsTrigger value="none">{SETTLEMENT_ROLE_LABELS.none}</TabsTrigger>
+          <TabsList className="flex w-full sm:inline-flex sm:w-auto overflow-x-auto scrollbar-hide flex-nowrap justify-start gap-0.5 sm:gap-1 p-0.5 sm:p-1">
+            <TabsTrigger value="all" className="shrink-0 text-sm px-1.5 sm:px-3 py-1 sm:py-1.5 leading-tight">
+              <span className="sm:hidden">Tất cả</span>
+              <span className="hidden sm:inline">Tất cả vai trò</span>
+            </TabsTrigger>
+            <TabsTrigger value="guide" className="shrink-0 text-sm px-1.5 sm:px-3 py-1 sm:py-1.5 leading-tight">
+              <span className="sm:hidden">HDV</span>
+              <span className="hidden sm:inline">{SETTLEMENT_ROLE_LABELS.guide}</span>
+            </TabsTrigger>
+            <TabsTrigger value="accountant" className="shrink-0 text-sm px-1.5 sm:px-3 py-1 sm:py-1.5 leading-tight">{SETTLEMENT_ROLE_LABELS.accountant}</TabsTrigger>
+            <TabsTrigger value="none" className="shrink-0 text-sm px-1.5 sm:px-3 py-1 sm:py-1.5 leading-tight">
+              <span className="sm:hidden">Không</span>
+              <span className="hidden sm:inline">{SETTLEMENT_ROLE_LABELS.none}</span>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

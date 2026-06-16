@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, CheckCircle2, RotateCcw, Unlock, History, Wallet } from 'lucide-react';
+import { Send, CheckCircle2, RotateCcw, Unlock, History, Banknote } from 'lucide-react';
 import { store } from '@/lib/datastore';
 import { useAuth } from '@/contexts/AuthContext';
 import { toVietnameseError } from '@/lib/error-messages';
@@ -175,41 +175,56 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <SettlementStatusBadge status={tour.settlementStatus} />
-      <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} />
+    <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+      <SettlementStatusBadge status={tour.settlementStatus} className="text-[11px] sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 h-auto" />
+      <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} className="text-[11px] sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 h-auto" />
       {tour.submissionCount > 0 && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
           Đã gửi {tour.submissionCount} lần
         </span>
       )}
-      <div className="flex-1" />
+      <div className="flex-1 min-w-0" />
       {onShowHistory && (
-        <Button variant="outline" size="sm" onClick={onShowHistory}>
-          <History className="h-4 w-4 mr-1" />
+        <Button size="sm" onClick={onShowHistory} className="h-7 sm:h-9 px-1.5 sm:px-3 text-[11px] sm:text-sm border-2 border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800/30 dark:text-gray-300 dark:hover:bg-gray-700/40">
+          <History className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
           Lịch sử
         </Button>
       )}
-      <Button size="sm" onClick={() => setPending('submit')} disabled={submitDisabled}>
-        <Send className="h-4 w-4 mr-1" />
-        {tour.settlementStatus === 'need_changes' ? 'Gửi lại kế toán' : 'Gửi kế toán'}
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => setPending('return')} disabled={reviewDisabled}>
-        <RotateCcw className="h-4 w-4 mr-1" />
-        Trả về HDV
-      </Button>
-      <Button size="sm" onClick={() => setPending('approve')} disabled={approveDisabled}>
-        <CheckCircle2 className="h-4 w-4 mr-1" />
-        Duyệt
-      </Button>
-      <Button size="sm" variant="outline" onClick={() => setPaymentDialogOpen(true)} disabled={payDisabled} className="border-2 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-950/20 dark:text-blue-300 dark:hover:bg-blue-900/30 font-medium shadow-sm">
-        <Wallet className="h-4 w-4 mr-1" />
-        Ghi nhận thanh toán
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => setPending('reopen')} disabled={reopenDisabled}>
-        <Unlock className="h-4 w-4 mr-1" />
-        Mở khóa
-      </Button>
+      {!submitDisabled && (
+        <Button size="sm" onClick={() => setPending('submit')} className="h-7 sm:h-9 px-1.5 sm:px-3 text-[11px] sm:text-sm border-2 border-blue-700 bg-blue-600 text-white hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600">
+          <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+          {tour.settlementStatus === 'need_changes' ? 'Gửi lại kế toán' : 'Gửi kế toán'}
+        </Button>
+      )}
+      {!reviewDisabled && (
+        <Button size="sm" onClick={() => setPending('return')} className="h-7 sm:h-9 px-1.5 sm:px-3 text-[11px] sm:text-sm border-2 border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-600 dark:bg-amber-950/20 dark:text-amber-300 dark:hover:bg-amber-900/30">
+          <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+          Trả về HDV
+        </Button>
+      )}
+      {!approveDisabled && (
+        <Button size="sm" onClick={() => setPending('approve')} className="h-7 sm:h-9 px-1.5 sm:px-3 text-[11px] sm:text-sm border-2 border-green-600 bg-green-600 text-white hover:bg-green-700 dark:border-green-500 dark:bg-green-700 dark:hover:bg-green-600">
+          <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+          Duyệt
+        </Button>
+      )}
+      {!payDisabled && (
+        <Button size="sm" onClick={() => setPaymentDialogOpen(true)} className="h-7 sm:h-9 px-1.5 sm:px-3 text-[11px] sm:text-sm border-2 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-950/20 dark:text-blue-300 dark:hover:bg-blue-900/30">
+          <span className="inline-flex items-center gap-1">
+            <span className="relative inline-flex items-center">
+              <Banknote className="h-4 w-4 absolute -left-px opacity-40" />
+              <Banknote className="h-4 w-4" />
+            </span>
+            Thanh toán
+          </span>
+        </Button>
+      )}
+      {!reopenDisabled && (
+        <Button size="sm" onClick={() => setPending('reopen')} className="h-7 sm:h-9 px-1.5 sm:px-3 text-[11px] sm:text-sm border-2 border-purple-400 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-600 dark:bg-purple-950/20 dark:text-purple-300 dark:hover:bg-purple-900/30">
+          <Unlock className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+          Mở khóa
+        </Button>
+      )}
 
       <RecordPaymentDialog
         tour={tour}

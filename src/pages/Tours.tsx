@@ -2,8 +2,6 @@ import { useMemo } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
-import { useTourImport } from '@/hooks/useTourImport';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Tour, TourListResult } from '@/types/tour';
@@ -24,13 +22,14 @@ import { ToursLoadingSkeleton } from '@/pages/tours/ToursLoadingSkeleton';
 import { ToursMobileCards } from '@/pages/tours/ToursMobileCards';
 import { ToursTotalsBar } from '@/pages/tours/ToursTotalsBar';
 import { useTourFilters } from '@/pages/tours/useTourFilters';
-import { getTourWarningInfo } from '@/pages/tours/tour-table-config';
 import { ToursConfirmDialogs } from '@/pages/tours/ToursConfirmDialogs';
 import { useTourPageActions } from '@/pages/tours/useTourPageActions';
+import { filterToursForList, isTourInMonthYearFilter } from '@/pages/tours/tour-list-filters';
+import { useStableTourYears } from '@/pages/tours/useStableTourYears';
+import { useTourImportActions } from '@/pages/tours/useTourImportActions';
 
 
 const Tours = () => {
-  // Pagination disabled; show all results
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -96,9 +95,10 @@ const Tours = () => {
     topCompanyOptions,
     topLandOperatorOptions,
     months,
+    exportTourQuery,
     clearFilters,
     hasActiveFilters,
-  } = useTourFilters([], companies);
+  } = useTourFilters(companies);
 
   const { data: guideUsers = [] } = useQuery({
     queryKey: ['guideUsers'],
@@ -107,8 +107,6 @@ const Tours = () => {
     staleTime: TOUR_REFERENCE_STALE_TIME,
     gcTime: TOUR_REFERENCE_GC_TIME,
   });
-
-  // Disable pagination entirely: always fetch ALL matching tours
 
   const {
     data: toursResult,
@@ -124,20 +122,20 @@ const Tours = () => {
     gcTime: TOUR_LIST_GC_TIME,
   });
 
-  // No need for client-side sorting anymore - database handles it
   const tours = useMemo(() => (toursResult as TourListResult | undefined)?.tours ?? [], [toursResult]);
+  const hasDateRangeFilter = !!(dateRange?.from || dateRange?.to);
 
   const displayedTours = useMemo(() => {
-    if (shoppingCommissionFilter === 'all') return tours;
-    return tours.filter((tour) => {
-      const hasUnpaidShoppingCommission = getTourWarningInfo(tour).hasUnpaidCommission;
-      return shoppingCommissionFilter === 'unpaid' ? hasUnpaidShoppingCommission : !hasUnpaidShoppingCommission;
+    return filterToursForList(tours, {
+      shoppingCommissionFilter,
+      selectedMonth,
+      selectedYear,
+      hasDateRangeFilter,
     });
-  }, [shoppingCommissionFilter, tours]);
+  }, [shoppingCommissionFilter, tours, selectedMonth, selectedYear, hasDateRangeFilter]);
 
   const totalTours = (toursResult as TourListResult | undefined)?.total ?? 0;
 
-  // Calculate total final amount for filtered tours (current page)
   const filteredToursTotal = useMemo(() => {
     return displayedTours.reduce((sum, tour) => {
       const finalTotal = tour.summary?.finalTotal ?? 0;
@@ -148,7 +146,6 @@ const Tours = () => {
   const showInitialToursSkeleton = isLoading && !toursResult;
   const showToursBackgroundRefresh = isFetching && !showInitialToursSkeleton;
 
-  // Fetch grand total of ALL tours in database without loading nested tour details
   const { data: allToursData } = useQuery({
     queryKey: TOUR_GRAND_TOTAL_QUERY_KEY,
     queryFn: () => store.getToursGrandTotal(),
@@ -163,23 +160,16 @@ const Tours = () => {
     gcTime: TOUR_REFERENCE_GC_TIME,
   });
 
-  // Removed bulk expense query (feature removed)
-
-  // No pagination --> no page state updates needed
-
-  // Get unique years from tours
-  const availableYears = useMemo(() => {
-    const years = new Set<number>();
-    tours.forEach(tour => {
-      const year = parseInt(tour.startDate.substring(0, 4));
-      years.add(year);
-    });
-    return Array.from(years).sort().reverse();
-  }, [tours]);
+  const availableYears = useStableTourYears(tours);
+  const exportTourFilter = useMemo(() => {
+    if (hasDateRangeFilter || selectedMonth === 'all' || selectedYear !== 'all') return undefined;
+    return (tour: Tour) => isTourInMonthYearFilter(tour, { selectedMonth, selectedYear, hasDateRangeFilter });
+  }, [hasDateRangeFilter, selectedMonth, selectedYear]);
 
   const tourActions = useTourPageActions({
     queryClient,
-    baseTourQuery,
+    exportTourQuery,
+    exportTourFilter,
     totalTours,
     canExportTours,
     canDuplicateTours,
@@ -189,31 +179,17 @@ const Tours = () => {
     isAdmin,
   });
 
-  const { handleImport: handleImportFromHook, importToursAsync } = useTourImport(queryClient, baseTourQuery);
-
-  const handleImport = (tours: Partial<Tour>[]) => {
-    if (!canImportTours) {
-      toast.error('Bạn không có quyền nhập tour.');
-      return;
-    }
-    handleImportFromHook(tours);
-  };
-
-  // Dùng cho luồng import-từ-ảnh: tạo tour rồi trả về để đính ảnh gốc.
-  const handleImportAsync = (tours: Partial<Tour>[]) => {
-    if (!canImportTours) {
-      toast.error('Bạn không có quyền nhập tour.');
-      return Promise.reject(new Error('Không có quyền nhập tour'));
-    }
-    return importToursAsync(tours);
-  };
+  const { handleImport, handleImportAsync } = useTourImportActions({
+    queryClient,
+    baseTourQuery,
+    canImportTours,
+  });
 
   const { classes: headerClasses } = useHeaderMode('tours.headerMode');
 
   return (
     <>
       <div className="animate-fade-in">
-        {/* Sticky Header - Always pinned to top */}
         <div className={`${headerClasses} border-b pb-2 pt-2 sm:pb-4 sm:pt-4 bg-gray-100 dark:bg-gray-900 z-40 space-y-2 sm:space-y-4`}>
           <ToursHeaderControls
             topControlsExpanded={topControlsExpanded}
@@ -283,7 +259,6 @@ const Tours = () => {
           />
         </div>
 
-        {/* Totals - Always Visible (Outside Filters Section) */}
         {topControlsExpanded && (
             <ToursTotalsBar
             toursCount={displayedTours.length}
@@ -306,7 +281,7 @@ const Tours = () => {
           <ToursLoadingSkeleton />
         ) : displayedTours.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground mt-6">
-            {!hasActiveFilters && !(searchCode.trim() || dateRange?.from || dateRange?.to || searchCompany.trim() || searchLandOperator.trim())
+            {!hasActiveFilters
               ? 'Không tìm thấy tour nào. Tạo tour đầu tiên để bắt đầu.'
               : 'Không có tour nào phù hợp với bộ lọc.'}
           </div>
@@ -351,7 +326,6 @@ const Tours = () => {
           onDuplicateConfirm={tourActions.confirmDuplicate}
           onDeleteConfirm={tourActions.confirmDelete}
         />
-        {/* Pagination removed */}
       </div>
     </>
   );

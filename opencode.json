@@ -6,6 +6,7 @@
       "supabase *": "allow"
     }
   },
+
   "mcp": {
     "agentmemory": {
       "type": "local",
@@ -15,8 +16,15 @@
         "AGENT_ID": "opencode"
       },
       "enabled": true
+    },
+    "codegraph": {
+      "type": "local",
+      "command": ["codegraph", "serve", "--mcp"],
+      "enabled": true
     }
-  }
-  
-  
+  },
+
+  "plugin": [
+    "./plugins/agentmemory-capture.ts"
+  ]
 }

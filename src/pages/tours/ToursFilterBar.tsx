@@ -1,5 +1,5 @@
 import { memo, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
-import { ChevronDown, ChevronUp, Filter, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronUp, Filter, RefreshCw, X } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -139,7 +139,7 @@ export const ToursFilterBar = memo(function ToursFilterBar({
           {searchExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </Button>
       </div>
-      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 ${searchExpanded ? '' : 'hidden sm:grid'}`}>
+      <div className={`space-y-2 sm:space-y-3 ${searchExpanded ? '' : 'hidden sm:block'}`}>
         <ToursFilterSearchGrid
           searchCode={searchCode} setSearchCode={setSearchCode}
           dateRange={dateRange} setDateRange={setDateRange}
@@ -148,18 +148,22 @@ export const ToursFilterBar = memo(function ToursFilterBar({
           searchLandOperator={searchLandOperator} setSearchLandOperator={setSearchLandOperator}
           topLandOperatorFilterOpen={topLandOperatorFilterOpen} setTopLandOperatorFilterOpen={setTopLandOperatorFilterOpen} topLandOperatorOptions={topLandOperatorOptions}
         />
-      </div>
-
-      {/* Guide filter — admin only, respects search collapse on mobile */}
-      {isAdmin && (
-        <div className={`${searchExpanded ? '' : 'hidden sm:block'}`}>
+        {isAdmin && (
           <ToursGuideFilter
             guideFilter={guideFilter}
             setGuideFilter={setGuideFilter}
             guides={guides}
           />
-        </div>
-      )}
+        )}
+        {hasActiveFilters && (
+          <div className="flex items-center justify-end">
+            <Button variant="outline" size="sm" onClick={clearFilters} className="h-8 text-xs">
+              <X className="h-3 w-3 mr-1" />
+              Xóa bộ lọc
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Filter section — independently collapsible on mobile */}
       <div className="flex items-center gap-2 sm:hidden">

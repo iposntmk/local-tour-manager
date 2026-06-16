@@ -59,8 +59,9 @@ function UserActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="icon" className="h-9 w-9">
           <MoreVertical className="h-4 w-4" />
+          <span className="sr-only">Thao tác</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -140,19 +141,21 @@ export function UserListViews(props: UserListViewsProps) {
           <div className="text-center py-8 text-muted-foreground">Không tìm thấy người dùng</div>
         ) : (
           users.map((user) => (
-            <Card key={user.id} className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{user.email}</h3>
-                  {user.fullName && <p className="text-sm text-muted-foreground">{user.fullName}</p>}
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <span className={`inline-block h-2.5 w-2.5 rounded-full ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
-                    <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">{USER_ROLE_LABELS[user.role]}</Badge>
-                    <Badge variant="outline" className="text-xs">{SETTLEMENT_ROLE_LABELS[user.settlementRole]}</Badge>
+            <Card key={user.id} className="p-3 sm:p-4 active:bg-muted/40 transition-colors">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <h3 className="font-medium text-sm truncate">{user.email}</h3>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '—'}
-                  </p>
+                  {user.fullName && <p className="text-xs text-muted-foreground">{user.fullName}</p>}
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge variant={getRoleBadgeVariant(user.role)} className="text-[10px] leading-3 h-5 px-1.5">{USER_ROLE_LABELS[user.role]}</Badge>
+                    <Badge variant="outline" className="text-[10px] leading-3 h-5 px-1.5">{SETTLEMENT_ROLE_LABELS[user.settlementRole]}</Badge>
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : '—'}
+                    </span>
+                  </div>
                 </div>
                 <UserActions {...props} user={user} currentUserId={currentUserId} />
               </div>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
-import type { Tour, TourQuery } from '@/types/tour';
+import type { TourQuery } from '@/types/tour';
+import { getTourMonthYearDateQuery } from '@/pages/tours/tour-list-filters';
 
 type CompanyOption = {
   name?: string | null;
@@ -17,6 +18,7 @@ const loadDateRange = (): DateRange | undefined => {
 
   try {
     const parsed = JSON.parse(saved) as { from?: string; to?: string };
+    if (!parsed.from && !parsed.to) return undefined;
     return {
       from: parsed.from ? new Date(parsed.from) : undefined,
       to: parsed.to ? new Date(parsed.to) : undefined,
@@ -55,7 +57,7 @@ export const TOUR_MONTHS = [
   { value: '12', label: 'Tháng 12' },
 ];
 
-export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
+export const useTourFilters = (companies: CompanyOption[]) => {
   const [searchCode, setSearchCode] = useState(() => localStorage.getItem('tours.search.code') || '');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(loadDateRange);
   const [searchCompany, setSearchCompany] = useState(() => localStorage.getItem('tours.search.company') || '');
@@ -76,7 +78,13 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
   const [topLandOperatorFilterOpen, setTopLandOperatorFilterOpen] = useState(false);
 
   useEffect(() => { localStorage.setItem('tours.search.code', searchCode); }, [searchCode]);
-  useEffect(() => { localStorage.setItem('tours.search.dateRange', JSON.stringify(dateRange || {})); }, [dateRange]);
+  useEffect(() => {
+    if (dateRange) {
+      localStorage.setItem('tours.search.dateRange', JSON.stringify(dateRange));
+    } else {
+      localStorage.removeItem('tours.search.dateRange');
+    }
+  }, [dateRange]);
   useEffect(() => { localStorage.setItem('tours.search.company', searchCompany); }, [searchCompany]);
   useEffect(() => { localStorage.setItem('tours.search.landOperator', searchLandOperator); }, [searchLandOperator]);
   useEffect(() => { localStorage.setItem('tours.guideFilter', guideFilter); }, [guideFilter]);
@@ -105,23 +113,23 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     if (settlementStatusFilter !== 'all') query.settlementStatus = settlementStatusFilter as TourQuery['settlementStatus'];
     if (paymentStatusFilter !== 'all') query.paymentStatus = paymentStatusFilter as TourQuery['paymentStatus'];
 
-    if (!dateRange?.from && !dateRange?.to && selectedMonth !== 'all' && selectedYear !== 'all') {
-      const year = Number(selectedYear);
-      const month = Number(selectedMonth);
-      if (!Number.isNaN(year) && !Number.isNaN(month)) {
-        const monthStr = String(month).padStart(2, '0');
-        query.startDate = `${year}-${monthStr}-01`;
-        const lastDay = new Date(year, month, 0).getDate();
-        query.endDate = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
-      }
-    }
-
     const [field, order] = sortBy.split('-');
     query.sortBy = field as TourQuery['sortBy'];
     query.sortOrder = order as 'asc' | 'desc';
 
     return query;
-  }, [searchCode, dateRange, searchCompany, searchLandOperator, guideFilter, nationalityFilter, settlementStatusFilter, paymentStatusFilter, selectedMonth, selectedYear, sortBy]);
+  }, [searchCode, dateRange, searchCompany, searchLandOperator, guideFilter, nationalityFilter, settlementStatusFilter, paymentStatusFilter, sortBy]);
+
+  const exportTourQuery = useMemo((): TourQuery => {
+    const monthYearQuery = getTourMonthYearDateQuery({
+      selectedMonth,
+      selectedYear,
+      hasDateRangeFilter: !!(dateRange?.from || dateRange?.to),
+    });
+    return Object.keys(monthYearQuery).length > 0
+      ? { ...baseTourQuery, ...monthYearQuery }
+      : baseTourQuery;
+  }, [baseTourQuery, dateRange, selectedMonth, selectedYear]);
 
   const topCompanyOptions = useMemo(() => {
     const companyNames = new Set<string>();
@@ -142,15 +150,6 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     if (searchLandOperator.trim()) names.add(searchLandOperator.trim());
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [companies, searchLandOperator]);
-
-  const availableYears = useMemo(() => {
-    const years = new Set<number>();
-    tours.forEach((tour) => {
-      const year = parseInt(tour.startDate.substring(0, 4));
-      years.add(year);
-    });
-    return Array.from(years).sort().reverse();
-  }, [tours]);
 
   const clearFilters = () => {
     setSearchCode('');
@@ -214,7 +213,7 @@ export const useTourFilters = (tours: Tour[], companies: CompanyOption[]) => {
     baseTourQuery,
     topCompanyOptions,
     topLandOperatorOptions,
-    availableYears,
+    exportTourQuery,
     months: TOUR_MONTHS,
     clearFilters,
     hasActiveFilters,

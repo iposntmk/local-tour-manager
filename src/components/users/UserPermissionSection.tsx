@@ -33,8 +33,8 @@ export function UserPermissionSection({
               : 'Tick theo từng nhóm chức năng; nhóm cha sẽ chọn hoặc bỏ chọn toàn bộ quyền con.'}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onApplyRolePreset} disabled={isAdminRole}>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onApplyRolePreset} disabled={isAdminRole} className="text-xs h-8 px-2 sm:text-sm sm:h-9 sm:px-3">
             Theo vai trò
           </Button>
           <Button
@@ -43,6 +43,7 @@ export function UserPermissionSection({
             size="sm"
             onClick={() => onChange(ALL_PERMISSIONS)}
             disabled={isAdminRole}
+            className="text-xs h-8 px-2 sm:text-sm sm:h-9 sm:px-3"
           >
             Chọn tất cả
           </Button>
@@ -52,6 +53,7 @@ export function UserPermissionSection({
             size="sm"
             onClick={() => onChange(protectedPermissions)}
             disabled={isAdminRole}
+            className="text-xs h-8 px-2 sm:text-sm sm:h-9 sm:px-3"
           >
             Bỏ chọn
           </Button>

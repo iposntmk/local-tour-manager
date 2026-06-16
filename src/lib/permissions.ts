@@ -187,6 +187,14 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
         import: 'import_tourist_destinations',
         export: 'export_tourist_destinations',
       }),
+      masterModule('destinationsFree', 'Điểm miễn phí', {
+        view: 'view_destinations_free',
+        create: 'create_destinations_free',
+        edit: 'edit_destinations_free',
+        delete: 'delete_destinations_free',
+        import: 'import_destinations_free',
+        export: 'export_destinations_free',
+      }),
       masterModule('shopping', 'Mua sắm', {
         view: 'view_shopping',
         create: 'create_shopping',

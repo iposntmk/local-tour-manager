@@ -12,7 +12,8 @@ const DELETE_ALL_PIN = '0829101188';
 
 interface UseTourPageActionsArgs {
   queryClient: QueryClient;
-  baseTourQuery: TourQuery;
+  exportTourQuery: TourQuery;
+  exportTourFilter?: (tour: Tour) => boolean;
   totalTours: number;
   canExportTours: boolean;
   canDuplicateTours: boolean;
@@ -24,7 +25,8 @@ interface UseTourPageActionsArgs {
 
 export function useTourPageActions({
   queryClient,
-  baseTourQuery,
+  exportTourQuery,
+  exportTourFilter,
   totalTours,
   canExportTours,
   canDuplicateTours,
@@ -89,7 +91,8 @@ export function useTourPageActions({
     }
 
     try {
-      const { tours: toursWithDetails } = await store.listTours({ ...baseTourQuery }, { includeDetails: true });
+      const { tours: detailedTours } = await store.listTours({ ...exportTourQuery }, { includeDetails: true });
+      const toursWithDetails = exportTourFilter ? detailedTours.filter(exportTourFilter) : detailedTours;
       if (toursWithDetails.length === 0) {
         toast.error('Không có tour nào để xuất');
         return;
@@ -113,7 +116,8 @@ export function useTourPageActions({
     }
 
     try {
-      const { tours: toursWithDetails } = await store.listTours({ ...baseTourQuery }, { includeDetails: true });
+      const { tours: detailedTours } = await store.listTours({ ...exportTourQuery }, { includeDetails: true });
+      const toursWithDetails = exportTourFilter ? detailedTours.filter(exportTourFilter) : detailedTours;
       if (toursWithDetails.length === 0) {
         toast.error('Không có tour nào để xuất');
         return;

@@ -271,7 +271,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[760px]">
+      <DialogContent className="w-[95vw] sm:max-w-[760px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Chỉnh sửa người dùng' : 'Tạo người dùng mới'}</DialogTitle>
           <DialogDescription>
