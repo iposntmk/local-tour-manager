@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/currency-utils';
-import { isTourPaymentEligible } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
 import type { Tour } from '@/types/tour';
@@ -199,11 +198,7 @@ export const ToursDesktopTable = ({
         includesTableFilter(`${allowanceTotal} ${formatCurrency(allowanceTotal)}`, tableFilters.ctp) &&
         includesTableFilter(`${finalTotal} ${formatCurrency(finalTotal)}`, tableFilters.total) &&
         (!tableFilters.settlement || tour.settlementStatus === tableFilters.settlement) &&
-        (!tableFilters.payment || (
-          tableFilters.payment === 'na'
-            ? !isTourPaymentEligible(tour)
-            : isTourPaymentEligible(tour) && tour.paymentStatus === tableFilters.payment
-        ))
+        (!tableFilters.payment || tour.paymentStatus === tableFilters.payment)
       );
     });
   }, [tableFilters, tours]);
@@ -334,7 +329,7 @@ export const ToursDesktopTable = ({
                     return (
                       <TableRow
                         key={tour.id}
-                        className={`cursor-pointer ${row.warningInfo.showRedFlag ? 'bg-destructive/5 hover:bg-destructive/10' : ''}`}
+                        className={`cursor-pointer ${row.warningInfo.showRedFlag ? 'bg-destructive/5 hover:bg-destructive/10' : tour.paymentStatus === 'paid' ? 'bg-emerald-50/60 hover:bg-emerald-50' : ''}`}
                         onClick={() => onOpenTour(tour.id)}
                       >
                         {visibleColumns.map((column) => (

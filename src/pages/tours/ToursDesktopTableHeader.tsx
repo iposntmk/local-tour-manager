@@ -300,7 +300,6 @@ export function ToursDesktopTableHeader({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="na">N/A</SelectItem>
               <SelectItem value="pending">Chờ TT</SelectItem>
               <SelectItem value="partial">Một phần</SelectItem>
               <SelectItem value="paid">Đã TT</SelectItem>

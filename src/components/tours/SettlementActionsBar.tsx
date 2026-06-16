@@ -20,7 +20,7 @@ import { toVietnameseError } from '@/lib/error-messages';
 import type { Tour } from '@/types/tour';
 import { areAllSettlementLinesApproved } from '@/lib/tour-line-utils';
 import { canReviewTour, canSubmitTour, validateSettlementReady } from '@/lib/settlement-utils';
-import { canRecordPayment, isTourPaymentEligible } from '@/lib/payment-utils';
+import { canRecordPayment } from '@/lib/payment-utils';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import {
   patchTourSettlementStatusInCache,
@@ -138,12 +138,14 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
     }
   };
 
-  const showSubmit = hasPermission('submit_settlement') && canSubmitTour(tour);
-  const showReview = hasPermission('approve_settlement') && canReviewTour(tour);
-  const showReopen = hasPermission('reopen_settlement') && (tour.settlementStatus === 'approved' || tour.settlementStatus === 'closed');
-  const showPaymentBadge = isTourPaymentEligible(tour);
-  const showPaymentCTA = canRecordPayment(tour, hasPermission('mark_tour_paid'));
-  const allLinesApproved = areAllSettlementLinesApproved(tour);
+  const canSubmit = canSubmitTour(tour);
+  const canReview = canReviewTour(tour);
+  const canReopen = tour.settlementStatus === 'approved' || tour.settlementStatus === 'closed';
+  const submitDisabled = !hasPermission('submit_settlement') || !canSubmit;
+  const reviewDisabled = !hasPermission('approve_settlement') || !canReview;
+  const approveDisabled = reviewDisabled || !areAllSettlementLinesApproved(tour);
+  const reopenDisabled = !hasPermission('reopen_settlement') || !canReopen;
+  const payDisabled = !canRecordPayment(tour, hasPermission('mark_tour_paid'));
 
   const dialogConfig: Record<Exclude<ActionKind, null>, { title: string; description: string; confirmLabel: string; handler: () => Promise<void> }> = {
     submit: {
@@ -175,9 +177,7 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <SettlementStatusBadge status={tour.settlementStatus} />
-      {showPaymentBadge && (
-        <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} />
-      )}
+      <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} />
       {tour.submissionCount > 0 && (
         <span className="text-xs text-muted-foreground">
           Đã gửi {tour.submissionCount} lần
@@ -190,36 +190,26 @@ export function SettlementActionsBar({ tour, onChanged, onShowHistory }: Settlem
           Lịch sử
         </Button>
       )}
-      {showSubmit && (
-        <Button size="sm" onClick={() => setPending('submit')}>
-          <Send className="h-4 w-4 mr-1" />
-          {tour.settlementStatus === 'need_changes' ? 'Gửi lại kế toán' : 'Gửi kế toán'}
-        </Button>
-      )}
-      {showReview && (
-        <>
-          <Button variant="outline" size="sm" onClick={() => setPending('return')}>
-            <RotateCcw className="h-4 w-4 mr-1" />
-            Trả về HDV
-          </Button>
-          <Button size="sm" onClick={() => setPending('approve')} disabled={!allLinesApproved}>
-            <CheckCircle2 className="h-4 w-4 mr-1" />
-            Duyệt
-          </Button>
-        </>
-      )}
-      {showPaymentCTA && (
-        <Button size="sm" variant="outline" onClick={() => setPaymentDialogOpen(true)} className="border-2 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-950/20 dark:text-blue-300 dark:hover:bg-blue-900/30 font-medium shadow-sm">
-          <Wallet className="h-4 w-4 mr-1" />
-          Ghi nhận thanh toán
-        </Button>
-      )}
-      {showReopen && (
-        <Button variant="outline" size="sm" onClick={() => setPending('reopen')}>
-          <Unlock className="h-4 w-4 mr-1" />
-          Mở khóa
-        </Button>
-      )}
+      <Button size="sm" onClick={() => setPending('submit')} disabled={submitDisabled}>
+        <Send className="h-4 w-4 mr-1" />
+        {tour.settlementStatus === 'need_changes' ? 'Gửi lại kế toán' : 'Gửi kế toán'}
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => setPending('return')} disabled={reviewDisabled}>
+        <RotateCcw className="h-4 w-4 mr-1" />
+        Trả về HDV
+      </Button>
+      <Button size="sm" onClick={() => setPending('approve')} disabled={approveDisabled}>
+        <CheckCircle2 className="h-4 w-4 mr-1" />
+        Duyệt
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => setPaymentDialogOpen(true)} disabled={payDisabled} className="border-2 border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400 dark:bg-blue-950/20 dark:text-blue-300 dark:hover:bg-blue-900/30 font-medium shadow-sm">
+        <Wallet className="h-4 w-4 mr-1" />
+        Ghi nhận thanh toán
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => setPending('reopen')} disabled={reopenDisabled}>
+        <Unlock className="h-4 w-4 mr-1" />
+        Mở khóa
+      </Button>
 
       <RecordPaymentDialog
         tour={tour}

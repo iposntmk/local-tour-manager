@@ -77,11 +77,16 @@ export const ToursMobileCards = ({
       const totalTabs = tour.summary?.totalTabs ?? 0;
       const shoppingInfo = getShoppingCommissionInfo(tour.shoppings || []);
       const nationalities = formatTourNationalities(tour);
+      const cardBorderBg = warningInfo.showRedFlag
+        ? 'border-red-300 bg-red-50/60 dark:border-red-700 dark:bg-red-950/20'
+        : tour.paymentStatus === 'paid'
+          ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-700 dark:bg-emerald-950/20'
+          : 'border-slate-300 bg-card dark:border-slate-700';
 
       return (
         <div
           key={tour.id}
-          className="relative cursor-pointer rounded-lg border-2 border-slate-300 bg-card p-4 shadow-sm transition-all hover:shadow-md sm:p-6 dark:border-slate-700 [content-visibility:auto] [contain-intrinsic-size:260px]"
+          className={`relative cursor-pointer rounded-lg border-2 ${cardBorderBg} p-4 shadow-sm transition-all hover:shadow-md sm:p-6 [content-visibility:auto] [contain-intrinsic-size:260px]`}
           onClick={() => onOpenTour(tour.id)}
           onPointerEnter={() => prefetchTour(tour.id)}
           onTouchStart={() => prefetchTour(tour.id)}

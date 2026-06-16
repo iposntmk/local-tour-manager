@@ -6,7 +6,7 @@ import { PaymentStatusBadge } from '@/components/tours/PaymentStatusBadge';
 import { SettlementStatusBadge } from '@/components/tours/SettlementStatusBadge';
 import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
-import { isTourPaymentEligible } from '@/lib/payment-utils';
+
 import { getShoppingCommissionInfo } from '@/lib/shopping-commission-utils';
 import type { Tour } from '@/types/tour';
 import {
@@ -93,11 +93,7 @@ export const ToursDesktopTableCellContent = ({
     case 'settlement':
       return <SettlementStatusBadge status={tour.settlementStatus} />;
     case 'payment':
-      return isTourPaymentEligible(tour) ? (
-        <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} />
-      ) : (
-        <span className="text-muted-foreground">-</span>
-      );
+      return <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} />;
     case 'commission': {
       const shoppingInfo = getShoppingCommissionInfo(tour.shoppings || []);
       if (shoppingInfo.hasShoppings && shoppingInfo.allPaid) {

@@ -13,7 +13,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { CanMarkPayment } from '@/components/auth/PermissionGuard';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,12 +94,10 @@ export function TourPaymentsPanel({ tour }: TourPaymentsPanelProps) {
         <h3 className="text-base font-semibold">Thanh toán cho HDV</h3>
         <PaymentStatusBadge status={tour.paymentStatus} method={tour.lastPaymentMethod} />
         <div className="flex-1" />
-        {canAdd && (
-          <Button size="sm" onClick={openCreate} className="shadow ring-2 ring-offset-2 ring-primary/40">
-            <Plus className="h-4 w-4 mr-1" />
-            Ghi nhận thanh toán
-          </Button>
-        )}
+        <Button size="sm" onClick={openCreate} disabled={!canAdd} className="shadow ring-2 ring-offset-2 ring-primary/40">
+          <Plus className="h-4 w-4 mr-1" />
+          Ghi nhận thanh toán
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
@@ -142,28 +139,26 @@ export function TourPaymentsPanel({ tour }: TourPaymentsPanelProps) {
                   <div className="text-xs text-muted-foreground mt-0.5">{payment.note}</div>
                 )}
               </div>
-              <CanMarkPayment>
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => openEdit(payment)}
-                    disabled={!eligible}
-                    aria-label="Sửa"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setDeleting(payment)}
-                    disabled={!eligible}
-                    aria-label="Xóa"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </CanMarkPayment>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => openEdit(payment)}
+                  disabled={!eligible || !canMark}
+                  aria-label="Sửa"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setDeleting(payment)}
+                  disabled={!eligible || !canMark}
+                  aria-label="Xóa"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
