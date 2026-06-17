@@ -42,6 +42,7 @@ export interface ServiceItem {
   vatAmount?: number;
   guideNote?: string;
   attachmentCount?: number;
+  attachmentFiles?: { fileName: string; filePath: string }[];
 }
 
 export const formatTourNationalities = (tour: Tour) => {
@@ -173,6 +174,7 @@ export const buildServiceItems = (tour: Tour): { serviceItems: ServiceItem[]; al
       price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined,
       vatRate: d.vatRate || 0, vatAmount: d.vatAmount || 0,
       guideNote: d.guideNote || '', attachmentCount: d.attachments?.length || 0,
+      attachmentFiles: d.attachments?.map(a => ({ fileName: a.fileName, filePath: a.filePath })),
     });
   });
   if (tour.expenses && tour.expenses.length > 0) {
@@ -183,6 +185,7 @@ export const buildServiceItems = (tour: Tour): { serviceItems: ServiceItem[]; al
         guests: isWaterExpense(e) ? waterQuantity : e.guests,
         vatRate: e.vatRate || 0, vatAmount: e.vatAmount || 0,
         guideNote: e.guideNote || '', attachmentCount: e.attachments?.length || 0,
+        attachmentFiles: e.attachments?.map(a => ({ fileName: a.fileName, filePath: a.filePath })),
       });
     });
   }
@@ -192,6 +195,7 @@ export const buildServiceItems = (tour: Tour): { serviceItems: ServiceItem[]; al
       guests: typeof m.guests === 'number' ? m.guests : undefined,
       vatRate: m.vatRate || 0, vatAmount: m.vatAmount || 0,
       guideNote: m.guideNote || '', attachmentCount: m.attachments?.length || 0,
+      attachmentFiles: m.attachments?.map(a => ({ fileName: a.fileName, filePath: a.filePath })),
     });
   });
   const sortByDate = (a: { date?: string }, b: { date?: string }) => {

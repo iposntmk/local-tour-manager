@@ -1,6 +1,7 @@
 import type { Row, Workbook, Worksheet } from 'exceljs';
-import type { Tour } from '@/types/tour';
+import type { Tour, TourLineAttachment } from '@/types/tour';
 import { formatDateDisplay } from '@/lib/date-utils';
+import { store } from '@/lib/datastore';
 import {
   currencyFormat, thinBorder, headerFill, totalsFill, infoFill,
   TourSheetBuildResult, ServiceItem,
@@ -53,7 +54,44 @@ const writeWorksheetHeaders = (worksheet: Worksheet, isDraft: boolean) => {
   worksheet.views = [{ state: 'frozen', ySplit: 2 }];
 };
 
-export const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBuildResult => {
+export type AttachmentUrlMap = Record<string, string>;
+
+const collectAttachmentPaths = (tour: Tour): string[] => {
+  const paths = new Map<string, boolean>();
+  const add = (items: { attachments?: TourLineAttachment[] }[]) =>
+    items.forEach(item => (item.attachments || []).forEach(a => paths.set(a.filePath, true)));
+  add(tour.destinations || []);
+  add(tour.expenses || []);
+  add(tour.meals || []);
+  return Array.from(paths.keys());
+};
+
+export const generateAttachmentUrls = async (tour: Tour): Promise<AttachmentUrlMap> => {
+  const filePaths = collectAttachmentPaths(tour);
+  if (!filePaths.length) return {};
+  const entries = await Promise.allSettled(
+    filePaths.map(async fp => [fp, await store.getTourLineAttachmentUrl(fp)] as const),
+  );
+  const map: AttachmentUrlMap = {};
+  for (const entry of entries) {
+    if (entry.status === 'fulfilled') map[entry.value[0]] = entry.value[1];
+  }
+  return map;
+};
+
+export const getAttachmentCellValue = (
+  service: ServiceItem,
+  urls?: AttachmentUrlMap,
+): number | { text: string; hyperlink: string } => {
+  const files = service.attachmentFiles;
+  if (!files?.length) return 0;
+  const firstUrl = urls?.[files[0].filePath];
+  if (!firstUrl) return files.length;
+  const label = files.length === 1 ? files[0].fileName : `${files.length} files`;
+  return { text: label, hyperlink: firstUrl };
+};
+
+export const buildTourWorksheet = (workbook: Workbook, tour: Tour, attachmentUrls?: AttachmentUrlMap): TourSheetBuildResult => {
   const isDraft = isTourDraftForExport(tour);
   const sheetName = ensureUniqueSheetName(workbook, isDraft ? `[NHÁP] ${tour.tourCode || 'Tour'}` : (tour.tourCode || 'Tour'));
   const worksheet = workbook.addWorksheet(sheetName);
@@ -105,8 +143,12 @@ export const buildTourWorksheet = (workbook: Workbook, tour: Tour): TourSheetBui
       row.getCell(15).numFmt = currencyFormat;
       row.getCell(16).value = service.guideNote || '';
       row.getCell(16).alignment = { wrapText: true, vertical: 'middle' };
-      row.getCell(17).value = service.attachmentCount || 0;
+      const attachVal = getAttachmentCellValue(service, attachmentUrls);
+      row.getCell(17).value = attachVal;
       row.getCell(17).alignment = { horizontal: 'center', vertical: 'middle' };
+      if (typeof attachVal === 'object' && attachVal !== null) {
+        row.getCell(17).font = { color: { argb: 'FF0563C1' }, underline: true };
+      }
     }
     if (allowance) {
       row.getCell(8).value = allowance.name;
@@ -228,6 +270,7 @@ export const exportTourToExcel = async (tour: Tour) => {
   if (issues.length > 0 && typeof window !== 'undefined') {
     window.alert(`Excel export warning for ${tour.tourCode}:\n` + issues.join('\n'));
   }
-  buildTourWorksheet(workbook, tour);
+  const attachmentUrls = await generateAttachmentUrls(tour);
+  buildTourWorksheet(workbook, tour, attachmentUrls);
   await downloadWorkbook(workbook, `Tour_${tour.tourCode}_${Date.now()}.xlsx`);
 };

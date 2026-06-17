@@ -1,13 +1,14 @@
 import type { Row, Worksheet } from 'exceljs';
-import type { Tour } from '@/types/tour';
+import type { Tour, TourLineAttachment } from '@/types/tour';
 import { formatDateDisplay } from '@/lib/date-utils';
+import { store } from '@/lib/datastore';
 import {
   currencyFormat, thinBorder, headerFill, totalsFill, infoFill,
   loadExcelJS, validateTourNumbers, getDuplicateNames, ensureUniqueSheetName,
   isTourDraftForExport, applyRowBorder, downloadWorkbook,
   formatNgayRangeForExcel, buildServiceItems, appendSummarySection,
 } from './excel-helpers';
-import { buildTourWorksheet } from './excel-worksheet';
+import { buildTourWorksheet, getAttachmentCellValue, type AttachmentUrlMap } from './excel-worksheet';
 import { TOUR_SHEET_COLUMNS, TOUR_SHEET_HEADER2_LABELS } from './tour-sheet-layout';
 
 const writeTourTotalsRow = (
@@ -107,6 +108,24 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   });
   worksheet.views = [{ state: 'frozen', ySplit: 2 }];
 
+  const allPaths = new Set<string>();
+  const collectPaths = (items: { attachments?: TourLineAttachment[] }[]) =>
+    items.forEach(item => (item.attachments || []).forEach(a => allPaths.add(a.filePath)));
+  tours.forEach(t => {
+    collectPaths(t.destinations || []);
+    collectPaths(t.expenses || []);
+    collectPaths(t.meals || []);
+  });
+  const attachmentUrlMap: AttachmentUrlMap = {};
+  if (allPaths.size > 0) {
+    const entries = await Promise.allSettled(
+      Array.from(allPaths).map(async fp => [fp, await store.getTourLineAttachmentUrl(fp)] as const),
+    );
+    for (const entry of entries) {
+      if (entry.status === 'fulfilled') attachmentUrlMap[entry.value[0]] = entry.value[1];
+    }
+  }
+
   let currentRow = 3;
   const allTourTotalCells: string[] = [];
   const invalidTourCodes: string[] = [];
@@ -179,8 +198,12 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
         row.getCell(15).numFmt = currencyFormat;
         row.getCell(16).value = service.guideNote || '';
         row.getCell(16).alignment = { wrapText: true, vertical: 'middle' };
-        row.getCell(17).value = service.attachmentCount || 0;
+        const attachVal = getAttachmentCellValue(service, attachmentUrlMap);
+        row.getCell(17).value = attachVal;
         row.getCell(17).alignment = { horizontal: 'center', vertical: 'middle' };
+        if (typeof attachVal === 'object' && attachVal !== null) {
+          row.getCell(17).font = { color: { argb: 'FF0563C1' }, underline: true };
+        }
       }
       if (allowance) {
         row.getCell(8).value = allowance.name || '';
