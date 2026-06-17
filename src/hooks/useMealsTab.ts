@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
 import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
+import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Meal, Tour } from '@/types/tour';
@@ -26,8 +27,6 @@ interface UseMealsTabOptions {
 }
 
 export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineFieldAccess }: UseMealsTabOptions) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Meal>({ name: '', price: 0, date: '' });
   const [openMeal, setOpenMeal] = useState(false);
   const [showNewMealDialog, setShowNewMealDialog] = useState(false);
   const [newMealName, setNewMealName] = useState('');
@@ -36,18 +35,28 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
   const [openCategory, setOpenCategory] = useState(false);
   const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
   const queryClient = useQueryClient();
-  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId);
+  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId, 'meal');
   const { isGuide, userProfile } = useAuth();
   const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
+  const tourStartDate = tour?.startDate || '';
+  const tourTotalGuests = tour?.totalGuests || 0;
+  const fallbackMeal = useMemo<Meal>(() => ({
+    name: '',
+    price: 0,
+    date: tourStartDate,
+    guests: !tourId && tourTotalGuests > 0 ? tourTotalGuests : undefined,
+  }), [tourStartDate, tourTotalGuests, tourId]);
+  const {
+    formData, setFormData, editingIndex, setEditingIndex, resetForm,
+  } = useLineFormPersistence<Meal>({
+    storageKey: `meals:${tourId || 'new'}`,
+    fallback: fallbackMeal,
+  });
   const canEditLine = canEditAnyTourLineField(lineFieldAccess);
   const canCreateLine =
     canEditTourLineField(lineFieldAccess, 'name') &&
     canEditTourLineField(lineFieldAccess, 'date') &&
     canEditTourLineField(lineFieldAccess, 'price');
-
-  if (!tourId && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {
-    formData.guests = tour!.totalGuests;
-  }
 
   const { data: detailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses', guideId ?? null],
@@ -59,9 +68,9 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
-  const invalidate = () => {
+  const invalidate = async () => {
     if (tourId) {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       void invalidateTourAggregateCaches(queryClient, 'none');
     }
   };
@@ -74,10 +83,10 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     },
     onSuccess: async (lineId) => {
       await uploadPendingFiles('meal', lineId);
-      invalidate();
+      await invalidate();
       toast.success('Đã thêm bữa ăn');
       clearPendingFiles();
-      setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+      resetForm();
     },
   });
 
@@ -88,10 +97,10 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     },
     onSuccess: async (_, { meal }) => {
       await uploadPendingFiles('meal', meal.id);
-      invalidate();
+      await invalidate();
       toast.success('Đã cập nhật bữa ăn');
       clearPendingFiles();
-      setEditingIndex(null);
+      resetForm();
     },
   });
 
@@ -163,13 +172,11 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     setEditingIndex(index);
     setFormData(meals[index]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => setOpenMeal(true), 100);
   };
 
   const handleCancel = () => {
-    setEditingIndex(null);
     clearPendingFiles();
-    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+    resetForm();
   };
 
   const handleDuplicate = (index: number) => {
@@ -208,6 +215,24 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
   const mealsTotalAmount = useMemo(() =>
     meals.reduce((sum, m) => sum + m.price * (typeof m.guests === 'number' ? m.guests : 0), 0),
   [meals]);
+
+  useEffect(() => {
+    if (!formData.date && tourStartDate) setFormData((prev) => ({ ...prev, date: tourStartDate }));
+  }, [formData.date, setFormData, tourStartDate]);
+
+  useEffect(() => {
+    if (editingIndex !== null || tourId || formData.guests !== undefined || tourTotalGuests <= 0) return;
+    setFormData((prev) => ({ ...prev, guests: tourTotalGuests }));
+  }, [editingIndex, formData.guests, setFormData, tourId, tourTotalGuests]);
+
+  useEffect(() => {
+    if (editingIndex === null) return;
+    const latest = meals[editingIndex];
+    if (!latest || latest.id !== formData.id) return;
+    const latestKey = (latest.attachments || []).map((item) => item.id).join('|');
+    const formKey = (formData.attachments || []).map((item) => item.id).join('|');
+    if (latestKey !== formKey) setFormData((prev) => ({ ...prev, attachments: latest.attachments || [] }));
+  }, [editingIndex, formData.attachments, formData.id, meals, setFormData]);
 
   return {
     editingIndex, formData, setFormData, openMeal, setOpenMeal,

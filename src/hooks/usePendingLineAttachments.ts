@@ -1,12 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import type { AttachmentLineType } from '@/types/tour';
 
-export function usePendingLineAttachments(tourId?: string) {
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+const pendingFilesCache = new Map<string, File[]>();
+
+export function usePendingLineAttachments(tourId?: string, scopeKey = 'default') {
+  const cacheKey = `${tourId || 'new'}:${scopeKey}`;
+  const [pendingFiles, setPendingFilesState] = useState<File[]>(() => pendingFilesCache.get(cacheKey) || []);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    setPendingFilesState(pendingFilesCache.get(cacheKey) || []);
+  }, [cacheKey]);
+
+  const setPendingFiles = (files: File[]) => {
+    pendingFilesCache.set(cacheKey, files);
+    setPendingFilesState(files);
+  };
 
   const clearPendingFiles = () => setPendingFiles([]);
 
@@ -20,8 +32,8 @@ export function usePendingLineAttachments(tourId?: string) {
       clearPendingFiles();
       await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
       return true;
-    } catch (error: any) {
-      toast.error(error?.message || 'Không thể tải chứng từ.');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Không thể tải chứng từ.');
       return false;
     }
   };

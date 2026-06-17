@@ -5,8 +5,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from 'sonner';
 import { cn, formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
+import { t } from '@/lib/i18n';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import { LineAttachmentsButton } from '@/components/tours/LineAttachmentsButton';
 import type { Meal } from '@/types/tour';
 import {
   canEditAnyTourLineField,
@@ -39,6 +41,7 @@ export function MealsDesktopTable({
   const showPrice = canViewTourLineField(lineFieldAccess, 'price');
   const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
   const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showFiles = canViewTourLineField(lineFieldAccess, 'evidence');
   const showTotal = showPrice && showQuantity;
   const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
   const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
@@ -72,6 +75,9 @@ export function MealsDesktopTable({
             )}
             {showDate && (
             <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Ngày</TableHead>
+            )}
+            {showFiles && (
+            <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">{t('tourEvidence.files')}</TableHead>
             )}
             {canUseActions && (
             <TableHead className="text-right w-8 sm:w-[50px] p-1 sm:p-4">
@@ -121,6 +127,11 @@ export function MealsDesktopTable({
                 )}
                 {showDate && (
                 <TableCell className="p-1 sm:p-4">{formatDate(meal.date)}</TableCell>
+                )}
+                {showFiles && (
+                <TableCell className="p-1 sm:p-4">
+                  <LineAttachmentsButton attachments={meal.attachments} />
+                </TableCell>
                 )}
                 {canUseActions && (
                 <TableCell className="text-right p-1 sm:p-4">

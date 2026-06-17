@@ -6,6 +6,11 @@ import type { SearchQuery } from '@/types/datastore';
 import type { Guide, Language } from '@/types/master';
 import { generateSearchKeywords } from '@/lib/string-utils';
 import { mapLanguage } from './mappers';
+import {
+  createAuthUserViaFunction,
+  deleteUserViaFunction,
+  updateUserEmailViaFunction,
+} from './user-profile-auth-functions';
 
 type UserProfileGuideRow = Database['public']['Tables']['user_profiles']['Row'] & {
   phone?: string | null;
@@ -15,21 +20,6 @@ type UserProfileGuideRow = Database['public']['Tables']['user_profiles']['Row'] 
 };
 
 type OwnProfilePatch = Pick<Partial<UserProfileInput>, 'fullName' | 'phone' | 'note' | 'languageIds'>;
-
-// supabase-js trả về FunctionsHttpError khi Edge Function phản hồi non-2xx;
-// body JSON thực sự nằm trong error.context (một Response). Trích `error` từ đó.
-async function extractFunctionErrorMessage(error: unknown): Promise<string | undefined> {
-  const context = (error as { context?: Response })?.context;
-  if (context && typeof context.json === 'function') {
-    try {
-      const body = await context.clone().json();
-      if (body && typeof body.error === 'string') return body.error;
-    } catch {
-      // body không phải JSON — bỏ qua, dùng message mặc định
-    }
-  }
-  return (error as { message?: string })?.message;
-}
 
 export class UserProfilesModule {
   declare protected supabase: SupabaseClient<Database>;
@@ -257,27 +247,7 @@ export class UserProfilesModule {
   }
 
   async createAuthUser(input: { email: string; password: string; fullName?: string }): Promise<string> {
-    // Tạo tài khoản đăng nhập qua Edge Function `create-user` (Admin API) thay vì
-    // supabase.auth.signUp ở client — tránh việc signUp tự đăng nhập thành user mới
-    // (mất session admin) và bỏ yêu cầu xác nhận email.
-    const { data, error } = await this.supabase.functions.invoke<{ userId?: string; error?: string }>(
-      'create-user',
-      { body: input },
-    );
-
-    if (error) {
-      const serverMessage = await extractFunctionErrorMessage(error);
-      console.error('Error creating user (edge function):', serverMessage ?? error);
-      throw new Error(
-        serverMessage ??
-          'Không thể tạo tài khoản. Hãy chắc chắn Edge Function "create-user" đã được deploy ' +
-            '(supabase functions deploy create-user).',
-      );
-    }
-
-    if (data?.error) throw new Error(data.error);
-    if (!data?.userId) throw new Error('Edge Function "create-user" không trả về userId.');
-    return data.userId;
+    return createAuthUserViaFunction(this.supabase, input);
   }
 
   async createUserProfile(
@@ -321,6 +291,10 @@ export class UserProfilesModule {
     await this.replaceUserLanguages(id, patch.languageIds);
   }
 
+  async updateUserEmail(userId: string, email: string): Promise<void> {
+    await updateUserEmailViaFunction(this.supabase, userId, email);
+  }
+
   async updateOwnProfile(patch: OwnProfilePatch): Promise<UserProfile> {
     const { data, error } = await (this.supabase as any).rpc('update_own_profile', {
       p_full_name: patch.fullName ?? null,
@@ -340,27 +314,7 @@ export class UserProfilesModule {
   }
 
   async deleteUserProfile(id: string): Promise<void> {
-    // Xóa qua Edge Function `delete-user` để loại bỏ CẢ hồ sơ (user_profiles)
-    // lẫn tài khoản đăng nhập trong auth.users. Xóa trực tiếp bảng user_profiles
-    // từ client KHÔNG đụng tới auth.users, nên người dùng vẫn đăng nhập được.
-    const { data, error } = await this.supabase.functions.invoke<{ success?: boolean; error?: string }>(
-      'delete-user',
-      { body: { userId: id } },
-    );
-
-    if (error) {
-      const serverMessage = await extractFunctionErrorMessage(error);
-      console.error('Error deleting user (edge function):', serverMessage ?? error);
-      throw new Error(
-        serverMessage ??
-          'Không thể xóa người dùng. Hãy chắc chắn Edge Function "delete-user" đã được deploy ' +
-            '(supabase functions deploy delete-user).',
-      );
-    }
-
-    if (data?.error) {
-      throw new Error(data.error);
-    }
+    await deleteUserViaFunction(this.supabase, id);
   }
 
   async getCurrentUserProfile(): Promise<UserProfile | undefined> {

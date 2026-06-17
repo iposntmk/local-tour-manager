@@ -6,6 +6,7 @@ import type { Destination, Tour } from '@/types/tour';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
+import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { DestinationForm } from '@/components/tours/DestinationForm';
 import { NewDestinationDialog } from '@/components/tours/NewDestinationDialog';
@@ -29,21 +30,28 @@ interface DestinationsTabProps {
 }
 
 export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly = false, editRequest, lineFieldAccess }: DestinationsTabProps) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Destination>({ name: '', price: 0, date: '' });
   const [showNewDestinationDialog, setShowNewDestinationDialog] = useState(false);
   const queryClient = useQueryClient();
-  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId);
+  const tourStartDate = tour?.startDate || '';
+  const tourTotalGuests = tour?.totalGuests || 0;
+  const fallbackDestination = useMemo<Destination>(() => ({
+    name: '',
+    price: 0,
+    date: tourStartDate,
+    guests: !tourId && tourTotalGuests > 0 ? tourTotalGuests : undefined,
+  }), [tourStartDate, tourTotalGuests, tourId]);
+  const {
+    formData, setFormData, editingIndex, setEditingIndex, resetForm,
+  } = useLineFormPersistence<Destination>({
+    storageKey: `destinations:${tourId || 'new'}`,
+    fallback: fallbackDestination,
+  });
+  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId, 'destination');
   const canEditLine = canEditAnyTourLineField(lineFieldAccess);
   const canCreateLine =
     canEditTourLineField(lineFieldAccess, 'name') &&
     canEditTourLineField(lineFieldAccess, 'date') &&
     canEditTourLineField(lineFieldAccess, 'price');
-
-  // Default guests for new rows = tour totalGuests (create mode, keep synchronous)
-  if (!tourId && formData.guests === undefined && (tour?.totalGuests || 0) > 0) {
-    formData.guests = tour!.totalGuests;
-  }
 
   const { data: touristDestinations = [] } = useQuery({
     queryKey: ['touristDestinations'],
@@ -115,12 +123,12 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     onSuccess: async (lineId) => {
       await uploadPendingFiles('destination', lineId);
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm điểm đến');
       clearPendingFiles();
-      setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+      resetForm();
     },
   });
 
@@ -137,12 +145,12 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     onSuccess: async (_, { destination }) => {
       await uploadPendingFiles('destination', destination.id);
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật điểm đến');
       clearPendingFiles();
-      setEditingIndex(null);
+      resetForm();
     },
   });
 
@@ -180,9 +188,8 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
   };
 
   const handleCancel = () => {
-    setEditingIndex(null);
     clearPendingFiles();
-    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+    resetForm();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -224,7 +231,21 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     if (!formData.date && tour?.startDate) {
       setFormData((prev) => ({ ...prev, date: tour.startDate! }));
     }
-  }, [tour?.startDate]);
+  }, [formData.date, setFormData, tour?.startDate]);
+
+  useEffect(() => {
+    if (editingIndex !== null || tourId || formData.guests !== undefined || !tour?.totalGuests) return;
+    setFormData((prev) => ({ ...prev, guests: tour.totalGuests }));
+  }, [editingIndex, formData.guests, setFormData, tour?.totalGuests, tourId]);
+
+  useEffect(() => {
+    if (editingIndex === null) return;
+    const latest = destinations[editingIndex];
+    if (!latest || latest.id !== formData.id) return;
+    const latestKey = (latest.attachments || []).map((item) => item.id).join('|');
+    const formKey = (formData.attachments || []).map((item) => item.id).join('|');
+    if (latestKey !== formKey) setFormData((prev) => ({ ...prev, attachments: latest.attachments || [] }));
+  }, [destinations, editingIndex, formData.attachments, formData.id, setFormData]);
 
   useEffect(() => {
     if (editRequest && editRequest.index >= 0 && editRequest.index < destinations.length) {

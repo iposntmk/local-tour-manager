@@ -5,8 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn, formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
+import { t } from '@/lib/i18n';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import { LineAttachmentsButton } from '@/components/tours/LineAttachmentsButton';
 import { toast } from 'sonner';
 import {
   canEditAnyTourLineField,
@@ -43,10 +45,11 @@ export function DestinationsDesktopTable({
   const showPrice = canViewTourLineField(lineFieldAccess, 'price');
   const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
   const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showFiles = canViewTourLineField(lineFieldAccess, 'evidence');
   const showTotal = showPrice && showQuantity;
   const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
   const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
-  const columnCount = [true, showName, showPrice, showQuantity, showTotal, showDate, canUseActions].filter(Boolean).length;
+  const columnCount = [true, showName, showPrice, showQuantity, showTotal, showDate, showFiles, canUseActions].filter(Boolean).length;
 
   return (
     <>
@@ -77,6 +80,9 @@ export function DestinationsDesktopTable({
             )}
             {showDate && (
             <TableHead>Ngày</TableHead>
+            )}
+            {showFiles && (
+            <TableHead>{t('tourEvidence.files')}</TableHead>
             )}
             {canUseActions && (
             <TableHead className="text-right w-[50px]">
@@ -143,6 +149,11 @@ export function DestinationsDesktopTable({
                     )}
                     {showDate && (
                     <TableCell>{formatDate(destination.date)}</TableCell>
+                    )}
+                    {showFiles && (
+                    <TableCell>
+                      <LineAttachmentsButton attachments={destination.attachments} />
+                    </TableCell>
                     )}
                     {canUseActions && (
                     <TableCell className="text-right">

@@ -4,8 +4,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn, formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
+import { t } from '@/lib/i18n';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import { LineAttachmentsButton } from '@/components/tours/LineAttachmentsButton';
 import {
   getExpenseGuestCount,
   getExpenseLineTotal,
@@ -51,6 +53,7 @@ export function ExpensesDesktopTable({
   const showPrice = canViewTourLineField(lineFieldAccess, 'price');
   const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
   const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showFiles = canViewTourLineField(lineFieldAccess, 'evidence');
   const showTotal = showPrice && showQuantity;
   const showWaterDays = showQuantity && displayExpenses.some(isWaterExpense);
   const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
@@ -88,6 +91,9 @@ export function ExpensesDesktopTable({
             )}
             {showDate && (
             <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">Ngày</TableHead>
+            )}
+            {showFiles && (
+            <TableHead className="min-w-[70px] sm:min-w-[90px] p-1 sm:p-4">{t('tourEvidence.files')}</TableHead>
             )}
             {canUseActions && (
             <TableHead className="text-right w-8 sm:w-[50px] p-1 sm:p-4">
@@ -157,6 +163,11 @@ export function ExpensesDesktopTable({
                 )}
                 {showDate && (
                 <TableCell>{formatDate(expense.date)}</TableCell>
+                )}
+                {showFiles && (
+                <TableCell>
+                  <LineAttachmentsButton attachments={expense.attachments} />
+                </TableCell>
                 )}
                 {canUseActions && (
                 <TableCell className="text-right">

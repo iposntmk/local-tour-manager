@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Check, ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -64,13 +64,6 @@ export function ExpenseForm({
   const tourDays = tour?.totalDays || 1;
   const waterExpense = isWaterExpense(formData);
   const waterDays = getWaterExpenseDays(formData, tourGuests, tourDays);
-
-  useEffect(() => {
-    if (editingIndex !== null) {
-      const timer = setTimeout(() => setOpenExpense(true), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [editingIndex]);
 
   return (
     <div className="rounded-lg border bg-card p-6">

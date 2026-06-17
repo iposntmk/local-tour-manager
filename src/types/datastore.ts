@@ -312,6 +312,7 @@ export interface DataStore {
   createAuthUser(input: { email: string; password: string; fullName?: string }): Promise<string>;
   createUserProfile(userId: string, input: UserProfileInput, createdBy?: string): Promise<UserProfile>;
   updateUserProfile(id: string, patch: Partial<UserProfileInput>): Promise<void>;
+  updateUserEmail(userId: string, email: string): Promise<void>;
   updateOwnProfile(patch: Pick<Partial<UserProfileInput>, 'fullName' | 'phone' | 'note' | 'languageIds'>): Promise<UserProfile>;
   deleteUserProfile(id: string): Promise<void>;
   getCurrentUserProfile(): Promise<UserProfile | undefined>;

@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
-import { supabase } from '@/integrations/supabase/client';
 import {
   UserProfile,
   UserProfileInput,
@@ -205,12 +204,8 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
 
       await store.updateUserProfile(user.id, profileInput);
 
-      // Update email in auth if changed
       if (data.email !== user.email) {
-        const { error } = await supabase.auth.updateUser({
-          email: data.email,
-        });
-        if (error) throw error;
+        await store.updateUserEmail(user.id, data.email);
       }
 
       // Update password if provided

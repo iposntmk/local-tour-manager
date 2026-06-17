@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Check, ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -56,13 +56,6 @@ export function DestinationForm({
     editingIndex !== null
       ? canEditAnyTourLineField(lineFieldAccess)
       : canEdit('name') && canEdit('date') && canEdit('price');
-
-  useEffect(() => {
-    if (editingIndex !== null) {
-      const timer = setTimeout(() => setOpenDestination(true), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [editingIndex]);
 
   return (
     <div className="rounded-lg border bg-card p-6">

@@ -6,11 +6,9 @@ import { toast } from 'sonner';
 import type { Expense, Tour } from '@/types/tour';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { getLineTotal, hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
-import {
-  isWaterExpense,
-  normalizeWaterExpenseLine,
-} from '@/lib/water-expense-utils';
+import { isWaterExpense, normalizeWaterExpenseLine } from '@/lib/water-expense-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
+import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useAuth } from '@/contexts/AuthContext';
 import { ExpenseForm } from '@/components/tours/ExpenseForm';
@@ -35,11 +33,9 @@ interface ExpensesTabProps {
 }
 
 export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false, editRequest, lineFieldAccess }: ExpensesTabProps) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Expense>({ name: '', price: 0, date: '' });
   const [showNewExpenseDialog, setShowNewExpenseDialog] = useState(false);
   const queryClient = useQueryClient();
-  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId);
+  const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId, 'expense');
   const { isGuide, userProfile } = useAuth();
   const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
   const canEditLine = canEditAnyTourLineField(lineFieldAccess);
@@ -49,8 +45,17 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     canEditTourLineField(lineFieldAccess, 'price');
   const tourGuests = tour?.totalGuests || 0;
   const tourDays = tour?.totalDays || 1;
-  const normalizeExpense = (expense: Expense) =>
-    normalizeWaterExpenseLine(expense, tourGuests, tourDays);
+  const normalizeExpense = (expense: Expense) => normalizeWaterExpenseLine(expense, tourGuests, tourDays);
+  const fallbackExpense = useMemo<Expense>(() => ({
+    name: '',
+    price: 0,
+    date: tour?.endDate || '',
+    guests: !tourId && tourGuests > 0 ? tourGuests : undefined,
+  }), [tour?.endDate, tourGuests, tourId]);
+  const { formData, setFormData, editingIndex, setEditingIndex, resetForm } = useLineFormPersistence<Expense>({
+    storageKey: `expenses:${tourId || 'new'}`,
+    fallback: fallbackExpense,
+  });
 
   const { data: detailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses', guideId ?? null],
@@ -69,12 +74,12 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     onSuccess: async (lineId) => {
       await uploadPendingFiles('expense', lineId);
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm chi phí');
       clearPendingFiles();
-      setFormData({ name: '', price: 0, date: tour?.endDate || '' });
+      resetForm();
     },
   });
 
@@ -91,12 +96,12 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     onSuccess: async (_, { expense }) => {
       await uploadPendingFiles('expense', expense.id);
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật chi phí');
       clearPendingFiles();
-      setEditingIndex(null);
+      resetForm();
     },
   });
 
@@ -147,9 +152,8 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   };
 
   const handleCancel = () => {
-    setEditingIndex(null);
     clearPendingFiles();
-    setFormData({ name: '', price: 0, date: tour?.endDate || '' });
+    resetForm();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -204,21 +208,32 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     autosaveExpense(originalIndex, updated);
   };
 
-  // Default guests for new rows
-  if (editingIndex === null && formData.guests === undefined && tourGuests > 0) {
-    formData.guests = tourGuests;
-  }
+  useEffect(() => {
+    if (!formData.date && tour?.endDate) setFormData((prev) => ({ ...prev, date: tour.endDate! }));
+  }, [formData.date, setFormData, tour?.endDate]);
 
-  const displayExpenses = useMemo(() => {
-    return expenses.map((expense, i) => ({
+  useEffect(() => {
+    if (editingIndex !== null || tourId || formData.guests !== undefined || tourGuests <= 0) return;
+    setFormData((prev) => ({ ...prev, guests: tourGuests }));
+  }, [editingIndex, formData.guests, setFormData, tourGuests, tourId]);
+
+  useEffect(() => {
+    if (editingIndex === null) return;
+    const latest = expenses[editingIndex];
+    if (!latest || latest.id !== formData.id) return;
+    const latestKey = (latest.attachments || []).map((item) => item.id).join('|');
+    const formKey = (formData.attachments || []).map((item) => item.id).join('|');
+    if (latestKey !== formKey) setFormData((prev) => ({ ...prev, attachments: latest.attachments || [] }));
+  }, [editingIndex, expenses, formData.attachments, formData.id, setFormData]);
+
+  const displayExpenses = useMemo(() => expenses.map((expense, i) => ({
       ...normalizeWaterExpenseLine(expense, tourGuests, tourDays),
       originalIndex: i,
     })).sort((a, b) => {
       const da = a.date ? new Date(a.date).getTime() : Infinity;
       const db = b.date ? new Date(b.date).getTime() : Infinity;
       return da - db;
-    });
-  }, [expenses, tourGuests, tourDays]);
+    }), [expenses, tourGuests, tourDays]);
 
   const expensesTotalAmount = useMemo(
     () => expenses.reduce(

@@ -4,12 +4,14 @@ import { ExternalLink, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { store } from '@/lib/datastore';
+import { t } from '@/lib/i18n';
 import type { TourLineAttachment } from '@/types/tour';
 
 interface SummaryLineAttachmentsDialogProps {
   open: boolean;
   attachments: TourLineAttachment[];
   onOpenChange: (open: boolean) => void;
+  title?: string;
 }
 
 const isImage = (attachment: TourLineAttachment) => attachment.fileType?.startsWith('image/');
@@ -18,6 +20,7 @@ export function SummaryLineAttachmentsDialog({
   open,
   attachments,
   onOpenChange,
+  title = t('tourEvidence.attachmentDialogTitle'),
 }: SummaryLineAttachmentsDialogProps) {
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const selected = attachments.find((item) => item.id === selectedId) || attachments[0];
@@ -39,7 +42,7 @@ export function SummaryLineAttachmentsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-5xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Chứng từ dòng chi phí</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
         {attachments.length === 0 ? (

@@ -5,8 +5,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
+import { t } from '@/lib/i18n';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowIcon } from '@/components/tours/TourRowIcon';
+import { LineAttachmentsButton } from '@/components/tours/LineAttachmentsButton';
 import type { Meal } from '@/types/tour';
 import {
   canEditAnyTourLineField,
@@ -35,6 +37,7 @@ export function MealsMobileList({ items, tourGuests, readOnly, lineFieldAccess, 
   const showPrice = canViewTourLineField(lineFieldAccess, 'price');
   const showQuantity = canViewTourLineField(lineFieldAccess, 'quantity');
   const showDate = canViewTourLineField(lineFieldAccess, 'date');
+  const showFiles = canViewTourLineField(lineFieldAccess, 'evidence');
   const showTotal = showPrice && showQuantity;
   const canEditQuantity = !readOnly && canEditTourLineField(lineFieldAccess, 'quantity');
   const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess);
@@ -102,6 +105,12 @@ export function MealsMobileList({ items, tourGuests, readOnly, lineFieldAccess, 
               <span>
                 <span className="text-muted-foreground">Tổng: </span>
                 <span className="font-semibold">{formatCurrency(total)}</span>
+              </span>
+              )}
+              {showFiles && (
+              <span className="flex items-center gap-1">
+                <span className="text-muted-foreground">{t('tourEvidence.files')}: </span>
+                <LineAttachmentsButton attachments={meal.attachments} />
               </span>
               )}
             </div>
