@@ -53,16 +53,9 @@ export function CombinedTab({ tour }: CombinedTabProps) {
   const allowanceTotal = allowanceItems.reduce((sum, item) => sum + item.price * getAllowanceDays(item), 0);
   const totalTabs = serviceTotal + allowanceTotal;
   const summaryRows = buildSummaryRows(tour, totalTabs);
-  const isDraft = tour.settlementStatus !== 'approved' && tour.settlementStatus !== 'closed';
 
   return (
     <div className="space-y-3">
-      {isDraft && (
-        <div className="border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
-          BẢN NHÁP - CHƯA DUYỆT
-        </div>
-      )}
-
       {/* Mobile card view */}
       <div className="md:hidden">
         <CombinedTabMobile
@@ -78,10 +71,10 @@ export function CombinedTab({ tour }: CombinedTabProps) {
       </div>
 
       {/* Desktop table view */}
-      <div className="hidden border bg-background md:block">
-        <Table className="w-full border-collapse text-[10px]">
-          <TableHeader>
-            <TableRow>
+      <div className="hidden border bg-background md:block overflow-auto max-h-[calc(100vh-280px)]">
+        <Table unwrapped className="w-full border-collapse text-[10px]">
+          <TableHeader className="sticky top-0 z-10">
+            <TableRow className="hover:bg-transparent">
               {DESKTOP_HEADER_GROUPS.map((group) => (
                 <TableHead
                   key={group.label}
@@ -92,7 +85,7 @@ export function CombinedTab({ tour }: CombinedTabProps) {
                 </TableHead>
               ))}
             </TableRow>
-            <TableRow className="bg-sky-400">
+            <TableRow className="bg-sky-400 hover:bg-sky-400">
               {DESKTOP_COLUMNS.map((column) => (
                 <TableHead
                   key={column.key}
@@ -100,9 +93,9 @@ export function CombinedTab({ tour }: CombinedTabProps) {
                     'border border-slate-300 px-2 py-1 text-center text-[3px] font-bold text-slate-950',
                     'whitespace-normal break-words leading-tight'
                   )}
-                  style={{ width: column.key === 'quantity' ? '10px' : column.key === 'code' ? '20px' : ['total', 'ctpTotal', 'location', 'days'].includes(column.key) ? `${column.width * 2.75}px` : `${column.width * 5.5}px`, maxWidth: column.key === 'quantity' ? '10px' : column.key === 'code' ? '20px' : ['total', 'ctpTotal', 'location', 'days'].includes(column.key) ? `${column.width * 2.75}px` : `${column.width * 5.5}px` }}
+
                 >
-                  {column.key === 'quantity' ? 'khách/ ngày/ tổng nước uống' : column.label}
+                  {column.key === 'quantity' ? 'pax/ngày/nước' : column.label}
                 </TableHead>
               ))}
             </TableRow>
