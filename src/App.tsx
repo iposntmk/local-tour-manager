@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -82,6 +82,11 @@ const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // Track the previously authenticated user so we only purge the query cache on
+  // a real account switch / sign-out. supabase-js re-emits SIGNED_IN every time
+  // the tab regains focus; clearing the cache there caused every page to refetch
+  // (looked like a full refresh on Dashboard / TourDetail).
+  const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Set up auth state listener
@@ -91,9 +96,16 @@ const App = () => {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Clear all React Query cache only on sign in/out (not token refresh)
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        const nextUserId = session?.user?.id ?? null;
+        if (event === 'SIGNED_OUT') {
           queryClient.clear();
+          prevUserIdRef.current = null;
+        } else if (event === 'SIGNED_IN') {
+          // Only clear when the account actually changed, not on focus re-emits.
+          if (prevUserIdRef.current && prevUserIdRef.current !== nextUserId) {
+            queryClient.clear();
+          }
+          prevUserIdRef.current = nextUserId;
         }
       }
     );
@@ -103,6 +115,7 @@ const App = () => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      prevUserIdRef.current = session?.user?.id ?? null;
     });
 
     return () => subscription.unsubscribe();
