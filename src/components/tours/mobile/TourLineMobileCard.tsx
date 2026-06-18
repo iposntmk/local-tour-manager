@@ -66,8 +66,8 @@ export function TourLineMobileCard({ kind, name, flagged, amount, meta, actions 
           </DropdownMenu>
         )}
       </div>
-      {/* Hàng 2: chi tiết gọn 1 dòng */}
-      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0 overflow-hidden">
+      {/* Hàng 2: chi tiết gọn — wrap để không cắt mất giá trị/pax */}
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
         {meta}
       </div>
     </div>
