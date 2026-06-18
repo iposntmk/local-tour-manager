@@ -63,7 +63,7 @@ export function MealsMobileList({ items, tourGuests, readOnly, lineFieldAccess, 
                 {showQuantity && (
                   <span className="flex shrink-0 items-center gap-1">
                     ×
-                    <NumberInputMobile value={meal.guests} onChange={(val) => onGuestsChange(meal.originalIndex, val)} min={0} max={tourGuests} disabled={!canEditQuantity} className="w-12 h-6 text-xs" />
+                    <NumberInputMobile value={meal.guests} onChange={(val) => onGuestsChange(meal.originalIndex, val)} min={0} max={tourGuests} disabled={!canEditQuantity} className="w-11 h-6 text-xs" />
                   </span>
                 )}
                 {showFiles && <LineAttachmentsButton attachments={meal.attachments} />}

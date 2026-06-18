@@ -84,18 +84,18 @@ export function ExpensesMobileList({
               <>
                 {showDate && <span className="shrink-0">{formatDate(expense.date)}</span>}
                 {showPrice && <span className="shrink-0">{showDate ? '· ' : ''}{formatCurrency(expense.price)}</span>}
-                {showQuantity && (
+                {showQuantity && (waterExpense ? (
+                  <span className="flex shrink-0 items-center gap-1">
+                    ×{rowGuests}
+                    <NumberInputMobile value={waterDays} onChange={(val) => onWaterDaysChange(expense.originalIndex, val)} min={0} step={0.5} disabled={!canEditQuantity} className="w-11 h-6 text-xs" />
+                    ng
+                  </span>
+                ) : (
                   <span className="flex shrink-0 items-center gap-1">
                     ×
-                    <NumberInputMobile value={rowGuests} onChange={(val) => onGuestsChange(expense.originalIndex, val)} min={0} max={waterExpense || !tourGuests ? undefined : tourGuests} disabled={!canEditQuantity || waterExpense} className="w-12 h-6 text-xs" />
+                    <NumberInputMobile value={rowGuests} onChange={(val) => onGuestsChange(expense.originalIndex, val)} min={0} max={!tourGuests ? undefined : tourGuests} disabled={!canEditQuantity} className="w-11 h-6 text-xs" />
                   </span>
-                )}
-                {showQuantity && waterExpense && (
-                  <span className="flex shrink-0 items-center gap-1">
-                    ngày
-                    <NumberInputMobile value={waterDays} onChange={(val) => onWaterDaysChange(expense.originalIndex, val)} min={0} step={0.5} disabled={!canEditQuantity} className="w-12 h-6 text-xs" />
-                  </span>
-                )}
+                ))}
                 {showFiles && <LineAttachmentsButton attachments={expense.attachments} />}
               </>
             }

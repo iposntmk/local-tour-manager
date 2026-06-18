@@ -75,7 +75,7 @@ export function DestinationsMobileList({ groups, duplicateDestinationNames, tour
                       {showQuantity && (
                         <span className="flex shrink-0 items-center gap-1">
                           ×
-                          <NumberInputMobile value={destination.guests} onChange={(val) => onGuestsChange(destination.originalIndex, destination, val)} min={0} max={tourGuests} disabled={!canEditQuantity} className="w-12 h-6 text-xs" />
+                          <NumberInputMobile value={destination.guests} onChange={(val) => onGuestsChange(destination.originalIndex, destination, val)} min={0} max={tourGuests} disabled={!canEditQuantity} className="w-11 h-6 text-xs" />
                         </span>
                       )}
                       {showFiles && <LineAttachmentsButton attachments={destination.attachments} />}
