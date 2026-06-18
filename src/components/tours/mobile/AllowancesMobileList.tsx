@@ -1,11 +1,7 @@
-import { Edit2, Copy, Trash2, MoreHorizontal } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Edit2, Copy, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
-import { TourRowIcon } from '@/components/tours/TourRowIcon';
+import { TourLineMobileCard, type TourLineMobileAction } from '@/components/tours/mobile/TourLineMobileCard';
 import type { Allowance } from '@/types/tour';
 import {
   canEditAnyTourLineField,
@@ -39,71 +35,33 @@ export function AllowancesMobileList({ items, readOnly, lineFieldAccess, onEdit,
   const canUseActions = !readOnly && canEditAnyTourLineField(lineFieldAccess, ['name', 'price', 'date', 'quantity']);
 
   return (
-    <div className="p-3 space-y-2">
+    <div className="p-3 space-y-1.5">
       {items.map((allowance) => {
         const qty = allowance.quantity || 1;
         const total = allowance.price * qty;
         const isZeroPrice = allowance.price === 0;
+        const actions: TourLineMobileAction[] = [
+          { label: 'Nhân bản', icon: <Copy className="mr-2 h-4 w-4" />, onClick: () => onCopy(allowance.originalIndex) },
+          { label: 'Sửa', icon: <Edit2 className="mr-2 h-4 w-4" />, onClick: () => onEdit(allowance.originalIndex) },
+          { label: 'Xóa', icon: <Trash2 className="mr-2 h-4 w-4" />, onClick: () => onDelete(allowance.originalIndex), destructive: true },
+        ];
         return (
           <div key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`}>
             {allowance.showSeparator && <div className="border-t-2 border-primary my-2" />}
-            <div className={`rounded-lg border p-2.5 space-y-1.5 ${isZeroPrice ? 'bg-red-50 dark:bg-red-950' : 'bg-card'}`}>
-              {/* Row 1: icon + name + date + actions */}
-              <div className="flex items-center gap-1.5 min-w-0">
-                {showName && (
+            <TourLineMobileCard
+              kind="allowance"
+              flagged={isZeroPrice}
+              name={showName ? allowance.name : `Dòng CTP #${allowance.originalIndex + 1}`}
+              amount={showTotal ? formatCurrency(total) : null}
+              actions={canUseActions ? actions : undefined}
+              meta={
                 <>
-                <TourRowIcon kind="allowance" label={allowance.name} className="shrink-0" />
-                <span className="flex-1 min-w-0 truncate text-sm font-medium">{allowance.name}</span>
-                {isZeroPrice && <span className="shrink-0 text-destructive text-xs">⚑</span>}
+                  {showDate && <span className="shrink-0">{formatDate(allowance.date)}</span>}
+                  {showPrice && <span className="shrink-0">{showDate ? '· ' : ''}{formatCurrency(allowance.price)}</span>}
+                  {showQuantity && <span className="shrink-0">× {qty}n</span>}
                 </>
-                )}
-                {!showName && <span className="flex-1 text-sm font-medium">Dòng CTP #{allowance.originalIndex + 1}</span>}
-                {showDate && (
-                <span className="shrink-0 text-xs text-muted-foreground pl-1">{formatDate(allowance.date)}</span>
-                )}
-                {canUseActions && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0">
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onCopy(allowance.originalIndex)}>
-                        <Copy className="mr-2 h-4 w-4" />Nhân bản
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(allowance.originalIndex)}>
-                        <Edit2 className="mr-2 h-4 w-4" />Sửa
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onDelete(allowance.originalIndex)} className="text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" />Xóa
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-              {/* Row 2: values */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pl-9">
-                {showPrice && (
-                <span>
-                  <span className="text-muted-foreground">Giá: </span>
-                  <span className={isZeroPrice ? 'text-destructive font-semibold' : 'font-medium'}>{formatCurrency(allowance.price)}</span>
-                </span>
-                )}
-                {showQuantity && (
-                <span>
-                  <span className="text-muted-foreground">SL: </span>
-                  <span className="font-medium">{qty}</span>
-                </span>
-                )}
-                {showTotal && (
-                <span>
-                  <span className="text-muted-foreground">Tổng: </span>
-                  <span className="font-semibold">{formatCurrency(total)}</span>
-                </span>
-                )}
-              </div>
-            </div>
+              }
+            />
           </div>
         );
       })}
