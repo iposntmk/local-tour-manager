@@ -10,6 +10,7 @@ import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { DestinationForm } from '@/components/tours/DestinationForm';
 import { NewDestinationDialog } from '@/components/tours/NewDestinationDialog';
+import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { DestinationsDesktopTable } from '@/components/tours/DestinationsDesktopTable';
 import { DestinationsMobileList } from '@/components/tours/mobile/DestinationsMobileList';
 import {
@@ -256,20 +257,22 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
   return (
     <div className="space-y-6">
       {!readOnly && canEditLine && (
-        <DestinationForm
-          formData={formData}
-          onChange={setFormData}
-          editingIndex={editingIndex}
-          tour={tour}
-          touristDestinations={touristDestinations}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          onOpenNewDialog={() => setShowNewDestinationDialog(true)}
-          tourId={tourId}
-          pendingFiles={pendingFiles}
-          onPendingFilesChange={setPendingFiles}
-          lineFieldAccess={lineFieldAccess}
-        />
+        <FormCollapsible autoOpenKey={editingIndex}>
+          <DestinationForm
+            formData={formData}
+            onChange={setFormData}
+            editingIndex={editingIndex}
+            tour={tour}
+            touristDestinations={touristDestinations}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            onOpenNewDialog={() => setShowNewDestinationDialog(true)}
+            tourId={tourId}
+            pendingFiles={pendingFiles}
+            onPendingFilesChange={setPendingFiles}
+            lineFieldAccess={lineFieldAccess}
+          />
+        </FormCollapsible>
       )}
 
       <div className="rounded-lg border">

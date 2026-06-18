@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Luồng Dữ Liệu Quyết Toán Tour",
+    "subtitle": "Local Tour Manager — HDV gửi hồ sơ, Kế toán review & duyệt",
+    "output": "quyet-toan.html",
+    "viewBox": [1020, 800]
+  },
+  "stages": [
+    { "label": "Giao di\u1ec7n (UI)" },
+    { "label": "X\u1eed l\u00fd (Logic)" },
+    { "label": "D\u1ecbch v\u1ee5 (Store)" },
+    { "label": "C\u01a1 s\u1edf d\u1eef li\u1ec7u (DB)" }
+  ],
+  "nodes": [
+    { "id": "settlementActionsUI", "type": "frontend", "label": "SettlementActionsBar", "sublabel": "G\u1eedi / Tr\u1ea3 / Duy\u1ec7t / M\u1edf kh\u00f3a", "stage": 0, "row": 0, "width": 130 },
+    { "id": "validateGate", "type": "security", "label": "Settlement Validator", "sublabel": "validateSettlementReady + areAllLinesApproved", "stage": 1, "row": 0, "width": 150, "height": 64 },
+    { "id": "optCache", "type": "cloud", "label": "Optimistic Cache", "sublabel": "C\u1eadp nh\u1eadt cache l\u1ea1c quan", "stage": 1, "row": 1 },
+    { "id": "settleStore", "type": "backend", "label": "TourSettlement Store", "sublabel": "submit / return / approve / reopen", "stage": 2, "row": 0, "width": 140, "height": 64 },
+    { "id": "lineReviewUI", "type": "frontend", "label": "LineReviewControl", "sublabel": "Review t\u1eebng d\u00f2ng", "stage": 0, "row": 2 },
+    { "id": "lineStore", "type": "backend", "label": "updateLineReview", "sublabel": "C\u1eadp nh\u1eadt review d\u00f2ng", "stage": 2, "row": 2 },
+    { "id": "toursTbl", "type": "database", "label": "tours", "sublabel": "settlement_status, locked_at", "stage": 3, "row": 0 },
+    { "id": "historyTbl", "type": "database", "label": "tour_submission_history", "sublabel": "Event log", "stage": 3, "row": 1, "width": 150 },
+    { "id": "lineTbl", "type": "database", "label": "Line Tables", "sublabel": "tour_destinations/expenses/meals/\u2026", "stage": 3, "row": 2, "width": 140 },
+    { "id": "trgReset", "type": "database", "label": "Trigger Reset", "sublabel": "X\u00f3a tour_payments khi m\u1edf kh\u00f3a", "stage": 3, "row": 3, "tag": "trigger" }
+  ],
+  "flows": [
+    { "from": "settlementActionsUI", "to": "validateGate", "label": "g\u1eedi/duy\u1ec7t", "classification": "validate tr\u01b0\u1edbc action", "variant": "security", "fromSide": "right", "toSide": "left", "labelAt": [203, 205] },
+    { "from": "settlementActionsUI", "to": "optCache", "label": "c\u1eadp nh\u1eadt cache", "classification": "UI \u2192 cache", "variant": "default", "fromSide": "right", "toSide": "left", "labelAt": [165, 230] },
+    { "from": "validateGate", "to": "settleStore", "label": "quy\u1ebft to\u00e1n", "classification": "submit/return/approve/reopen", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [425, 205] },
+    { "from": "optCache", "to": "settleStore", "label": "x\u00e1c nh\u1eadn l\u01b0u", "classification": "persist v\u00e0o DB", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [460, 230] },
+    { "from": "settleStore", "to": "toursTbl", "label": "status", "classification": "submitted/need_changes/approved/draft", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [645, 205] },
+    { "from": "settleStore", "to": "historyTbl", "label": "event log", "classification": "actor, role, note", "variant": "default", "fromSide": "right", "toSide": "left", "labelAt": [600, 230] },
+    { "from": "toursTbl", "to": "trgReset", "label": "AFTER unlock", "classification": "trigger t\u1ef1 \u0111\u1ed9ng", "variant": "security", "via": [[689, 157], [660, 157], [660, 499], [689, 499]], "labelAt": [680, 340] },
+    { "from": "trgReset", "to": "toursTbl", "label": "x\u00f3a payments", "classification": "reset thanh to\u00e1n", "variant": "security", "via": [[801, 499], [780, 499], [780, 157], [801, 157]], "labelAt": [760, 310] },
+    { "from": "lineReviewUI", "to": "lineStore", "label": "review input", "classification": "valid/need_more/invalid", "variant": "default", "fromSide": "right", "toSide": "left", "labelAt": [315, 340] },
+    { "from": "lineStore", "to": "lineTbl", "label": "line_status", "classification": "line_comment, reviewed_by, reviewed_at", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [631, 442] }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Lu\u1ed3ng A: G\u1eedi & Tr\u1ea3 v\u1ec1",
+      "items": [
+        "HDV b\u1ea5m G\u1eedi k\u1ebf to\u00e1n \u2192 validateSettlementReady (m\u00e3 tour, c\u00f4ng ty, HDV, ng\u00e0y, pax, t\u00ean d\u00f2ng) \u2192 submitTourSettlement",
+        "DB UPDATE tours (submitted, submitted_at, submission_count+1) + INSERT tour_submission_history (event=submitted)",
+        "K\u1ebf to\u00e1n Tr\u1ea3 v\u1ec1 HDV \u2192 UPDATE tours (need_changes) + history INSERT (event=returned)"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Lu\u1ed3ng B: Duy\u1ec7t & M\u1edf kh\u00f3a",
+      "items": [
+        "K\u1ebf to\u00e1n b\u1ea5m Duy\u1ec7t \u2192 areAllLinesApproved (gate) \u2192 approveTourSettlement",
+        "DB UPDATE tours (approved, approved_at, approved_by, locked_at) + history INSERT (event=approved)",
+        "M\u1edf kh\u00f3a \u2192 UPDATE tours (draft, null out timestamps) + history INSERT (event=reopened)"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Lu\u1ed3ng C: Review d\u00f2ng",
+      "items": [
+        "K\u1ebf to\u00e1n review t\u1eebng d\u00f2ng qua LineReviewControl \u2192 updateLineReview",
+        "DB UPDATE line_status, line_comment, reviewed_by, reviewed_at tr\u00ean b\u1ea3ng d\u00f2ng t\u01b0\u01a1ng \u1ee9ng",
+        "Gate duy\u1ec7t y\u00eau c\u1ea7u t\u1ea5t c\u1ea3 d\u00f2ng = valid tr\u01b0\u1edbc khi Duy\u1ec7t"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Lu\u1ed3ng D: Trigger Reset",
+      "items": [
+        "Trigger tours_reset_payments_on_unlock x\u00f3a tour_payments khi m\u1edf kh\u00f3a h\u1ed3 s\u01a1",
+        "\u0110\u01b0a tr\u1ea1ng th\u00e1i thanh to\u00e1n v\u1ec1 pending, h\u1ed3 s\u01a1 c\u00f3 th\u1ec3 ch\u1ec9nh s\u1eeda l\u1ea1i"
+      ]
+    }
+  ]
+}

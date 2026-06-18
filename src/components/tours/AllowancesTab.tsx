@@ -8,6 +8,7 @@ import type { DetailedExpense } from '@/types/master';
 import { useAuth } from '@/contexts/AuthContext';
 import { AllowanceForm } from '@/components/tours/AllowanceForm';
 import { NewAllowanceDialog, ALLOWANCE_CATEGORY_IDS } from '@/components/tours/NewAllowanceDialog';
+import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { AllowancesDesktopTable } from '@/components/tours/AllowancesDesktopTable';
 import { AllowancesMobileList } from '@/components/tours/mobile/AllowancesMobileList';
 import {
@@ -199,19 +200,21 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
   return (
     <div className="space-y-6">
       {!readOnly && canEditLine && (
-        <AllowanceForm
-          formData={formData}
-          onChange={setFormData}
-          editingIndex={editingIndex}
-          tour={tour}
-          detailedExpenses={detailedExpenses}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          onOpenNewDialog={() => {
-            setShowNewAllowanceDialog(true);
-          }}
-          lineFieldAccess={lineFieldAccess}
-        />
+        <FormCollapsible autoOpenKey={editingIndex}>
+          <AllowanceForm
+            formData={formData}
+            onChange={setFormData}
+            editingIndex={editingIndex}
+            tour={tour}
+            detailedExpenses={detailedExpenses}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            onOpenNewDialog={() => {
+              setShowNewAllowanceDialog(true);
+            }}
+            lineFieldAccess={lineFieldAccess}
+          />
+        </FormCollapsible>
       )}
 
       <div className="rounded-lg border">

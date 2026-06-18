@@ -16,7 +16,7 @@ export function SupabaseHealthBanner() {
       const supabase = getSupabaseClient();
       const { error } = await supabase
         .from('tours')
-        .select('id', { head: true, count: 'exact' })
+        .select('id', { head: true })
         .limit(1);
       if (error) throw error;
       return { ok: true as const };

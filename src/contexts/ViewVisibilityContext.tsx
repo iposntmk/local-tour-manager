@@ -4,16 +4,18 @@ interface VisibilityState {
   showTopMenu: boolean;
   showHeaderInfo: boolean;
   showTabs: boolean;
+  showSettlementBar: boolean;
 }
 
 interface VisibilityContextType extends VisibilityState {
   toggleTopMenu: () => void;
   toggleHeaderInfo: () => void;
   toggleTabs: () => void;
+  toggleSettlementBar: () => void;
 }
 
 const STORAGE_KEY = 'ltm_view_visibility';
-const DEFAULT_VISIBILITY: VisibilityState = { showTopMenu: true, showHeaderInfo: true, showTabs: true };
+const DEFAULT_VISIBILITY: VisibilityState = { showTopMenu: true, showHeaderInfo: true, showTabs: true, showSettlementBar: true };
 
 function loadState(): VisibilityState {
   try {
@@ -24,6 +26,7 @@ function loadState(): VisibilityState {
         showTopMenu: parsed.showTopMenu !== false,
         showHeaderInfo: parsed.showHeaderInfo !== false,
         showTabs: parsed.showTabs !== false,
+        showSettlementBar: parsed.showSettlementBar !== false,
       };
     }
   } catch {
@@ -44,9 +47,10 @@ export function ViewVisibilityProvider({ children }: { children: ReactNode }) {
   const toggleTopMenu = useCallback(() => setState(prev => ({ ...prev, showTopMenu: !prev.showTopMenu })), []);
   const toggleHeaderInfo = useCallback(() => setState(prev => ({ ...prev, showHeaderInfo: !prev.showHeaderInfo })), []);
   const toggleTabs = useCallback(() => setState(prev => ({ ...prev, showTabs: !prev.showTabs })), []);
+  const toggleSettlementBar = useCallback(() => setState(prev => ({ ...prev, showSettlementBar: !prev.showSettlementBar })), []);
 
   return (
-    <VisibilityContext.Provider value={{ ...state, toggleTopMenu, toggleHeaderInfo, toggleTabs }}>
+    <VisibilityContext.Provider value={{ ...state, toggleTopMenu, toggleHeaderInfo, toggleTabs, toggleSettlementBar }}>
       {children}
     </VisibilityContext.Provider>
   );

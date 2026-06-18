@@ -23,6 +23,7 @@ type OwnProfilePatch = Pick<Partial<UserProfileInput>, 'fullName' | 'phone' | 'n
 
 export class UserProfilesModule {
   declare protected supabase: SupabaseClient<Database>;
+  private cachedCurrentUserProfile: UserProfile | null | undefined;
 
   private isMissingUserLanguageSchemaError(error: { code?: string; message?: string; details?: string; hint?: string } | null): boolean {
     const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
@@ -223,6 +224,7 @@ export class UserProfilesModule {
 
     if (!data) return undefined;
     const [profile] = await this.attachLanguageIds([dbRowToUserProfile(data)]);
+    if (this.cachedCurrentUserProfile?.id === profile.id) this.cachedCurrentUserProfile = profile;
     return profile;
   }
 
@@ -289,6 +291,7 @@ export class UserProfilesModule {
     }
 
     await this.replaceUserLanguages(id, patch.languageIds);
+    if (this.cachedCurrentUserProfile?.id === id) this.cachedCurrentUserProfile = undefined;
   }
 
   async updateUserEmail(userId: string, email: string): Promise<void> {
@@ -310,20 +313,33 @@ export class UserProfilesModule {
     if (!data) throw new Error('Failed to update own profile: no profile returned');
 
     const [profile] = await this.attachLanguageIds([dbRowToUserProfile(data)]);
+    this.cachedCurrentUserProfile = profile;
     return profile;
   }
 
   async deleteUserProfile(id: string): Promise<void> {
     await deleteUserViaFunction(this.supabase, id);
+    if (this.cachedCurrentUserProfile?.id === id) this.cachedCurrentUserProfile = null;
+  }
+
+  setCurrentUserProfile(profile: UserProfile | null | undefined): void {
+    this.cachedCurrentUserProfile = profile ?? null;
   }
 
   async getCurrentUserProfile(): Promise<UserProfile | undefined> {
+    if (this.cachedCurrentUserProfile !== undefined) {
+      return this.cachedCurrentUserProfile ?? undefined;
+    }
+
     const { data: { user } } = await this.supabase.auth.getUser();
 
     if (!user) {
+      this.cachedCurrentUserProfile = null;
       return undefined;
     }
 
-    return this.getUserProfile(user.id);
+    const profile = await this.getUserProfile(user.id);
+    this.cachedCurrentUserProfile = profile ?? null;
+    return profile;
   }
 }

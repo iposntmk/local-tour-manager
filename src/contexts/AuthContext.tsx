@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { store } from '@/lib/datastore';
+import { setStoreCurrentUserProfile, store } from '@/lib/datastore';
 import { UserProfile, UserRole, Permission, profileHasPermission, isGuide as isGuideRole, isAccountant as isAccountantRole } from '@/types/user';
 import { supabase } from '@/integrations/supabase/client';
 import { MASTER_ADMIN_EMAIL } from '@/lib/auth-constants';
@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await store.getUserProfile(userId);
       console.log('[AuthContext] User profile loaded:', profile);
       setUserProfile(profile || null);
+      setStoreCurrentUserProfile(profile || null);
 
       if (!profile) {
         console.warn('[AuthContext] ⚠️ No user profile found for this account (it may have been deleted).');
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('[AuthContext] ❌ Error loading user profile:', error);
       setUserProfile(null);
+      setStoreCurrentUserProfile(null);
     } finally {
       setProfileLoading(false);
     }
@@ -62,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadUserProfile(session.user.id).finally(() => setLoading(false));
       } else {
         setProfileLoading(false);
+        setStoreCurrentUserProfile(null);
         setLoading(false);
       }
     });
@@ -75,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadUserProfile(session.user.id);
       } else {
         setUserProfile(null);
+        setStoreCurrentUserProfile(null);
         setProfileLoading(false);
       }
     });

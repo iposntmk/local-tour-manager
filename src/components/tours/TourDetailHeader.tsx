@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save, Trash2, FileDown, Eye, EyeOff } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SettlementActionsBar } from '@/components/tours/SettlementActionsBar';
 import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
@@ -30,7 +29,6 @@ interface TourDetailHeaderProps {
   onSave: () => void;
   onExport: () => void;
   onDeleteOpen: () => void;
-  onShowHistory: () => void;
 }
 
 const TAB_TRIGGER_CLASS = 'min-w-0 px-1.5 py-1 text-[11px] leading-tight sm:px-2 sm:text-sm';
@@ -40,11 +38,11 @@ export function TourDetailHeader({
   tour, displayTour, isNewTour, activeTab,
   canCreateTour, canEditTourInfo, canExportTour, canDeleteTour,
   canViewShoppings, tabAccess, hasUnpaidShoppings, tourImagesCount, totalGuests, headerClasses,
-  onNavigateBack, onSave, onExport, onDeleteOpen, onShowHistory,
+  onNavigateBack, onSave, onExport, onDeleteOpen,
 }: TourDetailHeaderProps) {
   const totals = calculateTabTotals(displayTour);
   const canViewTab = (tab: TourTabKey) => tabAccess?.[tab]?.view ?? true;
-  const { showHeaderInfo, showTabs, toggleTopMenu, toggleHeaderInfo, toggleTabs, showTopMenu } = useViewVisibility();
+  const { showHeaderInfo, showTabs, showSettlementBar, toggleTopMenu, toggleHeaderInfo, toggleTabs, toggleSettlementBar, showTopMenu } = useViewVisibility();
 
   return (
     <div className={`${headerClasses} border-b py-2 sm:py-4 bg-blue-100 dark:bg-blue-900 z-40`}>
@@ -73,6 +71,14 @@ export function TourDetailHeader({
         >
           {showTabs ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
           Tabs
+        </button>
+        <button
+          onClick={toggleSettlementBar}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-blue-200/60 dark:hover:bg-blue-800/60"
+          title={showSettlementBar ? 'Ẩn quyết toán' : 'Hiện quyết toán'}
+        >
+          {showSettlementBar ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+          Quyết toán
         </button>
       </div>
 
@@ -158,11 +164,6 @@ export function TourDetailHeader({
             </div>
           )}
 
-          {!isNewTour && tour && (
-            <div className="rounded-lg border-2 border-blue-300 dark:border-blue-600 bg-background/60 px-3 py-2">
-              <SettlementActionsBar tour={tour} onShowHistory={onShowHistory} />
-            </div>
-          )}
         </div>
       )}
 

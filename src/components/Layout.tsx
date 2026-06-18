@@ -19,8 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
 import { SupabaseStatusBanner } from '@/components/SupabaseStatusBanner';
-import { SupabaseHealthBanner } from '@/components/SupabaseHealthBanner';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import type { SettlementStatus } from '@/types/tour';
@@ -69,24 +68,23 @@ const mainNavItems: NavItem[] = [
 const userManagementItem: NavItem = { to: '/users', icon: UserCog, label: 'Người dùng', permission: 'manage_users' };
 const profileItem: NavItem = { to: '/profile', icon: UserCircle, label: t('nav.profile') };
 
-function usePendingSettlementCount(): { count: number; enabled: boolean } {
+function usePendingSettlementCount(visible: boolean): number {
   const { hasPermission } = useAuth();
   let statuses: SettlementStatus[] = [];
   if (hasPermission('approve_settlement')) statuses = ['submitted'];
   else if (hasPermission('submit_settlement')) statuses = ['need_changes'];
 
-  const enabled = statuses.length > 0;
+  const enabled = visible && statuses.length > 0;
 
   const { data } = useQuery({
     queryKey: ['settlement-pending-count', statuses],
     queryFn: () => store.countToursBySettlementStatus(statuses),
     enabled,
-    refetchInterval: enabled ? 60_000 : false,
-    refetchOnWindowFocus: enabled,
-    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 
-  return { count: data ?? 0, enabled };
+  return data ?? 0;
 }
 
 function NavBadge({ count }: { count: number }) {
@@ -98,11 +96,20 @@ function NavBadge({ count }: { count: number }) {
   );
 }
 
-const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; user: User | null; onLogout: () => void }) => {
+const NavLinks = ({
+  isMobile = false,
+  user,
+  pendingCount,
+  onLogout,
+}: {
+  isMobile?: boolean;
+  user: User | null;
+  pendingCount: number;
+  onLogout: () => void;
+}) => {
   const location = useLocation();
   const [masterDataOpen, setMasterDataOpen] = useState(false);
   const { hasPermission } = useAuth();
-  const { count: pendingCount } = usePendingSettlementCount();
 
   const canShowItem = (item: NavItem) => !item.permission || hasPermission(item.permission);
   const visibleMainNavItems = mainNavItems.filter(canShowItem);
@@ -259,22 +266,11 @@ const NavLinks = ({ isMobile = false, user, onLogout }: { isMobile?: boolean; us
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const isTourListRoute = location.pathname === '/tours';
   const { showTopMenu } = useViewVisibility();
+  const pendingCount = usePendingSettlementCount(showTopMenu);
   const mainPaddingClass = showTopMenu ? 'pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-12' : 'pb-4 md:pb-12';
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -286,7 +282,7 @@ export function Layout({ children }: LayoutProps) {
       <nav className={cn('border-b bg-card sticky top-0 z-50', showTopMenu ? 'hidden md:block' : 'hidden')}>
         <div className="mx-auto flex items-center justify-between gap-1 px-2 py-1.5 max-w-7xl">
           <div className="flex items-center gap-0.5 overflow-x-auto">
-            <NavLinks isMobile={false} user={user} onLogout={handleLogout} />
+            <NavLinks isMobile={false} user={user} pendingCount={pendingCount} onLogout={handleLogout} />
           </div>
           {user && (
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -312,7 +308,7 @@ export function Layout({ children }: LayoutProps) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto flex min-h-16 max-w-md items-stretch justify-evenly px-1 py-2">
-          <NavLinks isMobile={true} user={user} onLogout={handleLogout} />
+          <NavLinks isMobile={true} user={user} pendingCount={pendingCount} onLogout={handleLogout} />
         </div>
       </div>
 
@@ -325,7 +321,6 @@ export function Layout({ children }: LayoutProps) {
           )}
         >
           <SupabaseStatusBanner />
-          <SupabaseHealthBanner />
           {children ?? <Outlet />}
         </div>
       </main>

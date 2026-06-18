@@ -8,6 +8,82 @@ Tài liệu này mô tả luồng quyết toán tour giữa HDV và kế toán. 
 
 Luồng quyết toán giúp HDV gửi hồ sơ tour cho kế toán, kế toán kiểm tra từng dòng, trả về nếu cần bổ sung, hoặc duyệt để khóa hồ sơ. Sau khi duyệt, tour mới đủ điều kiện ghi nhận thanh toán cho HDV.
 
+## Sơ đồ data workflow
+
+```mermaid
+flowchart LR
+  subgraph Actor["Người dùng"]
+    Guide["HDV"]
+    Accountant["Kế toán"]
+  end
+
+  subgraph UI["Giao diện"]
+    Actions["SettlementActionsBar\nGửi / Trả về / Duyệt / Mở khóa"]
+    Review["LineReviewControl\nReview từng dòng"]
+    History["SettlementHistoryPanel\nXem lịch sử thao tác"]
+  end
+
+  subgraph Logic["Logic phía client"]
+    Validate["validateSettlementReady\nKiểm tra điều kiện gửi"]
+    AllValid["areAllSettlementLinesApproved\nGate duyệt hồ sơ"]
+    Cache["TanStack Query cache\nCập nhật lạc quan + invalidate"]
+  end
+
+  subgraph Store["Datastore"]
+    Submit["submitTourSettlement"]
+    Return["returnTourSettlement"]
+    Approve["approveTourSettlement"]
+    Reopen["reopenTourSettlement"]
+    UpdateLine["updateLineReview"]
+  end
+
+  subgraph DB["Supabase DB"]
+    Tours[("tours\nsettlement_status, submitted_at,\napproved_at, approved_by, locked_at")]
+    Lines[("Bảng dòng tour\ntour_destinations / tour_expenses /\ntour_meals / tour_allowances / tour_shoppings")]
+    Audit[("tour_submission_history\nevent, actor_id, actor_role, note")]
+    Payments[("tour_payments\nlịch sử thanh toán")]
+    Trigger["tours_reset_payments_on_unlock"]
+  end
+
+  Guide -->|"Gửi hoặc gửi lại hồ sơ"| Actions
+  Actions -->|"Kiểm tra trước khi gửi"| Validate
+  Validate -->|"Hợp lệ"| Submit
+  Submit -->|"status = submitted\nsubmission_count + 1"| Tours
+  Submit -->|"event = submitted"| Audit
+
+  Accountant -->|"Review chi tiết"| Review
+  Review --> UpdateLine
+  UpdateLine -->|"line_status, line_comment,\nreviewed_by, reviewed_at"| Lines
+
+  Accountant -->|"Trả về HDV"| Actions
+  Actions --> Return
+  Return -->|"status = need_changes"| Tours
+  Return -->|"event = returned"| Audit
+  Tours -->|"need_changes"| Guide
+
+  Accountant -->|"Duyệt hồ sơ"| Actions
+  Actions --> AllValid
+  Lines -->|"Tất cả dòng bắt buộc = valid"| AllValid
+  AllValid -->|"Đủ điều kiện"| Approve
+  Approve -->|"status = approved\nset approved_at, approved_by, locked_at"| Tours
+  Approve -->|"event = approved"| Audit
+  Tours -->|"approved / closed\nđủ điều kiện ghi nhận"| Payments
+
+  Accountant -->|"Mở khóa"| Actions
+  Actions --> Reopen
+  Reopen -->|"status = draft\nclear approved_at, approved_by, locked_at"| Tours
+  Reopen -->|"event = reopened"| Audit
+  Tours -->|"approved/closed -> trạng thái khác"| Trigger
+  Trigger -->|"xóa lịch sử, reset pending"| Payments
+
+  Actions --> Cache
+  Submit --> Cache
+  Return --> Cache
+  Approve --> Cache
+  Reopen --> Cache
+  History -->|"fetch khi mở panel"| Audit
+```
+
 ## Trạng thái hồ sơ
 
 `tours.settlement_status` có các giá trị:

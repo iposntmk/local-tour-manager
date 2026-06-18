@@ -13,6 +13,33 @@ hãy dùng agentmemory và codegraph để hiểu và code nhanh:
 
 - dùng tiếng việt có dấu và chuẩn.
 - không dùng tiếng việt không dấu.
+
+## MANDATORY TOOLS — Always Use When Coding
+
+### CodeGraph (Code Intelligence)
+- **Luôn dùng `codegraph query <symbol>`** để tìm hiểu code trước khi viết
+- **Luôn dùng `codegraph callers <symbol>`** để tìm tất cả callers trước khi refactor
+- **Luôn dùng `codegraph callees <symbol>`** để hiểu dependencies
+- **Luôn dùng `codegraph impact <symbol>`** để phân tích impact trước khi thay đổi
+- **Luôn dùng `codegraph files`** để xem cấu trúc project
+- Index đã có sẵn: 363 files, 4,983 nodes, 11,166 edges
+
+### AgentMemory (Knowledge persistence)
+- **Luôn dùng `memory search <query>`** để tìm kiến thức đã lưu từ sessions trước
+- **Luôn dùng `memory save`** để lưu learnings quan trọng
+- REST API: http://localhost:3111
+- Viewer: http://localhost:3113
+
+### Caveman Mode (Token efficiency)
+- **Luôn active caveman mode** khi code — terse, no fluff, fragments OK
+- Level: **full** (default)
+- Rules: Drop articles, filler, pleasantries. Short synonyms. No tool-call narration.
+- Switch: `/caveman lite|full|ultra` or "stop caveman" to revert
+
+### Workflow khi code
+1. **Trước khi viết**: `codegraph query` để tìm existing code, `memory search` để recall knowledge
+2. **Khi viết**: Caveman mode active — terse output
+3. **Sau khi viết**: `codegraph impact` để check impact, `memory save` nếu có learning mới
 ## Code Architecture Laws (MANDATORY)
 
 You are an extremely disciplined senior developer. The following laws are **non-negotiable** and apply to every file, PR, or patch you produce.

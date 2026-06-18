@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { ViewVisibilityProvider } from "@/contexts/ViewVisibilityContext";
@@ -13,23 +11,24 @@ import { Layout } from "@/components/Layout";
 import { InactiveUserBanner } from "@/components/auth/InactiveUserBanner";
 import { RemovedUserBanner } from "@/components/auth/RemovedUserBanner";
 import type { Permission } from "@/types/user";
-import Languages from "./pages/Languages";
-import Companies from "./pages/Companies";
-import Nationalities from "./pages/Nationalities";
-import Provinces from "./pages/Provinces";
-import Destinations from "./pages/Destinations";
-import DestinationsFree from "./pages/DestinationsFree";
-import Shopping from "./pages/Shopping";
-import ExpenseCategories from "./pages/ExpenseCategories";
-import DetailedExpenses from "./pages/DetailedExpenses";
-import Tours from "./pages/Tours";
-import TourDetail from "./pages/TourDetail";
-import NotFound from "./pages/NotFound";
-import Statistics from "./pages/Statistics";
-import Auth from "./pages/Auth";
-import Users from "./pages/Users";
-import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
+
+const Languages = lazy(() => import("./pages/Languages"));
+const Companies = lazy(() => import("./pages/Companies"));
+const Nationalities = lazy(() => import("./pages/Nationalities"));
+const Provinces = lazy(() => import("./pages/Provinces"));
+const Destinations = lazy(() => import("./pages/Destinations"));
+const DestinationsFree = lazy(() => import("./pages/DestinationsFree"));
+const Shopping = lazy(() => import("./pages/Shopping"));
+const ExpenseCategories = lazy(() => import("./pages/ExpenseCategories"));
+const DetailedExpenses = lazy(() => import("./pages/DetailedExpenses"));
+const Tours = lazy(() => import("./pages/Tours"));
+const TourDetail = lazy(() => import("./pages/TourDetail"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Statistics = lazy(() => import("./pages/Statistics"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Users = lazy(() => import("./pages/Users"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Profile = lazy(() => import("./pages/Profile"));
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
@@ -63,7 +62,7 @@ function RequirePermissionRoute({
   children,
 }: {
   permission: Permission;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const { loading, hasPermission } = useAuth();
 
@@ -78,57 +77,65 @@ function RequirePermissionRoute({
   return hasPermission(permission) ? <>{children}</> : <AccessDenied />;
 }
 
-const App = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  // Track the previously authenticated user so we only purge the query cache on
-  // a real account switch / sign-out. supabase-js re-emits SIGNED_IN every time
-  // the tab regains focus; clearing the cache there caused every page to refetch
-  // (looked like a full refresh on Dashboard / TourDetail).
+function PageLoading() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center">
+      <div className="text-lg">Đang tải...</div>
+    </div>
+  );
+}
+
+function AppRoutes() {
+  const { user, loading } = useAuth();
   const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-
-        const nextUserId = session?.user?.id ?? null;
-        if (event === 'SIGNED_OUT') {
-          queryClient.clear();
-          prevUserIdRef.current = null;
-        } else if (event === 'SIGNED_IN') {
-          // Only clear when the account actually changed, not on focus re-emits.
-          if (prevUserIdRef.current && prevUserIdRef.current !== nextUserId) {
-            queryClient.clear();
-          }
-          prevUserIdRef.current = nextUserId;
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      prevUserIdRef.current = session?.user?.id ?? null;
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    if (loading) return;
+    const nextUserId = user?.id ?? null;
+    const previousUserId = prevUserIdRef.current;
+    if (previousUserId && previousUserId !== nextUserId) queryClient.clear();
+    prevUserIdRef.current = nextUserId;
+  }, [loading, user?.id]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+        <div className="text-lg">Đang tải...</div>
       </div>
     );
   }
 
+  return (
+    <HashRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+      <Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/tours" />} />
+          <Route element={user ? <ViewVisibilityProvider><Layout /></ViewVisibilityProvider> : <Navigate to="/auth" />}>
+            <Route index element={<Navigate to="/tours" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="languages" element={<RequirePermissionRoute permission="view_languages"><Languages /></RequirePermissionRoute>} />
+            <Route path="companies" element={<RequirePermissionRoute permission="view_companies"><Companies /></RequirePermissionRoute>} />
+            <Route path="nationalities" element={<RequirePermissionRoute permission="view_nationalities"><Nationalities /></RequirePermissionRoute>} />
+            <Route path="provinces" element={<RequirePermissionRoute permission="view_provinces"><Provinces /></RequirePermissionRoute>} />
+            <Route path="destinations" element={<RequirePermissionRoute permission="view_tourist_destinations"><Destinations /></RequirePermissionRoute>} />
+            <Route path="destinations-free" element={<RequirePermissionRoute permission="view_destinations_free"><DestinationsFree /></RequirePermissionRoute>} />
+            <Route path="shopping" element={<RequirePermissionRoute permission="view_shopping"><Shopping /></RequirePermissionRoute>} />
+            <Route path="expense-categories" element={<RequirePermissionRoute permission="view_expense_categories"><ExpenseCategories /></RequirePermissionRoute>} />
+            <Route path="detailed-expenses" element={<RequirePermissionRoute permission="view_detailed_expenses"><DetailedExpenses /></RequirePermissionRoute>} />
+            <Route path="tours" element={<RequirePermissionRoute permission="view_tours"><Tours /></RequirePermissionRoute>} />
+            <Route path="tours/:id" element={<RequirePermissionRoute permission="view_tours"><TourDetail /></RequirePermissionRoute>} />
+            <Route path="statistics" element={<RequirePermissionRoute permission="view_statistics"><Statistics /></RequirePermissionRoute>} />
+            <Route path="users" element={<RequirePermissionRoute permission="manage_users"><Users /></RequirePermissionRoute>} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </HashRouter>
+  );
+}
+
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -137,30 +144,7 @@ const App = () => {
           <Sonner />
           <InactiveUserBanner />
           <RemovedUserBanner />
-          <HashRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
-            <Routes>
-              <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/tours" />} />
-              <Route element={user ? <ViewVisibilityProvider><Layout /></ViewVisibilityProvider> : <Navigate to="/auth" />}>
-                <Route index element={<Navigate to="/tours" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="languages" element={<RequirePermissionRoute permission="view_languages"><Languages /></RequirePermissionRoute>} />
-                <Route path="companies" element={<RequirePermissionRoute permission="view_companies"><Companies /></RequirePermissionRoute>} />
-                <Route path="nationalities" element={<RequirePermissionRoute permission="view_nationalities"><Nationalities /></RequirePermissionRoute>} />
-                <Route path="provinces" element={<RequirePermissionRoute permission="view_provinces"><Provinces /></RequirePermissionRoute>} />
-                <Route path="destinations" element={<RequirePermissionRoute permission="view_tourist_destinations"><Destinations /></RequirePermissionRoute>} />
-                <Route path="destinations-free" element={<RequirePermissionRoute permission="view_destinations_free"><DestinationsFree /></RequirePermissionRoute>} />
-                <Route path="shopping" element={<RequirePermissionRoute permission="view_shopping"><Shopping /></RequirePermissionRoute>} />
-                <Route path="expense-categories" element={<RequirePermissionRoute permission="view_expense_categories"><ExpenseCategories /></RequirePermissionRoute>} />
-                <Route path="detailed-expenses" element={<RequirePermissionRoute permission="view_detailed_expenses"><DetailedExpenses /></RequirePermissionRoute>} />
-                <Route path="tours" element={<RequirePermissionRoute permission="view_tours"><Tours /></RequirePermissionRoute>} />
-                <Route path="tours/:id" element={<RequirePermissionRoute permission="view_tours"><TourDetail /></RequirePermissionRoute>} />
-                <Route path="statistics" element={<RequirePermissionRoute permission="view_statistics"><Statistics /></RequirePermissionRoute>} />
-                <Route path="users" element={<RequirePermissionRoute permission="manage_users"><Users /></RequirePermissionRoute>} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </HashRouter>
+          <AppRoutes />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

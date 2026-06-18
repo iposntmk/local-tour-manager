@@ -90,7 +90,7 @@ export function CombinedTab({ tour }: CombinedTabProps) {
                 <TableHead
                   key={column.key}
                   className={cn(
-                    'border border-slate-300 px-2 py-1 text-center text-[3px] font-bold text-slate-950',
+                    'border border-slate-300 px-2 py-1 text-center text-[12px] font-bold text-slate-950',
                     'whitespace-normal break-words leading-tight'
                   )}
 

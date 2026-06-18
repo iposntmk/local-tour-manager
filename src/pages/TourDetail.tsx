@@ -11,8 +11,10 @@ import { AllowancesTab } from '@/components/tours/AllowancesTab';
 import { SummaryTab } from '@/components/tours/SummaryTab';
 import { TourImagesTab } from '@/components/tours/TourImagesTab';
 import { CombinedTab } from '@/components/tours/CombinedTab';
+import { SettlementActionsBar } from '@/components/tours/SettlementActionsBar';
 import { SettlementHistoryPanel } from '@/components/tours/SettlementHistoryPanel';
 import { TourDetailHeader } from '@/components/tours/TourDetailHeader';
+import { useViewVisibility } from '@/contexts/ViewVisibilityContext';
 import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useTourDetail } from '@/hooks/useTourDetail';
 import {
@@ -29,6 +31,7 @@ const TourDetail = () => {
   const navigate = useNavigate();
   const [editTarget, setEditTarget] = useState<{ lineType: SummaryLineType; index: number; key: number } | null>(null);
   const { classes: headerClasses } = useHeaderMode('tourdetail.headerMode');
+  const { showSettlementBar } = useViewVisibility();
   const {
     id, tour, tourImages, displayTour, isNewTour, isLoading,
     newTourData, setNewTourData,
@@ -161,8 +164,13 @@ const TourDetail = () => {
               onSave={handleHeaderSave}
               onExport={handleExportExcel}
               onDeleteOpen={() => setDeleteDialogOpen(true)}
-              onShowHistory={() => setHistoryOpen(true)}
             />
+
+            {!isNewTour && tour && showSettlementBar && (
+              <div className="rounded-lg border-2 border-blue-300 dark:border-blue-600 bg-background/60 px-3 py-2">
+                <SettlementActionsBar tour={tour} onShowHistory={() => setHistoryOpen(true)} />
+              </div>
+            )}
 
             {lockBanner}
 

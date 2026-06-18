@@ -11,6 +11,7 @@ import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShoppingForm } from '@/components/tours/ShoppingForm';
 import { ShoppingDesktopTable } from '@/components/tours/ShoppingDesktopTable';
+import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { NewShoppingDialog } from '@/components/tours/NewShoppingDialog';
 import { ShoppingsMobileList } from '@/components/tours/mobile/ShoppingsMobileList';
 import { getNetCommission, getPaymentRemaining, isFullyReceived } from '@/lib/shopping-commission-utils';
@@ -265,22 +266,24 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
   return (
     <div className="space-y-6">
       {!readOnly && (
-        <ShoppingForm
-          formData={formData}
-          onChange={setFormData}
-          editingIndex={editingIndex}
-          tour={tour}
-          shoppingItems={shoppingItems}
-          formReceiveFull={formReceiveFull}
-          formCashPayment={formCashPayment}
-          onFormReceiveFullChange={handleFormReceiveFullChange}
-          onFormCashPaymentChange={setFormCashPayment}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          onOpenNewDialog={() => setShowNewShoppingDialog(true)}
-          isPendingAdd={addPaymentMutation.isPending}
-          isPendingClear={clearPaymentsMutation.isPending}
-        />
+        <FormCollapsible autoOpenKey={editingIndex}>
+          <ShoppingForm
+            formData={formData}
+            onChange={setFormData}
+            editingIndex={editingIndex}
+            tour={tour}
+            shoppingItems={shoppingItems}
+            formReceiveFull={formReceiveFull}
+            formCashPayment={formCashPayment}
+            onFormReceiveFullChange={handleFormReceiveFullChange}
+            onFormCashPaymentChange={setFormCashPayment}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            onOpenNewDialog={() => setShowNewShoppingDialog(true)}
+            isPendingAdd={addPaymentMutation.isPending}
+            isPendingClear={clearPaymentsMutation.isPending}
+          />
+        </FormCollapsible>
       )}
 
       <div className="rounded-lg border">

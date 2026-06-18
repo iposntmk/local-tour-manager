@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Upload, Image as ImageIcon, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
-import JSZip from 'jszip';
 import type { TourImage } from '@/types/tour';
 import { generateTourImageStoragePath } from '@/lib/tour-image-path';
 import { TourImageViewerDialog } from './TourImageViewerDialog';
@@ -124,6 +123,7 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
 
     setDownloading(true);
     try {
+      const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       
       // Fetch and add each image to zip

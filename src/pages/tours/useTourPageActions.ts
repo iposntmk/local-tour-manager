@@ -1,6 +1,5 @@
 import { useState, type MouseEvent } from 'react';
 import { useMutation, type QueryClient } from '@tanstack/react-query';
-import JSZip from 'jszip';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { exportAllToursToExcel, exportAllToursToMonthlyZip, exportTourToExcel } from '@/lib/excel-utils';
@@ -208,6 +207,7 @@ export function useTourPageActions({
       }
 
       toast.info(`Đang tải ${allImages.length} ảnh...`);
+      const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       const tourCodes = new Set<string>();
 

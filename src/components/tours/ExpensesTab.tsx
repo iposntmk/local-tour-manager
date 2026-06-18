@@ -13,6 +13,7 @@ import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useAuth } from '@/contexts/AuthContext';
 import { ExpenseForm } from '@/components/tours/ExpenseForm';
 import { NewExpenseDialog } from '@/components/tours/NewExpenseDialog';
+import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { ExpensesDesktopTable } from '@/components/tours/ExpensesDesktopTable';
 import { ExpensesMobileList } from '@/components/tours/mobile/ExpensesMobileList';
 import {
@@ -276,20 +277,22 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
       )}
 
       {!readOnly && canEditLine && (
-        <ExpenseForm
-          formData={formData}
-          onChange={setFormData}
-          editingIndex={editingIndex}
-          tour={tour}
-          detailedExpenses={detailedExpenses}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          onOpenNewDialog={() => setShowNewExpenseDialog(true)}
-          tourId={tourId}
-          pendingFiles={pendingFiles}
-          onPendingFilesChange={setPendingFiles}
-          lineFieldAccess={lineFieldAccess}
-        />
+        <FormCollapsible autoOpenKey={editingIndex}>
+          <ExpenseForm
+            formData={formData}
+            onChange={setFormData}
+            editingIndex={editingIndex}
+            tour={tour}
+            detailedExpenses={detailedExpenses}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            onOpenNewDialog={() => setShowNewExpenseDialog(true)}
+            tourId={tourId}
+            pendingFiles={pendingFiles}
+            onPendingFilesChange={setPendingFiles}
+            lineFieldAccess={lineFieldAccess}
+          />
+        </FormCollapsible>
       )}
 
       <div className="rounded-lg border">
