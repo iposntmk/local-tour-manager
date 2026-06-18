@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
@@ -14,7 +14,6 @@ import {
 } from '@/lib/query-cache';
 import { toVietnameseError } from '@/lib/error-messages';
 import { useAuth } from '@/contexts/AuthContext';
-import { enrichTourWithSummary } from '@/lib/tour-utils';
 import { canEditTourData } from '@/lib/settlement-utils';
 import { canAuthViewTourShopping } from '@/lib/shopping-access';
 import { getTourInfoFieldAccess, getTourLineFieldAccess, getTourTabAccess } from '@/lib/tour-detail-permissions';
@@ -55,10 +54,50 @@ export function useTourDetail() {
   const canUploadTourImages = hasPermission('upload_tour_images') || hasPermission('edit_tours');
   const canDeleteTourImages = hasPermission('delete_tour_images') || hasPermission('edit_tours');
 
-  const { data: tour, isLoading } = useQuery({
+  // Lightweight info-only fetch on initial load (tour row + summary columns + nationalities
+  // + payments). Sub-collections load lazily per-tab below so opening a tour no longer pulls
+  // every line up-front.
+  const { data: tourInfo, isLoading } = useQuery({
     queryKey: ['tour', id],
-    queryFn: () => store.getTour(id!),
+    queryFn: () => store.getTourInfo(id!),
     enabled: !isNewTour,
+    staleTime: TOUR_DETAIL_STALE_TIME,
+    gcTime: TOUR_DETAIL_GC_TIME,
+  });
+
+  // Which tabs need which sub-collections (combined needs cost lines; summary needs all four).
+  const needsDestinations = ['destinations', 'combined', 'summary'].includes(activeTab);
+  const needsExpenses = ['expenses', 'combined', 'summary'].includes(activeTab);
+  const needsMeals = ['meals', 'combined', 'summary'].includes(activeTab);
+  const needsAllowances = ['allowances', 'summary'].includes(activeTab);
+
+  const subEnabled = (need: boolean) => !isNewTour && !!id && need;
+
+  const destinationsQuery = useQuery({
+    queryKey: ['tour', id, 'destinations'],
+    queryFn: () => store.listTourDestinations(id!),
+    enabled: subEnabled(needsDestinations),
+    staleTime: TOUR_DETAIL_STALE_TIME,
+    gcTime: TOUR_DETAIL_GC_TIME,
+  });
+  const expensesQuery = useQuery({
+    queryKey: ['tour', id, 'expenses'],
+    queryFn: () => store.listTourExpenses(id!),
+    enabled: subEnabled(needsExpenses),
+    staleTime: TOUR_DETAIL_STALE_TIME,
+    gcTime: TOUR_DETAIL_GC_TIME,
+  });
+  const mealsQuery = useQuery({
+    queryKey: ['tour', id, 'meals'],
+    queryFn: () => store.listTourMeals(id!),
+    enabled: subEnabled(needsMeals),
+    staleTime: TOUR_DETAIL_STALE_TIME,
+    gcTime: TOUR_DETAIL_GC_TIME,
+  });
+  const allowancesQuery = useQuery({
+    queryKey: ['tour', id, 'allowances'],
+    queryFn: () => store.listTourAllowances(id!),
+    enabled: subEnabled(needsAllowances),
     staleTime: TOUR_DETAIL_STALE_TIME,
     gcTime: TOUR_DETAIL_GC_TIME,
   });
@@ -101,8 +140,11 @@ export function useTourDetail() {
     onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: ['tour', id] });
       const previous = queryClient.getQueryData<Tour>(['tour', id]);
+      // ['tour', id] now holds the info-only tour (empty sub-collection arrays), so do NOT
+      // enrichTourWithSummary here — it would recompute totalTabs from empty arrays and zero
+      // out the stored summary columns. Just merge the patched info fields.
       queryClient.setQueryData<Tour>(['tour', id], (current) =>
-        current ? enrichTourWithSummary({ ...current, ...patch }) : current
+        current ? { ...current, ...patch } : current
       );
       return { previous };
     },
@@ -140,14 +182,38 @@ export function useTourDetail() {
     },
   });
 
-  const displayTour = isNewTour ? newTourData as Tour : tour;
+  const baseForAccess = isNewTour ? (newTourData as Tour) : tourInfo;
   const canViewShoppings = canAuthViewTourShopping({
     isAdmin,
     isGuide,
     userId: userProfile?.id,
-    tour: displayTour,
+    tour: baseForAccess,
     isNewTour,
   });
+
+  // Shoppings tab is sensitive: only fetch when the tab is open AND the user may view it.
+  const shoppingsQuery = useQuery({
+    queryKey: ['tour', id, 'shoppings'],
+    queryFn: () => store.listTourShoppings(id!),
+    enabled: !isNewTour && !!id && activeTab === 'shoppings' && canViewShoppings,
+    staleTime: TOUR_DETAIL_STALE_TIME,
+    gcTime: TOUR_DETAIL_GC_TIME,
+  });
+
+  const tour = tourInfo ?? undefined;
+  const displayTour: Tour | undefined = useMemo(() => {
+    if (isNewTour) return newTourData as Tour;
+    if (!tourInfo) return undefined;
+    return {
+      ...tourInfo,
+      destinations: destinationsQuery.data ?? tourInfo.destinations,
+      expenses: expensesQuery.data ?? tourInfo.expenses,
+      meals: mealsQuery.data ?? tourInfo.meals,
+      allowances: allowancesQuery.data ?? tourInfo.allowances,
+      shoppings: shoppingsQuery.data ?? tourInfo.shoppings,
+    };
+  }, [isNewTour, newTourData, tourInfo, destinationsQuery.data, expensesQuery.data, mealsQuery.data, allowancesQuery.data, shoppingsQuery.data]);
+
   const tabAccess = getTourTabAccess(hasPermission, { canViewSensitiveShopping: canViewShoppings, isNewTour });
   const infoFieldAccess = getTourInfoFieldAccess(hasPermission, tabAccess.info);
   const lineFieldAccess = getTourLineFieldAccess(hasPermission);
@@ -165,11 +231,22 @@ export function useTourDetail() {
   const isSettlementLocked = !isNewTour && !settlementUnlocked;
   const settlementStatus = displayTour?.settlementStatus;
   const totalGuests = displayTour?.totalGuests || (displayTour?.adults || 0) + (displayTour?.children || 0) || 0;
+  // When the relevant sub-collection isn't loaded yet, fall back to the stored summary
+  // columns on the info row (has_unpaid_commission / missing_water_expense) so tour-level
+  // badges/warnings stay correct without forcing those tabs to load.
+  const shoppingsLoaded = isNewTour || shoppingsQuery.data !== undefined;
   const shoppingCommissionInfo = getShoppingCommissionInfo(displayTour?.shoppings || []);
-  const hasUnpaidShoppings = canViewShoppings && shoppingCommissionInfo.hasShoppings && !shoppingCommissionInfo.allPaid;
+  const hasUnpaidShoppings = canViewShoppings && (
+    shoppingsLoaded
+      ? shoppingCommissionInfo.hasShoppings && !shoppingCommissionInfo.allPaid
+      : (tourInfo?.hasUnpaidCommission ?? false)
+  );
+  const expensesLoaded = isNewTour || expensesQuery.data !== undefined;
   const hasWaterExpense = (displayTour?.expenses || []).some(isWaterExpense);
   const isWaterDismissed = displayTour?.waterExpenseDismissed === true;
-  const showWaterWarning = !isNewTour && !hasWaterExpense && !isWaterDismissed && !waterDismissedLocal;
+  const showWaterWarning = !isNewTour && !isWaterDismissed && !waterDismissedLocal && (
+    expensesLoaded ? !hasWaterExpense : (tourInfo?.missingWaterExpense ?? false)
+  );
 
   const handleInfoSave = (data: TourInput) => {
     if ((isNewTour && !canCreateTour) || (!isNewTour && !canEditTourInfo)) { toast.error('Bạn không có quyền lưu thông tin tour.'); return; }

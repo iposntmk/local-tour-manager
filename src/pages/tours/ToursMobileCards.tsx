@@ -10,6 +10,7 @@ import { store } from '@/lib/datastore';
 import { t } from '@/lib/i18n';
 import { TOUR_DETAIL_GC_TIME, TOUR_DETAIL_STALE_TIME } from '@/lib/query-cache';
 import { useCanViewShoppingSensitive } from '@/hooks/useCanViewShoppingSensitive';
+import { useIncrementalRender } from '@/pages/tours/useIncrementalRender';
 import type { Tour } from '@/types/tour';
 import {
   formatTourNationalities,
@@ -55,6 +56,7 @@ export const ToursMobileCards = ({
 }: ToursMobileCardsProps) => {
   const canViewShoppingSensitive = useCanViewShoppingSensitive();
   const queryClient = useQueryClient();
+  const { visible, sentinelRef, hasMore } = useIncrementalRender(tours, 2, 6);
   const prefetchTour = (tourId: string) => {
     void queryClient.prefetchQuery({
       queryKey: ['tour', tourId],
@@ -66,7 +68,7 @@ export const ToursMobileCards = ({
 
   return (
   <div className="grid grid-cols-1 gap-4 mt-6 md:hidden">
-    {tours.map((tour) => {
+    {visible.map((tour) => {
       const warningInfo = getTourWarningInfo(tour);
       const warningItems = getMobileWarningItems(warningInfo);
       const hasChildren = (tour.children || 0) > 0;
@@ -243,6 +245,11 @@ export const ToursMobileCards = ({
         </div>
       );
     })}
+    {hasMore && (
+      <div ref={sentinelRef} className="flex items-center justify-center py-4 text-xs text-muted-foreground">
+        Đang tải thêm tour...
+      </div>
+    )}
   </div>
   );
 };

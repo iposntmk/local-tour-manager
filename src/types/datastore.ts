@@ -221,6 +221,13 @@ export interface DataStore {
   listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult>;
   getToursGrandTotal(): Promise<ToursGrandTotal>;
   getTour(id: string): Promise<Tour | undefined>;
+  // Lightweight info-only fetch + per-tab lazy sub-collection reads (TourDetail)
+  getTourInfo(id: string): Promise<Tour | undefined>;
+  listTourDestinations(tourId: string): Promise<Destination[]>;
+  listTourExpenses(tourId: string): Promise<Expense[]>;
+  listTourMeals(tourId: string): Promise<Meal[]>;
+  listTourAllowances(tourId: string): Promise<Allowance[]>;
+  listTourShoppings(tourId: string): Promise<TourShopping[]>;
   createTour(input: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; shoppings?: TourShopping[]; summary?: TourSummary }): Promise<Tour>;
   updateTour(id: string, patch: Partial<Tour>): Promise<void>;
   deleteTour(id: string): Promise<void>;

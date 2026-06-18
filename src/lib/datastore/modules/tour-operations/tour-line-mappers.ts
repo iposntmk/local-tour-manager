@@ -44,7 +44,7 @@ export const mapTourMealLine = (row: any): Meal => ({
   ...mapLineReviewFields(row),
 });
 
-const attachToLines = (
+export const attachLineTypeAttachments = (
   lines: TourLine[],
   lineType: AttachmentLineType,
   attachments: TourLineAttachment[],
@@ -61,9 +61,9 @@ const attachToLines = (
 };
 
 export const attachTourLineAttachments = (tour: Tour, attachments: TourLineAttachment[]) => {
-  attachToLines(tour.destinations, 'destination', attachments);
-  attachToLines(tour.meals, 'meal', attachments);
-  attachToLines(tour.expenses, 'expense', attachments);
+  attachLineTypeAttachments(tour.destinations, 'destination', attachments);
+  attachLineTypeAttachments(tour.meals, 'meal', attachments);
+  attachLineTypeAttachments(tour.expenses, 'expense', attachments);
 };
 
 export const buildLineWritePayload = (line: TourLine) => ({

@@ -6,9 +6,6 @@ import { useHeaderMode } from '@/hooks/useHeaderMode';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Tour, TourListResult } from '@/types/tour';
 import {
-  TOUR_GRAND_TOTAL_GC_TIME,
-  TOUR_GRAND_TOTAL_QUERY_KEY,
-  TOUR_GRAND_TOTAL_STALE_TIME,
   TOUR_LIST_GC_TIME,
   TOUR_LIST_STALE_TIME,
   TOUR_REFERENCE_GC_TIME,
@@ -20,8 +17,10 @@ import { ToursFilterBar } from '@/pages/tours/ToursFilterBar';
 import { ToursHeaderControls } from '@/pages/tours/ToursHeaderControls';
 import { ToursLoadingSkeleton } from '@/pages/tours/ToursLoadingSkeleton';
 import { ToursMobileCards } from '@/pages/tours/ToursMobileCards';
+import { ToursPagination } from '@/pages/tours/ToursPagination';
 import { ToursTotalsBar } from '@/pages/tours/ToursTotalsBar';
 import { useTourFilters } from '@/pages/tours/useTourFilters';
+import { useTourPagination } from '@/pages/tours/useTourPagination';
 import { ToursConfirmDialogs } from '@/pages/tours/ToursConfirmDialogs';
 import { useTourPageActions } from '@/pages/tours/useTourPageActions';
 import { filterToursForList, isTourInListFilters } from '@/pages/tours/tour-list-filters';
@@ -115,9 +114,16 @@ const Tours = () => {
     isError,
     error,
   } = useQuery({
-    queryKey: ['tours', baseTourQuery],
-    queryFn: () => store.listTours({ ...baseTourQuery }, { includeDetails: false }),
+    queryKey: ['tours', exportTourQuery],
+    queryFn: () => store.listTours({ ...exportTourQuery }, { includeDetails: false }),
     placeholderData: keepPreviousData,
+    staleTime: TOUR_LIST_STALE_TIME,
+    gcTime: TOUR_LIST_GC_TIME,
+  });
+
+  const { data: grandTotal } = useQuery({
+    queryKey: ['tours', 'grandTotal'],
+    queryFn: () => store.getToursGrandTotal(),
     staleTime: TOUR_LIST_STALE_TIME,
     gcTime: TOUR_LIST_GC_TIME,
   });
@@ -151,15 +157,10 @@ const Tours = () => {
     }, 0);
   }, [displayedTours]);
 
+  const pagination = useTourPagination(displayedTours);
   const showInitialToursSkeleton = isLoading && !toursResult;
   const showToursBackgroundRefresh = isFetching && !showInitialToursSkeleton;
-
-  const { data: allToursData } = useQuery({
-    queryKey: TOUR_GRAND_TOTAL_QUERY_KEY,
-    queryFn: () => store.getToursGrandTotal(),
-    staleTime: TOUR_GRAND_TOTAL_STALE_TIME,
-    gcTime: TOUR_GRAND_TOTAL_GC_TIME,
-  });
+  const showPagination = displayedTours.length > pagination.pageSize;
 
   const { data: nationalities = [] } = useQuery({
     queryKey: ['nationalities'],
@@ -168,7 +169,7 @@ const Tours = () => {
     gcTime: TOUR_REFERENCE_GC_TIME,
   });
 
-  const availableYears = useStableTourYears(tours);
+  const availableYears = useStableTourYears(tours, selectedYear);
   const exportTourFilter = useMemo(() => {
     return (tour: Tour) => isTourInListFilters(tour, listFilters);
   }, [listFilters]);
@@ -264,16 +265,14 @@ const Tours = () => {
             setSortBy={setSortBy}
             clearFilters={clearFilters}
           />
-        </div>
-
-        {topControlsExpanded && (
-            <ToursTotalsBar
-            toursCount={displayedTours.length}
-            filteredToursTotal={filteredToursTotal}
-            allToursData={allToursData}
+          <ToursTotalsBar
+            grandTotalCount={grandTotal?.count ?? displayedTours.length}
+            grandTotalAmount={grandTotal?.grandTotal ?? 0}
+            filteredCount={displayedTours.length}
+            filteredTotal={filteredToursTotal}
             showToursBackgroundRefresh={showToursBackgroundRefresh}
           />
-        )}
+        </div>
 
         {isError && (
           <div className="mt-6 rounded-lg border border-destructive/50 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -306,7 +305,7 @@ const Tours = () => {
           />
         ) : (
           <ToursDesktopTable
-            tours={displayedTours}
+            tours={pagination.pagedItems}
             canExportTours={canExportTours}
             canDuplicateTours={canDuplicateTours}
             canDeleteTours={canDeleteTours}
@@ -316,6 +315,17 @@ const Tours = () => {
             onExportSingle={tourActions.handleExportSingle}
             onDuplicate={tourActions.handleDuplicate}
             onDelete={tourActions.handleDelete}
+          />
+        )}
+
+        {!isMobile && showPagination && (
+          <ToursPagination
+            currentCount={pagination.pagedItems.length}
+            pageIndex={pagination.pageIndex}
+            pageSize={pagination.pageSize}
+            totalItems={displayedTours.length}
+            onPageChange={pagination.setPageIndex}
+            onPageSizeChange={pagination.setPageSize}
           />
         )}
 

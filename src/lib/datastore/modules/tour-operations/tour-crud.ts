@@ -15,6 +15,7 @@ import type { TourRowWithDetails, TourNationalityRow, TourPaymentRow } from '../
 import type { UserProfile } from '@/types/user';
 import { MASTER_ADMIN_EMAIL } from '@/lib/auth-constants';
 import {
+  attachLineTypeAttachments,
   attachTourLineAttachments,
   mapTourDestinationLine,
   mapTourExpenseLine,
@@ -206,6 +207,26 @@ export class TourCrudModule {
     attachTourLineAttachments(tour, await this.listTourLineAttachments(id));
     const currentProfile = await this.getCurrentUserProfile();
     return enrichTourWithSummary(stripTourShoppingForProfile(tour, currentProfile));
+  }
+
+  // Lightweight fetch for TourDetail initial load: tour row + summary columns + nationalities
+  // + payments only. Sub-collections (destinations/expenses/meals/allowances/shoppings) are
+  // loaded lazily per-tab via listTour* below. Do NOT enrichTourWithSummary here — keep the
+  // stored summary columns (mapTour) instead of recomputing from empty arrays.
+  async getTourInfo(id: string): Promise<Tour | null> {
+    const { data, error } = await this.supabase.from('tours').select(`
+        *, tour_nationalities(*), tour_payments(*)
+      `).eq('id', id)
+      .order('paid_at', { foreignTable: 'tour_payments', ascending: false })
+      .single();
+    if (error || !data) return null;
+    const tour = mapTour(data as any);
+    const row: any = data;
+    this.applyTourNationalities(tour, row.tour_nationalities);
+    tour.payments = (row.tour_payments || []).map((p: TourPaymentRow) => mapTourPayment(p));
+    tour.detailsLoaded = false;
+    const currentProfile = await this.getCurrentUserProfile();
+    return stripTourShoppingForProfile(tour, currentProfile);
   }
 
   async createTour(tour: TourInput & { destinations?: Destination[]; expenses?: Expense[]; meals?: Meal[]; allowances?: Allowance[]; shoppings?: TourShopping[]; summary?: TourSummary }): Promise<Tour> {
