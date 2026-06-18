@@ -8,7 +8,7 @@ interface FormCollapsibleProps {
   autoOpenKey?: number | string | null;
 }
 
-export function FormCollapsible({ children, defaultOpen = true, autoOpenKey }: FormCollapsibleProps) {
+export function FormCollapsible({ children, defaultOpen = false, autoOpenKey }: FormCollapsibleProps) {
   const [open, setOpen] = useState(defaultOpen);
   const prevKey = useRef(autoOpenKey);
 

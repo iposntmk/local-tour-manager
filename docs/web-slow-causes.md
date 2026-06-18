@@ -1,5 +1,33 @@
 # Nguyên nhân trang web tải chậm
 
+> **Cập nhật 2026-06-18 — đã kiểm tra lại toàn bộ.** Phần lớn nguyên nhân trong tài
+> liệu này đã được fix ở các commit perf gần đây (`perf(tours): lazy-load...`,
+> `e63f3ea`, v.v.). Trạng thái hiện tại:
+>
+> | # | Nguyên nhân | Trạng thái hiện tại |
+> |---|---|---|
+> | 1 | Thiếu code splitting | ✅ Đã fix — `App.tsx` dùng `React.lazy` + `Suspense` cho mọi page |
+> | 2 | `getCurrentUserProfile()` redundant | ✅ Đã fix — cache trong `user-profiles.ts`, `AuthContext` prime sẵn qua `setStoreCurrentUserProfile` |
+> | 3 | Không pagination | ⚠️ Một phần — đã có pagination client-side (`useTourPagination`); `listTours` hỗ trợ `limit`/`offset` nhưng Tours page vẫn fetch full set (theo thiết kế whole-DB totals) |
+> | 4 | `getToursGrandTotal()` dư thừa | ✅ Theo thiết kế — dùng cho tổng toàn DB, không thể tính từ list đã filter/paginate |
+> | 5 | Lọc client-side | ⚠️ Một phần — filter chính (code, company, date, settlement, payment) đã đẩy lên SQL; còn nationality/month/year/commission lọc client |
+> | 6 | Nhiều reference query riêng | ⚠️ Đã giảm — query admin-only được gate bằng `enabled` |
+> | 7 | `optimizeDeps.include` thừa | ✅ Đã fix — chỉ còn `["react","react-dom"]` |
+> | 8 | `keepPreviousData` | ℹ️ Giữ lại — có lợi cho UX, không gây chậm đáng kể |
+> | 9 | Triple auth request | ✅ Đã fix — chỉ còn 1 `getSession` ở `AuthContext` |
+> | 10 | Health check `count:'exact'` | ✅ Đã fix — bỏ `count:'exact'`, banner chỉ hiện khi lỗi |
+> | 11 | Settlement count polling | ✅ Đã fix — bỏ `refetchInterval`, gate theo permission |
+> | 12 | Google Fonts sync | ✅ Đã fix — gỡ `<link>` khỏi `index.html` |
+> | 13 | `jszip` static import | ✅ Đã fix — chuyển sang `await import('jszip')` |
+>
+> Còn lại đáng cân nhắc: #3/#5 (fetch toàn bộ rồi paginate/lọc client) — nhưng vướng
+> thiết kế whole-DB totals hiện tại, cần refactor lớn + test kỹ nên chưa đụng vào.
+>
+> Nội dung gốc bên dưới giữ nguyên để tham khảo lịch sử.
+
+---
+
+
 ## 1. Bundle JS quá lớn — thiếu code splitting
 
 **File:** `src/App.tsx:16-32`
