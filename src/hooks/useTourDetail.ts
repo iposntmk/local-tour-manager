@@ -9,8 +9,6 @@ import {
   invalidateTourAggregateCaches,
   TOUR_DETAIL_GC_TIME,
   TOUR_DETAIL_STALE_TIME,
-  TOUR_IMAGE_GC_TIME,
-  TOUR_IMAGE_STALE_TIME,
 } from '@/lib/query-cache';
 import { toVietnameseError } from '@/lib/error-messages';
 import { useAuth } from '@/contexts/AuthContext';
@@ -65,49 +63,35 @@ export function useTourDetail() {
     gcTime: TOUR_DETAIL_GC_TIME,
   });
 
-  // Which tabs need which sub-collections (combined needs cost lines; summary needs all four).
-  const needsDestinations = ['destinations', 'combined', 'summary'].includes(activeTab);
-  const needsExpenses = ['expenses', 'combined', 'summary'].includes(activeTab);
-  const needsMeals = ['meals', 'combined', 'summary'].includes(activeTab);
-  const needsAllowances = ['allowances', 'summary'].includes(activeTab);
-
-  const subEnabled = (need: boolean) => !isNewTour && !!id && need;
+  const subEnabled = !isNewTour && !!id;
 
   const destinationsQuery = useQuery({
     queryKey: ['tour', id, 'destinations'],
     queryFn: () => store.listTourDestinations(id!),
-    enabled: subEnabled(needsDestinations),
+    enabled: subEnabled,
     staleTime: TOUR_DETAIL_STALE_TIME,
     gcTime: TOUR_DETAIL_GC_TIME,
   });
   const expensesQuery = useQuery({
     queryKey: ['tour', id, 'expenses'],
     queryFn: () => store.listTourExpenses(id!),
-    enabled: subEnabled(needsExpenses),
+    enabled: subEnabled,
     staleTime: TOUR_DETAIL_STALE_TIME,
     gcTime: TOUR_DETAIL_GC_TIME,
   });
   const mealsQuery = useQuery({
     queryKey: ['tour', id, 'meals'],
     queryFn: () => store.listTourMeals(id!),
-    enabled: subEnabled(needsMeals),
+    enabled: subEnabled,
     staleTime: TOUR_DETAIL_STALE_TIME,
     gcTime: TOUR_DETAIL_GC_TIME,
   });
   const allowancesQuery = useQuery({
     queryKey: ['tour', id, 'allowances'],
     queryFn: () => store.listTourAllowances(id!),
-    enabled: subEnabled(needsAllowances),
+    enabled: subEnabled,
     staleTime: TOUR_DETAIL_STALE_TIME,
     gcTime: TOUR_DETAIL_GC_TIME,
-  });
-
-  const { data: tourImages = [] } = useQuery({
-    queryKey: ['tourImages', id],
-    queryFn: () => store.listTourImages(id!),
-    enabled: !isNewTour && !!id && activeTab === 'images',
-    staleTime: TOUR_IMAGE_STALE_TIME,
-    gcTime: TOUR_IMAGE_GC_TIME,
   });
 
   const createMutation = useMutation({
@@ -191,11 +175,11 @@ export function useTourDetail() {
     isNewTour,
   });
 
-  // Shoppings tab is sensitive: only fetch when the tab is open AND the user may view it.
+  // Shoppings tab is sensitive: only fetch when the user may view it.
   const shoppingsQuery = useQuery({
     queryKey: ['tour', id, 'shoppings'],
     queryFn: () => store.listTourShoppings(id!),
-    enabled: !isNewTour && !!id && activeTab === 'shoppings' && canViewShoppings,
+    enabled: subEnabled && canViewShoppings,
     staleTime: TOUR_DETAIL_STALE_TIME,
     gcTime: TOUR_DETAIL_GC_TIME,
   });
@@ -288,7 +272,7 @@ export function useTourDetail() {
   }, [canEditExpenses, dismissWaterMutation]);
 
   return {
-    id, tour, tourImages, displayTour, isNewTour, isLoading,
+    id, tour, displayTour, isNewTour, isLoading,
     newTourData, setNewTourData,
     deleteDialogOpen, setDeleteDialogOpen,
     activeTab, setActiveTab,

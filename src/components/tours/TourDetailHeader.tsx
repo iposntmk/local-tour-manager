@@ -1,3 +1,6 @@
+import { useQuery } from '@tanstack/react-query';
+import { store } from '@/lib/datastore';
+import { TOUR_IMAGE_GC_TIME, TOUR_IMAGE_STALE_TIME } from '@/lib/query-cache';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save, Trash2, FileDown, Eye, EyeOff } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +14,7 @@ import type { Tour } from '@/types/tour';
 import type { Access, TourTabKey } from '@/lib/tour-detail-permissions';
 
 interface TourDetailHeaderProps {
+  tourId?: string;
   tour: Tour | undefined;
   displayTour: Tour | undefined;
   isNewTour: boolean;
@@ -22,7 +26,6 @@ interface TourDetailHeaderProps {
   canViewShoppings: boolean;
   tabAccess?: Record<TourTabKey, Access>;
   hasUnpaidShoppings: boolean;
-  tourImagesCount: number;
   totalGuests: number;
   headerClasses: string;
   onNavigateBack: () => void;
@@ -35,13 +38,20 @@ const TAB_TRIGGER_CLASS = 'min-w-0 px-1.5 py-1 text-[11px] leading-tight sm:px-2
 const TAB_COUNT_CLASS = 'max-w-full truncate text-[10px] font-bold leading-tight sm:text-sm';
 
 export function TourDetailHeader({
-  tour, displayTour, isNewTour, activeTab,
+  tourId, tour, displayTour, isNewTour, activeTab,
   canCreateTour, canEditTourInfo, canExportTour, canDeleteTour,
-  canViewShoppings, tabAccess, hasUnpaidShoppings, tourImagesCount, totalGuests, headerClasses,
+  canViewShoppings, tabAccess, hasUnpaidShoppings, totalGuests, headerClasses,
   onNavigateBack, onSave, onExport, onDeleteOpen,
 }: TourDetailHeaderProps) {
   const totals = calculateTabTotals(displayTour);
   const canViewTab = (tab: TourTabKey) => tabAccess?.[tab]?.view ?? true;
+  const { data: headerImages = [] } = useQuery({
+    queryKey: ['tourImages', tourId],
+    queryFn: () => store.listTourImages(tourId!),
+    enabled: !!tourId && !isNewTour,
+    staleTime: TOUR_IMAGE_STALE_TIME,
+    gcTime: TOUR_IMAGE_GC_TIME,
+  });
   const { showHeaderInfo, showTabs, showSettlementBar, toggleTopMenu, toggleHeaderInfo, toggleTabs, toggleSettlementBar, showTopMenu } = useViewVisibility();
 
   return (
@@ -228,7 +238,7 @@ export function TourDetailHeader({
             {canViewTab('images') && <TabsTrigger value="images" className={cn(TAB_TRIGGER_CLASS, 'order-9 lg:order-none')}>
               <div className="flex flex-col items-center w-full min-w-0">
                 <span className="w-full">Hình ảnh</span>
-                <span className={TAB_COUNT_CLASS}>{isNewTour ? '' : tourImagesCount}</span>
+                <span className={TAB_COUNT_CLASS}>{isNewTour ? '' : headerImages.length}</span>
               </div>
             </TabsTrigger>}
           </TabsList>

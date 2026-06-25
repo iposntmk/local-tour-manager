@@ -33,7 +33,7 @@ const TourDetail = () => {
   const { classes: headerClasses } = useHeaderMode('tourdetail.headerMode');
   const { showSettlementBar } = useViewVisibility();
   const {
-    id, tour, tourImages, displayTour, isNewTour, isLoading,
+    id, tour, displayTour, isNewTour, isLoading,
     newTourData, setNewTourData,
     deleteDialogOpen, setDeleteDialogOpen,
     activeTab, setActiveTab,
@@ -146,6 +146,7 @@ const TourDetail = () => {
         {(isNewTour || tour) ? (
           <Tabs defaultValue="info" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TourDetailHeader
+              tourId={id}
               tour={tour}
               displayTour={displayTour as Tour | undefined}
               isNewTour={isNewTour}
@@ -157,7 +158,6 @@ const TourDetail = () => {
               canViewShoppings={canViewShoppings}
               tabAccess={tabAccess}
               hasUnpaidShoppings={hasUnpaidShoppings}
-              tourImagesCount={tourImages.length}
               totalGuests={totalGuests}
               headerClasses={headerClasses}
               onNavigateBack={() => navigate('/tours')}
