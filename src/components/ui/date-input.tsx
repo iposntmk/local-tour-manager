@@ -1,24 +1,31 @@
-import { forwardRef, useRef, useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Minus, Plus, Calendar } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { formatDate, parseDate } from '@/lib/utils';
+import {
+  COMPACT_STEPPER_BUTTON,
+  COMPACT_STEPPER_ICON,
+  DEFAULT_STEPPER_BUTTON,
+  DEFAULT_STEPPER_ICON,
+} from '@/lib/form-control-styles';
+import { cn, formatDate, parseDate } from '@/lib/utils';
 
 interface DateInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type'> {
   value?: string;
   onChange?: (value: string) => void;
+  size?: 'default' | 'sm';
 }
 
 export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
-  ({ value = '', onChange, disabled, ...props }, ref) => {
+  ({ value = '', onChange, disabled, size = 'default', className, ...props }, ref) => {
     const [open, setOpen] = useState(false);
     const [displayValue, setDisplayValue] = useState('');
+    const isSmall = size === 'sm';
 
     useEffect(() => {
       if (value) {
-        // Convert YYYY-MM-DD to DD/MM/YYYY for display
         setDisplayValue(formatDate(value));
       } else {
         setDisplayValue('');
@@ -33,58 +40,38 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
     };
 
     const handleIncrement = () => {
-      if (!value) {
-        const today = new Date();
-        onChange?.(formatDateToString(today));
-        return;
-      }
+      if (!value) { onChange?.(formatDateToString(new Date())); return; }
       const date = new Date(value + 'T00:00:00');
       date.setDate(date.getDate() + 1);
       onChange?.(formatDateToString(date));
     };
 
     const handleDecrement = () => {
-      if (!value) {
-        const today = new Date();
-        onChange?.(formatDateToString(today));
-        return;
-      }
+      if (!value) { onChange?.(formatDateToString(new Date())); return; }
       const date = new Date(value + 'T00:00:00');
       date.setDate(date.getDate() - 1);
       onChange?.(formatDateToString(date));
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const input = e.target.value;
-      setDisplayValue(input);
-
-      // Try to parse DD/MM/YYYY format
-      const parsed = parseDate(input);
-      if (parsed) {
-        onChange?.(parsed);
-      }
+      setDisplayValue(e.target.value);
+      const parsed = parseDate(e.target.value);
+      if (parsed) onChange?.(parsed);
     };
 
     const handleCalendarSelect = (date: Date | undefined) => {
-      if (date) {
-        onChange?.(formatDateToString(date));
-        setOpen(false);
-      }
+      if (date) { onChange?.(formatDateToString(date)); setOpen(false); }
     };
 
+    const btnClass = isSmall ? COMPACT_STEPPER_BUTTON : DEFAULT_STEPPER_BUTTON;
+    const iconClass = isSmall ? COMPACT_STEPPER_ICON : DEFAULT_STEPPER_ICON;
+
     return (
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={handleDecrement}
-          disabled={disabled}
-          className="h-10 w-10 shrink-0"
-        >
-          <Minus className="h-4 w-4" />
+      <div className={`flex items-center ${isSmall ? 'gap-px sm:gap-1' : 'gap-2'}`}>
+        <Button type="button" variant="outline" size="icon" onClick={handleDecrement} disabled={disabled} className={btnClass}>
+          <Minus className={iconClass} />
         </Button>
-        <div className="flex-1 flex items-center gap-2">
+        <div className={`flex-1 flex items-center ${isSmall ? 'gap-px sm:gap-1' : 'gap-2'}`}>
           <Input
             {...props}
             ref={ref}
@@ -93,39 +80,21 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
             onChange={handleInputChange}
             disabled={disabled}
             placeholder="DD/MM/YYYY"
-            className="flex-1"
+            className={cn('flex-1', isSmall && 'h-9 min-h-9 text-sm sm:h-10 sm:min-h-10 sm:text-base', className)}
           />
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                disabled={disabled}
-                className="h-10 w-10 shrink-0"
-              >
-                <Calendar className="h-4 w-4" />
+              <Button type="button" variant="outline" size="icon" disabled={disabled} className={btnClass}>
+                <Calendar className={iconClass} />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <CalendarComponent
-                mode="single"
-                selected={value ? new Date(value + 'T00:00:00') : undefined}
-                onSelect={handleCalendarSelect}
-                initialFocus
-              />
+              <CalendarComponent mode="single" selected={value ? new Date(value + 'T00:00:00') : undefined} onSelect={handleCalendarSelect} initialFocus />
             </PopoverContent>
           </Popover>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={handleIncrement}
-          disabled={disabled}
-          className="h-10 w-10 shrink-0"
-        >
-          <Plus className="h-4 w-4" />
+        <Button type="button" variant="outline" size="icon" onClick={handleIncrement} disabled={disabled} className={btnClass}>
+          <Plus className={iconClass} />
         </Button>
       </div>
     );

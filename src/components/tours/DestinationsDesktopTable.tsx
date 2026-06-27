@@ -10,6 +10,7 @@ import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
 import { LineAttachmentsButton } from '@/components/tours/LineAttachmentsButton';
 import { toast } from 'sonner';
+import { STD_TABLE_FONT, STD_ROW_FLAGGED, STD_ROW_ANIM } from '@/lib/tab-styles';
 import {
   canEditAnyTourLineField,
   canEditTourLineField,
@@ -53,7 +54,7 @@ export function DestinationsDesktopTable({
 
   return (
     <>
-      <Table>
+      <Table className={STD_TABLE_FONT}>
         <TableHeader>
           <TableRow>
             <TableHead className="w-[50px]">#</TableHead>
@@ -109,7 +110,7 @@ export function DestinationsDesktopTable({
                 return (
                   <TableRow
                     key={`${groupName}-${destination.originalIndex}-${destination.date}`}
-                    className={cn('animate-fade-in', (isDupName || isZeroPrice) && 'bg-red-50 dark:bg-red-950')}
+                    className={cn(STD_ROW_ANIM, (isDupName || isZeroPrice) && STD_ROW_FLAGGED)}
                   >
                     <TableCell className="font-medium">{idx + 1}</TableCell>
                     {showName && (
@@ -141,6 +142,7 @@ export function DestinationsDesktopTable({
                         max={tourGuests}
                         disabled={!canEditQuantity}
                         className="w-16 sm:w-24"
+                        size="sm"
                       />
                     </TableCell>
                     )}

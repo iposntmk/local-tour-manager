@@ -13,9 +13,9 @@ import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useAuth } from '@/contexts/AuthContext';
 import { ExpenseForm } from '@/components/tours/ExpenseForm';
 import { NewExpenseDialog } from '@/components/tours/NewExpenseDialog';
-import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { ExpensesDesktopTable } from '@/components/tours/ExpensesDesktopTable';
 import { ExpensesMobileList } from '@/components/tours/mobile/ExpensesMobileList';
+import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
 import {
   canEditAnyTourLineField,
   canEditTourLineField,
@@ -75,7 +75,8 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     onSuccess: async (lineId) => {
       await uploadPendingFiles('expense', lineId);
       if (tourId) {
-        await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'expenses'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm chi phí');
@@ -97,7 +98,8 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     onSuccess: async (_, { expense }) => {
       await uploadPendingFiles('expense', expense.id);
       if (tourId) {
-        await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'expenses'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật chi phí');
@@ -122,7 +124,8 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     },
     onSuccess: (_, index) => {
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'expenses'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
         onChange?.(expenses.filter((_, i) => i !== index));
@@ -255,8 +258,9 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   }, [editRequest?.key]);
 
   return (
-    <div className="space-y-6">
-      {showWaterWarning && (
+    <>
+      <TourLineTabLayout
+        beforeList={showWaterWarning && (
         <div className="rounded-lg border border-yellow-500 bg-yellow-50 dark:bg-yellow-950 p-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl">⚠️</span>
@@ -274,10 +278,10 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
             </div>
           </div>
         </div>
-      )}
-
-      {!readOnly && canEditLine && (
-        <FormCollapsible autoOpenKey={editingIndex}>
+        )}
+        formVisible={!readOnly && canEditLine}
+        autoOpenKey={editingIndex}
+        form={
           <ExpenseForm
             formData={formData}
             onChange={setFormData}
@@ -292,50 +296,41 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
             onPendingFilesChange={setPendingFiles}
             lineFieldAccess={lineFieldAccess}
           />
-        </FormCollapsible>
-      )}
-
-      <div className="rounded-lg border">
-        <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Danh sách chi phí</h3>
-        </div>
-        {expenses.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Chưa có chi phí nào</div>
-        ) : (
-          <>
-            <div className="hidden md:block overflow-x-auto">
-              <ExpensesDesktopTable
-                displayExpenses={displayExpenses}
-                readOnly={readOnly}
-                lineFieldAccess={lineFieldAccess}
-                onEdit={handleEdit}
-                onDuplicate={handleDuplicate}
-                onDelete={(idx) => deleteMutation.mutate(idx)}
-                onGuestsChange={handleGuestsChange}
-                onWaterDaysChange={handleWaterDaysChange}
-                totalAmount={expensesTotalAmount}
-                tourGuests={tourGuests}
-                tourDays={tourDays}
-              />
-            </div>
-            <div className="md:hidden">
-              <ExpensesMobileList
-                items={displayExpenses}
-                readOnly={readOnly}
-                lineFieldAccess={lineFieldAccess}
-                onEdit={handleEdit}
-                onDuplicate={handleDuplicate}
-                onDelete={(idx) => deleteMutation.mutate(idx)}
-                onGuestsChange={handleGuestsChange}
-                onWaterDaysChange={handleWaterDaysChange}
-                totalAmount={expensesTotalAmount}
-                tourGuests={tourGuests}
-                tourDays={tourDays}
-              />
-            </div>
-          </>
-        )}
-      </div>
+        }
+        title="Danh sách chi phí"
+        emptyMessage="Chưa có chi phí nào"
+        itemCount={expenses.length}
+        desktop={
+          <ExpensesDesktopTable
+            displayExpenses={displayExpenses}
+            readOnly={readOnly}
+            lineFieldAccess={lineFieldAccess}
+            onEdit={handleEdit}
+            onDuplicate={handleDuplicate}
+            onDelete={(idx) => deleteMutation.mutate(idx)}
+            onGuestsChange={handleGuestsChange}
+            onWaterDaysChange={handleWaterDaysChange}
+            totalAmount={expensesTotalAmount}
+            tourGuests={tourGuests}
+            tourDays={tourDays}
+          />
+        }
+        mobile={
+          <ExpensesMobileList
+            items={displayExpenses}
+            readOnly={readOnly}
+            lineFieldAccess={lineFieldAccess}
+            onEdit={handleEdit}
+            onDuplicate={handleDuplicate}
+            onDelete={(idx) => deleteMutation.mutate(idx)}
+            onGuestsChange={handleGuestsChange}
+            onWaterDaysChange={handleWaterDaysChange}
+            totalAmount={expensesTotalAmount}
+            tourGuests={tourGuests}
+            tourDays={tourDays}
+          />
+        }
+      />
 
       <NewExpenseDialog
         open={showNewExpenseDialog}
@@ -344,6 +339,6 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
         guideId={guideId}
         onCreated={(exp) => setFormData((prev) => ({ ...prev, name: exp.name, price: exp.price }))}
       />
-    </div>
+    </>
   );
 }

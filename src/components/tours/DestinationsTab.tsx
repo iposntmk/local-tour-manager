@@ -10,9 +10,9 @@ import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { DestinationForm } from '@/components/tours/DestinationForm';
 import { NewDestinationDialog } from '@/components/tours/NewDestinationDialog';
-import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { DestinationsDesktopTable } from '@/components/tours/DestinationsDesktopTable';
 import { DestinationsMobileList } from '@/components/tours/mobile/DestinationsMobileList';
+import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
 import {
   canEditAnyTourLineField,
   canEditTourLineField,
@@ -124,7 +124,8 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     onSuccess: async (lineId) => {
       await uploadPendingFiles('destination', lineId);
       if (tourId) {
-        await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'destinations'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm điểm đến');
@@ -146,7 +147,8 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     onSuccess: async (_, { destination }) => {
       await uploadPendingFiles('destination', destination.id);
       if (tourId) {
-        await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'destinations'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật điểm đến');
@@ -171,7 +173,8 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     },
     onSuccess: (_, index) => {
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'destinations'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
         onChange?.(destinations.filter((_, i) => i !== index));
@@ -255,9 +258,11 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
   }, [editRequest?.key]);
 
   return (
-    <div className="space-y-6">
-      {!readOnly && canEditLine && (
-        <FormCollapsible autoOpenKey={editingIndex}>
+    <>
+      <TourLineTabLayout
+        formVisible={!readOnly && canEditLine}
+        autoOpenKey={editingIndex}
+        form={
           <DestinationForm
             formData={formData}
             onChange={setFormData}
@@ -272,46 +277,37 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
             onPendingFilesChange={setPendingFiles}
             lineFieldAccess={lineFieldAccess}
           />
-        </FormCollapsible>
-      )}
-
-      <div className="rounded-lg border">
-        <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Danh sách điểm đến</h3>
-        </div>
-        {destinations.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Chưa có điểm đến nào</div>
-        ) : (
-          <>
-            <div className="hidden md:block overflow-x-auto">
-              <DestinationsDesktopTable
-                groups={destinationGroups}
-                duplicateDestinationNames={duplicateDestinationNames}
-                tourGuests={tour?.totalGuests || 0}
-                readOnly={readOnly}
-                lineFieldAccess={lineFieldAccess}
-                onEdit={handleEdit}
-                onDelete={(idx) => deleteMutation.mutate(idx)}
-                onGuestsChange={handleGuestsChange}
-                totalAmount={destinationsTotalAmount}
-              />
-            </div>
-            <div className="md:hidden">
-              <DestinationsMobileList
-                groups={destinationGroups}
-                duplicateDestinationNames={duplicateDestinationNames}
-                tourGuests={tour?.totalGuests || 0}
-                readOnly={readOnly}
-                lineFieldAccess={lineFieldAccess}
-                onEdit={handleEdit}
-                onDelete={(idx) => deleteMutation.mutate(idx)}
-                onGuestsChange={handleGuestsChange}
-                totalAmount={destinationsTotalAmount}
-              />
-            </div>
-          </>
-        )}
-      </div>
+        }
+        title="Danh sách điểm đến"
+        emptyMessage="Chưa có điểm đến nào"
+        itemCount={destinations.length}
+        desktop={
+          <DestinationsDesktopTable
+            groups={destinationGroups}
+            duplicateDestinationNames={duplicateDestinationNames}
+            tourGuests={tour?.totalGuests || 0}
+            readOnly={readOnly}
+            lineFieldAccess={lineFieldAccess}
+            onEdit={handleEdit}
+            onDelete={(idx) => deleteMutation.mutate(idx)}
+            onGuestsChange={handleGuestsChange}
+            totalAmount={destinationsTotalAmount}
+          />
+        }
+        mobile={
+          <DestinationsMobileList
+            groups={destinationGroups}
+            duplicateDestinationNames={duplicateDestinationNames}
+            tourGuests={tour?.totalGuests || 0}
+            readOnly={readOnly}
+            lineFieldAccess={lineFieldAccess}
+            onEdit={handleEdit}
+            onDelete={(idx) => deleteMutation.mutate(idx)}
+            onGuestsChange={handleGuestsChange}
+            totalAmount={destinationsTotalAmount}
+          />
+        }
+      />
 
       <NewDestinationDialog
         open={showNewDestinationDialog}
@@ -319,6 +315,6 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
         readOnly={readOnly || !canEditTourLineField(lineFieldAccess, 'name') || !canEditTourLineField(lineFieldAccess, 'price')}
         onCreated={(dest) => setFormData((prev) => ({ ...prev, name: dest.name, price: dest.price }))}
       />
-    </div>
+    </>
   );
 }

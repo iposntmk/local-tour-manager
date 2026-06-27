@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn, getRequiredFieldClasses } from '@/lib/utils';
+import { useMemo } from 'react';
 import type React from 'react';
 
 interface TourInfoComboboxProps {
@@ -24,7 +25,7 @@ interface TourInfoComboboxProps {
   children?: React.ReactNode;
 }
 
-export function TourInfoCombobox({
+export const TourInfoCombobox = ({
   label,
   required,
   items,
@@ -40,8 +41,8 @@ export function TourInfoCombobox({
   createButtonTitle,
   disabled,
   children,
-}: TourInfoComboboxProps) {
-  const selectedItem = items.find((i) => i.id === selectedId);
+}: TourInfoComboboxProps) => {
+  const selectedItem = useMemo(() => items.find((i) => i.id === selectedId), [items, selectedId]);
 
   return (
     <div className="space-y-2">
@@ -97,4 +98,4 @@ export function TourInfoCombobox({
       {children}
     </div>
   );
-}
+};

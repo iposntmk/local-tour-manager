@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Plus, Check, ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -10,6 +9,19 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
+import {
+  TOUR_LINE_ACTIONS,
+  TOUR_LINE_CANCEL_BUTTON,
+  TOUR_LINE_COMBOBOX_POPOVER,
+  TOUR_LINE_COMPACT_INPUT,
+  TOUR_LINE_FIELDS,
+  TOUR_LINE_FORM,
+  TOUR_LINE_FORM_CARD,
+  TOUR_LINE_FORM_TITLE,
+  TOUR_LINE_SELECTOR_ADD_BUTTON,
+  TOUR_LINE_SELECTOR_ROW,
+  TOUR_LINE_SUBMIT_BUTTON,
+} from '@/lib/tab-styles';
 import type { Shopping } from '@/types/tour';
 import type { Shopping as MasterShopping } from '@/types/master';
 import { getNetCommission } from '@/lib/shopping-commission-utils';
@@ -68,14 +80,14 @@ export function ShoppingForm({
   };
 
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border bg-card p-4 sm:p-6">
-      <h3 className="text-base sm:text-lg font-semibold mb-4">
+    <form onSubmit={onSubmit} className={`${TOUR_LINE_FORM_CARD} ${TOUR_LINE_FORM}`}>
+      <h3 className={TOUR_LINE_FORM_TITLE}>
         {editingIndex !== null ? 'Chỉnh sửa mục mua sắm' : 'Thêm mục mua sắm'}
       </h3>
-      <div className="space-y-3">
+      <div className={TOUR_LINE_FIELDS}>
         <div>
           <label className="text-sm font-medium mb-2 block">Mục mua sắm *</label>
-          <div className="flex gap-2">
+          <div className={TOUR_LINE_SELECTOR_ROW}>
             <Popover open={openShopping} onOpenChange={setOpenShopping}>
               <PopoverTrigger asChild>
                 <Button type="button" variant="outline" role="combobox" className="flex-1 justify-between">
@@ -83,7 +95,7 @@ export function ShoppingForm({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0">
+              <PopoverContent className={TOUR_LINE_COMBOBOX_POPOVER}>
                 <Command>
                   <CommandInput placeholder="Tìm mục mua sắm..." />
                   <CommandEmpty>Không tìm thấy mục mua sắm.</CommandEmpty>
@@ -117,7 +129,7 @@ export function ShoppingForm({
                 </Command>
               </PopoverContent>
             </Popover>
-            <Button type="button" variant="outline" size="icon" onClick={onOpenNewDialog} title="Thêm mục mua sắm mới">
+            <Button type="button" variant="outline" size="icon" onClick={onOpenNewDialog} title="Thêm mục mua sắm mới" className={TOUR_LINE_SELECTOR_ADD_BUTTON}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -168,11 +180,11 @@ export function ShoppingForm({
         </div>
         <div>
           <label className="text-sm font-medium mb-2 block">Ngày *</label>
-          <DateInput value={formData.date} onChange={(value) => onChange({ ...formData, date: value })} />
+          <DateInput value={formData.date} onChange={(value) => onChange({ ...formData, date: value })} size="sm" className={TOUR_LINE_COMPACT_INPUT} />
         </div>
       </div>
-      <div className="flex gap-2 mt-4">
-        <Button type="submit">
+      <div className={TOUR_LINE_ACTIONS}>
+        <Button type="submit" className={TOUR_LINE_SUBMIT_BUTTON}>
           {editingIndex !== null ? (
             <><Check className="h-4 w-4 mr-2" />Cập nhật</>
           ) : (
@@ -180,7 +192,7 @@ export function ShoppingForm({
           )}
         </Button>
         {editingIndex !== null && (
-          <Button type="button" variant="outline" onClick={onCancel}>Hủy</Button>
+          <Button type="button" variant="outline" onClick={onCancel} className={TOUR_LINE_CANCEL_BUTTON}>Hủy</Button>
         )}
       </div>
     </form>

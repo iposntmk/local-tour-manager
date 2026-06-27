@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useDeferredValue } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Check, ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -10,6 +10,20 @@ import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { toast } from 'sonner';
 import { LineEvidenceFields } from '@/components/tours/LineEvidenceFields';
+import {
+  TOUR_LINE_ACTIONS,
+  TOUR_LINE_CANCEL_BUTTON,
+  TOUR_LINE_COMBOBOX_POPOVER,
+  TOUR_LINE_COMPACT_INPUT,
+  TOUR_LINE_FIELDS,
+  TOUR_LINE_FORM,
+  TOUR_LINE_FORM_CARD,
+  TOUR_LINE_FORM_TITLE,
+  TOUR_LINE_INLINE_FIELDS,
+  TOUR_LINE_SELECTOR_ADD_BUTTON,
+  TOUR_LINE_SELECTOR_ROW,
+  TOUR_LINE_SUBMIT_BUTTON,
+} from '@/lib/tab-styles';
 import type { Destination, Tour } from '@/types/tour';
 import type { TouristDestination } from '@/types/master';
 import {
@@ -50,6 +64,15 @@ export function DestinationForm({
   lineFieldAccess,
 }: DestinationFormProps) {
   const [openDestination, setOpenDestination] = useState(false);
+  const [destSearch, setDestSearch] = useState('');
+  const deferredSearch = useDeferredValue(destSearch);
+  const filteredDestinations = useMemo(() => {
+    if (!deferredSearch.trim()) return touristDestinations;
+    const q = deferredSearch.trim().toLowerCase();
+    return touristDestinations.filter(
+      (d) => d.name.toLowerCase().includes(q)
+    );
+  }, [touristDestinations, deferredSearch]);
   const canView = (field: TourLineFieldKey) => canViewTourLineField(lineFieldAccess, field);
   const canEdit = (field: TourLineFieldKey) => canEditTourLineField(lineFieldAccess, field);
   const canSubmit =
@@ -58,15 +81,15 @@ export function DestinationForm({
       : canEdit('name') && canEdit('date') && canEdit('price');
 
   return (
-    <div className="rounded-lg border bg-card p-6">
-      <h3 className="text-lg font-semibold mb-4">
+    <div className={TOUR_LINE_FORM_CARD}>
+      <h3 className={TOUR_LINE_FORM_TITLE}>
         {editingIndex !== null ? 'Chỉnh sửa điểm đến' : 'Thêm điểm đến'}
       </h3>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="space-y-3">
+      <form onSubmit={onSubmit} className={TOUR_LINE_FORM}>
+        <div className={TOUR_LINE_FIELDS}>
           {canView('name') && (
-          <div className="flex gap-2">
-            <Popover open={openDestination} onOpenChange={setOpenDestination}>
+          <div className={TOUR_LINE_SELECTOR_ROW}>
+            <Popover open={openDestination} onOpenChange={(v) => { setOpenDestination(v); if (!v) setDestSearch(''); }}>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
@@ -80,13 +103,17 @@ export function DestinationForm({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Tìm điểm đến..." />
+              <PopoverContent className={TOUR_LINE_COMBOBOX_POPOVER} align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Tìm điểm đến..."
+                    value={destSearch}
+                    onValueChange={setDestSearch}
+                  />
                   <CommandList>
                     <CommandEmpty>Không tìm thấy điểm đến.</CommandEmpty>
                     <CommandGroup>
-                      {touristDestinations.map((dest) => (
+                      {filteredDestinations.map((dest) => (
                         <CommandItem
                           key={dest.id}
                           value={dest.name}
@@ -100,6 +127,7 @@ export function DestinationForm({
                               ...(canEdit('quantity') ? { guests: formData.guests ?? (tour?.totalGuests || undefined) } : {}),
                             });
                             setOpenDestination(false);
+                            setDestSearch('');
                           }}
                         >
                           <Check className={cn('mr-2 h-4 w-4', formData.name === dest.name ? 'opacity-100' : 'opacity-0')} />
@@ -111,7 +139,7 @@ export function DestinationForm({
                 </Command>
               </PopoverContent>
             </Popover>
-            <Button type="button" variant="outline" size="icon" onClick={onOpenNewDialog} disabled={!canEdit('name')} title="Thêm điểm đến mới">
+            <Button type="button" variant="outline" size="icon" onClick={onOpenNewDialog} disabled={!canEdit('name')} title="Thêm điểm đến mới" className={TOUR_LINE_SELECTOR_ADD_BUTTON}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -124,33 +152,42 @@ export function DestinationForm({
             disabled={!canEdit('price')}
           />
           )}
-          {canView('date') && (
-          <DateInput
-            value={formData.date}
-            onChange={(date) => onChange({ ...formData, date })}
-            required
-            disabled={!canEdit('date')}
-          />
-          )}
-          {canView('quantity') && (
-          <NumberInputMobile
-            value={formData.guests}
-            onChange={(val) => {
-              if (!canEdit('quantity')) return;
-              const max = tour?.totalGuests || 0;
-              if (val !== undefined && max && val > max) {
-                toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
-                onChange({ ...formData, guests: max });
-              } else {
-                onChange({ ...formData, guests: val });
-              }
-            }}
-            min={0}
-            max={tour?.totalGuests || 0}
-            placeholder="Số khách"
-            className="w-full"
-            disabled={!canEdit('quantity')}
-          />
+          {(canView('date') || canView('quantity')) && (
+          <div className={TOUR_LINE_INLINE_FIELDS}>
+            {canView('date') && (
+            <div className="flex-1 min-w-0">
+              <DateInput
+                value={formData.date}
+                onChange={(date) => onChange({ ...formData, date })}
+                required
+                disabled={!canEdit('date')}
+                size="sm"
+                className={TOUR_LINE_COMPACT_INPUT}
+              />
+            </div>
+            )}
+            {canView('quantity') && (
+            <NumberInputMobile
+              value={formData.guests}
+              onChange={(val) => {
+                if (!canEdit('quantity')) return;
+                const max = tour?.totalGuests || 0;
+                if (val !== undefined && max && val > max) {
+                  toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
+                  onChange({ ...formData, guests: max });
+                } else {
+                  onChange({ ...formData, guests: val });
+                }
+              }}
+              min={0}
+              max={tour?.totalGuests || 0}
+              placeholder="Số khách"
+              className={TOUR_LINE_COMPACT_INPUT}
+              size="sm"
+              disabled={!canEdit('quantity')}
+            />
+            )}
+          </div>
           )}
           <LineEvidenceFields
             line={formData}
@@ -163,13 +200,13 @@ export function DestinationForm({
             access={lineFieldAccess?.evidence}
           />
         </div>
-        <div className="flex gap-2">
-          <Button type="submit" className="hover-scale" disabled={!canSubmit}>
+        <div className={TOUR_LINE_ACTIONS}>
+          <Button type="submit" className={TOUR_LINE_SUBMIT_BUTTON} disabled={!canSubmit}>
             <Plus className="h-4 w-4 mr-2" />
             {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
           </Button>
           {editingIndex !== null && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} className={TOUR_LINE_CANCEL_BUTTON}>
               Hủy
             </Button>
           )}

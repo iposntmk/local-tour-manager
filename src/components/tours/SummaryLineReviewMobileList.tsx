@@ -2,6 +2,16 @@ import type { ReactNode } from 'react';
 import { Edit2, Paperclip } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { LineQuickReview } from './LineQuickReview';
+import {
+  MOBILE_CARD_NAME,
+  MOBILE_CHEVRON_SIZE,
+  MOBILE_COMPACT_EDIT_BTN,
+  MOBILE_GROUP_CARD,
+  MOBILE_INDEX,
+  MOBILE_REJECT_COMMENT,
+  MOBILE_SEC_HEADER,
+  MOBILE_SEC_HEADER_TEXT,
+} from '@/lib/tab-styles';
 import type { Destination, Expense, LineType, Meal, Tour, TourLineAttachment } from '@/types/tour';
 import {
   getTotal,
@@ -48,9 +58,8 @@ export function SummaryLineReviewMobileList({
 
         return (
           <section key={`${group.lineType}-mobile`} className="space-y-1.5">
-            {/* Section header */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 text-[11px] font-semibold">
+            <div className={MOBILE_SEC_HEADER}>
+              <div className={MOBILE_SEC_HEADER_TEXT}>
                 <span className="text-muted-foreground">
                   {group.title} ({group.filteredRows.length}{group.filteredRows.length < group.rows.length ? `/${group.rows.length}` : ''})
                 </span>
@@ -61,11 +70,11 @@ export function SummaryLineReviewMobileList({
             </div>
 
             {group.filteredRows.length === 0 ? (
-              <div className="py-2 text-center text-[11px] text-muted-foreground">
+              <div className="py-2 text-center text-xs text-muted-foreground">
                 {group.rows.length > 0 ? `Đã ẩn ${group.rows.length} dòng` : 'Chưa có dữ liệu'}
               </div>
             ) : (
-              <div className="divide-y rounded-md border bg-background">
+              <div className={MOBILE_GROUP_CARD}>
                 {group.filteredRows.map(({ line, index }) => {
                   const attachments = isAttachmentLineType(group.lineType)
                     ? (line as Destination | Meal | Expense).attachments || []
@@ -76,13 +85,13 @@ export function SummaryLineReviewMobileList({
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                         <div className="min-w-0 space-y-0.5">
                           <div className="flex items-baseline gap-1">
-                            <span className="shrink-0 text-[10px] text-muted-foreground">{index + 1}.</span>
-                            <p className="min-w-0 flex-1 truncate text-[11px] font-medium">
+                            <span className={MOBILE_INDEX}>{index + 1}.</span>
+                            <p className={MOBILE_CARD_NAME}>
                               {showName ? line.name : `Dòng #${index + 1}`}
                             </p>
                           </div>
 
-                          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                             {showPrice && <span>Giá: {formatCurrency(line.price)}</span>}
                             {showTotal && (
                               <span className="font-bold tabular-nums text-foreground">
@@ -112,11 +121,11 @@ export function SummaryLineReviewMobileList({
                           <button
                             type="button"
                             title="Sửa"
-                            className="inline-flex h-full w-9 flex-col items-center justify-center gap-0.5 rounded-md border border-border bg-background px-1 py-1 text-[9px] leading-none text-foreground disabled:opacity-30"
+                            className={MOBILE_COMPACT_EDIT_BTN}
                             onClick={() => onEditLine?.(group.lineType, index)}
                             disabled={!onEditLine || canEditLine?.(group.lineType) === false}
                           >
-                            <Edit2 className="h-3 w-3" />
+                            <Edit2 className={MOBILE_CHEVRON_SIZE} />
                             <span>Sửa</span>
                           </button>
                           {tour.id && line.id ? (
@@ -132,14 +141,13 @@ export function SummaryLineReviewMobileList({
                               onApproved={onApproved}
                             />
                           ) : (
-                            <span className="self-center text-[10px] text-muted-foreground">-</span>
+                            <span className="self-center text-xs text-muted-foreground">-</span>
                           )}
                         </div>
                       </div>
 
-                      {/* Reject form (appears when user taps Lỗi — outside the 2-row display) */}
                       {line.lineComment && (
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">↳ {line.lineComment}</p>
+                        <p className={MOBILE_REJECT_COMMENT}>↳ {line.lineComment}</p>
                       )}
                     </div>
                   );

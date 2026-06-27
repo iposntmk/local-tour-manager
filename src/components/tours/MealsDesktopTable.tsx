@@ -9,6 +9,7 @@ import { t } from '@/lib/i18n';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
 import { LineAttachmentsButton } from '@/components/tours/LineAttachmentsButton';
+import { STD_TABLE_FONT, STD_ROW_FLAGGED, STD_ROW_ANIM } from '@/lib/tab-styles';
 import type { Meal } from '@/types/tour';
 import {
   canEditAnyTourLineField,
@@ -48,7 +49,7 @@ export function MealsDesktopTable({
 
   return (
     <div className="hidden md:block overflow-x-auto">
-      <Table className="text-xs sm:text-sm">
+      <Table className={STD_TABLE_FONT}>
         <TableHeader>
           <TableRow>
             <TableHead className="w-8 sm:w-[50px] p-1 sm:p-4">#</TableHead>
@@ -94,7 +95,7 @@ export function MealsDesktopTable({
             const isZeroPrice = (meal.price ?? 0) === 0;
             return (
               <TableRow key={`${meal.originalIndex}-${meal.date}`}
-                className={cn('animate-fade-in', isZeroPrice && 'bg-red-50 dark:bg-red-950')}>
+                className={cn(STD_ROW_ANIM, isZeroPrice && STD_ROW_FLAGGED)}>
                 <TableCell className="font-medium p-1 sm:p-4">{rowIndex + 1}</TableCell>
                 {showName && (
                 <TableCell className="font-medium p-1 sm:p-4">
@@ -119,7 +120,7 @@ export function MealsDesktopTable({
                       }
                       onGuestsChange(meal.originalIndex, v);
                     }}
-                    min={0} max={tourGuests} disabled={!canEditQuantity} className="w-12 sm:w-24" />
+                    min={0} max={tourGuests} disabled={!canEditQuantity} className="w-12 sm:w-24" size="sm" />
                 </TableCell>
                 )}
                 {showTotal && (

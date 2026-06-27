@@ -2,6 +2,7 @@ import { Edit2, Copy, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { TourLineMobileCard, type TourLineMobileAction } from '@/components/tours/mobile/TourLineMobileCard';
+import { MOBILE_FOOTER } from '@/lib/tab-styles';
 import type { Allowance } from '@/types/tour';
 import {
   canEditAnyTourLineField,
@@ -41,9 +42,9 @@ export function AllowancesMobileList({ items, readOnly, lineFieldAccess, onEdit,
         const total = allowance.price * qty;
         const isZeroPrice = allowance.price === 0;
         const actions: TourLineMobileAction[] = [
-          { label: 'Nhân bản', icon: <Copy className="mr-2 h-4 w-4" />, onClick: () => onCopy(allowance.originalIndex) },
-          { label: 'Sửa', icon: <Edit2 className="mr-2 h-4 w-4" />, onClick: () => onEdit(allowance.originalIndex) },
-          { label: 'Xóa', icon: <Trash2 className="mr-2 h-4 w-4" />, onClick: () => onDelete(allowance.originalIndex), destructive: true },
+          { label: 'Nhân bản', icon: <Copy className="mr-1 h-2.5 w-2.5 sm:mr-1.5 sm:h-3 sm:w-3" />, onClick: () => onCopy(allowance.originalIndex) },
+          { label: 'Sửa', icon: <Edit2 className="mr-1 h-2.5 w-2.5 sm:mr-1.5 sm:h-3 sm:w-3" />, onClick: () => onEdit(allowance.originalIndex) },
+          { label: 'Xóa', icon: <Trash2 className="mr-1 h-2.5 w-2.5 sm:mr-1.5 sm:h-3 sm:w-3" />, onClick: () => onDelete(allowance.originalIndex), destructive: true },
         ];
         return (
           <div key={`${allowance.name}-${allowance.date}-${allowance.originalIndex}`}>
@@ -66,7 +67,7 @@ export function AllowancesMobileList({ items, readOnly, lineFieldAccess, onEdit,
         );
       })}
       {(showQuantity || showTotal) && (
-      <div className="flex justify-between px-2 py-2 bg-muted/50 rounded-lg font-semibold text-sm">
+      <div className={MOBILE_FOOTER}>
         <span>Tổng cộng ({totalQuantity} ngày):</span>
         <span>{showTotal ? formatCurrency(totalAmount) : `${totalQuantity} ngày`}</span>
       </div>

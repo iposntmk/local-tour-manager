@@ -70,7 +70,8 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
 
   const invalidate = async () => {
     if (tourId) {
-      await queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+      queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'meals'] });
+      queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
       void invalidateTourAggregateCaches(queryClient, 'none');
     }
   };

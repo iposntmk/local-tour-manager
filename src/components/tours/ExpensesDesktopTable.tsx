@@ -8,6 +8,7 @@ import { t } from '@/lib/i18n';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
 import { LineAttachmentsButton } from '@/components/tours/LineAttachmentsButton';
+import { STD_TABLE_FONT, STD_ROW_FLAGGED, STD_ROW_ANIM } from '@/lib/tab-styles';
 import {
   getExpenseGuestCount,
   getExpenseLineTotal,
@@ -61,7 +62,7 @@ export function ExpensesDesktopTable({
 
   return (
     <>
-      <Table className="text-xs sm:text-sm">
+      <Table className={STD_TABLE_FONT}>
         <TableHeader>
           <TableRow>
             <TableHead className="w-8 sm:w-[50px] p-1 sm:p-4">#</TableHead>
@@ -113,7 +114,7 @@ export function ExpensesDesktopTable({
             return (
               <TableRow
                 key={`${expense.originalIndex}-${expense.date}-row`}
-                className={cn('animate-fade-in', isZeroPrice && 'bg-red-50 dark:bg-red-950')}
+                className={cn(STD_ROW_ANIM, isZeroPrice && STD_ROW_FLAGGED)}
               >
                 <TableCell className="font-medium">{rowIndex + 1}</TableCell>
                 {showName && (
@@ -139,6 +140,7 @@ export function ExpensesDesktopTable({
                     max={waterExpense || !tourGuests ? undefined : tourGuests}
                     disabled={!canEditQuantity || waterExpense}
                     className="w-16 sm:w-24"
+                    size="sm"
                   />
                 </TableCell>
                 )}
@@ -152,6 +154,7 @@ export function ExpensesDesktopTable({
                       step={0.5}
                       disabled={!canEditQuantity}
                       className="w-16 sm:w-24"
+                      size="sm"
                     />
                   ) : (
                     <span className="text-muted-foreground">-</span>

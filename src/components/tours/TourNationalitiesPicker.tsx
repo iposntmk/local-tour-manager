@@ -40,26 +40,31 @@ export function TourNationalitiesPicker({
 }: TourNationalitiesPickerProps) {
   const [open, setOpen] = useState(false);
   const selectedIds = useMemo(() => new Set(value.map((item) => item.id)), [value]);
-  const paxTotal = value.reduce((sum, item) => sum + (Number(item.paxCount) || 0), 0);
+  const paxTotal = useMemo(() => value.reduce((sum, item) => sum + (Number(item.paxCount) || 0), 0), [value]);
   const hasPaxMismatch = value.length > 0 && totalGuests > 0 && paxTotal !== totalGuests;
+
+  const nationalityById = useMemo(() => {
+    const map = new Map<string, Nationality>();
+    for (const n of nationalities) map.set(n.id, n);
+    return map;
+  }, [nationalities]);
 
   useEffect(() => {
     if (value.length !== 1 || totalGuests <= 0 || value[0].paxCount === totalGuests) {
       return;
     }
-
     onChange([{ ...value[0], paxCount: totalGuests }]);
   }, [onChange, totalGuests, value]);
 
-  const buttonLabel = (() => {
+  const buttonLabel = useMemo(() => {
     if (value.length === 0) return placeholder;
     if (value.length === 1) {
-      const selected = nationalities.find((item) => item.id === value[0].id);
+      const selected = nationalityById.get(value[0].id);
       const icon = selected?.emoji ? `${selected.emoji} ` : '';
       return `${icon}${value[0].nameAtBooking} (${value[0].paxCount} pax)`;
     }
     return `${value.length} quốc tịch - ${paxTotal}/${totalGuests || paxTotal} pax`;
-  })();
+  }, [value, nationalityById, placeholder, paxTotal, totalGuests]);
 
   const toggleNationality = (nationality: Nationality) => {
     if (disabled) return;
@@ -137,7 +142,7 @@ export function TourNationalitiesPicker({
       {value.length > 0 && (
         <div className="rounded-md border p-3 space-y-3">
           {value.map((item) => {
-            const nationality = nationalities.find((n) => n.id === item.id);
+            const nationality = nationalityById.get(item.id);
             return (
               <div key={item.id} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_150px] sm:gap-3">
                 <div className="min-w-0 truncate text-sm font-medium">

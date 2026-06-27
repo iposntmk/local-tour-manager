@@ -174,7 +174,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         <div
           className={cn(
             'group relative flex items-center rounded-2xl border border-lime-300/70 bg-white/90 shadow-[0_0_0_1px_rgba(190,242,100,0.4)] transition focus-within:border-lime-500 focus-within:shadow-[0_0_0_2px_rgba(132,204,22,0.4)]',
-            isCompact ? 'gap-2 rounded-md px-2 py-1' : 'gap-3 px-4 py-2',
+            isCompact ? 'gap-1.5 rounded-md px-1.5 py-0.5 sm:gap-2 sm:px-2 sm:py-1' : 'gap-3 px-4 py-2',
             isDisabled && 'cursor-not-allowed opacity-60',
             containerClassName,
           )}
@@ -194,7 +194,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
             disabled={props.disabled}
             className={cn(
               'flex-1 border-none bg-transparent px-0 py-0 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0',
-              isCompact ? 'h-8 text-sm font-medium' : 'h-10 text-lg font-semibold tracking-wide',
+              isCompact ? 'h-7 text-xs font-medium sm:h-8 sm:text-sm' : 'h-10 text-lg font-semibold tracking-wide',
               className,
             )}
           />
@@ -204,7 +204,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
             disabled={!hasValue || isDisabled}
             className={cn(
               'flex items-center justify-center rounded-full bg-lime-100/70 text-lime-700 transition hover:bg-lime-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 disabled:cursor-default disabled:opacity-0',
-              isCompact ? 'h-6 w-6' : 'h-8 w-8',
+              isCompact ? 'h-5 w-5 sm:h-6 sm:w-6' : 'h-8 w-8',
             )}
             aria-label="Clear amount"
           >
@@ -227,7 +227,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
                 disabled={isDisabled}
                 className={cn(
                   'rounded-full border-lime-200 text-lime-700 transition hover:border-lime-400 hover:bg-lime-50 flex-shrink-0',
-                  isCompact ? 'h-6 px-2 py-0.5 text-[10px]' : 'h-7 px-2.5 py-0.5 text-[10px] font-medium'
+                  isCompact ? 'h-5 px-1.5 py-0 text-[9px] sm:h-6 sm:px-2 sm:py-0.5 sm:text-[10px]' : 'h-7 px-2.5 py-0.5 text-[10px] font-medium'
                 )}
               >
                 {amount >= 1000 ? `${amount / 1000}k` : amount}

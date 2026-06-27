@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { LineAttachmentUploader } from './LineAttachmentUploader';
 import { getSuggestedVatAmount, hasLineAttachments } from '@/lib/tour-line-utils';
 import { t } from '@/lib/i18n';
@@ -33,6 +36,8 @@ export function LineEvidenceFields<T extends LineData>({
 }: LineEvidenceFieldsProps<T>) {
   if (access?.view === false) return null;
   const disabled = access?.edit === false;
+  const hasVatData = (line.vatRate || 0) > 0 || (line.vatAmount || 0) > 0 || !!line.guideNote;
+  const [showVat, setShowVat] = useState(hasVatData);
 
   const updateVatRate = (rawValue: string) => {
     if (disabled) return;
@@ -48,43 +53,63 @@ export function LineEvidenceFields<T extends LineData>({
 
   return (
     <div className="space-y-3 rounded-lg border bg-muted/10 p-3">
-      <div className="space-y-2">
-        <Label>{t('tourEvidence.guideNote')}</Label>
-        <Textarea
-          rows={3}
-          value={line.guideNote || ''}
-          disabled={disabled}
-          onChange={(event) => onChange({ ...line, guideNote: event.target.value })}
-          placeholder={t('tourEvidence.guideNotePlaceholder')}
-        />
-      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-xs text-muted-foreground"
+        onClick={() => setShowVat((v) => !v)}
+      >
+        {showVat ? <ChevronUp className="mr-1 h-3 w-3" /> : <ChevronDown className="mr-1 h-3 w-3" />}
+        {t('tourEvidence.vatSection')}
+        {hasVatData && !showVat && (
+          <span className="ml-1 rounded bg-primary/10 px-1 text-[10px] font-medium">
+            {line.vatRate ?? 0}%
+          </span>
+        )}
+      </Button>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>{t('tourEvidence.vatRate')}</Label>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            step="0.01"
-            value={line.vatRate ?? 0}
-            disabled={disabled}
-            onChange={(event) => updateVatRate(event.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>{t('tourEvidence.vatAmount')}</Label>
-          <CurrencyInput
-            value={line.vatAmount || 0}
-            onChange={(vatAmount) => onChange({ ...line, vatAmount })}
-            showQuickAmounts={false}
-            disabled={disabled}
-          />
-        </div>
-      </div>
+      {showVat && (
+        <>
+          <div className="space-y-2">
+            <Label>{t('tourEvidence.guideNote')}</Label>
+            <Textarea
+              rows={3}
+              value={line.guideNote || ''}
+              disabled={disabled}
+              onChange={(event) => onChange({ ...line, guideNote: event.target.value })}
+              placeholder={t('tourEvidence.guideNotePlaceholder')}
+            />
+          </div>
 
-      {showMissingEvidenceHint && (
-        <p className="text-xs text-amber-600">{t('tourEvidence.missingVatEvidence')}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t('tourEvidence.vatRate')}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                value={line.vatRate ?? 0}
+                disabled={disabled}
+                onChange={(event) => updateVatRate(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('tourEvidence.vatAmount')}</Label>
+              <CurrencyInput
+                value={line.vatAmount || 0}
+                onChange={(vatAmount) => onChange({ ...line, vatAmount })}
+                showQuickAmounts={false}
+                disabled={disabled}
+              />
+            </div>
+          </div>
+
+          {showMissingEvidenceHint && (
+            <p className="text-xs text-amber-600">{t('tourEvidence.missingVatEvidence')}</p>
+          )}
+        </>
       )}
 
       <LineAttachmentUploader

@@ -2,6 +2,10 @@ import { forwardRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Minus, Plus } from 'lucide-react';
+import {
+  DEFAULT_STEPPER_BUTTON,
+  DEFAULT_STEPPER_ICON,
+} from '@/lib/form-control-styles';
 
 interface NumberInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type'> {
   value?: number;
@@ -46,9 +50,9 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           size="icon"
           onClick={handleDecrement}
           disabled={isDisabled || value <= min}
-          className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
+          className={DEFAULT_STEPPER_BUTTON}
         >
-          <Minus className="h-4 w-4" />
+          <Minus className={DEFAULT_STEPPER_ICON} />
         </Button>
         <Input
           {...props}
@@ -67,9 +71,9 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           size="icon"
           onClick={handleIncrement}
           disabled={isDisabled || (max !== undefined && value >= max)}
-          className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
+          className={DEFAULT_STEPPER_BUTTON}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className={DEFAULT_STEPPER_ICON} />
         </Button>
       </div>
     );

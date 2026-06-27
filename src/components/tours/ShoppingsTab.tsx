@@ -11,9 +11,9 @@ import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShoppingForm } from '@/components/tours/ShoppingForm';
 import { ShoppingDesktopTable } from '@/components/tours/ShoppingDesktopTable';
-import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { NewShoppingDialog } from '@/components/tours/NewShoppingDialog';
 import { ShoppingsMobileList } from '@/components/tours/mobile/ShoppingsMobileList';
+import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
 import { getNetCommission, getPaymentRemaining, isFullyReceived } from '@/lib/shopping-commission-utils';
 import { useShoppingCommissionMutations } from '@/hooks/useShoppingCommissionMutations';
 
@@ -264,9 +264,11 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
   }
 
   return (
-    <div className="space-y-6">
-      {!readOnly && (
-        <FormCollapsible autoOpenKey={editingIndex}>
+    <>
+      <TourLineTabLayout
+        formVisible={!readOnly}
+        autoOpenKey={editingIndex}
+        form={
           <ShoppingForm
             formData={formData}
             onChange={setFormData}
@@ -283,11 +285,11 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
             isPendingAdd={addPaymentMutation.isPending}
             isPendingClear={clearPaymentsMutation.isPending}
           />
-        </FormCollapsible>
-      )}
-
-      <div className="rounded-lg border">
-        <div className="hidden md:block overflow-x-auto">
+        }
+        title="Danh sách mua sắm"
+        emptyMessage="Chưa có mục mua sắm nào"
+        itemCount={shoppings.length}
+        desktop={
           <ShoppingDesktopTable
             shoppings={shoppings}
             readOnly={readOnly}
@@ -308,8 +310,8 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
             totalAmount={totalAmount}
             totalTip={totalTip}
           />
-        </div>
-        <div className="md:hidden">
+        }
+        mobile={
           <ShoppingsMobileList
             shoppings={shoppings}
             readOnly={readOnly}
@@ -323,8 +325,8 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
             totalAmount={totalAmount}
             totalTip={totalTip}
           />
-        </div>
-      </div>
+        }
+      />
 
       <NewShoppingDialog
         open={showNewShoppingDialog}
@@ -333,6 +335,6 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
         guideId={guideId}
         onCreated={(shopping) => setFormData((prev) => ({ ...prev, name: shopping.name }))}
       />
-    </div>
+    </>
   );
 }

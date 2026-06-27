@@ -8,6 +8,20 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DateInput } from '@/components/ui/date-input';
 import { NumberInputMobile } from '@/components/ui/number-input-mobile';
+import {
+  TOUR_LINE_ACTIONS,
+  TOUR_LINE_CANCEL_BUTTON,
+  TOUR_LINE_COMBOBOX_POPOVER,
+  TOUR_LINE_COMPACT_INPUT,
+  TOUR_LINE_FIELDS,
+  TOUR_LINE_FORM,
+  TOUR_LINE_FORM_CARD,
+  TOUR_LINE_FORM_TITLE,
+  TOUR_LINE_INLINE_FIELDS,
+  TOUR_LINE_SELECTOR_ADD_BUTTON,
+  TOUR_LINE_SELECTOR_ROW,
+  TOUR_LINE_SUBMIT_BUTTON,
+} from '@/lib/tab-styles';
 import type { Allowance, Tour } from '@/types/tour';
 import type { DetailedExpense } from '@/types/master';
 import {
@@ -57,14 +71,14 @@ export function AllowanceForm({
   }, [editingIndex]);
 
   return (
-    <div className="rounded-lg border bg-card p-6">
-      <h3 className="text-lg font-semibold mb-4">
+    <div className={TOUR_LINE_FORM_CARD}>
+      <h3 className={TOUR_LINE_FORM_TITLE}>
         {editingIndex !== null ? 'Chỉnh sửa CTP' : 'Thêm CTP'}
       </h3>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="space-y-3">
+      <form onSubmit={onSubmit} className={TOUR_LINE_FORM}>
+        <div className={TOUR_LINE_FIELDS}>
           {canView('name') && (
-          <div className="flex gap-2">
+          <div className={TOUR_LINE_SELECTOR_ROW}>
             <Popover open={openExpense} onOpenChange={setOpenExpense}>
               <PopoverTrigger asChild>
                 <Button
@@ -79,7 +93,7 @@ export function AllowanceForm({
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
+              <PopoverContent className={TOUR_LINE_COMBOBOX_POPOVER} align="start">
                 <Command>
                   <CommandInput placeholder="Tìm CTP..." />
                   <CommandList>
@@ -119,7 +133,7 @@ export function AllowanceForm({
                 </Command>
               </PopoverContent>
             </Popover>
-            <Button type="button" variant="outline" size="icon" title="Thêm CTP" aria-label="Thêm CTP" onClick={onOpenNewDialog} disabled={!canEdit('name')}>
+            <Button type="button" variant="outline" size="icon" title="Thêm CTP" aria-label="Thêm CTP" onClick={onOpenNewDialog} disabled={!canEdit('name')} className={TOUR_LINE_SELECTOR_ADD_BUTTON}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -132,32 +146,39 @@ export function AllowanceForm({
             disabled={!canEdit('price')}
           />
           )}
-          {canView('date') && (
-          <DateInput
-            value={formData.date}
-            onChange={(date) => onChange({ ...formData, date })}
-            required
-            disabled={!canEdit('date')}
-          />
-          )}
-          {canView('quantity') && (
-          <NumberInputMobile
-            value={formData.quantity || 1}
-            onChange={(val) => onChange({ ...formData, quantity: val || 1 })}
-            min={1}
-            placeholder="Số lượng"
-            className="w-full"
-            disabled={!canEdit('quantity')}
-          />
+          {(canView('date') || canView('quantity')) && (
+          <div className={TOUR_LINE_INLINE_FIELDS}>
+            {canView('date') && (
+            <DateInput
+              value={formData.date}
+              onChange={(date) => onChange({ ...formData, date })}
+              required
+              disabled={!canEdit('date')}
+              size="sm"
+              className={TOUR_LINE_COMPACT_INPUT}
+            />
+            )}
+            {canView('quantity') && (
+            <NumberInputMobile
+              value={formData.quantity || 1}
+              onChange={(val) => onChange({ ...formData, quantity: val || 1 })}
+              min={1}
+              placeholder="Số lượng"
+              className={TOUR_LINE_COMPACT_INPUT}
+              size="sm"
+              disabled={!canEdit('quantity')}
+            />
+            )}
+          </div>
           )}
         </div>
-        <div className="flex gap-2">
-          <Button type="submit" className="hover-scale flex-1" disabled={!canSubmit}>
+        <div className={TOUR_LINE_ACTIONS}>
+          <Button type="submit" className={TOUR_LINE_SUBMIT_BUTTON} disabled={!canSubmit}>
             <Plus className="h-4 w-4 mr-2" />
             {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
           </Button>
           {editingIndex !== null && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} className={TOUR_LINE_CANCEL_BUTTON}>
               Hủy
             </Button>
           )}

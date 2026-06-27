@@ -3,6 +3,9 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateDisplay } from '@/lib/date-utils';
 import { buildServiceItems, formatNgayRangeForExcel } from '@/lib/excel/excel-helpers';
 import { TOUR_SHEET_COLUMNS, TOUR_SHEET_HEADER_GROUPS } from '@/lib/excel/tour-sheet-layout';
+import {
+  TABLE_BASE_CLASS, TABLE_CELL, TABLE_TOTAL_CELL, TABLE_NOTES_CELL,
+} from '@/lib/tab-styles';
 import { cn } from '@/lib/utils';
 import type { Allowance, Tour } from '@/types/tour';
 import { CombinedTabMobile } from './CombinedTabMobile';
@@ -13,9 +16,6 @@ interface CombinedTabProps {
 
 const DESKTOP_COLUMNS = TOUR_SHEET_COLUMNS.slice(0, 13);
 const DESKTOP_HEADER_GROUPS = TOUR_SHEET_HEADER_GROUPS.slice(0, 4);
-
-const sheetCellClass = 'border border-slate-300 px-2 py-1 align-middle text-[12px]';
-const totalCellClass = 'border border-slate-300 bg-yellow-200 px-2 py-1 text-[12px] font-bold';
 
 const formatSheetDate = (date?: string) => date ? formatDateDisplay(date) : '';
 
@@ -56,7 +56,6 @@ export function CombinedTab({ tour }: CombinedTabProps) {
 
   return (
     <div className="space-y-3">
-      {/* Mobile card view */}
       <div className="md:hidden">
         <CombinedTabMobile
           tour={tour}
@@ -70,16 +69,15 @@ export function CombinedTab({ tour }: CombinedTabProps) {
         />
       </div>
 
-      {/* Desktop table view */}
       <div className="hidden border bg-background md:block overflow-auto max-h-[calc(100vh-280px)]">
-        <Table unwrapped className="w-full border-collapse text-[10px]">
+        <Table unwrapped className={cn('w-full border-collapse', TABLE_BASE_CLASS)}>
           <TableHeader className="sticky top-0 z-10">
             <TableRow className="hover:bg-transparent">
               {DESKTOP_HEADER_GROUPS.map((group) => (
                 <TableHead
                   key={group.label}
                   colSpan={group.colSpan}
-                  className={cn('border border-slate-300 px-2 py-2 text-center text-xs font-bold uppercase', group.className)}
+                  className={cn('border border-slate-300 px-2 py-2 text-center', TABLE_BASE_CLASS, 'font-bold uppercase', group.className)}
                 >
                   {group.label}
                 </TableHead>
@@ -89,11 +87,7 @@ export function CombinedTab({ tour }: CombinedTabProps) {
               {DESKTOP_COLUMNS.map((column) => (
                 <TableHead
                   key={column.key}
-                  className={cn(
-                    'border border-slate-300 px-2 py-1 text-center text-[12px] font-bold text-slate-950',
-                    'whitespace-normal break-words leading-tight'
-                  )}
-
+                  className="border border-slate-300 px-2 py-1 text-center text-[12px] font-bold text-slate-950 whitespace-normal break-words leading-tight"
                 >
                   {column.key === 'quantity' ? 'pax/ngày/nước' : column.label}
                 </TableHead>
@@ -109,63 +103,63 @@ export function CombinedTab({ tour }: CombinedTabProps) {
 
               return (
                 <TableRow key={`combined-${index}`}>
-                  <TableCell className={cn(sheetCellClass, 'whitespace-normal break-words')}>
+                  <TableCell className={cn(TABLE_CELL, 'whitespace-normal break-words')}>
                     {index === 0 ? `${tour.tourCode} x ${totalGuests} pax` : ''}
                   </TableCell>
-                  <TableCell className={sheetCellClass}>
+                  <TableCell className={TABLE_CELL}>
                     {index === 0 ? formatNgayRangeForExcel(tour.startDate, tour.endDate) : ''}
                   </TableCell>
-                  <TableCell className={cn(sheetCellClass, service?.price === 0 && 'bg-red-100')}>
+                  <TableCell className={cn(TABLE_CELL, service?.price === 0 && 'bg-red-100')}>
                     {service?.name || ''}
                   </TableCell>
-                  <TableCell className={sheetCellClass}>{formatSheetDate(service?.date)}</TableCell>
-                  <TableCell className={cn(sheetCellClass, 'text-right', service?.price === 0 && 'bg-red-100')}>
+                  <TableCell className={TABLE_CELL}>{formatSheetDate(service?.date)}</TableCell>
+                  <TableCell className={cn(TABLE_CELL, 'text-right', service?.price === 0 && 'bg-red-100')}>
                     {service ? formatCurrency(service.price) : ''}
                   </TableCell>
-                  <TableCell className={cn(sheetCellClass, 'text-center')}>{serviceQuantity ?? ''}</TableCell>
-                  <TableCell className={cn(sheetCellClass, 'text-right font-semibold')}>
+                  <TableCell className={cn(TABLE_CELL, 'text-center')}>{serviceQuantity ?? ''}</TableCell>
+                  <TableCell className={cn(TABLE_CELL, 'text-right font-semibold')}>
                     {service ? formatCurrency(service.price * (serviceQuantity ?? 0)) : ''}
                   </TableCell>
-                  <TableCell className={cn(sheetCellClass, allowance?.price === 0 && 'bg-red-100')}>
+                  <TableCell className={cn(TABLE_CELL, allowance?.price === 0 && 'bg-red-100')}>
                     {allowance?.name || ''}
                   </TableCell>
-                  <TableCell className={sheetCellClass}>{formatSheetDate(allowance?.date)}</TableCell>
-                  <TableCell className={cn(sheetCellClass, 'text-center')}>{allowanceDays ?? ''}</TableCell>
-                  <TableCell className={cn(sheetCellClass, 'text-right', allowance?.price === 0 && 'bg-red-100')}>
+                  <TableCell className={TABLE_CELL}>{formatSheetDate(allowance?.date)}</TableCell>
+                  <TableCell className={cn(TABLE_CELL, 'text-center')}>{allowanceDays ?? ''}</TableCell>
+                  <TableCell className={cn(TABLE_CELL, 'text-right', allowance?.price === 0 && 'bg-red-100')}>
                     {allowance ? formatCurrency(allowance.price) : ''}
                   </TableCell>
-                  <TableCell className={cn(sheetCellClass, 'text-right font-semibold')}>
+                  <TableCell className={cn(TABLE_CELL, 'text-right font-semibold')}>
                     {allowance ? formatCurrency(allowance.price * (allowanceDays ?? 1)) : ''}
                   </TableCell>
-                  <TableCell className={sheetCellClass} />
+                  <TableCell className={TABLE_CELL} />
                 </TableRow>
               );
             })}
             <TableRow>
-              <TableCell colSpan={2} className={totalCellClass} />
-              <TableCell colSpan={4} className={totalCellClass}>dịch vụ</TableCell>
-              <TableCell className={cn(totalCellClass, 'text-right')}>{formatCurrency(serviceTotal)}</TableCell>
-              <TableCell className={totalCellClass}>công tác phí</TableCell>
-              <TableCell colSpan={3} className={totalCellClass} />
-              <TableCell className={cn(totalCellClass, 'text-right')}>{formatCurrency(allowanceTotal)}</TableCell>
-              <TableCell className={cn(totalCellClass, 'text-right')}>{formatCurrency(totalTabs)}</TableCell>
+              <TableCell colSpan={2} className={TABLE_TOTAL_CELL} />
+              <TableCell colSpan={4} className={TABLE_TOTAL_CELL}>dịch vụ</TableCell>
+              <TableCell className={cn(TABLE_TOTAL_CELL, 'text-right')}>{formatCurrency(serviceTotal)}</TableCell>
+              <TableCell className={TABLE_TOTAL_CELL}>công tác phí</TableCell>
+              <TableCell colSpan={3} className={TABLE_TOTAL_CELL} />
+              <TableCell className={cn(TABLE_TOTAL_CELL, 'text-right')}>{formatCurrency(allowanceTotal)}</TableCell>
+              <TableCell className={cn(TABLE_TOTAL_CELL, 'text-right')}>{formatCurrency(totalTabs)}</TableCell>
             </TableRow>
             {summaryRows.length > 0 && (
               <TableRow>
-                <TableCell colSpan={11} className={sheetCellClass} />
-                <TableCell colSpan={2} className={totalCellClass + ' text-center'}>TỔNG KẾT</TableCell>
+                <TableCell colSpan={11} className={TABLE_CELL} />
+                <TableCell colSpan={2} className={cn(TABLE_TOTAL_CELL, 'text-center')}>TỔNG KẾT</TableCell>
               </TableRow>
             )}
             {summaryRows.map((row) => (
               <TableRow key={row.label} className={row.rowClass}>
-                <TableCell colSpan={11} className={sheetCellClass} />
-                <TableCell className={cn(sheetCellClass, 'text-right font-bold', row.labelClass)}>{row.label}</TableCell>
-                <TableCell className={cn(sheetCellClass, 'text-right font-bold')}>{formatCurrency(row.value)}</TableCell>
+                <TableCell colSpan={11} className={TABLE_CELL} />
+                <TableCell className={cn(TABLE_CELL, 'text-right font-bold', row.labelClass)}>{row.label}</TableCell>
+                <TableCell className={cn(TABLE_CELL, 'text-right font-bold')}>{formatCurrency(row.value)}</TableCell>
               </TableRow>
             ))}
             {tour.notes && (
               <TableRow>
-                <TableCell colSpan={13} className="border border-slate-300 bg-slate-100 px-2 py-2 text-sm text-red-600">
+                <TableCell colSpan={13} className={TABLE_NOTES_CELL}>
                   Ghi chú: {tour.notes}
                 </TableCell>
               </TableRow>

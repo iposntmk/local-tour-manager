@@ -128,6 +128,7 @@ export const baseVi = {
     noAttachments: 'Chưa có chứng từ',
     guideNotePlaceholder: 'Nhập giải trình cho dòng chi phí này',
     missingVatEvidence: 'VAT lớn hơn 0 nhưng chưa có chứng từ. Có thể lưu, kế toán sẽ đối chiếu sau.',
+    vatSection: 'Thông tin VAT',
   },
 
   validation: {

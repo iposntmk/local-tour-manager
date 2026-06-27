@@ -12,9 +12,23 @@ import { toast } from 'sonner';
 import { useMealsTab } from '@/hooks/useMealsTab';
 import { MealsDesktopTable } from './MealsDesktopTable';
 import { NewMealDialog } from './NewMealDialog';
-import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { MealsMobileList } from '@/components/tours/mobile/MealsMobileList';
 import { LineEvidenceFields } from '@/components/tours/LineEvidenceFields';
+import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
+import {
+  TOUR_LINE_ACTIONS,
+  TOUR_LINE_CANCEL_BUTTON,
+  TOUR_LINE_COMBOBOX_POPOVER,
+  TOUR_LINE_COMPACT_INPUT,
+  TOUR_LINE_FIELDS,
+  TOUR_LINE_FORM,
+  TOUR_LINE_FORM_CARD,
+  TOUR_LINE_FORM_TITLE,
+  TOUR_LINE_INLINE_FIELDS,
+  TOUR_LINE_SELECTOR_ADD_BUTTON,
+  TOUR_LINE_SELECTOR_ROW,
+  TOUR_LINE_SUBMIT_BUTTON,
+} from '@/lib/tab-styles';
 import type { Meal, Tour } from '@/types/tour';
 import {
   canEditAnyTourLineField,
@@ -60,17 +74,19 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
   }, [editRequest?.key]);
 
   return (
-    <div className="space-y-6">
-      {!readOnly && canEditLine && (
-        <FormCollapsible autoOpenKey={editingIndex}>
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">
+    <>
+      <TourLineTabLayout
+        formVisible={!readOnly && canEditLine}
+        autoOpenKey={editingIndex}
+        form={
+          <div className={TOUR_LINE_FORM_CARD}>
+            <h3 className={TOUR_LINE_FORM_TITLE}>
               {editingIndex !== null ? 'Chỉnh sửa bữa ăn' : 'Thêm bữa ăn'}
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-3">
+            <form onSubmit={handleSubmit} className={TOUR_LINE_FORM}>
+              <div className={TOUR_LINE_FIELDS}>
                 {canView('name') && (
-                <div className="flex gap-2">
+                <div className={TOUR_LINE_SELECTOR_ROW}>
                   <Popover open={openMeal} onOpenChange={setOpenMeal}>
                     <PopoverTrigger asChild>
                       <Button type="button" variant="outline" role="combobox" aria-expanded={openMeal}
@@ -79,7 +95,7 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
+                    <PopoverContent className={TOUR_LINE_COMBOBOX_POPOVER} align="start">
                       <Command>
                         <CommandInput placeholder="Tìm bữa ăn..." />
                         <CommandList>
@@ -104,7 +120,7 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
                       </Command>
                     </PopoverContent>
                   </Popover>
-                  <Button type="button" variant="outline" size="icon" onClick={() => setShowNewMealDialog(true)} disabled={!canEdit('name')} title="Thêm bữa ăn mới">
+                  <Button type="button" variant="outline" size="icon" onClick={() => setShowNewMealDialog(true)} disabled={!canEdit('name')} title="Thêm bữa ăn mới" className={TOUR_LINE_SELECTOR_ADD_BUTTON}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -113,20 +129,24 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
                 <CurrencyInput placeholder="Giá (VND)" value={formData.price}
                   onChange={(price) => setFormData({ ...formData, price })} disabled={!canEdit('price')} />
                 )}
-                {canView('date') && (
-                <DateInput value={formData.date} onChange={(date) => setFormData({ ...formData, date })} required disabled={!canEdit('date')} />
-                )}
-                {canView('quantity') && (
-                <NumberInputMobile value={formData.guests} onChange={(val) => {
-                  if (!canEdit('quantity')) return;
-                  const max = tour?.totalGuests || 0;
-                  if (val !== undefined && max && val > max) {
-                    toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
-                    setFormData({ ...formData, guests: max });
-                  } else {
-                    setFormData({ ...formData, guests: val });
-                  }
-                }} min={0} max={tour?.totalGuests || 0} placeholder="Số khách" className="w-full" disabled={!canEdit('quantity')} />
+                {(canView('date') || canView('quantity')) && (
+                <div className={TOUR_LINE_INLINE_FIELDS}>
+                  {canView('date') && (
+                  <DateInput value={formData.date} onChange={(date) => setFormData({ ...formData, date })} required disabled={!canEdit('date')} size="sm" className={TOUR_LINE_COMPACT_INPUT} />
+                  )}
+                  {canView('quantity') && (
+                  <NumberInputMobile value={formData.guests} onChange={(val) => {
+                    if (!canEdit('quantity')) return;
+                    const max = tour?.totalGuests || 0;
+                    if (val !== undefined && max && val > max) {
+                      toast.warning(`Số khách không được vượt quá tổng khách của tour (${max}).`);
+                      setFormData({ ...formData, guests: max });
+                    } else {
+                      setFormData({ ...formData, guests: val });
+                    }
+                  }} min={0} max={tour?.totalGuests || 0} placeholder="Số khách" className={TOUR_LINE_COMPACT_INPUT} size="sm" disabled={!canEdit('quantity')} />
+                  )}
+                </div>
                 )}
                 <LineEvidenceFields
                   line={formData}
@@ -139,27 +159,21 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
                   access={lineFieldAccess?.evidence}
                 />
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button type="submit" className="hover-scale w-full sm:w-auto" disabled={!canSubmit}>
+              <div className={TOUR_LINE_ACTIONS}>
+                <Button type="submit" className={TOUR_LINE_SUBMIT_BUTTON} disabled={!canSubmit}>
                   <Plus className="h-4 w-4 mr-2" />{editingIndex !== null ? 'Cập nhật' : 'Thêm'}
                 </Button>
                 {editingIndex !== null && (
-                  <Button type="button" variant="outline" onClick={handleCancel} className="w-full sm:w-auto">Hủy</Button>
+                  <Button type="button" variant="outline" onClick={handleCancel} className={TOUR_LINE_CANCEL_BUTTON}>Hủy</Button>
                 )}
               </div>
             </form>
           </div>
-        </FormCollapsible>
-      )}
-
-      <div className="rounded-lg border">
-        <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Danh sách bữa ăn</h3>
-        </div>
-        {meals.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Chưa có bữa ăn nào</div>
-        ) : (
-          <>
+        }
+        title="Danh sách bữa ăn"
+        emptyMessage="Chưa có bữa ăn nào"
+        itemCount={meals.length}
+        desktop={
             <MealsDesktopTable
               sortedMeals={sortedMeals} tourGuests={tour?.totalGuests || 0}
               readOnly={readOnly} totalAmount={mealsTotalAmount}
@@ -172,7 +186,8 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
               }}
               tourId={tourId}
             />
-            <div className="md:hidden">
+        }
+        mobile={
               <MealsMobileList
                 items={sortedMeals} tourGuests={tour?.totalGuests || 0}
                 readOnly={readOnly} onEdit={handleEdit} onDuplicate={handleDuplicate}
@@ -180,10 +195,8 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
                 onDelete={(idx) => deleteMutation.mutate(idx)}
                 onGuestsChange={handleMobileGuestsChange} totalAmount={mealsTotalAmount}
               />
-            </div>
-          </>
-        )}
-      </div>
+        }
+      />
 
       <NewMealDialog
         open={showNewMealDialog} onOpenChange={setShowNewMealDialog}
@@ -196,6 +209,6 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
         readOnly={readOnly || !canEdit('name') || !canEdit('price')}
         onSubmit={handleCreateNewMeal} onCreateCategory={handleCreateNewCategory}
       />
-    </div>
+    </>
   );
 }

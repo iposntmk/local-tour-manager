@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn, formatDate } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
 import { TourRowLabel } from '@/components/tours/TourRowIcon';
+import { STD_ROW_FLAGGED, STD_ROW_ANIM } from '@/lib/tab-styles';
 import type { Allowance } from '@/types/tour';
 import {
   canEditAnyTourLineField,
@@ -106,7 +107,7 @@ export function AllowancesDesktopTable({
                 </TableRow>
               )}
               <TableRow
-                className={cn('animate-fade-in', isZeroPrice && 'bg-red-50 dark:bg-red-950')}
+                className={cn(STD_ROW_ANIM, isZeroPrice && STD_ROW_FLAGGED)}
               >
                 <TableCell className="font-medium">{rowIndex + 1}</TableCell>
                 {showName && (

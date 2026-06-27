@@ -8,9 +8,9 @@ import type { DetailedExpense } from '@/types/master';
 import { useAuth } from '@/contexts/AuthContext';
 import { AllowanceForm } from '@/components/tours/AllowanceForm';
 import { NewAllowanceDialog, ALLOWANCE_CATEGORY_IDS } from '@/components/tours/NewAllowanceDialog';
-import { FormCollapsible } from '@/components/tours/FormCollapsible';
 import { AllowancesDesktopTable } from '@/components/tours/AllowancesDesktopTable';
 import { AllowancesMobileList } from '@/components/tours/mobile/AllowancesMobileList';
+import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
 import {
   canEditAnyTourLineField,
   canEditTourLineField,
@@ -82,7 +82,8 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     },
     onSuccess: () => {
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'allowances'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã thêm CTP');
@@ -103,7 +104,8 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     },
     onSuccess: () => {
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'allowances'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       }
       toast.success('Đã cập nhật CTP');
@@ -118,7 +120,8 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     },
     onSuccess: (_, index) => {
       if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'allowances'] });
+        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
         void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
         onChange?.(allowances.filter((_, i) => i !== index));
@@ -198,9 +201,11 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
   );
 
   return (
-    <div className="space-y-6">
-      {!readOnly && canEditLine && (
-        <FormCollapsible autoOpenKey={editingIndex}>
+    <>
+      <TourLineTabLayout
+        formVisible={!readOnly && canEditLine}
+        autoOpenKey={editingIndex}
+        form={
           <AllowanceForm
             formData={formData}
             onChange={setFormData}
@@ -214,45 +219,36 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
             }}
             lineFieldAccess={lineFieldAccess}
           />
-        </FormCollapsible>
-      )}
-
-      <div className="rounded-lg border">
-        <div className="p-4 border-b bg-muted/50">
-          <h3 className="font-semibold">Danh sách CTP</h3>
-        </div>
-        {allowances.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Chưa có phụ cấp nào</div>
-        ) : (
-          <>
-            <div className="hidden md:block overflow-x-auto">
-              <AllowancesDesktopTable
-                allowances={allowances}
-                getCategoryPriority={getCategoryPriority}
-                readOnly={readOnly}
-                lineFieldAccess={lineFieldAccess}
-                onEdit={handleEdit}
-                onCopy={handleCopy}
-                onDelete={(idx) => deleteMutation.mutate(idx)}
-                totalAmount={allowancesTotalAmount}
-                totalQuantity={allowancesTotalQuantity}
-              />
-            </div>
-            <div className="md:hidden">
-              <AllowancesMobileList
-                items={sortedAllowancesWithSeparator}
-                readOnly={readOnly}
-                lineFieldAccess={lineFieldAccess}
-                onEdit={handleEdit}
-                onCopy={handleCopy}
-                onDelete={(idx) => deleteMutation.mutate(idx)}
-                totalAmount={allowancesTotalAmount}
-                totalQuantity={allowancesTotalQuantity}
-              />
-            </div>
-          </>
-        )}
-      </div>
+        }
+        title="Danh sách CTP"
+        emptyMessage="Chưa có phụ cấp nào"
+        itemCount={allowances.length}
+        desktop={
+          <AllowancesDesktopTable
+            allowances={allowances}
+            getCategoryPriority={getCategoryPriority}
+            readOnly={readOnly}
+            lineFieldAccess={lineFieldAccess}
+            onEdit={handleEdit}
+            onCopy={handleCopy}
+            onDelete={(idx) => deleteMutation.mutate(idx)}
+            totalAmount={allowancesTotalAmount}
+            totalQuantity={allowancesTotalQuantity}
+          />
+        }
+        mobile={
+          <AllowancesMobileList
+            items={sortedAllowancesWithSeparator}
+            readOnly={readOnly}
+            lineFieldAccess={lineFieldAccess}
+            onEdit={handleEdit}
+            onCopy={handleCopy}
+            onDelete={(idx) => deleteMutation.mutate(idx)}
+            totalAmount={allowancesTotalAmount}
+            totalQuantity={allowancesTotalQuantity}
+          />
+        }
+      />
 
       <NewAllowanceDialog
         open={showNewAllowanceDialog}
@@ -272,6 +268,6 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
           }));
         }}
       />
-    </div>
+    </>
   );
 }

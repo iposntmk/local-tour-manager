@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
@@ -36,7 +36,7 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
   const canCreateCompanies = hasPermission('create_companies');
   const canCreateNationalities = hasPermission('create_nationalities');
 
-  const { register, handleSubmit: rhfHandleSubmit, watch, setValue, formState } = useForm<TourInput>({
+  const { register, handleSubmit: rhfHandleSubmit, watch, setValue, formState, control } = useForm<TourInput>({
     defaultValues: initialData ? {
       tourCode: initialData.tourCode, companyRef: initialData.companyRef,
       landOperatorRef: initialData.landOperatorRef, guideRef: initialData.guideRef,
@@ -54,6 +54,18 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
   const { data: guides = [] } = useQuery({ queryKey: ['guide-users'], queryFn: () => store.listGuideUsers({ status: 'active' }), ...referenceQueryOptions });
   const { data: nationalities = [] } = useQuery({ queryKey: ['nationalities'], queryFn: () => store.listNationalities({ status: 'active' }), ...referenceQueryOptions });
 
+  const companyById = useMemo(() => {
+    const map = new Map<string, Company>();
+    for (const c of companies) map.set(c.id, c);
+    return map;
+  }, [companies]);
+
+  const guideById = useMemo(() => {
+    const map = new Map<string, (typeof guides)[number]>();
+    for (const g of guides) map.set(g.id, g);
+    return map;
+  }, [guides]);
+
   useEffect(() => {
     if (initialData || selectedCompanyId || companies.length === 0) return;
     if (localStorage.getItem('tourform.saveCompanyPref') !== 'true') return;
@@ -63,16 +75,16 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
 
   useEffect(() => {
     if (initialData || selectedLandOperatorId || companies.length === 0) return;
-    const lo = companies.find((c) => c.id === DEFAULT_LAND_OPERATOR_ID);
+    const lo = companyById.get(DEFAULT_LAND_OPERATOR_ID);
     if (lo) { setSelectedLandOperatorId(lo.id); setValue('landOperatorRef', { id: lo.id, nameAtBooking: lo.name }); }
-  }, [companies, initialData, selectedLandOperatorId, setValue]);
+  }, [companyById, initialData, selectedLandOperatorId, setValue]);
 
   useEffect(() => {
     if (initialData || selectedGuideId || guides.length === 0) return;
-    const currentGuide = isGuide ? guides.find((g) => g.id === userProfile?.id) : undefined;
+    const currentGuide = isGuide ? guideById.get(userProfile?.id ?? '') : undefined;
     const dg = currentGuide ?? guides.find((g) => g.isDefault);
     if (dg) { setSelectedGuideId(dg.id); setValue('guideRef', { id: dg.id, nameAtBooking: dg.name }); }
-  }, [guides, initialData, isGuide, selectedGuideId, setValue, userProfile?.id]);
+  }, [guides, initialData, isGuide, selectedGuideId, setValue, guideById, userProfile?.id]);
 
   const createCompanyMutation = useMutation({
     mutationFn: (data: CompanyInput) => store.createCompany(data),
@@ -94,49 +106,63 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
     onError: (e: Error) => toast.error(e.message || 'Không thể thêm quốc tịch'),
   });
 
-  const adults = watch('adults');
-  const children = watch('children');
+  const adults = useWatch({ control, name: 'adults', defaultValue: initialData?.adults });
+  const children = useWatch({ control, name: 'children', defaultValue: initialData?.children });
   const totalGuests = (adults || 0) + (children || 0);
-  const startDate = watch('startDate');
-  const endDate = watch('endDate');
+  const startDate = useWatch({ control, name: 'startDate', defaultValue: initialData?.startDate });
+  const endDate = useWatch({ control, name: 'endDate', defaultValue: initialData?.endDate });
   const totalDays = startDate && endDate
     ? Math.ceil(Math.abs(new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1
     : 0;
 
-  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
-  const selectedLandOperator = companies.find((c) => c.id === selectedLandOperatorId);
-  const selectedGuide = guides.find((g) => g.id === selectedGuideId);
+  const selectedCompany = companyById.get(selectedCompanyId);
+  const selectedLandOperator = companyById.get(selectedLandOperatorId);
+  const selectedGuide = guideById.get(selectedGuideId);
 
   const isInitialMount = useRef(true);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedPayloadRef = useRef<string | null>(null);
 
-  const triggerAutoSave = () => {
-    const { tourCode, clientName, startDate, endDate, driverName, clientPhone, adults, children } = watch();
+  const buildAutoSavePayload = useCallback((): TourInput | null => {
+    const formValues = watch();
     const paxTotal = selectedNationalities.reduce((sum, n) => sum + (Number(n.paxCount) || 0), 0);
-    const guests = (adults || 0) + (children || 0);
-    if (!initialData || !tourCode || !clientName || !startDate || !endDate ||
+    const guests = (formValues.adults || 0) + (formValues.children || 0);
+    if (!initialData || !formValues.tourCode || !formValues.clientName || !formValues.startDate || !formValues.endDate ||
       !selectedCompanyId || !selectedLandOperatorId || !selectedGuideId ||
-      selectedNationalities.length === 0 || (guests > 0 && paxTotal !== guests)) return;
+      selectedNationalities.length === 0 || (guests > 0 && paxTotal !== guests)) return null;
 
-    const sc = companies.find((c) => c.id === selectedCompanyId);
-    const sl = companies.find((c) => c.id === selectedLandOperatorId);
-    const sg = guides.find((g) => g.id === selectedGuideId);
+    const sc = companyById.get(selectedCompanyId);
+    const sl = companyById.get(selectedLandOperatorId);
+    const sg = guideById.get(selectedGuideId);
     const pn = selectedNationalities[0];
-    if (!sc || !sl || !sg || !pn) return;
+    if (!sc || !sl || !sg || !pn) return null;
+
+    return {
+      tourCode: formValues.tourCode, clientName: formValues.clientName,
+      startDate: formValues.startDate, endDate: formValues.endDate,
+      adults: formValues.adults || 0, children: formValues.children || 0,
+      driverName: formValues.driverName, clientPhone: formValues.clientPhone,
+      companyRef: { id: sc.id, nameAtBooking: sc.name },
+      landOperatorRef: { id: sl.id, nameAtBooking: sl.name },
+      guideRef: { id: sg.id, nameAtBooking: sg.name },
+      clientNationalityRef: { id: pn.id, nameAtBooking: pn.nameAtBooking },
+      clientNationalities: selectedNationalities,
+    };
+  }, [watch, initialData, selectedCompanyId, selectedLandOperatorId, selectedGuideId, selectedNationalities, companyById, guideById]);
+
+  const triggerAutoSave = useCallback(() => {
+    const payload = buildAutoSavePayload();
+    if (!payload) return;
+
+    const payloadKey = JSON.stringify(payload);
+    if (payloadKey === lastSavedPayloadRef.current) return;
 
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
-      onSubmit({
-        tourCode, clientName, startDate, endDate, adults: adults || 0, children: children || 0,
-        driverName, clientPhone,
-        companyRef: { id: sc.id, nameAtBooking: sc.name },
-        landOperatorRef: { id: sl.id, nameAtBooking: sl.name },
-        guideRef: { id: sg.id, nameAtBooking: sg.name },
-        clientNationalityRef: { id: pn.id, nameAtBooking: pn.nameAtBooking },
-        clientNationalities: selectedNationalities,
-      });
+      lastSavedPayloadRef.current = payloadKey;
+      onSubmit(payload);
     }, 500);
-  };
+  }, [buildAutoSavePayload, onSubmit]);
 
   useEffect(() => {
     const sub = watch(() => {
@@ -153,11 +179,11 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCompanyId, selectedLandOperatorId, selectedGuideId, selectedNationalities]);
 
-  const openQuickAdd = (target: QuickAddTarget) => {
+  const openQuickAdd = useCallback((target: QuickAddTarget) => {
     setCompanyOpen(false); setLandOperatorOpen(false); setGuideOpen(false);
     setQuickAddTarget(target);
-  };
-  const handleQuickAddOpenChange = (open: boolean) => { if (!open) setQuickAddTarget(null); };
+  }, []);
+  const handleQuickAddOpenChange = useCallback((open: boolean) => { if (!open) setQuickAddTarget(null); }, []);
 
   const handleCreateCompany = async (data: CompanyInput) => {
     if (!canCreateCompanies) { toast.error('Bạn không có quyền tạo công ty'); return; }
@@ -192,9 +218,9 @@ export function useTourInfoForm(initialData: Tour | undefined, onSubmit: (data: 
     const guests = (data.adults || 0) + (data.children || 0);
     if (guests > 0 && paxTotal !== guests) { toast.error('Tổng pax theo quốc tịch phải bằng tổng khách'); return; }
 
-    const sc = companies.find((c) => c.id === selectedCompanyId);
-    const sl = companies.find((c) => c.id === selectedLandOperatorId);
-    const sg = guides.find((g) => g.id === selectedGuideId);
+    const sc = companyById.get(selectedCompanyId);
+    const sl = companyById.get(selectedLandOperatorId);
+    const sg = guideById.get(selectedGuideId);
     const pn = selectedNationalities[0];
     if (!sc || !sl || !sg || !pn) { toast.error('Vui lòng chọn Công ty mẹ, Công ty land tour, Hướng dẫn viên và Quốc tịch hợp lệ'); return; }
 
