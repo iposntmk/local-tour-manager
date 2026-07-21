@@ -20,6 +20,25 @@ export interface TourImportOptions {
 
 const DEFAULT_COMPANY = 'Việt Á';
 
+const hashText = (value: string): string => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(i) | 0;
+  }
+  return Math.abs(hash).toString(36).toUpperCase().padStart(5, '0').slice(0, 5);
+};
+
+const buildFallbackTourCode = (text: string, startDate: string, year: number): string => {
+  const datePart = (startDate || ymd(year, 1, 1)).replace(/-/g, '');
+  return `OCR-${datePart}-${hashText(text)}`;
+};
+
+const extractTextDates = (text: string, year: number): string[] => {
+  const matches = Array.from(text.matchAll(/\b\d{1,2}\s*\/\s*\d{1,2}(?:\s*\/\s*\d{2,4})?\b/g));
+  const dates = matches.map((match) => parseSheetDate(match[0], year)).filter(Boolean);
+  return Array.from(new Set(dates)).sort();
+};
+
 const tableCellText = (rowCells: AnalyzeTable['cells'] & {}, columnIndex: number): string => {
   const exact = (rowCells || []).filter((cell) => cell.columnIndex === columnIndex);
   if (exact.length === 0) return '';
@@ -264,9 +283,13 @@ export const buildTourImportJson = (
     }
   }
 
-  const dates = itineraryRows.map((row) => row.date).filter(Boolean).sort();
+  const textDates = extractTextDates(text, year);
+  const dates = Array.from(new Set([
+    ...itineraryRows.map((row) => row.date).filter(Boolean),
+    ...textDates,
+  ])).sort();
   const totalGuests = parseGuestCount(text);
-  const tourCode = matchValue(text, '(?:Code\\s*(?:đoàn|doan)?|Mã\\s*đoàn)', ['S[ốo]\\s*kh[aá]ch', 'So\\s*khach']);
+  const extractedTourCode = matchValue(text, '(?:Code\\s*(?:đoàn|doan)?|Mã\\s*đoàn)', ['S[ốo]\\s*kh[aá]ch', 'So\\s*khach']);
   const guide = matchValue(text, '(?:Hướng\\s*dẫn|Huong\\s*dan)', ['L[aá]i\\s*xe', 'Lai\\s*xe']);
   const driver = matchValue(text, '(?:L[aá]i\\s*xe|Lai\\s*xe)');
   const clientName = matchValue(text, '(?:T[eê]n\\s*kh[aá]ch|Ten\\s*khach)', ['Ng[aà]y', 'Ngay']);
@@ -277,7 +300,8 @@ export const buildTourImportJson = (
   const firstReal = itineraryRows.find((row) => !isNonProgramDay(row.visit));
   const startDate = firstReal?.date || dates[0] || '';
   const lastReal = [...itineraryRows].reverse().find((row) => !isNonProgramDay(row.visit));
-  const endDate = lastReal?.date || startDate;
+  const endDate = lastReal?.date || dates[dates.length - 1] || startDate;
+  const tourCode = extractedTourCode || buildFallbackTourCode(text, startDate, year);
 
   const destinationMatcher = buildMatcher(destinations, true);
   const freeMatcher = buildMatcher(freeDestinations, true);
@@ -289,7 +313,7 @@ export const buildTourImportJson = (
       tourCode,
       company,
       tourGuide: guide,
-      clientName: tourCode || clientName || 'Khách tour',
+      clientName: clientName || tourCode || 'Khách tour',
       clientNationality: nationality,
       adults: totalGuests,
       children: 0,

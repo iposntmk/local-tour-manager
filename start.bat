@@ -32,7 +32,10 @@ echo LLM Model     : %OPENAI_MODEL%
 echo Viewer        : http://localhost:%AGENTMEMORY_VIEWER_PORT%
 echo --------------------------------------------------------
 
-:: 4. Chạy server
+:: 4. CI=1 -> khong hoi cai iii-console / global install (prompt Y/n tai dien moi lan)
+set "CI=1"
+
+:: 5. Chạy server
 npx -y @agentmemory/agentmemory@latest
 
 pause

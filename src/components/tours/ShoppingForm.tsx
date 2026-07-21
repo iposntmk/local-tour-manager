@@ -48,7 +48,7 @@ export function ShoppingForm({
   onChange,
   editingIndex,
   tour,
-  shoppingItems,
+  shoppingItems = [],
   formReceiveFull,
   formCashPayment,
   onFormReceiveFullChange,

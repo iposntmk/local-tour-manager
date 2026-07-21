@@ -44,4 +44,16 @@ describe('shopping commission mapping', () => {
     expect(shopping.payments).toHaveLength(1);
     expect(shopping.commissionStatus).toBe('partial');
   });
+
+  it('maps a shopping row without commission payments to an empty payment list', () => {
+    const shopping = mapTourShopping({
+      id: 'ts2', tour_id: 't1', name: 'Cua hang', price: 1_000_000, date: '2026-05-01',
+      withholds_pit: false, pit_rate: null, pit_amount: null, net_commission: null,
+      line_status: 'unchecked', line_comment: null, reviewed_by: null, reviewed_at: null,
+      created_at: null, updated_at: null,
+    });
+
+    expect(shopping.payments).toEqual([]);
+    expect(shopping.commissionStatus).toBe('pending');
+  });
 });

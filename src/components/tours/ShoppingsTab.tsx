@@ -29,6 +29,7 @@ interface ShoppingsTabProps {
 }
 
 export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = false }: ShoppingsTabProps) {
+  const shoppingRows = Array.isArray(shoppings) ? shoppings : [];
   const [isUnlocked, setIsUnlocked] = useState(() => sessionStorage.getItem('shopping.unlocked') === 'true');
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
@@ -69,7 +70,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
   const addMutation = useMutation({
     mutationFn: async (shopping: Shopping) => {
       if (tourId) await store.addTourShopping(tourId, shopping);
-      else onChange?.([...shoppings, shopping]);
+      else onChange?.([...shoppingRows, shopping]);
     },
     onSuccess: () => {
       if (tourId) {
@@ -87,7 +88,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     mutationFn: async ({ index, shopping }: { index: number; shopping: Shopping }) => {
       if (tourId) await store.updateTourShopping(tourId, index, shopping);
       else {
-        const updated = [...shoppings];
+        const updated = [...shoppingRows];
         updated[index] = shopping;
         onChange?.(updated);
       }
@@ -110,7 +111,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
         queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
         void invalidateTourAggregateCaches(queryClient, 'none');
       } else {
-        onChange?.(shoppings.filter((_, i) => i !== index));
+        onChange?.(shoppingRows.filter((_, i) => i !== index));
       }
       toast.success('Đã xóa mục mua sắm');
     },
@@ -150,7 +151,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
 
   const handleFormReceiveFullChange = (checked: boolean) => {
     if (editingIndex !== null) {
-      const shopping = shoppings[editingIndex];
+      const shopping = shoppingRows[editingIndex];
       if (checked) {
         handleAddPayment(shopping, getPaymentRemaining(shopping), {
           paymentMethod: formCashPayment ? 'cash' : 'bank_transfer',
@@ -190,7 +191,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
 
   const handleEdit = (index: number) => {
     if (readOnly) return;
-    const shopping = shoppings[index];
+    const shopping = shoppingRows[index];
     setEditingIndex(index);
     setFormData(shopping);
     setFormReceiveFull(isFullyReceived(shopping));
@@ -223,8 +224,8 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     }
   };
 
-  const totalAmount = shoppings.reduce((sum, s) => sum + s.price, 0);
-  const totalTip = shoppings.filter((s) => s.name === 'TIP').reduce((sum, s) => sum + s.price, 0);
+  const totalAmount = shoppingRows.reduce((sum, s) => sum + s.price, 0);
+  const totalTip = shoppingRows.filter((s) => s.name === 'TIP').reduce((sum, s) => sum + s.price, 0);
 
   if (!isUnlocked) {
     return (
@@ -288,10 +289,10 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
         }
         title="Danh sách mua sắm"
         emptyMessage="Chưa có mục mua sắm nào"
-        itemCount={shoppings.length}
+        itemCount={shoppingRows.length}
         desktop={
           <ShoppingDesktopTable
-            shoppings={shoppings}
+            shoppings={shoppingRows}
             readOnly={readOnly}
             expandedPaymentIndex={expandedPaymentIndex}
             onSetExpandedPaymentIndex={setExpandedPaymentIndex}
@@ -313,7 +314,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
         }
         mobile={
           <ShoppingsMobileList
-            shoppings={shoppings}
+            shoppings={shoppingRows}
             readOnly={readOnly}
             isPendingAdd={addPaymentMutation.isPending}
             isPendingClear={clearPaymentsMutation.isPending}
