@@ -40,7 +40,7 @@ export function NewExpenseDialog({ open, onOpenChange, readOnly, guideId, onCrea
     mutationFn: (data: ExpenseCategoryInput) => store.createExpenseCategory({ ...data, guideId }),
     onSuccess: (category) => {
       queryClient.setQueryData<ExpenseCategory[]>(['expenseCategories', guideId ?? null], (current) => upsertById(current, category));
-      queryClient.invalidateQueries({ queryKey: ['expenseCategories', guideId ?? null] });
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
       setCategoryId(category.id);
       setOpenCategory(false);
       setShowNewCategoryDialog(false);
@@ -57,7 +57,7 @@ export function NewExpenseDialog({ open, onOpenChange, readOnly, guideId, onCrea
     },
     onSuccess: (newExpense) => {
       queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses', guideId ?? null], (current) => upsertById(current, newExpense));
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses', guideId ?? null] });
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('Đã tạo chi phí chi tiết');
       onCreated({ name: newExpense.name, price: newExpense.price });
       reset();

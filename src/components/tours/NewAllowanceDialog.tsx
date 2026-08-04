@@ -62,7 +62,7 @@ export function NewAllowanceDialog({
     },
     onSuccess: (newExpense) => {
       queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses', guideId ?? null], (current) => upsertById(current, newExpense));
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses', guideId ?? null] });
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('Đã tạo CTP');
       onCreated({ name: newExpense.name, price: newExpense.price, categoryId: newExpense.categoryRef?.id });
       reset();

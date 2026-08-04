@@ -25,7 +25,7 @@ export function NewShoppingDialog({ open, onOpenChange, readOnly, guideId, onCre
     mutationFn: () => store.createShopping({ name: name.trim(), guideId }),
     onSuccess: (newShopping) => {
       queryClient.setQueryData<MasterShopping[]>(['shoppings', guideId ?? null], (current) => upsertById(current, newShopping));
-      queryClient.invalidateQueries({ queryKey: ['shoppings', guideId ?? null] });
+      queryClient.invalidateQueries({ queryKey: ['shoppings'] });
       toast.success('Đã tạo mục mua sắm');
       onCreated({ name: newShopping.name });
       setName('');

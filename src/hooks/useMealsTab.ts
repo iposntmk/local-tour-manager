@@ -127,7 +127,7 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     mutationFn: (data: ExpenseCategoryInput) => store.createExpenseCategory({ ...data, guideId }),
     onSuccess: (category) => {
       queryClient.setQueryData<ExpenseCategory[]>(['expenseCategories', guideId ?? null], (c) => upsertById(c, category));
-      queryClient.invalidateQueries({ queryKey: ['expenseCategories', guideId ?? null] });
+      queryClient.invalidateQueries({ queryKey: ['expenseCategories'] });
       setNewMealCategoryId(category.id);
       setOpenCategory(false);
       setShowNewCategoryDialog(false);
@@ -144,7 +144,7 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     },
     onSuccess: (newMeal) => {
       queryClient.setQueryData<DetailedExpense[]>(['detailedExpenses', guideId ?? null], (c) => upsertById(c, newMeal));
-      queryClient.invalidateQueries({ queryKey: ['detailedExpenses', guideId ?? null] });
+      queryClient.invalidateQueries({ queryKey: ['detailedExpenses'] });
       toast.success('Đã tạo bữa ăn chi tiết');
       setShowNewMealDialog(false);
       setNewMealName(''); setNewMealPrice(0); setNewMealCategoryId('');
