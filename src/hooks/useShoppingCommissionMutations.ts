@@ -16,7 +16,12 @@ type PatchShopping = (shopping: Shopping) => Shopping;
 
 interface CacheSnapshot extends TourAggregateCacheSnapshot {
   optimisticPaymentId?: string;
+  previousShoppings?: Shopping[];
 }
+
+// The ShoppingsTab renders from this sub-collection query, not the ['tour', id]
+// aggregate, so commission edits must patch it directly to update without a refresh.
+const shoppingsSubQueryKey = (tourId: string) => ['tour', tourId, 'shoppings'] as const;
 
 const recomputeUnpaidFlag = (shoppings: Shopping[]) => {
   const info = getShoppingCommissionInfo(shoppings);
@@ -33,24 +38,42 @@ const patchTourShoppings = (tour: Tour, patchShopping: PatchShopping): Tour => {
   return changed ? { ...tour, shoppings, hasUnpaidCommission: recomputeUnpaidFlag(shoppings) } : tour;
 };
 
+const patchShoppingsSubCache = (queryClient: QueryClient, tourId: string, patchShopping: PatchShopping) => {
+  queryClient.setQueryData<Shopping[]>(shoppingsSubQueryKey(tourId), (current) =>
+    Array.isArray(current) ? current.map((shopping) => patchShopping(shopping)) : current
+  );
+};
+
 const patchCommissionCaches = (
   queryClient: QueryClient,
   tourId: string,
   patchShopping: PatchShopping,
 ) => {
   patchTourInAggregateCaches(queryClient, tourId, (current) => patchTourShoppings(current, patchShopping));
+  patchShoppingsSubCache(queryClient, tourId, patchShopping);
 };
 
 const snapshotCommissionCaches = async (queryClient: QueryClient, tourId?: string): Promise<CacheSnapshot> => {
-  return snapshotTourAggregateCaches(queryClient, tourId);
+  const snapshot = await snapshotTourAggregateCaches(queryClient, tourId);
+  if (!tourId) return snapshot;
+  await queryClient.cancelQueries({ queryKey: shoppingsSubQueryKey(tourId) });
+  return { ...snapshot, previousShoppings: queryClient.getQueryData<Shopping[]>(shoppingsSubQueryKey(tourId)) };
 };
 
 const restoreCommissionCaches = (queryClient: QueryClient, tourId: string | undefined, snapshot?: CacheSnapshot) => {
   restoreTourAggregateCaches(queryClient, tourId, snapshot);
+  if (tourId && snapshot?.previousShoppings) {
+    queryClient.setQueryData(shoppingsSubQueryKey(tourId), snapshot.previousShoppings);
+  }
 };
 
 const invalidateCommissionCaches = (queryClient: QueryClient, tourId?: string) => {
-  if (tourId) queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
+  if (tourId) {
+    // Refetch the sub-collection the ShoppingsTab actually reads so the optimistic
+    // patch is reconciled with server truth (real payment ids, computed status).
+    queryClient.invalidateQueries({ queryKey: shoppingsSubQueryKey(tourId) });
+    queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
+  }
   void invalidateTourAggregateCaches(queryClient, 'none');
 };
 

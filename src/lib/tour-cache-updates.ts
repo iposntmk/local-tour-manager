@@ -66,7 +66,7 @@ export const patchTourInAggregateCaches = (
     current ? patchTour(current) : current
   );
   queryClient.setQueriesData<TourListResult>({ queryKey: ['tours'] }, (current) =>
-    current
+    current && Array.isArray(current.tours)
       ? { ...current, tours: current.tours.map((tour) => (tour.id === tourId ? patchTour(tour) : tour)) }
       : current
   );

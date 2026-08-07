@@ -163,7 +163,7 @@ export const TOUR_TABLE_COLUMNS: TourTableColumn[] = [
   { key: 'settlement', label: 'Quyết toán', title: 'Trạng thái quyết toán', width: 116, cellClassName: 'whitespace-nowrap', filterType: 'settlement' },
   { key: 'payment', label: 'Thanh toán', title: 'Trạng thái thanh toán', width: 122, cellClassName: 'whitespace-nowrap', filterType: 'payment' },
   { key: 'commission', label: 'Hoa hồng', title: 'Hoa hồng mua sắm', width: 180, filterType: 'commission' },
-  { key: 'warning', label: 'Cảnh báo', title: 'Cảnh báo tour (giá 0, trùng tên, thiếu nước uống, hoa hồng chưa nhận đủ)', width: 108, cellClassName: 'whitespace-nowrap', filterType: 'warning' },
+  { key: 'warning', label: 'Cảnh báo', title: 'Cảnh báo tour (giá 0, trùng tên, thiếu nước uống, hoa hồng chưa nhận đủ)', width: 190, cellClassName: 'align-top', filterType: 'warning' },
   { key: 'actions', label: 'Hành động', title: 'Thao tác trên tour', width: 124, headerClassName: 'text-right', cellClassName: 'whitespace-nowrap text-right', filterType: 'none' },
 ];
 

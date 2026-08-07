@@ -6,6 +6,7 @@ import { PaymentStatusBadge } from '@/components/tours/PaymentStatusBadge';
 import { SettlementStatusBadge } from '@/components/tours/SettlementStatusBadge';
 import { formatCurrency } from '@/lib/currency-utils';
 import { formatDateRangeDisplay } from '@/lib/date-utils';
+import { t } from '@/lib/i18n';
 
 import { getShoppingCommissionInfo } from '@/lib/shopping-commission-utils';
 import type { Tour } from '@/types/tour';
@@ -115,15 +116,29 @@ export const ToursDesktopTableCellContent = ({
         </Badge>
       );
     }
-    case 'warning':
-      return (row.warningInfo.hasZeroPrice || row.warningInfo.hasDuplicateDestNames || row.warningInfo.missingWaterExpense) ? (
-        <Badge variant="destructive" className="gap-1" title={row.warningInfo.warningTitle}>
-          <Flag className="h-3 w-3" />
-          Kiểm tra
-        </Badge>
+    case 'warning': {
+      const warningLabels = [
+        row.warningInfo.missingWaterExpense && t('tours.mobileWarnings.missingWaterExpense'),
+        row.warningInfo.hasZeroPrice && t('tours.mobileWarnings.zeroPrice'),
+        row.warningInfo.hasDuplicateDestNames && t('tours.mobileWarnings.duplicateDestinationNames'),
+      ].filter((label): label is string => Boolean(label));
+      return warningLabels.length > 0 ? (
+        <div className="flex flex-col items-start gap-1">
+          {warningLabels.map((label) => (
+            <Badge
+              key={label}
+              variant="destructive"
+              className="max-w-full items-start gap-1 whitespace-normal break-words text-left text-[11px] leading-snug"
+            >
+              <Flag className="mt-0.5 h-3 w-3 shrink-0" />
+              <span>{label}</span>
+            </Badge>
+          ))}
+        </div>
       ) : (
         <span className="text-muted-foreground">-</span>
       );
+    }
     case 'actions':
       return (
         <div className="flex justify-end gap-1">
