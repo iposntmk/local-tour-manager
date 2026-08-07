@@ -18,7 +18,7 @@ Luồng: `ImportTourFromImageDialog` → `useTourImageOcr` → `store.analyzeTou
 | File | Trách nhiệm |
 |---|---|
 | `src/lib/ocr/tour-itinerary-rows.ts` (mới) | Dựng `ItineraryRow[]` từ bảng OCR hoặc từ dòng text, xử lý lịch trình vắt qua năm mới |
-| `src/lib/ocr/tour-image-parser.ts` | Trích thông tin tour (header) + ghi chú khách sạn; sub-collections trả mảng rỗng |
+| `src/lib/ocr/tour-image-parser.ts` | Trích thông tin tour (header); ghi chú và sub-collections trả rỗng |
 | `src/lib/ocr/tour-itinerary-builder.ts` (mới) | Bộ dựng điểm/ăn/công tác phí — **giữ nguyên và vẫn có test**, chỉ không được luồng import gọi |
 
 Bật lại việc lấy sub-collection = gọi `buildItinerarySubcollections(analyzeResult, destinations, options, freeDestinations)`.
@@ -41,7 +41,7 @@ Kiểm tra tách sang `src/lib/import-review-validation.ts` (hàm thuần):
 | Tab Info của thẻ review không có ô `adults`, `children`, `driverName`, `clientPhone`, `notes` — OCR trích ra nhưng user không sửa được | Tách `ImportTourInfoFields.tsx`, bổ sung đủ 5 trường + ô Tổng khách chỉ đọc |
 | Sửa số khách không cập nhật `totalGuests` (ảnh hưởng paxCount quốc tịch, chi phí nước uống) | `updateTourField` tính lại `totalGuests` khi đổi `adults`/`children` |
 | Tour lưu được với 0 khách | `validateReviewItems` chặn |
-| Cột "Khách sạn" của OCR bị đọc rồi vứt | `buildNotesFromHotels` dồn vào `notes`, gộp ngày liên tiếp cùng khách sạn thành `dd/MM - dd/MM: tên` |
+| Không có ô ghi chú ở màn hình review | Thêm ô Ghi chú nhập tay. Ghi chú **không** tự lấy từ ảnh — parser luôn trả `notes: ''` |
 | `createTour` nuốt lỗi ghi dòng chi tiết bằng `console.error` → báo "thành công" cho bản ghi thiếu dữ liệu | Ném `TourSubcollectionError` (`src/lib/datastore/tour-errors.ts`) kèm tour đã tạo; 3 caller giữ tour nhưng cảnh báo |
 
 ### Upload ảnh

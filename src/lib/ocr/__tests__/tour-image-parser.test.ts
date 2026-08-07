@@ -59,31 +59,8 @@ describe('buildTourImportJson', () => {
     expect(tour.totalDays).toBe(2);
   });
 
-  it('gộp cột khách sạn thành ghi chú tour', () => {
-    expect(tour.notes).toBe('04/09 - 05/09: Alba Spa Hotel');
-  });
-
-  it('tách khách sạn khác nhau thành từng dòng ghi chú', () => {
-    const [multiHotel] = buildTourImportJson({
-      tables: [{
-        cells: [
-          { rowIndex: 0, columnIndex: 0, content: 'Ngày' },
-          { rowIndex: 0, columnIndex: 1, content: 'Tham quan' },
-          { rowIndex: 0, columnIndex: 2, content: 'Khách sạn' },
-          { rowIndex: 1, columnIndex: 0, content: '4/9' },
-          { rowIndex: 1, columnIndex: 1, content: 'Tham Đại Nội' },
-          { rowIndex: 1, columnIndex: 2, content: 'Alba Spa Hotel' },
-          { rowIndex: 2, columnIndex: 0, content: '5/9' },
-          { rowIndex: 2, columnIndex: 1, content: 'Tham Hội An' },
-          { rowIndex: 2, columnIndex: 2, content: '0' },
-          { rowIndex: 3, columnIndex: 0, content: '6/9' },
-          { rowIndex: 3, columnIndex: 1, content: 'Tham Bà Nà' },
-          { rowIndex: 3, columnIndex: 2, content: 'Muong Thanh' },
-        ],
-      }],
-    }, { year: 2025 });
-
-    expect(multiHotel.tour.notes).toBe('04/09: Alba Spa Hotel\n06/09: Muong Thanh');
+  it('để trống ghi chú dù ảnh có cột khách sạn — user tự nhập sau', () => {
+    expect(tour.notes).toBe('');
   });
 
   it('chỉ lấy thông tin tab Info — không sinh dòng chi tiết nào', () => {

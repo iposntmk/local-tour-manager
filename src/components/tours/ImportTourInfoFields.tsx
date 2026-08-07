@@ -143,7 +143,7 @@ export function ImportTourInfoFields({
       </div>
 
       <div>
-        <Label className="text-xs font-medium">Ghi chú (khách sạn theo ngày từ OCR)</Label>
+        <Label className="text-xs font-medium">Ghi chú</Label>
         <Textarea value={tour.notes || ''} onChange={(e) => onUpdateField('notes', e.target.value)}
           rows={3} className="text-xs min-h-16" />
       </div>

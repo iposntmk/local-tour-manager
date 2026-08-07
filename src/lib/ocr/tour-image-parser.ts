@@ -1,13 +1,13 @@
 // Bộ dựng JSON import tour từ kết quả OCR (analyzeResult của Azure).
 //
 // Phạm vi: CHỈ trích xuất thông tin tab "Thông tin tour" (mã tour, công ty, HDV,
-// khách, quốc tịch, lái xe, SĐT, ngày bắt đầu/kết thúc, ghi chú khách sạn).
-// Điểm tham quan / bữa ăn / công tác phí KHÔNG được lấy — xem
-// `tour-itinerary-builder.ts` nếu cần bật lại.
+// khách, quốc tịch, lái xe, SĐT, ngày bắt đầu/kết thúc). Ghi chú luôn để trống
+// cho người dùng tự nhập. Điểm tham quan / bữa ăn / công tác phí KHÔNG được lấy
+// — xem `tour-itinerary-builder.ts` nếu cần bật lại.
 
 import {
-  type AnalyzeResult, type ItineraryRow,
-  ymd, dateDiffDays, collectLines, oneLine, isBlankOrZero,
+  type AnalyzeResult,
+  ymd, dateDiffDays, collectLines,
   matchValue, parseGuestCount, isNonProgramDay, parseSheetDate,
 } from './ocr-text-utils';
 import { extractClientPhone, extractCompany, resolveNationality } from './ocr-extractors';
@@ -38,30 +38,6 @@ const extractTextDates = (text: string, year: number): string[] => {
   const matches = Array.from(text.matchAll(/\b\d{1,2}\s*\/\s*\d{1,2}(?:\s*\/\s*\d{2,4})?\b/g));
   const dates = matches.map((match) => parseSheetDate(match[0], year)).filter(Boolean);
   return Array.from(new Set(dates)).sort();
-};
-
-/**
- * Ghi chú tour = cột "Khách sạn" của lịch trình, mỗi ngày một dòng `dd/MM: tên`.
- * Ngày liên tiếp cùng khách sạn được gộp thành `dd/MM - dd/MM: tên` cho gọn.
- */
-export const buildNotesFromHotels = (rows: ItineraryRow[]): string => {
-  const groups: Array<{ from: string; to: string; hotel: string }> = [];
-  rows.forEach((row) => {
-    if (!row.date || isBlankOrZero(row.hotel)) return;
-    const hotel = oneLine(row.hotel);
-    const last = groups[groups.length - 1];
-    if (last && last.hotel === hotel) {
-      last.to = row.date;
-      return;
-    }
-    groups.push({ from: row.date, to: row.date, hotel });
-  });
-
-  const dayMonth = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
-  return groups
-    .map(({ from, to, hotel }) =>
-      from === to ? `${dayMonth(from)}: ${hotel}` : `${dayMonth(from)} - ${dayMonth(to)}: ${hotel}`)
-    .join('\n');
 };
 
 export const buildTourImportJson = (
@@ -108,7 +84,8 @@ export const buildTourImportJson = (
       startDate,
       endDate,
       totalDays: dateDiffDays(startDate, endDate) || itineraryRows.length,
-      notes: buildNotesFromHotels(itineraryRows),
+      // Ghi chú luôn để trống — người dùng tự nhập sau khi import.
+      notes: '',
     },
     // Info-only: các tab dòng chi tiết để trống, người dùng nhập ở màn hình tour.
     subcollections: {
