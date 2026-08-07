@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildTourImportJson } from '../tour-image-parser';
+import { buildItinerarySubcollections } from '../tour-itinerary-builder';
 import { extractVisitCandidates } from '../visit-candidates';
 import { inferNationalityFromPhone } from '../ocr-extractors';
 import type { AnalyzeResult } from '../ocr-text-utils';
@@ -18,10 +19,13 @@ const sampleAnalyzeResult: AnalyzeResult = {
     cells: [
       { rowIndex: 0, columnIndex: 0, content: 'Ngày' },
       { rowIndex: 0, columnIndex: 1, content: 'Tham quan' },
+      { rowIndex: 0, columnIndex: 2, content: 'Khách sạn' },
       { rowIndex: 1, columnIndex: 0, content: '4/9' },
       { rowIndex: 1, columnIndex: 1, content: 'Tham Đại Nội' },
+      { rowIndex: 1, columnIndex: 2, content: 'Alba Spa Hotel' },
       { rowIndex: 2, columnIndex: 0, content: '5/9' },
       { rowIndex: 2, columnIndex: 1, content: 'Tham Hội An' },
+      { rowIndex: 2, columnIndex: 2, content: 'Alba Spa Hotel' },
     ],
   }],
 };
@@ -33,7 +37,7 @@ const destinations = [
 ];
 
 describe('buildTourImportJson', () => {
-  const [result] = buildTourImportJson(sampleAnalyzeResult, destinations, { year: 2025 });
+  const [result] = buildTourImportJson(sampleAnalyzeResult, { year: 2025 });
   const { tour, subcollections } = result;
 
   it('trích xuất thông tin tour chính từ header', () => {
@@ -55,14 +59,53 @@ describe('buildTourImportJson', () => {
     expect(tour.totalDays).toBe(2);
   });
 
+  it('gộp cột khách sạn thành ghi chú tour', () => {
+    expect(tour.notes).toBe('04/09 - 05/09: Alba Spa Hotel');
+  });
+
+  it('tách khách sạn khác nhau thành từng dòng ghi chú', () => {
+    const [multiHotel] = buildTourImportJson({
+      tables: [{
+        cells: [
+          { rowIndex: 0, columnIndex: 0, content: 'Ngày' },
+          { rowIndex: 0, columnIndex: 1, content: 'Tham quan' },
+          { rowIndex: 0, columnIndex: 2, content: 'Khách sạn' },
+          { rowIndex: 1, columnIndex: 0, content: '4/9' },
+          { rowIndex: 1, columnIndex: 1, content: 'Tham Đại Nội' },
+          { rowIndex: 1, columnIndex: 2, content: 'Alba Spa Hotel' },
+          { rowIndex: 2, columnIndex: 0, content: '5/9' },
+          { rowIndex: 2, columnIndex: 1, content: 'Tham Hội An' },
+          { rowIndex: 2, columnIndex: 2, content: '0' },
+          { rowIndex: 3, columnIndex: 0, content: '6/9' },
+          { rowIndex: 3, columnIndex: 1, content: 'Tham Bà Nà' },
+          { rowIndex: 3, columnIndex: 2, content: 'Muong Thanh' },
+        ],
+      }],
+    }, { year: 2025 });
+
+    expect(multiHotel.tour.notes).toBe('04/09: Alba Spa Hotel\n06/09: Muong Thanh');
+  });
+
+  it('chỉ lấy thông tin tab Info — không sinh dòng chi tiết nào', () => {
+    expect(subcollections.destinations).toEqual([]);
+    expect(subcollections.expenses).toEqual([]);
+    expect(subcollections.meals).toEqual([]);
+    expect(subcollections.allowances).toEqual([]);
+  });
+});
+
+describe('buildItinerarySubcollections (không dùng trong luồng import Info-only)', () => {
+  const { destinations: builtDestinations } = buildItinerarySubcollections(
+    sampleAnalyzeResult, destinations, { year: 2025 });
+
   it('khớp điểm tham quan với DB qua token/fuzzy (lấy tên + giá DB)', () => {
-    const byName = new Map(subcollections.destinations.map((d) => [d.name, d.price]));
+    const byName = new Map(builtDestinations.map((d) => [d.name, d.price]));
     expect(byName.get('vé_Đại Nội')).toBe(100000);
     expect(byName.get('vé_Hội An')).toBe(50000);
   });
 
   it('khớp địa điểm OCR qua rawName của DB để lấy name chuẩn', () => {
-    const [rawNameResult] = buildTourImportJson({
+    const rawNameResult = buildItinerarySubcollections({
       tables: [{
         cells: [
           { rowIndex: 0, columnIndex: 0, content: 'Ngày' },
@@ -73,12 +116,11 @@ describe('buildTourImportJson', () => {
       }],
     }, destinations, { year: 2025 });
 
-    expect(rawNameResult.subcollections.destinations.map((d) => d.name))
-      .toEqual(['vé_Đại Nội', 'vé_Hội An']);
+    expect(rawNameResult.destinations.map((d) => d.name)).toEqual(['vé_Đại Nội', 'vé_Hội An']);
   });
 });
 
-describe('buildTourImportJson — destinations_free & công tác phí theo tỉnh', () => {
+describe('buildItinerarySubcollections — destinations_free & công tác phí theo tỉnh', () => {
   const destinationsWithProvince = [
     { name: 'vé_Đại Nội', rawName: 'Imperial City', price: 100000, province: 'Huế' },
     { name: 'vé_Hội An', rawName: 'Old Town', price: 50000, province: 'Quảng Nam' },
@@ -98,8 +140,8 @@ describe('buildTourImportJson — destinations_free & công tác phí theo tỉn
     }],
   };
 
-  const [result] = buildTourImportJson(analyzeResult, destinationsWithProvince, { year: 2025 }, freeDestinations);
-  const { destinations, allowances } = result.subcollections;
+  const { destinations, allowances } = buildItinerarySubcollections(
+    analyzeResult, destinationsWithProvince, { year: 2025 }, freeDestinations);
 
   it('loại điểm khớp destinations_free khỏi JSON', () => {
     const names = destinations.map((d) => d.name);
@@ -138,8 +180,8 @@ describe('buildTourImportJson — destinations_free & công tác phí theo tỉn
       { name: 'vé_Đại Nội', price: 100000, province: 'Huế' },
       { name: 'Cầu Rồng', price: 50000, province: 'Đà Nẵng' },
     ];
-    const [result] = buildTourImportJson(analyzeResult, multiProvinceDestinations, { year: 2025 });
-    const day1 = result.subcollections.allowances.find((a) => a.date === '2025-09-04');
+    const result = buildItinerarySubcollections(analyzeResult, multiProvinceDestinations, { year: 2025 });
+    const day1 = result.allowances.find((a) => a.date === '2025-09-04');
     expect(day1?.provinceCandidates).toBeDefined();
     expect(day1?.provinceCandidates).toEqual(expect.arrayContaining(['Huế', 'Đà Nẵng']));
     expect(day1?.provinceCandidates?.length).toBe(2);

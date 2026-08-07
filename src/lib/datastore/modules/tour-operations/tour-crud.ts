@@ -10,6 +10,7 @@ import { enrichTourWithSummary, enrichToursWithSummaries } from '@/lib/tour-util
 import { getTourWarningInfo, getAllowanceTotal } from '@/pages/tours/tour-table-config';
 import { stripTourShoppingForProfile } from '@/lib/shopping-access';
 import { isWaterExpense, normalizeWaterExpenseLine } from '@/lib/water-expense-utils';
+import { TourSubcollectionError } from '@/lib/datastore/tour-errors';
 import { mapTour, mapTourPayment, mapTourShopping, mapLineReviewFields } from '../mappers';
 import type { TourRowWithDetails, TourNationalityRow, TourPaymentRow } from '../store-types';
 import type { UserProfile } from '@/types/user';
@@ -283,6 +284,9 @@ export class TourCrudModule {
       await this.recalculateTourSummary(createdTour.id);
     } catch (subcollectionError) {
       console.error('Error adding subcollections:', subcollectionError);
+      // Tour đã nằm trong DB — không rollback, nhưng phải báo lên để caller
+      // không hiển thị "thành công" cho một bản ghi thiếu dòng chi tiết.
+      throw new TourSubcollectionError(createdTour, subcollectionError);
     }
     return createdTour;
   }
@@ -352,6 +356,12 @@ export class TourCrudModule {
           }
         }
       } catch (e) { console.error('Error auto-updating water expense:', e); }
+    }
+
+    // Dismissing the water warning must refresh the denormalized warning flags
+    // (missing_water_expense) that the tour list reads; otherwise the column stays stale.
+    if (tour.waterExpenseDismissed !== undefined && tour.missingWaterExpense === undefined) {
+      await this.recalculateTourSummary(id);
     }
   }
 

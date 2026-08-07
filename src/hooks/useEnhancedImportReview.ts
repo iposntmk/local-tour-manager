@@ -6,6 +6,7 @@ import { store } from '@/lib/datastore';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { buildMatcher, AUTO_MATCH_PCT, type Matcher, type MatchCandidate } from '@/lib/import-match-utils';
+import { buildValidationWarnings, validateReviewItems } from '@/lib/import-review-validation';
 
 export interface ReviewItem {
   tour: Partial<Tour>;
@@ -177,22 +178,7 @@ export function useEnhancedImportReview(
     load();
   }, [items, preloadedEntities]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const validationWarnings = useMemo(() => {
-    const w: { [k: number]: string[] } = {};
-    draft.forEach((item, i) => {
-      const warnings: string[] = [];
-      const { tour, raw } = item;
-      if (!tour.tourCode) warnings.push('Tour code is missing');
-      if (!tour.clientName) warnings.push('Client name is missing');
-      if (!tour.startDate) warnings.push('Start date is missing');
-      if (!tour.endDate) warnings.push('End date is missing');
-      if (!tour.companyRef?.id) warnings.push(`Company not selected (raw: "${raw.company}")`);
-      if (!tour.guideRef?.id) warnings.push(`Guide not selected (raw: "${raw.guide}")`);
-      if (!tour.clientNationalityRef?.id) warnings.push(`Nationality not selected (raw: "${raw.nationality}")`);
-      if (warnings.length) w[i] = warnings;
-    });
-    return w;
-  }, [draft]);
+  const validationWarnings = useMemo(() => buildValidationWarnings(draft), [draft]);
 
   const filteredTours = useMemo(() => {
     let tours = draft;
@@ -213,20 +199,7 @@ export function useEnhancedImportReview(
     });
   }, [draft, searchQuery, validationWarnings]);
 
-  const validateForImport = () => {
-    const errors: string[] = [];
-    draft.forEach((item, i) => {
-      const name = item.tour.tourCode || `Tour ${i + 1}`;
-      if (!item.tour.tourCode) errors.push(`${name}: Tour code is required`);
-      if (!item.tour.clientName) errors.push(`${name}: Client name is required`);
-      if (!item.tour.startDate) errors.push(`${name}: Start date is required`);
-      if (!item.tour.endDate) errors.push(`${name}: End date is required`);
-      if (!item.tour.companyRef?.id) errors.push(`${name}: Company is required`);
-      if (!item.tour.guideRef?.id) errors.push(`${name}: Guide is required`);
-      if (!item.tour.clientNationalityRef?.id) errors.push(`${name}: Nationality is required`);
-    });
-    return { valid: errors.length === 0, errors };
-  };
+  const validateForImport = () => validateReviewItems(draft);
 
   // A row counts as "Matched" (green) only when a candidate clears AUTO_MATCH_PCT.
   const autoMatch = <M extends { name: string }>(matcher: Matcher<M> | undefined, name: string): M | null => {
@@ -271,8 +244,17 @@ export function useEnhancedImportReview(
   const removeMeal = (ti: number, mi: number) => removeFromSubcollection(ti, 'meals', mi);
   const removeAllowance = (ti: number, ai: number) => removeFromSubcollection(ti, 'allowances', ai);
 
+  // Sửa số người lớn/trẻ em phải kéo theo totalGuests, vì paxCount quốc tịch và
+  // chi phí nước uống đều tính theo tổng khách.
   const updateTourField = (index: number, field: string, value: any) =>
-    setDraft(prev => prev.map((item, i) => i === index ? { ...item, tour: { ...item.tour, [field]: value } } : item));
+    setDraft(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const tour = { ...item.tour, [field]: value };
+      if (field === 'adults' || field === 'children') {
+        tour.totalGuests = (Number(tour.adults) || 0) + (Number(tour.children) || 0);
+      }
+      return { ...item, tour };
+    }));
 
   const updateEntityRef = (index: number, entityType: EntityType, entity: { id: string; name: string }) =>
     setDraft(prev => prev.map((item, i) =>

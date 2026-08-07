@@ -11,6 +11,7 @@ import {
   TOUR_DETAIL_STALE_TIME,
 } from '@/lib/query-cache';
 import { toVietnameseError } from '@/lib/error-messages';
+import { isTourSubcollectionError } from '@/lib/datastore/tour-errors';
 import { useAuth } from '@/contexts/AuthContext';
 import { canEditTourData } from '@/lib/settlement-utils';
 import { canAuthViewTourShopping } from '@/lib/shopping-access';
@@ -98,15 +99,24 @@ export function useTourDetail() {
     mutationFn: async (input: TourInput) => {
       const totalGuests = (input.adults || 0) + (input.children || 0);
       const totalDays = calcTotalDays(input.startDate, input.endDate);
-      return store.createTour({
-        ...input, totalGuests, totalDays,
-        destinations: newTourData.destinations || [],
-        expenses: newTourData.expenses || [],
-        meals: newTourData.meals || [],
-        allowances: newTourData.allowances || [],
-        shoppings: newTourData.shoppings || [],
-        summary: newTourData.summary!,
-      });
+      try {
+        return await store.createTour({
+          ...input, totalGuests, totalDays,
+          destinations: newTourData.destinations || [],
+          expenses: newTourData.expenses || [],
+          meals: newTourData.meals || [],
+          allowances: newTourData.allowances || [],
+          shoppings: newTourData.shoppings || [],
+          summary: newTourData.summary!,
+        });
+      } catch (error) {
+        // Tour đã tạo, chỉ dòng chi tiết lỗi: vẫn coi là tạo thành công nhưng cảnh báo.
+        if (isTourSubcollectionError(error)) {
+          toast.warning(error.message, { duration: 10000 });
+          return error.tour;
+        }
+        throw error;
+      }
     },
     onSuccess: () => { void invalidateTourAggregateCaches(queryClient); toast.success('Tạo tour thành công'); navigate('/tours'); },
     onError: (error: Error) => {

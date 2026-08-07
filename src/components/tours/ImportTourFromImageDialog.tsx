@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTour
   const [company, setCompany] = useState('');
   const [nationality, setNationality] = useState('');
   const { file, isAnalyzing, reviewItems, entityCaches, rawOcr, analyze, reset } = useTourImageOcr();
+  const queryClient = useQueryClient();
 
   const closeAndReset = () => {
     reset();
@@ -75,15 +77,21 @@ export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTour
       return;
     }
 
-    const createdTour = result.imported[0];
-    if (createdTour && file) {
+    if (file && result.imported.length === 0) {
+      toast.warning('Không có tour nào được tạo nên ảnh chương trình chưa được đính vào tour nào.', { duration: 8000 });
+    }
+
+    // Đính ảnh gốc cho mọi tour vừa tạo (thường chỉ 1) rồi làm mới tab Ảnh.
+    for (const createdTour of result.imported) {
+      if (!file) break;
       try {
         const path = generateTourImageStoragePath(createdTour.id, createdTour.tourCode, file);
         await store.uploadTourImage(createdTour.id, file, path);
-        toast.success('Đã đính ảnh chương trình vào tab Ảnh của tour');
+        await queryClient.invalidateQueries({ queryKey: ['tourImages', createdTour.id] });
+        toast.success(`Đã đính ảnh chương trình vào tab Ảnh của tour ${createdTour.tourCode}`);
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Lỗi không xác định';
-        toast.error(`Tour đã lưu nhưng đính ảnh thất bại: ${msg}`, { duration: 8000 });
+        toast.error(`Tour ${createdTour.tourCode} đã lưu nhưng đính ảnh thất bại: ${msg}`, { duration: 8000 });
       }
     }
     closeAndReset();
@@ -102,8 +110,9 @@ export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTour
         <DialogHeader className="pb-2 sm:pb-3 shrink-0">
           <DialogTitle className="text-lg">Import tour từ ảnh chương trình (OCR)</DialogTitle>
           <DialogDescription className="text-sm">
-            Tải ảnh/PDF chương trình tour, hệ thống OCR và trích xuất dữ liệu để bạn xem lại trước khi lưu.
-            Ảnh gốc sẽ được đính vào tab Ảnh của tour sau khi lưu.
+            Tải ảnh/PDF chương trình tour, hệ thống OCR và trích xuất <strong>thông tin tour (tab Thông tin)</strong> —
+            công ty, HDV, quốc tịch được so khớp với master data để bạn xem lại trước khi lưu.
+            Điểm tham quan, bữa ăn và công tác phí nhập trực tiếp trong tour. Ảnh gốc tự động đính vào tab Ảnh sau khi lưu.
           </DialogDescription>
         </DialogHeader>
 

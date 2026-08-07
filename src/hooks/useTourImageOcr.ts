@@ -10,6 +10,10 @@ import type { ReviewItemRaw } from '@/hooks/useImportTourDialogBase';
  * Luồng OCR ảnh chương trình tour: ảnh -> Edge Function (Azure) -> parser ->
  * reviewItems dùng chung với luồng import JSON. Giữ lại File gốc để đính vào
  * tab ảnh của tour sau khi lưu.
+ *
+ * Phạm vi: chỉ lấy thông tin tab "Thông tin tour". Công ty / HDV / quốc tịch
+ * được so khớp với master data qua `loadEntityCachesFromStore` +
+ * `transformImportedTour`; các dòng chi tiết không được trích xuất.
  */
 export function useTourImageOcr() {
   const [file, setFile] = useState<File | null>(null);
@@ -24,23 +28,14 @@ export function useTourImageOcr() {
   ): Promise<boolean> => {
     setIsAnalyzing(true);
     try {
-      const [analyzeResult, destinations, freeDestinations, caches] = await Promise.all([
+      const [analyzeResult, caches] = await Promise.all([
         store.analyzeTourImage(input, options.provider),
-        store.listTouristDestinations({}),
-        store.listDestinationsFree({}),
         loadEntityCachesFromStore(),
       ]);
       setEntityCaches(caches);
       setRawOcr(analyzeResult);
 
-      const importJson = buildTourImportJson(
-        analyzeResult,
-        destinations.map((d) => ({
-          name: d.name, rawName: d.rawName, price: d.price, province: d.provinceRef?.nameAtBooking,
-        })),
-        options,
-        freeDestinations.map((d) => ({ name: d.name, rawName: d.rawName, price: 0 })),
-      );
+      const importJson = buildTourImportJson(analyzeResult, options);
       // Đính JSON parser sinh ra (sourceJson) vào từng item để tab JSON đối chiếu.
       const transformed = importJson.map((t) => ({ ...transformImportedTour(t, caches), sourceJson: t }));
       setReviewItems(transformed);

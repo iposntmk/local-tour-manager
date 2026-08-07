@@ -4,6 +4,7 @@ import type { Language, Guide, Company, Nationality, Province, TouristDestinatio
 import type { Tour, Destination, Expense, Meal, Allowance, Shopping as TourShopping, TourQuery, TourListResult } from '@/types/tour';
 import type { SearchQuery } from '@/types/datastore';
 import { MASTER_ADMIN_EMAIL } from '@/lib/auth-constants';
+import { isTourSubcollectionError } from '@/lib/datastore/tour-errors';
 
 export class TourDataModule {
   declare protected supabase: SupabaseClient<Database>;
@@ -134,7 +135,15 @@ export class TourDataModule {
     if (data.tours) {
       for (const tour of data.tours) {
         const { id, createdAt, updatedAt, destinations, expenses, meals, allowances, summary, ...tourInput } = tour;
-        const createdTour = await this.createTour(tourInput);
+        // createTour ném TourSubcollectionError khi chỉ phần dòng chi tiết lỗi
+        // (ở đây chỉ có dòng nước uống tự thêm); tour vẫn hợp lệ nên đi tiếp.
+        let createdTour: Tour;
+        try {
+          createdTour = await this.createTour(tourInput);
+        } catch (error) {
+          if (!isTourSubcollectionError(error)) throw error;
+          createdTour = error.tour;
+        }
 
         if (destinations && destinations.length > 0) {
           await Promise.all(destinations.map((dest: Destination) => this.addDestination(createdTour.id, dest)));

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { handleImportError, validateTourData } from '@/lib/error-utils';
 import { getTourNationalityIds } from '@/pages/tours/tour-table-config';
 import { buildMatcher, AUTO_MATCH_PCT, type Matcher } from '@/lib/import-match-utils';
+import { isTourSubcollectionError } from '@/lib/datastore/tour-errors';
 
 // Define ProcessResult type for bulk import
 type ProcessResult =
@@ -85,12 +86,13 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
       const results: Tour[] = [];
       const errors: string[] = [];
       const skipped: string[] = [];
+      const partialWarnings: string[] = [];
 
       const appendTourToCache = (newTour: Tour) => {
         const queries = queryClient.getQueriesData<TourListResult>({ queryKey: ['tours'] });
 
         queries.forEach(([queryKey, data]) => {
-          if (!data) return;
+          if (!data || !Array.isArray(data.tours)) return;
           if (!Array.isArray(queryKey)) return;
 
           const baseQuery = (queryKey[1] ?? undefined) as TourQuery | undefined;
@@ -239,7 +241,9 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
                   return normalized;
                 });
 
-                // Create the tour with all subcollections in one call
+                // Create the tour with all subcollections in one call.
+                // Nếu chỉ phần dòng chi tiết lỗi thì tour vẫn tồn tại — giữ lại
+                // và cảnh báo, thay vì báo cả tour thất bại.
                 const createdTour = await store.createTour({
                   tourCode: tour.tourCode!,
                   companyRef: tour.companyRef,
@@ -268,6 +272,12 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
 
                 return recordResult({ success: true, tour: createdTour });
               } catch (error) {
+                if (isTourSubcollectionError(error)) {
+                  appendTourToCache(error.tour);
+                  if (tour.tourCode) existingTourCodes.add(tour.tourCode.toLowerCase());
+                  partialWarnings.push(error.message);
+                  return recordResult({ success: true, tour: error.tour });
+                }
                 const tourCode = tour.tourCode || `Tour ${globalIndex + 1}`;
                 const context = {
                   operation: 'importTour',
@@ -304,12 +314,14 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
         throw new Error(errors.join('\n'));
       }
 
-      return { imported: results, skipped };
+      return { imported: results, skipped, partialWarnings };
     },
     onSuccess: async (result) => {
-      const { imported, skipped } = result;
+      const { imported, skipped, partialWarnings } = result;
 
       await invalidateTourAggregateCaches(queryClient);
+
+      partialWarnings.forEach((message) => toast.warning(message, { duration: 10000 }));
 
       // Show success message with details
       if (skipped.length > 0) {

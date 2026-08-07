@@ -1,16 +1,17 @@
 // Bộ dựng JSON import tour từ kết quả OCR (analyzeResult của Azure).
-// Port từ scripts/tour-image-import-parser.mjs, dùng điểm đến từ DB.
+//
+// Phạm vi: CHỈ trích xuất thông tin tab "Thông tin tour" (mã tour, công ty, HDV,
+// khách, quốc tịch, lái xe, SĐT, ngày bắt đầu/kết thúc, ghi chú khách sạn).
+// Điểm tham quan / bữa ăn / công tác phí KHÔNG được lấy — xem
+// `tour-itinerary-builder.ts` nếu cần bật lại.
 
 import {
-  type AnalyzeResult, type AnalyzeTable, type ItineraryRow,
-  normalize, oneLine, ymd, parseSheetDate, dateDiffDays, collectLines,
-  matchValue, parseGuestCount, isBlankOrZero, isNonProgramDay,
-  parsePrice, looksLikeVisit, looksLikeHdvMeal, extractInlineDinner,
+  type AnalyzeResult, type ItineraryRow,
+  ymd, dateDiffDays, collectLines, oneLine, isBlankOrZero,
+  matchValue, parseGuestCount, isNonProgramDay, parseSheetDate,
 } from './ocr-text-utils';
 import { extractClientPhone, extractCompany, resolveNationality } from './ocr-extractors';
-import { type DestinationEntry } from './destination-lookup';
-import { extractVisitCandidates } from './visit-candidates';
-import { buildMatcher, AUTO_MATCH_PCT, type Matcher } from '@/lib/import-match-utils';
+import { buildItineraryRows } from './tour-itinerary-rows';
 
 export interface TourImportOptions {
   year?: number | string;
@@ -39,249 +40,38 @@ const extractTextDates = (text: string, year: number): string[] => {
   return Array.from(new Set(dates)).sort();
 };
 
-const tableCellText = (rowCells: AnalyzeTable['cells'] & {}, columnIndex: number): string => {
-  const exact = (rowCells || []).filter((cell) => cell.columnIndex === columnIndex);
-  if (exact.length === 0) return '';
-  return exact.map((cell) => cell.content).filter(Boolean).join('\n');
-};
-
-const findHeaderColumns = (cells: NonNullable<AnalyzeTable['cells']>) => {
-  const columns: Record<string, number> = {};
-  cells.forEach((cell) => {
-    const text = normalize(cell.content || '');
-    if (text.includes('ngay')) columns.date = cell.columnIndex;
-    if (text.includes('tham')) columns.visit = cell.columnIndex;
-    if (text.includes('an trua')) columns.lunch = cell.columnIndex;
-    if (text.includes('an toi')) columns.dinner = cell.columnIndex;
-    if (text.includes('khach san')) columns.hotel = cell.columnIndex;
-  });
-  return columns.date !== undefined && columns.visit !== undefined ? columns : null;
-};
-
-const rowsFromTables = (tables: AnalyzeTable[] = [], year: number): ItineraryRow[] => {
-  for (const table of tables) {
-    const rows = new Map<number, NonNullable<AnalyzeTable['cells']>>();
-    (table.cells || []).forEach((cell) => {
-      const list = rows.get(cell.rowIndex) || [];
-      list.push(cell);
-      rows.set(cell.rowIndex, list);
-    });
-
-    for (const [rowIndex, cells] of rows) {
-      const columns = findHeaderColumns(cells);
-      if (!columns) continue;
-      return Array.from(rows.entries())
-        .filter(([index]) => index > rowIndex)
-        .map(([, rowCells]) => {
-          const dateRaw = tableCellText(rowCells, columns.date);
-          return {
-            dateRaw: oneLine(dateRaw),
-            date: parseSheetDate(dateRaw, year),
-            visit: tableCellText(rowCells, columns.visit),
-            lunch: columns.lunch !== undefined ? tableCellText(rowCells, columns.lunch) : '',
-            dinner: columns.dinner !== undefined ? tableCellText(rowCells, columns.dinner) : '',
-            hotel: columns.hotel !== undefined ? tableCellText(rowCells, columns.hotel) : '',
-          };
-        })
-        .filter((row) => row.date);
-    }
-  }
-  return [];
-};
-
-const rowsFromLines = (lines: string[], year: number): ItineraryRow[] => {
-  const startIdx = lines.findIndex((l) => {
-    const t = normalize(l).trim();
-    return t.includes('ngay') || t.includes('tham');
-  });
-  const relevant = startIdx >= 0 ? lines.slice(startIdx) : lines;
-  const rows: ItineraryRow[] = [];
-  for (let i = 0; i < relevant.length; i += 1) {
-    const line = relevant[i];
-    const match = line.match(/^\s*(\d{1,2}\s*\/\s*\d{1,2}(?:\s*\/\s*\d{2,4})?)(?:\s+(.*))?$/);
-    if (!match) continue;
-    const dateRaw = oneLine(match[1]);
-    let visit = match[2] ? oneLine(match[2]) : '';
-    if (!visit && i + 1 < relevant.length) {
-      const next = oneLine(relevant[i + 1]);
-      if (next && !next.match(/^\d{1,2}\s*\/\s*\d{1,2}/)) {
-        visit = next;
-        i += 1;
-      }
-    }
-    if (!visit) continue;
-    const date = parseSheetDate(dateRaw, year);
-    if (date && /\d{4}/.test(dateRaw)) {
-      const y = Number(date.slice(0, 4));
-      if (y !== year && y !== year + 1) continue;
-    }
-    rows.push({ dateRaw, date, visit, lunch: '', dinner: '', hotel: '' });
-  }
-  return rows;
-};
-
-// Mỗi điểm tham quan trong OCR đều được đưa vào JSON: khớp token/fuzzy với DB,
-// nếu đạt ngưỡng tự động thì lấy tên + giá từ DB; nếu không, giữ nguyên tên OCR
-// (giá 0) để bước review gợi ý/cho người dùng chọn hoặc tạo mới.
-// Điểm khớp master `destinations_free` (điểm miễn phí) bị loại khỏi JSON; tỉnh
-// thành của mỗi ngày suy từ điểm thường khớp được ĐẦU TIÊN trong ngày để đặt
-// tên công tác phí ở buildAllowances.
-
 /**
- * Thử tách candidate gộp (OCR mất dấu phân cách) thành nhiều điểm riêng.
- * Dùng matcher DB — thử mọi vị trí split 2-phần, nếu cả hai phần đều khớp
- * DB ≥ AUTO_MATCH_PCT thì tách và đệ quy tiếp (xử lý gộp 3+ điểm).
+ * Ghi chú tour = cột "Khách sạn" của lịch trình, mỗi ngày một dòng `dd/MM: tên`.
+ * Ngày liên tiếp cùng khách sạn được gộp thành `dd/MM - dd/MM: tên` cho gọn.
  */
-const decomposeCandidate = (
-  candidate: string,
-  matcher: Matcher<DestinationEntry>,
-  freeMatcher: Matcher<DestinationEntry>,
-): string[] => {
-  const tokens = candidate.split(/\s+/).filter(Boolean);
-  if (tokens.length < 3) return [candidate];
-
-  const ok = (text: string): boolean => {
-    const p = matcher.best(text);
-    const f = freeMatcher.best(text);
-    return Math.max(p?.percent ?? 0, f?.percent ?? 0) >= AUTO_MATCH_PCT;
-  };
-
-  for (let i = 1; i < tokens.length; i++) {
-    const left = tokens.slice(0, i).join(' ');
-    const right = tokens.slice(i).join(' ');
-    if (ok(left) && ok(right)) {
-      return [
-        ...decomposeCandidate(left, matcher, freeMatcher),
-        ...decomposeCandidate(right, matcher, freeMatcher),
-      ];
-    }
-  }
-  return [candidate];
-};
-
-const buildDestinations = (
-  rows: ItineraryRow[],
-  matcher: Matcher<DestinationEntry>,
-  freeMatcher: Matcher<DestinationEntry>,
-) => {
-  const destinations: Array<{ name: string; price: number; date: string; orderIndex: number }> = [];
-  const provinceByDate = new Map<string, string>();
-  const provinceCandidatesByDate = new Map<string, Set<string>>();
-  let orderIndex = 0;
-  for (const row of rows) {
-    if (!row.date || isBlankOrZero(row.visit) || !looksLikeVisit(row.visit)) continue;
-    for (const candidate of extractVisitCandidates(row.visit)) {
-      const paidBest = matcher.best(candidate);
-      const freeBest = freeMatcher.best(candidate);
-      const isFree = freeBest && freeBest.percent >= AUTO_MATCH_PCT
-        && (!paidBest || freeBest.percent >= paidBest.percent);
-      if (isFree) continue;
-
-      const matched = paidBest && paidBest.percent >= AUTO_MATCH_PCT ? paidBest.item : null;
-
-      // Candidate không khớp DB → thử tách gộp (OCR mất dấu phân cách)
-      const parts = matched ? [candidate] : decomposeCandidate(candidate, matcher, freeMatcher);
-      for (const part of parts) {
-        const pPaid = matcher.best(part);
-        const pFree = freeMatcher.best(part);
-        if (pFree && pFree.percent >= AUTO_MATCH_PCT
-          && (!pPaid || pFree.percent >= pPaid.percent)) continue;
-
-        const pMatched = pPaid && pPaid.percent >= AUTO_MATCH_PCT ? pPaid.item : null;
-        if (pMatched?.province) {
-          if (!provinceByDate.has(row.date)) {
-            provinceByDate.set(row.date, pMatched.province);
-          }
-          if (!provinceCandidatesByDate.has(row.date)) {
-            provinceCandidatesByDate.set(row.date, new Set());
-          }
-          provinceCandidatesByDate.get(row.date)!.add(pMatched.province);
-        }
-        destinations.push({
-          name: pMatched ? pMatched.name : part,
-          price: pMatched ? (pMatched.price ?? 0) : 0,
-          date: row.date,
-          orderIndex: orderIndex++,
-        });
-      }
-    }
-  }
-  return { destinations, provinceByDate, provinceCandidatesByDate };
-};
-
-const buildMeals = (rows: ItineraryRow[]) => {
-  const meals: Array<{ name: string; price: number; date: string; orderIndex: number }> = [];
+export const buildNotesFromHotels = (rows: ItineraryRow[]): string => {
+  const groups: Array<{ from: string; to: string; hotel: string }> = [];
   rows.forEach((row) => {
-    ([['Ăn trưa', row.lunch], ['Ăn tối', row.dinner]] as const).forEach(([label, value]) => {
-      if (row.date && !isBlankOrZero(value) && looksLikeHdvMeal(value)) {
-        meals.push({ name: `${label}: ${oneLine(value)}`, price: parsePrice(value), date: row.date, orderIndex: meals.length });
-      }
-    });
-    const inlineDinner = extractInlineDinner(row.visit);
-    if (row.date && inlineDinner && looksLikeHdvMeal(inlineDinner)) {
-      meals.push({ name: `Ăn tối: ${inlineDinner}`, price: 0, date: row.date, orderIndex: meals.length });
+    if (!row.date || isBlankOrZero(row.hotel)) return;
+    const hotel = oneLine(row.hotel);
+    const last = groups[groups.length - 1];
+    if (last && last.hotel === hotel) {
+      last.to = row.date;
+      return;
     }
+    groups.push({ from: row.date, to: row.date, hotel });
   });
-  return meals;
-};
 
-const PICKUP_PHRASES = ['don sb hue', 'don sb da nang', 'don san bay hue', 'don san bay da nang'];
-
-// Công tác phí theo ngày: price luôn = 0 để user nhập tay khi review.
-// Nếu 1 ngày có điểm tham quan thuộc nhiều tỉnh, gắn provinceCandidates
-// để gợi ý user chọn tỉnh phù hợp.
-const buildAllowances = (
-  rows: ItineraryRow[],
-  provinceByDate: Map<string, string>,
-  provinceCandidatesByDate?: Map<string, Set<string>>,
-) => {
-  const allowances: Array<{ name: string; price: number; date: string; orderIndex: number; provinceCandidates?: string[] }> = [];
-  let orderIndex = 0;
-  for (const row of rows) {
-    if (!row.date || isNonProgramDay(row.visit)) continue;
-    const norm = normalize(row.visit);
-    const isPickupDay = !norm.includes('no guide') && !looksLikeVisit(row.visit)
-      && PICKUP_PHRASES.some((p) => norm.includes(p));
-    if (isPickupDay) {
-      allowances.push({ name: 'Đón or Tiễn sân bay 350k', price: 0, date: row.date, orderIndex: orderIndex++ });
-      continue;
-    }
-    const province = provinceByDate.get(row.date) || 'Huế';
-    const allowance: { name: string; price: number; date: string; orderIndex: number; provinceCandidates?: string[] } = {
-      name: `Công tác phí - ${province}`,
-      price: 0,
-      date: row.date,
-      orderIndex: orderIndex++,
-    };
-    const candidates = provinceCandidatesByDate?.get(row.date);
-    if (candidates && candidates.size > 1) {
-      allowance.provinceCandidates = Array.from(candidates);
-    }
-    allowances.push(allowance);
-  }
-  return allowances;
+  const dayMonth = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
+  return groups
+    .map(({ from, to, hotel }) =>
+      from === to ? `${dayMonth(from)}: ${hotel}` : `${dayMonth(from)} - ${dayMonth(to)}: ${hotel}`)
+    .join('\n');
 };
 
 export const buildTourImportJson = (
   analyzeResult: AnalyzeResult,
-  destinations: DestinationEntry[],
   options: TourImportOptions = {},
-  freeDestinations: DestinationEntry[] = [],
 ) => {
   const year = Number(options.year) || new Date().getFullYear();
   const lines = collectLines(analyzeResult);
   const text = lines.join('\n');
-  const tableRows = rowsFromTables(analyzeResult.tables || [], year);
-  const itineraryRows = tableRows.length > 0 ? tableRows : rowsFromLines(lines, year);
-
-  // Lịch trình vắt qua năm mới: nếu ngày sau nhỏ hơn ngày trước thì +1 năm.
-  for (let i = 1; i < itineraryRows.length; i += 1) {
-    if (itineraryRows[i].date && itineraryRows[i - 1].date && itineraryRows[i].date < itineraryRows[i - 1].date) {
-      const d = new Date(itineraryRows[i].date);
-      d.setFullYear(d.getFullYear() + 1);
-      itineraryRows[i].date = ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
-    }
-  }
+  const itineraryRows = buildItineraryRows(analyzeResult, year);
 
   const textDates = extractTextDates(text, year);
   const dates = Array.from(new Set([
@@ -303,11 +93,6 @@ export const buildTourImportJson = (
   const endDate = lastReal?.date || dates[dates.length - 1] || startDate;
   const tourCode = extractedTourCode || buildFallbackTourCode(text, startDate, year);
 
-  const destinationMatcher = buildMatcher(destinations, true);
-  const freeMatcher = buildMatcher(freeDestinations, true);
-  const { destinations: builtDestinations, provinceByDate, provinceCandidatesByDate } =
-    buildDestinations(itineraryRows, destinationMatcher, freeMatcher);
-
   return [{
     tour: {
       tourCode,
@@ -323,12 +108,14 @@ export const buildTourImportJson = (
       startDate,
       endDate,
       totalDays: dateDiffDays(startDate, endDate) || itineraryRows.length,
+      notes: buildNotesFromHotels(itineraryRows),
     },
+    // Info-only: các tab dòng chi tiết để trống, người dùng nhập ở màn hình tour.
     subcollections: {
-      destinations: builtDestinations,
+      destinations: [] as Array<{ name: string; price: number; date: string; orderIndex: number }>,
       expenses: [] as Array<{ name: string; price: number; date: string; orderIndex: number }>,
-      meals: buildMeals(itineraryRows),
-      allowances: buildAllowances(itineraryRows, provinceByDate, provinceCandidatesByDate),
+      meals: [] as Array<{ name: string; price: number; date: string; orderIndex: number }>,
+      allowances: [] as Array<{ name: string; price: number; date: string; orderIndex: number }>,
       summary: {
         totalTabs: 0, advancePayment: 0, totalAfterAdvance: 0, companyTip: 0,
         totalAfterTip: 0, collectionsForCompany: 0, totalAfterCollections: 0, finalTotal: 0,
