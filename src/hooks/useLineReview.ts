@@ -4,9 +4,9 @@ import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
 import { toVietnameseError } from '@/lib/error-messages';
 import {
-  getTourCacheSnapshot,
+  getTourDetailCacheSnapshot,
   patchTourLineReviewInCache,
-  restoreTourCacheSnapshot,
+  restoreTourDetailCacheSnapshot,
 } from '@/lib/tour-cache-updates';
 import type { LineStatus, LineType } from '@/types/tour';
 
@@ -33,7 +33,7 @@ export function useLineReview(tourId: string | undefined) {
   const updateLine = async (target: LineReviewTarget, value: LineReviewValue): Promise<boolean> => {
     if (!tourId || !target.lineId) return false;
     setBusy(true);
-    const snapshot = getTourCacheSnapshot(queryClient, tourId);
+    const snapshot = getTourDetailCacheSnapshot(queryClient, tourId);
     patchTourLineReviewInCache(queryClient, tourId, [target], value);
     try {
       await store.updateLineReview(tourId, target.lineType, target.lineId, {
@@ -44,7 +44,7 @@ export function useLineReview(tourId: string | undefined) {
       await invalidate();
       return true;
     } catch (e) {
-      restoreTourCacheSnapshot(queryClient, tourId, snapshot);
+      restoreTourDetailCacheSnapshot(queryClient, tourId, snapshot);
       toast.error(toVietnameseError(e, 'Không thể cập nhật.'));
       return false;
     } finally {
@@ -58,7 +58,7 @@ export function useLineReview(tourId: string | undefined) {
     const pending = targets.filter((t) => t.lineId);
     if (!pending.length) return false;
     setBusy(true);
-    const snapshot = getTourCacheSnapshot(queryClient, tourId);
+    const snapshot = getTourDetailCacheSnapshot(queryClient, tourId);
     patchTourLineReviewInCache(queryClient, tourId, pending, value);
     try {
       await Promise.all(
@@ -73,7 +73,7 @@ export function useLineReview(tourId: string | undefined) {
       await invalidate();
       return true;
     } catch (e) {
-      restoreTourCacheSnapshot(queryClient, tourId, snapshot);
+      restoreTourDetailCacheSnapshot(queryClient, tourId, snapshot);
       toast.error(toVietnameseError(e, 'Không thể cập nhật.'));
       return false;
     } finally {

@@ -10,6 +10,8 @@ import { isWaterExpense, normalizeWaterExpenseLine } from '@/lib/water-expense-u
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
+import { useTourLineMutations } from '@/hooks/useTourLineMutations';
+import { useApplyTourLineDefaults, useTourLineFallback } from '@/hooks/useTourLineDefaults';
 import { useAuth } from '@/contexts/AuthContext';
 import { ExpenseForm } from '@/components/tours/ExpenseForm';
 import { NewExpenseDialog } from '@/components/tours/NewExpenseDialog';
@@ -47,65 +49,32 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
   const tourGuests = tour?.totalGuests || 0;
   const tourDays = tour?.totalDays || 1;
   const normalizeExpense = (expense: Expense) => normalizeWaterExpenseLine(expense, tourGuests, tourDays);
-  const fallbackExpense = useMemo<Expense>(() => ({
-    name: '',
-    price: 0,
-    date: tour?.endDate || '',
-    guests: !tourId && tourGuests > 0 ? tourGuests : undefined,
-  }), [tour?.endDate, tourGuests, tourId]);
+  const fallbackExpense = useTourLineFallback<Expense>(tour, 'endDate');
   const { formData, setFormData, editingIndex, setEditingIndex, resetForm } = useLineFormPersistence<Expense>({
     storageKey: `expenses:${tourId || 'new'}`,
     fallback: fallbackExpense,
   });
+  useApplyTourLineDefaults({ fallback: fallbackExpense, editingIndex, setFormData });
 
   const { data: detailedExpenses = [] } = useQuery({
     queryKey: ['detailedExpenses', guideId ?? null],
     queryFn: () => store.listDetailedExpenses({ status: 'active', guideId }),
   });
 
-  const addMutation = useMutation({
-    mutationFn: async (expense: Expense) => {
-      if (tourId) {
-        return store.addExpense(tourId, expense);
-      } else {
-        onChange?.([...expenses, expense]);
-        return undefined;
-      }
-    },
-    onSuccess: async (lineId) => {
-      await uploadPendingFiles('expense', lineId);
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'expenses'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã thêm chi phí');
-      clearPendingFiles();
-      resetForm();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ index, expense }: { index: number; expense: Expense }) => {
-      if (tourId) {
-        await store.updateExpense(tourId, index, expense);
-      } else {
-        const newExps = [...expenses];
-        newExps[index] = expense;
-        onChange?.(newExps);
-      }
-    },
-    onSuccess: async (_, { expense }) => {
-      await uploadPendingFiles('expense', expense.id);
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'expenses'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã cập nhật chi phí');
-      clearPendingFiles();
-      resetForm();
-    },
+  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Expense>({
+    tourId,
+    collection: 'expenses',
+    lineType: 'expense',
+    items: expenses,
+    onChange,
+    addLine: (expense) => store.addExpense(tourId!, expense),
+    updateLine: (index, expense) => store.updateExpense(tourId!, index, expense),
+    removeLine: (index, expense) => store.removeExpense(tourId!, index, expense?.id),
+    uploadPendingFiles,
+    onOptimisticSubmit: resetForm,
+    onRestoreForm: (expense) => setFormData(expense),
+    onSettledForm: clearPendingFiles,
+    messages: { added: 'Đã thêm chi phí', updated: 'Đã cập nhật chi phí', deleted: 'Đã xóa chi phí' },
   });
 
   const autosaveExpense = useTourLineAutosave<Expense>({
@@ -115,23 +84,6 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     onChange,
     saveLine: (index, expense) => store.updateExpense(tourId!, index, expense),
     successMessage: 'Đã tự động lưu chi phí',
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (index: number) => {
-      if (tourId) return store.removeExpense(tourId, index);
-      return Promise.resolve();
-    },
-    onSuccess: (_, index) => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'expenses'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      } else {
-        onChange?.(expenses.filter((_, i) => i !== index));
-      }
-      toast.success('Đã xóa chi phí');
-    },
   });
 
   const dismissWaterMutation = useMutation({
@@ -172,7 +124,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
       toast.warning('VAT lớn hơn 0 nhưng chưa có chứng từ.');
     }
     if (editingIndex !== null) {
-      updateMutation.mutate({ index: editingIndex, expense: nextExpense });
+      updateMutation.mutate({ index: editingIndex, line: nextExpense });
     } else {
       addMutation.mutate(nextExpense);
     }
@@ -211,15 +163,6 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     const updated = normalizeExpense({ ...expenses[originalIndex], days: val ?? 0 });
     autosaveExpense(originalIndex, updated);
   };
-
-  useEffect(() => {
-    if (!formData.date && tour?.endDate) setFormData((prev) => ({ ...prev, date: tour.endDate! }));
-  }, [formData.date, setFormData, tour?.endDate]);
-
-  useEffect(() => {
-    if (editingIndex !== null || tourId || formData.guests !== undefined || tourGuests <= 0) return;
-    setFormData((prev) => ({ ...prev, guests: tourGuests }));
-  }, [editingIndex, formData.guests, setFormData, tourGuests, tourId]);
 
   useEffect(() => {
     if (editingIndex === null) return;

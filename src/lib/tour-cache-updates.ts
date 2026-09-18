@@ -12,7 +12,85 @@ import type {
 
 export type TourCollectionKey = 'destinations' | 'expenses' | 'meals' | 'allowances' | 'shoppings';
 
+const TOUR_COLLECTIONS: ReadonlyArray<readonly [TourCollectionKey, LineType]> = [
+  ['destinations', 'destination'],
+  ['expenses', 'expense'],
+  ['meals', 'meal'],
+  ['allowances', 'allowance'],
+  ['shoppings', 'shopping'],
+];
+
 const tourQueryKey = (tourId: string) => ['tour', tourId] as const;
+
+/**
+ * TourDetail đọc từng sub-collection qua query riêng (`useTourDetail`), nên mọi cập nhật
+ * lạc quan phải ghi vào key này thì bảng mới đổi ngay; ghi vào ['tour', id] không có tác dụng
+ * vì bản info-only luôn có mảng rỗng và bị `??` bỏ qua.
+ */
+export const tourCollectionQueryKey = (tourId: string, collection: TourCollectionKey) =>
+  ['tour', tourId, collection] as const;
+
+export interface TourLineCacheSnapshot {
+  tour?: Tour;
+  rows?: unknown[];
+}
+
+export const getTourLineCacheSnapshot = (
+  queryClient: QueryClient,
+  tourId: string,
+  collection: TourCollectionKey,
+): TourLineCacheSnapshot => ({
+  tour: queryClient.getQueryData<Tour>(tourQueryKey(tourId)),
+  rows: queryClient.getQueryData<unknown[]>(tourCollectionQueryKey(tourId, collection)),
+});
+
+export const restoreTourLineCacheSnapshot = (
+  queryClient: QueryClient,
+  tourId: string,
+  collection: TourCollectionKey,
+  snapshot?: TourLineCacheSnapshot,
+) => {
+  if (!snapshot) return;
+  if (snapshot.tour) queryClient.setQueryData(tourQueryKey(tourId), snapshot.tour);
+  if (snapshot.rows) queryClient.setQueryData(tourCollectionQueryKey(tourId, collection), snapshot.rows);
+};
+
+const lineDateTime = (line: unknown) => {
+  const rawDate = (line as { date?: string } | undefined)?.date;
+  const time = rawDate ? Date.parse(rawDate) : Number.NaN;
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+};
+
+/** Giữ thứ tự giống `order('date')` của Supabase để index dòng trong cache khớp index server. */
+export const sortTourCacheLines = <T>(rows: T[]): T[] =>
+  [...rows].sort((a, b) => lineDateTime(a) - lineDateTime(b));
+
+/** Chèn lạc quan một dòng mới. Trả về false khi cache chưa có dữ liệu (không thể rollback an toàn). */
+export const appendTourCacheLine = <T>(
+  queryClient: QueryClient,
+  tourId: string,
+  collection: TourCollectionKey,
+  line: T,
+): boolean => {
+  const key = tourCollectionQueryKey(tourId, collection);
+  const rows = queryClient.getQueryData<T[]>(key);
+  if (!rows) return false;
+  queryClient.setQueryData<T[]>(key, sortTourCacheLines([...rows, line]));
+  return true;
+};
+
+/** Vá dòng lạc quan bằng so khớp tham chiếu (dòng chưa có id cho tới khi server trả về). */
+export const patchTourCacheLineRef = <T>(
+  queryClient: QueryClient,
+  tourId: string,
+  collection: TourCollectionKey,
+  target: T,
+  patch: Partial<T>,
+) => {
+  queryClient.setQueryData<T[]>(tourCollectionQueryKey(tourId, collection), (rows) =>
+    rows ? rows.map((row) => (row === target ? { ...row, ...patch } : row)) : rows
+  );
+};
 
 export interface TourAggregateCacheSnapshot {
   previousTour?: Tour;
@@ -21,15 +99,33 @@ export interface TourAggregateCacheSnapshot {
 
 const emptyAggregateSnapshot: TourAggregateCacheSnapshot = { previousTourLists: [] };
 
-export const getTourCacheSnapshot = (queryClient: QueryClient, tourId: string) =>
-  queryClient.getQueryData<Tour>(tourQueryKey(tourId));
+export interface TourDetailCacheSnapshot {
+  tour?: Tour;
+  collections: Array<[TourCollectionKey, unknown[] | undefined]>;
+}
 
-export const restoreTourCacheSnapshot = (
+/** Ảnh chụp cả 5 sub-collection — dùng khi một thao tác chạm tới nhiều loại dòng cùng lúc. */
+export const getTourDetailCacheSnapshot = (
   queryClient: QueryClient,
   tourId: string,
-  snapshot: Tour | undefined,
+): TourDetailCacheSnapshot => ({
+  tour: queryClient.getQueryData<Tour>(tourQueryKey(tourId)),
+  collections: TOUR_COLLECTIONS.map(([collection]) => [
+    collection,
+    queryClient.getQueryData<unknown[]>(tourCollectionQueryKey(tourId, collection)),
+  ]),
+});
+
+export const restoreTourDetailCacheSnapshot = (
+  queryClient: QueryClient,
+  tourId: string,
+  snapshot?: TourDetailCacheSnapshot,
 ) => {
-  if (snapshot) queryClient.setQueryData(tourQueryKey(tourId), snapshot);
+  if (!snapshot) return;
+  if (snapshot.tour) queryClient.setQueryData(tourQueryKey(tourId), snapshot.tour);
+  snapshot.collections.forEach(([collection, rows]) => {
+    if (rows) queryClient.setQueryData(tourCollectionQueryKey(tourId, collection), rows);
+  });
 };
 
 export const snapshotTourAggregateCaches = async (
@@ -79,6 +175,16 @@ export const replaceTourCacheLine = (
   index: number,
   line: unknown,
 ) => {
+  queryClient.setQueryData<Array<{ id?: string }>>(
+    tourCollectionQueryKey(tourId, collection),
+    (rows) => {
+      if (!rows) return rows;
+      const next = [...rows];
+      const previous = next[index];
+      next[index] = { ...(line as object), id: (line as { id?: string }).id ?? previous?.id };
+      return next;
+    }
+  );
   queryClient.setQueryData<Tour>(tourQueryKey(tourId), (current) => {
     if (!current) return current;
     const rows = [...((current[collection] as unknown[]) || [])];
@@ -159,32 +265,42 @@ export const patchTourLineReviewInCache = (
   targets: Array<{ lineType: LineType; lineId: string }>,
   value: { lineStatus: LineStatus; lineComment?: string },
 ) => {
+  const idsByType = new Map<LineType, Set<string>>();
+  targets.forEach((target) => {
+    const ids = idsByType.get(target.lineType) || new Set<string>();
+    ids.add(target.lineId);
+    idsByType.set(target.lineType, ids);
+  });
+
+  const patchRows = <T extends { id?: string }>(rows: T[] | undefined, lineType: LineType) => {
+    const ids = idsByType.get(lineType);
+    if (!rows || !ids?.size) return rows;
+    return rows.map((row) =>
+      row.id && ids.has(row.id)
+        ? { ...row, lineStatus: value.lineStatus, lineComment: value.lineComment }
+        : row
+    );
+  };
+
+  // Nguồn hiển thị thật của TourDetail là từng query sub-collection.
+  TOUR_COLLECTIONS.forEach(([collection, lineType]) => {
+    if (!idsByType.has(lineType)) return;
+    queryClient.setQueryData<Array<{ id?: string }>>(
+      tourCollectionQueryKey(tourId, collection),
+      (rows) => patchRows(rows, lineType)
+    );
+  });
+
+  // Tour cache chỉ còn mang dòng ở các luồng cũ (import/tour chưa tách query) — vá cho đồng bộ.
   queryClient.setQueryData<Tour>(tourQueryKey(tourId), (current) => {
     if (!current) return current;
-    const byType = new Map<LineType, Set<string>>();
-    targets.forEach((target) => {
-      const ids = byType.get(target.lineType) || new Set<string>();
-      ids.add(target.lineId);
-      byType.set(target.lineType, ids);
-    });
-
-    const patchCollection = (collection: TourCollectionKey, lineType: LineType) => {
-      const ids = byType.get(lineType);
-      if (!ids?.size) return current[collection];
-      return (current[collection] as Array<{ id?: string }>).map((line) =>
-        line.id && ids.has(line.id)
-          ? { ...line, lineStatus: value.lineStatus, lineComment: value.lineComment }
-          : line
-      );
-    };
-
     return {
       ...current,
-      destinations: patchCollection('destinations', 'destination') as Tour['destinations'],
-      expenses: patchCollection('expenses', 'expense') as Tour['expenses'],
-      meals: patchCollection('meals', 'meal') as Tour['meals'],
-      allowances: patchCollection('allowances', 'allowance') as Tour['allowances'],
-      shoppings: patchCollection('shoppings', 'shopping') as Tour['shoppings'],
+      destinations: patchRows(current.destinations, 'destination') as Tour['destinations'],
+      expenses: patchRows(current.expenses, 'expense') as Tour['expenses'],
+      meals: patchRows(current.meals, 'meal') as Tour['meals'],
+      allowances: patchRows(current.allowances, 'allowance') as Tour['allowances'],
+      shoppings: patchRows(current.shoppings, 'shopping') as Tour['shoppings'],
     };
   });
 };

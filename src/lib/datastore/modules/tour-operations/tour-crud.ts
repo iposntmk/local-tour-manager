@@ -7,7 +7,6 @@ import type {
 } from '@/types/tour';
 import { differenceInDays } from 'date-fns';
 import { enrichTourWithSummary, enrichToursWithSummaries } from '@/lib/tour-utils';
-import { getTourWarningInfo, getAllowanceTotal } from '@/pages/tours/tour-table-config';
 import { stripTourShoppingForProfile } from '@/lib/shopping-access';
 import { isWaterExpense, normalizeWaterExpenseLine } from '@/lib/water-expense-utils';
 import { TourSubcollectionError } from '@/lib/datastore/tour-errors';
@@ -47,6 +46,8 @@ export class TourCrudModule {
   declare updateTour: (id: string, tour: Partial<Tour>) => Promise<void>;
   declare listTourLineAttachments: (tourId: string) => Promise<TourLineAttachment[]>;
   declare getCurrentUserProfile: () => Promise<UserProfile | undefined>;
+  declare recalculateTourSummary: (tourId: string) => Promise<void>;
+  declare persistTourSummary: (tour: Tour) => Promise<void>;
 
   /**
    * Ghi đè danh sách quốc tịch của tour theo kiểu upsert-rồi-dọn thay vì delete-rồi-insert.
@@ -67,31 +68,6 @@ export class TourCrudModule {
     }
     const { error: deleteError } = await deleteQuery;
     if (deleteError) throw deleteError;
-  }
-
-  async recalculateTourSummary(tourId: string): Promise<void> {
-    const tour = await this.getTour(tourId);
-    if (!tour) return;
-    await this.persistTourSummary(tour);
-  }
-
-  /** Ghi tổng kết + cờ cảnh báo từ một tour ĐÃ đọc sẵn (tiết kiệm một lần getTour). */
-  private async persistTourSummary(tour: Tour): Promise<void> {
-    const tourId = tour.id;
-    const summary = tour.summary;
-    const warningInfo = getTourWarningInfo(tour);
-    const allowanceTotal = getAllowanceTotal(tour);
-    await this.supabase.from('tours').update({
-      total_tabs: summary.totalTabs, advance_payment: summary.advancePayment,
-      total_after_advance: summary.totalAfterAdvance, company_tip: summary.companyTip,
-      total_after_tip: summary.totalAfterTip, collections_for_company: summary.collectionsForCompany,
-      total_after_collections: summary.totalAfterCollections, final_total: summary.finalTotal,
-      has_zero_price: warningInfo.hasZeroPrice,
-      has_duplicate_dest_names: warningInfo.hasDuplicateDestNames,
-      missing_water_expense: warningInfo.missingWaterExpense,
-      has_unpaid_commission: warningInfo.hasUnpaidCommission,
-      allowance_total: allowanceTotal,
-    }).eq('id', tourId);
   }
 
   async listTours(query?: TourQuery, options?: { includeDetails?: boolean }): Promise<TourListResult> {

@@ -235,21 +235,22 @@ export interface DataStore {
   duplicateTour(id: string): Promise<Tour>;
   
   // Tour subcollections
+  // `id` (tùy chọn) cho phép xóa trực tiếp theo dòng thay vì tra lại theo index.
   addDestination(tourId: string, destination: Destination): Promise<string | undefined>;
   updateDestination(tourId: string, index: number, destination: Destination): Promise<void>;
-  removeDestination(tourId: string, index: number): Promise<void>;
-  
+  removeDestination(tourId: string, index: number, id?: string): Promise<void>;
+
   addExpense(tourId: string, expense: Expense): Promise<string | undefined>;
   updateExpense(tourId: string, index: number, expense: Expense): Promise<void>;
-  removeExpense(tourId: string, index: number): Promise<void>;
-  
+  removeExpense(tourId: string, index: number, id?: string): Promise<void>;
+
   addMeal(tourId: string, meal: Meal): Promise<string | undefined>;
   updateMeal(tourId: string, index: number, meal: Meal): Promise<void>;
-  removeMeal(tourId: string, index: number): Promise<void>;
-  
+  removeMeal(tourId: string, index: number, id?: string): Promise<void>;
+
   addAllowance(tourId: string, allowance: Allowance): Promise<void>;
   updateAllowance(tourId: string, index: number, allowance: Allowance): Promise<void>;
-  removeAllowance(tourId: string, index: number): Promise<void>;
+  removeAllowance(tourId: string, index: number, id?: string): Promise<void>;
   
   addTourShopping(tourId: string, shopping: TourShopping): Promise<void>;
   updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void>;

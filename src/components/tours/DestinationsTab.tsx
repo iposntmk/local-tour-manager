@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import type { Destination, Tour } from '@/types/tour';
-import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
+import { useTourLineMutations } from '@/hooks/useTourLineMutations';
+import { useApplyTourLineDefaults, useTourLineFallback } from '@/hooks/useTourLineDefaults';
 import { DestinationForm } from '@/components/tours/DestinationForm';
 import { NewDestinationDialog } from '@/components/tours/NewDestinationDialog';
 import { DestinationsDesktopTable } from '@/components/tours/DestinationsDesktopTable';
@@ -32,21 +33,14 @@ interface DestinationsTabProps {
 
 export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly = false, editRequest, lineFieldAccess }: DestinationsTabProps) {
   const [showNewDestinationDialog, setShowNewDestinationDialog] = useState(false);
-  const queryClient = useQueryClient();
-  const tourStartDate = tour?.startDate || '';
-  const tourTotalGuests = tour?.totalGuests || 0;
-  const fallbackDestination = useMemo<Destination>(() => ({
-    name: '',
-    price: 0,
-    date: tourStartDate,
-    guests: !tourId && tourTotalGuests > 0 ? tourTotalGuests : undefined,
-  }), [tourStartDate, tourTotalGuests, tourId]);
+  const fallbackDestination = useTourLineFallback<Destination>(tour, 'startDate');
   const {
     formData, setFormData, editingIndex, setEditingIndex, resetForm,
   } = useLineFormPersistence<Destination>({
     storageKey: `destinations:${tourId || 'new'}`,
     fallback: fallbackDestination,
   });
+  useApplyTourLineDefaults({ fallback: fallbackDestination, editingIndex, setFormData });
   const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId, 'destination');
   const canEditLine = canEditAnyTourLineField(lineFieldAccess);
   const canCreateLine =
@@ -112,49 +106,20 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     [destinations]
   );
 
-  const addMutation = useMutation({
-    mutationFn: async (destination: Destination) => {
-      if (tourId) {
-        return store.addDestination(tourId, destination);
-      } else {
-        onChange?.([...destinations, destination]);
-        return undefined;
-      }
-    },
-    onSuccess: async (lineId) => {
-      await uploadPendingFiles('destination', lineId);
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'destinations'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã thêm điểm đến');
-      clearPendingFiles();
-      resetForm();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ index, destination }: { index: number; destination: Destination }) => {
-      if (tourId) {
-        await store.updateDestination(tourId, index, destination);
-      } else {
-        const newDests = [...destinations];
-        newDests[index] = destination;
-        onChange?.(newDests);
-      }
-    },
-    onSuccess: async (_, { destination }) => {
-      await uploadPendingFiles('destination', destination.id);
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'destinations'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã cập nhật điểm đến');
-      clearPendingFiles();
-      resetForm();
-    },
+  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Destination>({
+    tourId,
+    collection: 'destinations',
+    lineType: 'destination',
+    items: destinations,
+    onChange,
+    addLine: (destination) => store.addDestination(tourId!, destination),
+    updateLine: (index, destination) => store.updateDestination(tourId!, index, destination),
+    removeLine: (index, destination) => store.removeDestination(tourId!, index, destination?.id),
+    uploadPendingFiles,
+    onOptimisticSubmit: resetForm,
+    onRestoreForm: (destination) => setFormData(destination),
+    onSettledForm: clearPendingFiles,
+    messages: { added: 'Đã thêm điểm đến', updated: 'Đã cập nhật điểm đến', deleted: 'Đã xóa điểm đến' },
   });
 
   const autosaveDestination = useTourLineAutosave<Destination>({
@@ -164,23 +129,6 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     onChange,
     saveLine: (index, destination) => store.updateDestination(tourId!, index, destination),
     successMessage: 'Đã tự động lưu điểm đến',
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (index: number) => {
-      if (tourId) return store.removeDestination(tourId, index);
-      return Promise.resolve();
-    },
-    onSuccess: (_, index) => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'destinations'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      } else {
-        onChange?.(destinations.filter((_, i) => i !== index));
-      }
-      toast.success('Đã xóa điểm đến');
-    },
   });
 
   const handleEdit = (index: number) => {
@@ -211,7 +159,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     if (editingIndex !== null) {
       const isDuplicate = destinations.some((dest, idx) => idx !== editingIndex && dest.name.trim().toLowerCase() === targetName);
       if (isDuplicate) { toast.error('Tên điểm đến phải là duy nhất'); return; }
-      updateMutation.mutate({ index: editingIndex, destination: formData });
+      updateMutation.mutate({ index: editingIndex, line: formData });
     } else {
       const isDuplicate = destinations.some((dest) => dest.name.trim().toLowerCase() === targetName);
       if (isDuplicate) { toast.error('Đã tồn tại điểm đến với tên này'); return; }
@@ -230,17 +178,6 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     const updated = { ...destination, guests: guestsVal };
     autosaveDestination(originalIndex, updated);
   };
-
-  useEffect(() => {
-    if (!formData.date && tour?.startDate) {
-      setFormData((prev) => ({ ...prev, date: tour.startDate! }));
-    }
-  }, [formData.date, setFormData, tour?.startDate]);
-
-  useEffect(() => {
-    if (editingIndex !== null || tourId || formData.guests !== undefined || !tour?.totalGuests) return;
-    setFormData((prev) => ({ ...prev, guests: tour.totalGuests }));
-  }, [editingIndex, formData.guests, setFormData, tour?.totalGuests, tourId]);
 
   useEffect(() => {
     if (editingIndex === null) return;

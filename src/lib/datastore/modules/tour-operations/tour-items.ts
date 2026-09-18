@@ -51,6 +51,23 @@ export class TourItemsModule {
     return data?.[index]?.id;
   }
 
+  /**
+   * Xóa theo id khi caller biết dòng nào (bảng đã tải sẵn) — bỏ được một lần đọc
+   * `select id ... order('date')` và tránh lệch index khi cache đang cập nhật lạc quan.
+   */
+  private async deleteTourLineRow(
+    table: string,
+    tourId: string,
+    index: number,
+    rowId?: string,
+  ): Promise<boolean> {
+    const id = rowId || await this.getIndexedRowId(table, tourId, index);
+    if (!id) return false;
+    const { error } = await (this.supabase as any).from(table).delete().eq('id', id).eq('tour_id', tourId);
+    if (error) throw error;
+    return true;
+  }
+
   private async updateTourLineRow(
     table: string,
     tourId: string,
@@ -131,11 +148,8 @@ export class TourItemsModule {
     }
   }
 
-  async removeDestination(tourId: string, index: number): Promise<void> {
-    const { data: rows } = await this.supabase.from('tour_destinations').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_destinations').delete().eq('id', rows[index].id);
-      if (error) throw error;
+  async removeDestination(tourId: string, index: number, id?: string): Promise<void> {
+    if (await this.deleteTourLineRow('tour_destinations', tourId, index, id)) {
       await this.recalculateTourSummary(tourId);
     }
   }
@@ -163,11 +177,8 @@ export class TourItemsModule {
     }
   }
 
-  async removeExpense(tourId: string, index: number): Promise<void> {
-    const { data: rows } = await this.supabase.from('tour_expenses').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_expenses').delete().eq('id', rows[index].id);
-      if (error) throw error;
+  async removeExpense(tourId: string, index: number, id?: string): Promise<void> {
+    if (await this.deleteTourLineRow('tour_expenses', tourId, index, id)) {
       await this.recalculateTourSummary(tourId);
     }
   }
@@ -195,11 +206,8 @@ export class TourItemsModule {
     }
   }
 
-  async removeMeal(tourId: string, index: number): Promise<void> {
-    const { data: rows } = await this.supabase.from('tour_meals').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_meals').delete().eq('id', rows[index].id);
-      if (error) throw error;
+  async removeMeal(tourId: string, index: number, id?: string): Promise<void> {
+    if (await this.deleteTourLineRow('tour_meals', tourId, index, id)) {
       await this.recalculateTourSummary(tourId);
     }
   }
@@ -232,11 +240,8 @@ export class TourItemsModule {
     }
   }
 
-  async removeAllowance(tourId: string, index: number): Promise<void> {
-    const { data: rows } = await this.supabase.from('tour_allowances').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_allowances').delete().eq('id', rows[index].id);
-      if (error) throw error;
+  async removeAllowance(tourId: string, index: number, id?: string): Promise<void> {
+    if (await this.deleteTourLineRow('tour_allowances', tourId, index, id)) {
       await this.recalculateTourSummary(tourId);
     }
   }

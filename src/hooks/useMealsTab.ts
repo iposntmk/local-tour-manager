@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
-import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
+import { upsertById } from '@/lib/query-cache';
 import { hasLineAttachments, isVatAmountValid } from '@/lib/tour-line-utils';
 import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
+import { useTourLineMutations } from '@/hooks/useTourLineMutations';
+import { useApplyTourLineDefaults, useTourLineFallback } from '@/hooks/useTourLineDefaults';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Meal, Tour } from '@/types/tour';
 import type { DetailedExpense, ExpenseCategory, ExpenseCategoryInput } from '@/types/master';
@@ -38,20 +40,14 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
   const { pendingFiles, setPendingFiles, clearPendingFiles, uploadPendingFiles } = usePendingLineAttachments(tourId, 'meal');
   const { isGuide, userProfile } = useAuth();
   const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
-  const tourStartDate = tour?.startDate || '';
-  const tourTotalGuests = tour?.totalGuests || 0;
-  const fallbackMeal = useMemo<Meal>(() => ({
-    name: '',
-    price: 0,
-    date: tourStartDate,
-    guests: !tourId && tourTotalGuests > 0 ? tourTotalGuests : undefined,
-  }), [tourStartDate, tourTotalGuests, tourId]);
+  const fallbackMeal = useTourLineFallback<Meal>(tour, 'startDate');
   const {
     formData, setFormData, editingIndex, setEditingIndex, resetForm,
   } = useLineFormPersistence<Meal>({
     storageKey: `meals:${tourId || 'new'}`,
     fallback: fallbackMeal,
   });
+  useApplyTourLineDefaults({ fallback: fallbackMeal, editingIndex, setFormData });
   const canEditLine = canEditAnyTourLineField(lineFieldAccess);
   const canCreateLine =
     canEditTourLineField(lineFieldAccess, 'name') &&
@@ -68,41 +64,20 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
-  const invalidate = async () => {
-    if (tourId) {
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'meals'] });
-      queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-      void invalidateTourAggregateCaches(queryClient, 'none');
-    }
-  };
-
-  const addMutation = useMutation({
-    mutationFn: async (meal: Meal) => {
-      if (tourId) return store.addMeal(tourId, meal);
-      onChange?.([...meals, meal]);
-      return undefined;
-    },
-    onSuccess: async (lineId) => {
-      await uploadPendingFiles('meal', lineId);
-      await invalidate();
-      toast.success('Đã thêm bữa ăn');
-      clearPendingFiles();
-      resetForm();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ index, meal }: { index: number; meal: Meal }) => {
-      if (tourId) await store.updateMeal(tourId, index, meal);
-      else { const m = [...meals]; m[index] = meal; onChange?.(m); }
-    },
-    onSuccess: async (_, { meal }) => {
-      await uploadPendingFiles('meal', meal.id);
-      await invalidate();
-      toast.success('Đã cập nhật bữa ăn');
-      clearPendingFiles();
-      resetForm();
-    },
+  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Meal>({
+    tourId,
+    collection: 'meals',
+    lineType: 'meal',
+    items: meals,
+    onChange,
+    addLine: (meal) => store.addMeal(tourId!, meal),
+    updateLine: (index, meal) => store.updateMeal(tourId!, index, meal),
+    removeLine: (index, meal) => store.removeMeal(tourId!, index, meal?.id),
+    uploadPendingFiles,
+    onOptimisticSubmit: resetForm,
+    onRestoreForm: (meal) => setFormData(meal),
+    onSettledForm: clearPendingFiles,
+    messages: { added: 'Đã thêm bữa ăn', updated: 'Đã cập nhật bữa ăn', deleted: 'Đã xóa bữa ăn' },
   });
 
   const autosaveMeal = useTourLineAutosave<Meal>({
@@ -112,15 +87,6 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     onChange,
     saveLine: (index, meal) => store.updateMeal(tourId!, index, meal),
     successMessage: 'Đã tự động lưu bữa ăn',
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (index: number) => tourId ? store.removeMeal(tourId, index) : Promise.resolve(),
-    onSuccess: (_, index) => {
-      invalidate();
-      if (!tourId) onChange?.(meals.filter((_, i) => i !== index));
-      toast.success('Đã xóa bữa ăn');
-    },
   });
 
   const createCategoryMutation = useMutation({
@@ -163,7 +129,7 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     if ((formData.vatRate || 0) > 0 && !hasLineAttachments(formData, pendingFiles)) {
       toast.warning('VAT lớn hơn 0 nhưng chưa có chứng từ.');
     }
-    if (editingIndex !== null) updateMutation.mutate({ index: editingIndex, meal: formData });
+    if (editingIndex !== null) updateMutation.mutate({ index: editingIndex, line: formData });
     else addMutation.mutate(formData);
   };
 
@@ -216,15 +182,6 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
   const mealsTotalAmount = useMemo(() =>
     meals.reduce((sum, m) => sum + m.price * (typeof m.guests === 'number' ? m.guests : 0), 0),
   [meals]);
-
-  useEffect(() => {
-    if (!formData.date && tourStartDate) setFormData((prev) => ({ ...prev, date: tourStartDate }));
-  }, [formData.date, setFormData, tourStartDate]);
-
-  useEffect(() => {
-    if (editingIndex !== null || tourId || formData.guests !== undefined || tourTotalGuests <= 0) return;
-    setFormData((prev) => ({ ...prev, guests: tourTotalGuests }));
-  }, [editingIndex, formData.guests, setFormData, tourId, tourTotalGuests]);
 
   useEffect(() => {
     if (editingIndex === null) return;

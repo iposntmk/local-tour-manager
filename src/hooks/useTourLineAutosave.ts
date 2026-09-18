@@ -3,13 +3,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import {
-  getTourCacheSnapshot,
+  getTourLineCacheSnapshot,
   replaceTourCacheLine,
-  restoreTourCacheSnapshot,
+  restoreTourLineCacheSnapshot,
   type TourCollectionKey,
+  type TourLineCacheSnapshot,
 } from '@/lib/tour-cache-updates';
 import { toVietnameseError } from '@/lib/error-messages';
-import type { Tour } from '@/types/tour';
 
 interface UseTourLineAutosaveOptions<T> {
   tourId?: string;
@@ -24,7 +24,7 @@ interface UseTourLineAutosaveOptions<T> {
 interface PendingSave<T> {
   index: number;
   line: T;
-  snapshot?: Tour;
+  snapshot?: TourLineCacheSnapshot;
 }
 
 export function useTourLineAutosave<T>({
@@ -49,13 +49,13 @@ export function useTourLineAutosave<T>({
       queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
       void invalidateTourAggregateCaches(queryClient, 'none');
     } catch (error) {
-      restoreTourCacheSnapshot(queryClient, tourId, task.snapshot);
+      restoreTourLineCacheSnapshot(queryClient, tourId, collection, task.snapshot);
       toast.error(toVietnameseError(error, 'Không thể tự động lưu.'));
     } finally {
       pending.current.delete(key);
       timers.current.delete(key);
     }
-  }, [queryClient, saveLine, successMessage, tourId]);
+  }, [collection, queryClient, saveLine, successMessage, tourId]);
 
   return useCallback((index: number, line: T) => {
     if (!tourId) {
@@ -68,7 +68,7 @@ export function useTourLineAutosave<T>({
     const lineId = (line as { id?: string }).id;
     const key = `${collection}:${lineId || index}`;
     const existing = pending.current.get(key);
-    const snapshot = existing?.snapshot ?? getTourCacheSnapshot(queryClient, tourId);
+    const snapshot = existing?.snapshot ?? getTourLineCacheSnapshot(queryClient, tourId, collection);
     replaceTourCacheLine(queryClient, tourId, collection, index, line);
     pending.current.set(key, { index, line, snapshot });
 
