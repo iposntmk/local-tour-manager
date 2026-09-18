@@ -132,16 +132,14 @@ export function useTourImport(queryClient: QueryClient, _baseTourQuery: TourQuer
         });
       };
 
-      // Load existing tours to check for duplicates
-      const { tours: existingTours } = await store.listTours({});
-      const existingTourCodes = new Set(existingTours.map(t => t.tourCode.toLowerCase()));
-
-      // Load master data once for auto-matching fallback
-      const [masterDestinations, masterExpenses, masterShoppings] = await Promise.all([
+      // Mã tour hiện có (chỉ 1 cột) + master data cho auto-match: tải song song.
+      const [existingCodes, masterDestinations, masterExpenses, masterShoppings] = await Promise.all([
+        store.listTourCodes(),
         store.listTouristDestinations({}),
         store.listDetailedExpenses({}),
         store.listShoppings({}),
       ]);
+      const existingTourCodes = new Set(existingCodes.map((code) => code.toLowerCase()));
       // Diacritic-insensitive, prefix-aware matchers so the fallback price-fill
       // stays consistent with the preview (e.g. JSON "Hội An" -> DB "vé_Hội An").
       const destMatcher = buildMatcher(masterDestinations, true); // strip "vé_" prefix

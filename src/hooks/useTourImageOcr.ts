@@ -4,6 +4,7 @@ import { store } from '@/lib/datastore';
 import type { EntityCaches } from '@/lib/import-tour-transform';
 import { loadEntityCachesFromStore, transformImportedTour } from '@/lib/import-tour-transform';
 import { buildTourImportJson, type TourImportOptions } from '@/lib/ocr/tour-image-parser';
+import { normalizeImageForOcr } from '@/lib/ocr/image-normalize';
 import type { ReviewItemRaw } from '@/hooks/useImportTourDialogBase';
 
 /**
@@ -28,8 +29,11 @@ export function useTourImageOcr() {
   ): Promise<boolean> => {
     setIsAnalyzing(true);
     try {
+      // Azure không đọc WebP; đổi sang PNG trước khi gửi. File gốc vẫn được giữ
+      // để đính vào tab ảnh của tour.
+      const ocrFile = await normalizeImageForOcr(input, options.provider ?? 'azure');
       const [analyzeResult, caches] = await Promise.all([
-        store.analyzeTourImage(input, options.provider),
+        store.analyzeTourImage(ocrFile, options.provider),
         loadEntityCachesFromStore(),
       ]);
       setEntityCaches(caches);

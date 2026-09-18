@@ -10,7 +10,7 @@ import {
   TOUR_DETAIL_GC_TIME,
   TOUR_DETAIL_STALE_TIME,
 } from '@/lib/query-cache';
-import { toVietnameseError } from '@/lib/error-messages';
+import { toTourSaveErrorMessage } from '@/lib/tour-save-errors';
 import { isTourSubcollectionError } from '@/lib/datastore/tour-errors';
 import { useAuth } from '@/contexts/AuthContext';
 import { canEditTourData } from '@/lib/settlement-utils';
@@ -119,14 +119,7 @@ export function useTourDetail() {
       }
     },
     onSuccess: () => { void invalidateTourAggregateCaches(queryClient); toast.success('Tạo tour thành công'); navigate('/tours'); },
-    onError: (error: Error) => {
-      const msg = error.message.toLowerCase();
-      toast.error(
-        msg.includes('unique') || msg.includes('duplicate') || msg.includes('tour_code')
-          ? 'Mã tour này đã tồn tại. Vui lòng dùng mã khác.'
-          : toVietnameseError(error, 'Tạo tour thất bại')
-      );
-    },
+    onError: (error: Error) => toast.error(toTourSaveErrorMessage(error, 'Tạo tour thất bại')),
   });
 
   const updateMutation = useMutation({
@@ -142,24 +135,30 @@ export function useTourDetail() {
       );
       return { previous };
     },
-    onSuccess: (_, { id, patch }) => {
-      const needsActiveRefetch =
-        patch.totalGuests !== undefined ||
-        patch.totalDays !== undefined ||
-        patch.startDate !== undefined ||
-        patch.endDate !== undefined;
-      queryClient.invalidateQueries({ queryKey: ['tour', id], refetchType: needsActiveRefetch ? 'active' : 'none' });
+    onSuccess: (_, { id, patch }, context) => {
+      // Chỉ refetch khi giá trị thật sự đổi so với bản đang cache. Autosave luôn
+      // gửi kèm totalGuests/totalDays nên nếu so theo "có mặt trong patch" thì
+      // mọi lần lưu đều refetch. Dùng `exact` để không đụng tới các query
+      // sub-collection ['tour', id, '<tab>'] (prefix match sẽ refetch cả 5 tab).
+      const previous = context?.previous;
+      const changed = <K extends keyof Tour>(key: K) =>
+        patch[key] !== undefined && (!previous || patch[key] !== previous[key]);
+      const guestsOrDaysChanged =
+        changed('totalGuests') || changed('totalDays') || changed('startDate') || changed('endDate');
+      queryClient.invalidateQueries({
+        queryKey: ['tour', id], exact: true,
+        refetchType: guestsOrDaysChanged ? 'active' : 'none',
+      });
+      // Đổi số khách/số ngày làm store cập nhật lại dòng nước uống → tab chi phí phải tải lại.
+      if (guestsOrDaysChanged) {
+        queryClient.invalidateQueries({ queryKey: ['tour', id, 'expenses'], refetchType: 'active' });
+      }
       void invalidateTourAggregateCaches(queryClient, 'none');
       toast.success('Đã tự động lưu tour');
     },
     onError: (error: Error, variables, context) => {
       if (variables?.id && context?.previous) queryClient.setQueryData(['tour', variables.id], context.previous);
-      const msg = error.message.toLowerCase();
-      toast.error(
-        msg.includes('unique') || msg.includes('duplicate') || msg.includes('tour_code')
-          ? 'Mã tour này đã tồn tại. Vui lòng dùng mã khác.'
-          : toVietnameseError(error, 'Cập nhật tour thất bại')
-      );
+      toast.error(toTourSaveErrorMessage(error, 'Cập nhật tour thất bại'));
     },
   });
 

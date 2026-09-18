@@ -5,10 +5,24 @@ const contentTypes = new Map<string, string>([
   ['bmp', 'image/bmp'], ['tif', 'image/tiff'], ['tiff', 'image/tiff'], ['pdf', 'application/pdf'],
 ]);
 
+// prebuilt-layout chỉ nhận các kiểu này. WebP/HEIC không được hỗ trợ: gửi thẳng lên
+// Azure chỉ nhận về 400 khó hiểu, nên chặn sớm với thông báo rõ ràng.
+const SUPPORTED_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/bmp', 'image/tiff', 'application/pdf',
+]);
+
 const guessContentType = (fileName = '', provided = '') => {
   if (provided) return provided;
   const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
   return contentTypes.get(ext) || 'application/octet-stream';
+};
+
+const assertSupported = (contentType: string) => {
+  // Kiểu nhị phân chung: để Azure tự nhận dạng như trước.
+  if (SUPPORTED_TYPES.has(contentType) || contentType === 'application/octet-stream') return contentType;
+  throw new Error(
+    `Azure OCR không hỗ trợ định dạng "${contentType}". Hãy dùng ảnh JPG, PNG, BMP, TIFF hoặc file PDF.`,
+  );
 };
 
 const buildAnalyzeUrl = (endpoint: string, apiVersion: string) => {
@@ -56,5 +70,5 @@ export function analyzeWithAzure(
   contentType: string,
   apiVersion?: string,
 ) {
-  return analyzeDocument(endpoint, key, buffer, guessContentType('', contentType), apiVersion);
+  return analyzeDocument(endpoint, key, buffer, assertSupported(guessContentType('', contentType)), apiVersion);
 }

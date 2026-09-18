@@ -18,6 +18,16 @@ export class TourReadsModule {
   declare protected supabase: SupabaseClient<Database>;
   declare listTourLineAttachments: (tourId: string) => Promise<TourLineAttachment[]>;
 
+  /**
+   * Chỉ lấy cột tour_code — dùng cho kiểm tra trùng mã lúc import. `listTours()`
+   * kéo cả join quốc tịch/mua sắm/hoa hồng nên quá nặng cho mục đích này.
+   */
+  async listTourCodes(): Promise<string[]> {
+    const { data, error } = await this.supabase.from('tours').select('tour_code');
+    if (error) throw error;
+    return (data || []).map((row) => row.tour_code).filter((code): code is string => !!code);
+  }
+
   async listTourDestinations(tourId: string): Promise<Destination[]> {
     const { data, error } = await this.supabase
       .from('tour_destinations').select('*').eq('tour_id', tourId).order('date');

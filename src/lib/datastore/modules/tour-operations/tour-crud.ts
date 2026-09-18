@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import type {
   Tour, Destination, Expense, Meal, Allowance,
-  Shopping as TourShopping, TourQuery, EntityRef, TourNationality,
+  Shopping as TourShopping, TourQuery, TourNationality,
   TourInput, TourSummary, TourListResult, PaymentMethod, TourLineAttachment,
 } from '@/types/tour';
 import { differenceInDays } from 'date-fns';
@@ -12,7 +12,7 @@ import { stripTourShoppingForProfile } from '@/lib/shopping-access';
 import { isWaterExpense, normalizeWaterExpenseLine } from '@/lib/water-expense-utils';
 import { TourSubcollectionError } from '@/lib/datastore/tour-errors';
 import { mapTour, mapTourPayment, mapTourShopping, mapLineReviewFields } from '../mappers';
-import type { TourRowWithDetails, TourNationalityRow, TourPaymentRow } from '../store-types';
+import type { TourRowWithDetails, TourPaymentRow } from '../store-types';
 import type { UserProfile } from '@/types/user';
 import { MASTER_ADMIN_EMAIL } from '@/lib/auth-constants';
 import {
@@ -22,72 +22,62 @@ import {
   mapTourExpenseLine,
   mapTourMealLine,
 } from './tour-line-mappers';
+import type { TourBulkLines } from './tour-bulk-insert';
+import {
+  applyTourNationalities,
+  normalizeTourNationalitiesForWrite,
+  validateTourNationalities,
+} from './tour-nationality-utils';
+import {
+  TOUR_UPDATE_SNAPSHOT_SELECT,
+  buildTourUpdatePayload,
+  mapTourUpdateSnapshot,
+  resolveNextDays,
+  resolveNextGuests,
+  sameNationalities,
+  sameTourCode,
+  type TourUpdateSnapshot,
+} from './tour-update-helpers';
 
 export class TourCrudModule {
   declare protected supabase: SupabaseClient<Database>;
-  declare addDestination: (tourId: string, dest: Destination) => Promise<string | undefined>;
-  declare addExpense: (tourId: string, expense: Expense) => Promise<string | undefined>;
   declare updateExpense: (tourId: string, index: number, expense: Expense) => Promise<void>;
-  declare addMeal: (tourId: string, meal: Meal) => Promise<string | undefined>;
-  declare addAllowance: (tourId: string, allowance: Allowance) => Promise<void>;
-  declare addTourShopping: (tourId: string, shopping: TourShopping) => Promise<void>;
+  declare getExpenses: (tourId: string) => Promise<Expense[]>;
+  declare insertTourLinesBulk: (tourId: string, lines: TourBulkLines) => Promise<void>;
   declare updateTour: (id: string, tour: Partial<Tour>) => Promise<void>;
   declare listTourLineAttachments: (tourId: string) => Promise<TourLineAttachment[]>;
   declare getCurrentUserProfile: () => Promise<UserProfile | undefined>;
 
-  private mapTourNationality(row: TourNationalityRow): TourNationality {
-    return { id: row.nationality_id, nameAtBooking: row.nationality_name_at_booking || '', paxCount: Number(row.pax_count) || 0 };
-  }
-
-  private applyTourNationalities(tour: Tour, rows?: TourNationalityRow[] | null): Tour {
-    const nationalities = (rows || []).map((r) => this.mapTourNationality(r)).filter((n) => n.id);
-    if (nationalities.length > 0) {
-      tour.clientNationalities = nationalities;
-      tour.clientNationalityRef = { id: nationalities[0].id, nameAtBooking: nationalities[0].nameAtBooking };
-      return tour;
-    }
-    if (tour.clientNationalityRef.id) {
-      tour.clientNationalities = [{ ...tour.clientNationalityRef, paxCount: Math.max(tour.totalGuests || 0, 1) }];
-    }
-    return tour;
-  }
-
-  private normalizeTourNationalitiesForWrite(
-    tour: { clientNationalityRef?: EntityRef; clientNationalities?: TourNationality[] },
-    totalGuests: number
-  ): TourNationality[] {
-    const source = tour.clientNationalities?.length
-      ? tour.clientNationalities
-      : tour.clientNationalityRef?.id
-        ? [{ ...tour.clientNationalityRef, paxCount: Math.max(totalGuests, 1) }]
-        : [];
-    const byId = new Map<string, TourNationality>();
-    source.forEach((n) => {
-      if (!n.id) return;
-      byId.set(n.id, { id: n.id, nameAtBooking: n.nameAtBooking || '', paxCount: Math.max(1, Math.floor(Number(n.paxCount) || 0)) });
-    });
-    return Array.from(byId.values());
-  }
-
-  private validateTourNationalities(nationalities: TourNationality[], totalGuests: number): void {
-    if (nationalities.length === 0) throw new Error('Vui lòng chọn ít nhất một quốc tịch.');
-    const totalPax = nationalities.reduce((sum, n) => sum + n.paxCount, 0);
-    if (totalGuests > 0 && totalPax !== totalGuests) throw new Error('Tổng pax theo quốc tịch phải bằng tổng khách.');
-  }
-
+  /**
+   * Ghi đè danh sách quốc tịch của tour theo kiểu upsert-rồi-dọn thay vì delete-rồi-insert.
+   * Delete-rồi-insert tạo khoảng trống: hai lần lưu chồng nhau (autosave debounce ngắn hơn
+   * thời gian lưu) sẽ xen kẽ delete/insert và lần sau đụng UNIQUE(tour_id, nationality_id).
+   */
   private async replaceTourNationalities(tourId: string, nationalities: TourNationality[]): Promise<void> {
-    const { error: deleteError } = await this.supabase.from('tour_nationalities').delete().eq('tour_id', tourId);
+    if (nationalities.length > 0) {
+      const { error: upsertError } = await this.supabase.from('tour_nationalities').upsert(
+        nationalities.map((n) => ({ tour_id: tourId, nationality_id: n.id, nationality_name_at_booking: n.nameAtBooking, pax_count: n.paxCount })),
+        { onConflict: 'tour_id,nationality_id' }
+      );
+      if (upsertError) throw upsertError;
+    }
+    let deleteQuery = this.supabase.from('tour_nationalities').delete().eq('tour_id', tourId);
+    if (nationalities.length > 0) {
+      deleteQuery = deleteQuery.not('nationality_id', 'in', `(${nationalities.map((n) => n.id).join(',')})`);
+    }
+    const { error: deleteError } = await deleteQuery;
     if (deleteError) throw deleteError;
-    if (nationalities.length === 0) return;
-    const { error: insertError } = await this.supabase.from('tour_nationalities').insert(
-      nationalities.map((n) => ({ tour_id: tourId, nationality_id: n.id, nationality_name_at_booking: n.nameAtBooking, pax_count: n.paxCount }))
-    );
-    if (insertError) throw insertError;
   }
 
   async recalculateTourSummary(tourId: string): Promise<void> {
     const tour = await this.getTour(tourId);
     if (!tour) return;
+    await this.persistTourSummary(tour);
+  }
+
+  /** Ghi tổng kết + cờ cảnh báo từ một tour ĐÃ đọc sẵn (tiết kiệm một lần getTour). */
+  private async persistTourSummary(tour: Tour): Promise<void> {
+    const tourId = tour.id;
     const summary = tour.summary;
     const warningInfo = getTourWarningInfo(tour);
     const allowanceTotal = getAllowanceTotal(tour);
@@ -166,7 +156,7 @@ export class TourCrudModule {
     const tours = (data || []).map((row) => {
       const typedRow = row as TourRowWithDetails;
       const tour = mapTour(row as any);
-      this.applyTourNationalities(tour, typedRow.tour_nationalities);
+      applyTourNationalities(tour, typedRow.tour_nationalities);
       if (includeDetails) {
         tour.destinations = (typedRow.tour_destinations || []).map(mapTourDestinationLine);
         tour.expenses = (typedRow.tour_expenses || []).map(mapTourExpenseLine);
@@ -197,7 +187,7 @@ export class TourCrudModule {
     if (!data) return null;
     const tour = mapTour(data as any);
     const row: any = data;
-    this.applyTourNationalities(tour, row.tour_nationalities);
+    applyTourNationalities(tour, row.tour_nationalities);
     tour.payments = (row.tour_payments || []).map((p: TourPaymentRow) => mapTourPayment(p));
     tour.destinations = (row.tour_destinations || []).map(mapTourDestinationLine);
     tour.expenses = (row.tour_expenses || []).map(mapTourExpenseLine);
@@ -223,7 +213,7 @@ export class TourCrudModule {
     if (error || !data) return null;
     const tour = mapTour(data as any);
     const row: any = data;
-    this.applyTourNationalities(tour, row.tour_nationalities);
+    applyTourNationalities(tour, row.tour_nationalities);
     tour.payments = (row.tour_payments || []).map((p: TourPaymentRow) => mapTourPayment(p));
     tour.detailsLoaded = false;
     const currentProfile = await this.getCurrentUserProfile();
@@ -236,8 +226,8 @@ export class TourCrudModule {
 
     const totalGuests = (tour.adults || 0) + (tour.children || 0);
     const totalDays = Math.max(1, differenceInDays(new Date(tour.endDate), new Date(tour.startDate)) + 1);
-    const nationalityEntries = this.normalizeTourNationalitiesForWrite(tour, totalGuests);
-    this.validateTourNationalities(nationalityEntries, totalGuests);
+    const nationalityEntries = normalizeTourNationalitiesForWrite(tour, totalGuests);
+    validateTourNationalities(nationalityEntries, totalGuests);
     const primaryNationality = nationalityEntries[0];
 
     // created_by_user_id is stamped server-side by the BEFORE INSERT trigger
@@ -266,96 +256,101 @@ export class TourCrudModule {
     }
 
     await this.replaceTourNationalities(data.id, nationalityEntries);
-    const createdTour = await this.getTour(data.id) as Tour;
+    const tourId = data.id;
 
     try {
-      if (tour.destinations?.length) await Promise.all(tour.destinations.map((d) => this.addDestination(createdTour.id, d)));
-      await this.addExpense(createdTour.id, {
-        name: 'Nước uống cho khách 10k/1 khách / 1 ngày',
-        price: 10000, date: tour.startDate, guests: totalGuests, days: totalDays,
+      // Chèn hàng loạt: mỗi bảng con 1 request, không tính lại tổng kết sau từng dòng
+      // (trước đây mỗi dòng kéo theo một lần đọc full tour + ghi lại → import rất chậm).
+      await this.insertTourLinesBulk(tourId, {
+        destinations: tour.destinations,
+        expenses: [
+          {
+            name: 'Nước uống cho khách 10k/1 khách / 1 ngày',
+            price: 10000, date: tour.startDate, guests: totalGuests, days: totalDays,
+          },
+          ...(tour.expenses ?? []),
+        ],
+        meals: tour.meals,
+        allowances: tour.allowances,
+        shoppings: tour.shoppings,
       });
-      if (tour.expenses?.length) await Promise.all(tour.expenses.map((e) => this.addExpense(createdTour.id, e)));
-      if (tour.meals?.length) await Promise.all(tour.meals.map((m) => this.addMeal(createdTour.id, m)));
-      if (tour.allowances?.length) await Promise.all(tour.allowances.map((a) => this.addAllowance(createdTour.id, a)));
-      if (tour.shoppings?.length) await Promise.all(tour.shoppings.map((s) => this.addTourShopping(createdTour.id, s)));
-      // Always recalculate after all sub-collections are added so total_tabs reflects the
-      // auto-added water expense and any import-provided items. Do NOT use tour.summary here —
-      // it was calculated before createTour added the water expense, so it is already stale.
-      await this.recalculateTourSummary(createdTour.id);
     } catch (subcollectionError) {
       console.error('Error adding subcollections:', subcollectionError);
       // Tour đã nằm trong DB — không rollback, nhưng phải báo lên để caller
       // không hiển thị "thành công" cho một bản ghi thiếu dòng chi tiết.
-      throw new TourSubcollectionError(createdTour, subcollectionError);
+      const partialTour = await this.getTour(tourId) as Tour;
+      throw new TourSubcollectionError(partialTour, subcollectionError);
     }
+
+    // Đọc tour đầy đủ một lần rồi ghi tổng kết từ chính bản đọc đó. Không dùng
+    // `tour.summary` của caller: nó được tính trước khi thêm dòng nước uống nên đã cũ.
+    const createdTour = await this.getTour(tourId) as Tour;
+    await this.persistTourSummary(createdTour);
     return createdTour;
   }
 
+  private async readTourUpdateSnapshot(id: string): Promise<TourUpdateSnapshot | null> {
+    const { data, error } = await this.supabase.from('tours')
+      .select(TOUR_UPDATE_SNAPSHOT_SELECT).eq('id', id).single();
+    if (error || !data) return null;
+    return mapTourUpdateSnapshot(data);
+  }
+
+  /**
+   * Đồng bộ dòng "nước uống cho khách" khi số khách/số ngày đổi. Chỉ đọc bảng
+   * tour_expenses thay vì `getTour()` (join toàn bộ sub-collection).
+   */
+  private async syncWaterExpenseLines(
+    id: string, previousDays: number, nextGuests: number, nextDays: number
+  ): Promise<void> {
+    try {
+      const expenses = await this.getExpenses(id);
+      for (let i = 0; i < expenses.length; i++) {
+        if (!isWaterExpense(expenses[i])) continue;
+        const keepManualDays = typeof expenses[i].days === 'number' && expenses[i].days !== previousDays;
+        const days = keepManualDays ? (expenses[i].days as number) : nextDays;
+        await this.updateExpense(id, i, normalizeWaterExpenseLine({ ...expenses[i], days }, nextGuests, days));
+      }
+    } catch (e) { console.error('Error auto-updating water expense:', e); }
+  }
+
   async updateTour(id: string, tour: Partial<Tour>): Promise<void> {
-    const updates: any = {};
+    // Một lượt đọc nhẹ thay cho tối đa 3 lần `getTour()`: đủ để biết trường nào
+    // thật sự đổi, nhờ đó bỏ được check trùng mã tour / ghi lại quốc tịch /
+    // đồng bộ dòng nước uống khi giá trị không đổi.
+    const snapshot = await this.readTourUpdateSnapshot(id);
+    const updates = buildTourUpdatePayload(tour);
+
     if (tour.tourCode !== undefined) {
-      const { data: existing } = await this.supabase.from('tours').select('id').ilike('tour_code', tour.tourCode).neq('id', id).maybeSingle();
-      if (existing) throw new Error('A tour with this tour code already exists');
+      if (!sameTourCode(tour.tourCode, snapshot?.tourCode)) {
+        const { data: existing } = await this.supabase.from('tours').select('id').ilike('tour_code', tour.tourCode).neq('id', id).maybeSingle();
+        if (existing) throw new Error('A tour with this tour code already exists');
+      }
       updates.tour_code = tour.tourCode;
     }
-    if (tour.companyRef !== undefined) { updates.company_id = tour.companyRef.id; updates.company_name_at_booking = tour.companyRef.nameAtBooking; }
-    if (tour.landOperatorRef !== undefined) { updates.land_operator_id = tour.landOperatorRef?.id || null; updates.land_operator_name_at_booking = tour.landOperatorRef?.nameAtBooking || null; }
-    if (tour.guideRef !== undefined) { updates.guide_id = tour.guideRef.id; updates.guide_name_at_booking = tour.guideRef.nameAtBooking; }
 
     let nextNationalityEntries: TourNationality[] | undefined;
     if (tour.clientNationalities !== undefined || tour.clientNationalityRef !== undefined) {
-      let totalGuestsForNat = tour.totalGuests;
-      if (totalGuestsForNat === undefined && tour.adults !== undefined && tour.children !== undefined) totalGuestsForNat = (tour.adults || 0) + (tour.children || 0);
-      if (totalGuestsForNat === undefined) { const current = await this.getTour(id); totalGuestsForNat = current?.totalGuests || 0; }
-      nextNationalityEntries = this.normalizeTourNationalitiesForWrite(tour, totalGuestsForNat);
-      this.validateTourNationalities(nextNationalityEntries, totalGuestsForNat);
-      const primary = nextNationalityEntries[0];
+      const totalGuestsForNat = resolveNextGuests(tour, snapshot);
+      const entries = normalizeTourNationalitiesForWrite(tour, totalGuestsForNat);
+      validateTourNationalities(entries, totalGuestsForNat);
+      const primary = entries[0];
       updates.nationality_id = primary.id; updates.nationality_name_at_booking = primary.nameAtBooking;
-    }
-    if (tour.clientName !== undefined) updates.client_name = tour.clientName;
-    if (tour.adults !== undefined) updates.adults = tour.adults;
-    if (tour.children !== undefined) updates.children = tour.children;
-    if (tour.totalGuests !== undefined) updates.total_guests = tour.totalGuests;
-    if (tour.driverName !== undefined) updates.driver_name = tour.driverName;
-    if (tour.clientPhone !== undefined) updates.client_phone = tour.clientPhone;
-    if (tour.startDate !== undefined) updates.start_date = tour.startDate;
-    if (tour.endDate !== undefined) updates.end_date = tour.endDate;
-    if (tour.totalDays !== undefined) updates.total_days = tour.totalDays;
-    if (tour.notes !== undefined) updates.notes = tour.notes;
-    if (tour.waterExpenseDismissed !== undefined) updates.water_warning_dismissed = tour.waterExpenseDismissed;
-    if (tour.hasZeroPrice !== undefined) updates.has_zero_price = tour.hasZeroPrice;
-    if (tour.hasDuplicateDestNames !== undefined) updates.has_duplicate_dest_names = tour.hasDuplicateDestNames;
-    if (tour.missingWaterExpense !== undefined) updates.missing_water_expense = tour.missingWaterExpense;
-    if (tour.hasUnpaidCommission !== undefined) updates.has_unpaid_commission = tour.hasUnpaidCommission;
-    if (tour.allowanceTotal !== undefined) updates.allowance_total = tour.allowanceTotal;
-    if (tour.summary !== undefined) {
-      updates.total_tabs = tour.summary.totalTabs ?? 0; updates.advance_payment = tour.summary.advancePayment ?? 0;
-      updates.total_after_advance = tour.summary.totalAfterAdvance ?? 0; updates.company_tip = tour.summary.companyTip ?? 0;
-      updates.total_after_tip = tour.summary.totalAfterTip ?? 0; updates.collections_for_company = tour.summary.collectionsForCompany ?? 0;
-      updates.total_after_collections = tour.summary.totalAfterCollections ?? 0; updates.final_total = tour.summary.finalTotal ?? 0;
+      if (!sameNationalities(entries, snapshot?.nationalities ?? [])) nextNationalityEntries = entries;
     }
 
-    const guestsChanged = tour.totalGuests !== undefined || tour.adults !== undefined || tour.children !== undefined;
-    const daysChanged = tour.totalDays !== undefined || tour.startDate !== undefined || tour.endDate !== undefined;
-    const previousTour = guestsChanged || daysChanged ? await this.getTour(id) : null;
+    const nextGuests = resolveNextGuests(tour, snapshot);
+    const nextDays = resolveNextDays(tour, snapshot);
+    const guestsOrDaysChanged = !snapshot
+      || nextGuests !== snapshot.totalGuests
+      || nextDays !== snapshot.totalDays;
+
     const { error } = await this.supabase.from('tours').update(updates).eq('id', id);
     if (error) throw error;
     if (nextNationalityEntries) await this.replaceTourNationalities(id, nextNationalityEntries);
 
-    if (guestsChanged || daysChanged) {
-      try {
-        const currentTour = await this.getTour(id);
-        if (currentTour) {
-          const expenses = currentTour.expenses || [];
-          for (let i = 0; i < expenses.length; i++) {
-            if (isWaterExpense(expenses[i])) {
-              const keepManualDays = typeof expenses[i].days === 'number' && expenses[i].days !== previousTour?.totalDays;
-              const days = keepManualDays ? expenses[i].days : currentTour.totalDays || 0;
-              await this.updateExpense(id, i, normalizeWaterExpenseLine({ ...expenses[i], days }, currentTour.totalGuests || 0, days));
-            }
-          }
-        }
-      } catch (e) { console.error('Error auto-updating water expense:', e); }
+    if (guestsOrDaysChanged) {
+      await this.syncWaterExpenseLines(id, snapshot?.totalDays ?? 0, nextGuests, nextDays);
     }
 
     // Dismissing the water warning must refresh the denormalized warning flags

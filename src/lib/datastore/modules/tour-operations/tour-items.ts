@@ -10,6 +10,15 @@ import {
   mapTourExpenseLine,
   mapTourMealLine,
 } from './tour-line-mappers';
+import {
+  buildAllowanceRows,
+  buildDestinationRows,
+  buildExpenseRows,
+  buildMealRows,
+  buildShoppingRows,
+  toBulkInsertError,
+  type TourBulkLines,
+} from './tour-bulk-insert';
 
 export class TourItemsModule {
   declare protected supabase: SupabaseClient<Database>;
@@ -54,6 +63,42 @@ export class TourItemsModule {
     const { error } = await (this.supabase as any).from(table).update(payload).eq('id', id).eq('tour_id', tourId);
     if (error) throw error;
     return true;
+  }
+
+  /**
+   * Chèn toàn bộ dòng chi tiết của một tour: mỗi bảng đúng 1 request và KHÔNG tính lại
+   * tổng kết sau từng dòng. Caller (createTour) gọi `recalculateTourSummary` một lần ở cuối.
+   */
+  async insertTourLinesBulk(tourId: string, lines: TourBulkLines): Promise<void> {
+    const tables: Array<{ label: string; table: string; rows: Record<string, unknown>[] }> = [
+      { label: 'destination', table: 'tour_destinations', rows: buildDestinationRows(tourId, lines.destinations ?? []) },
+      { label: 'expense', table: 'tour_expenses', rows: buildExpenseRows(tourId, lines.expenses ?? []) },
+      { label: 'meal', table: 'tour_meals', rows: buildMealRows(tourId, lines.meals ?? []) },
+      { label: 'allowance', table: 'tour_allowances', rows: buildAllowanceRows(tourId, lines.allowances ?? []) },
+    ];
+
+    await Promise.all(
+      tables
+        .filter((entry) => entry.rows.length > 0)
+        .map(async ({ label, table, rows }) => {
+          const { error } = await (this.supabase as any).from(table).insert(rows);
+          if (error) throw toBulkInsertError(label, error);
+        }),
+    );
+
+    const shoppings = lines.shoppings ?? [];
+    if (shoppings.length === 0) return;
+    await this.assertCanManageTourShopping(tourId);
+    const { data, error } = await (this.supabase as any)
+      .from('tour_shoppings')
+      .insert(buildShoppingRows(tourId, shoppings))
+      .select('id');
+    if (error) throw toBulkInsertError('shopping', error);
+
+    const payments = shoppings.flatMap((shopping, index) =>
+      (shopping.payments ?? []).map((payment) => ({ ...payment, tourShoppingId: data?.[index]?.id })),
+    ).filter((payment) => payment.tourShoppingId);
+    if (payments.length > 0) await Promise.all(payments.map((payment) => this.addCommissionPayment(payment)));
   }
 
   async getDestinations(tourId: string): Promise<Destination[]> {

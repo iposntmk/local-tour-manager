@@ -223,6 +223,7 @@ export interface DataStore {
   getTour(id: string): Promise<Tour | undefined>;
   // Lightweight info-only fetch + per-tab lazy sub-collection reads (TourDetail)
   getTourInfo(id: string): Promise<Tour | undefined>;
+  listTourCodes(): Promise<string[]>;
   listTourDestinations(tourId: string): Promise<Destination[]>;
   listTourExpenses(tourId: string): Promise<Expense[]>;
   listTourMeals(tourId: string): Promise<Meal[]>;
