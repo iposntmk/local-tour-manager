@@ -71,6 +71,7 @@ data/
 .codegraph/
 nul
 supabase/.temp/
+.opencode/skills/archify/
 
 # agentmemory runtime / sensitive files
 .agentmemory/engine-state.json
