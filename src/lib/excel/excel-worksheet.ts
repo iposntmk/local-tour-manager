@@ -56,18 +56,21 @@ const writeWorksheetHeaders = (worksheet: Worksheet, isDraft: boolean) => {
 
 export type AttachmentUrlMap = Record<string, string>;
 
-const collectAttachmentPaths = (tour: Tour): string[] => {
-  const paths = new Map<string, boolean>();
+const collectAttachmentPaths = (tours: Tour[]): string[] => {
+  const paths = new Set<string>();
   const add = (items: { attachments?: TourLineAttachment[] }[]) =>
-    items.forEach(item => (item.attachments || []).forEach(a => paths.set(a.filePath, true)));
-  add(tour.destinations || []);
-  add(tour.expenses || []);
-  add(tour.meals || []);
-  return Array.from(paths.keys());
+    items.forEach(item => (item.attachments || []).forEach(a => paths.add(a.filePath)));
+  tours.forEach(tour => {
+    add(tour.destinations || []);
+    add(tour.expenses || []);
+    add(tour.meals || []);
+  });
+  return Array.from(paths);
 };
 
-export const generateAttachmentUrls = async (tour: Tour): Promise<AttachmentUrlMap> => {
-  const filePaths = collectAttachmentPaths(tour);
+/** Signed URL cho mọi file chứng từ của danh sách tour, gom về một map theo filePath. */
+export const generateAttachmentUrlsForTours = async (tours: Tour[]): Promise<AttachmentUrlMap> => {
+  const filePaths = collectAttachmentPaths(tours);
   if (!filePaths.length) return {};
   const entries = await Promise.allSettled(
     filePaths.map(async fp => [fp, await store.getTourLineAttachmentUrl(fp)] as const),
@@ -79,16 +82,35 @@ export const generateAttachmentUrls = async (tour: Tour): Promise<AttachmentUrlM
   return map;
 };
 
+export const generateAttachmentUrls = (tour: Tour): Promise<AttachmentUrlMap> =>
+  generateAttachmentUrlsForTours([tour]);
+
+/**
+ * Ô "Số chứng từ/ảnh": hiện tên file theo dữ liệu form (tên dòng - ngày - số lượng),
+ * kèm link tải khi đã lấy được signed URL. Không có file thì để 0 cho dễ lọc/tính.
+ */
 export const getAttachmentCellValue = (
   service: ServiceItem,
   urls?: AttachmentUrlMap,
-): number | { text: string; hyperlink: string } => {
+): number | string | { text: string; hyperlink: string } => {
   const files = service.attachmentFiles;
   if (!files?.length) return 0;
+  const label = files.map(file => file.displayName).join('\n');
   const firstUrl = urls?.[files[0].filePath];
-  if (!firstUrl) return files.length;
-  const label = files.length === 1 ? files[0].fileName : `${files.length} files`;
+  if (!firstUrl) return label;
   return { text: label, hyperlink: firstUrl };
+};
+
+/** Ghi ô chứng từ ở cột Q cho cả bản xuất 1 tour lẫn bản xuất gộp nhiều tour. */
+export const writeAttachmentCell = (row: Row, service: ServiceItem, urls?: AttachmentUrlMap) => {
+  const value = getAttachmentCellValue(service, urls);
+  const cell = row.getCell(17);
+  cell.value = value;
+  const multiline = typeof value === 'string' || typeof value === 'object';
+  cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: multiline };
+  if (typeof value === 'object' && value !== null) {
+    cell.font = { color: { argb: 'FF0563C1' }, underline: true };
+  }
 };
 
 export const buildTourWorksheet = (workbook: Workbook, tour: Tour, attachmentUrls?: AttachmentUrlMap): TourSheetBuildResult => {
@@ -143,12 +165,7 @@ export const buildTourWorksheet = (workbook: Workbook, tour: Tour, attachmentUrl
       row.getCell(15).numFmt = currencyFormat;
       row.getCell(16).value = service.guideNote || '';
       row.getCell(16).alignment = { wrapText: true, vertical: 'middle' };
-      const attachVal = getAttachmentCellValue(service, attachmentUrls);
-      row.getCell(17).value = attachVal;
-      row.getCell(17).alignment = { horizontal: 'center', vertical: 'middle' };
-      if (typeof attachVal === 'object' && attachVal !== null) {
-        row.getCell(17).font = { color: { argb: 'FF0563C1' }, underline: true };
-      }
+      writeAttachmentCell(row, service, attachmentUrls);
     }
     if (allowance) {
       row.getCell(8).value = allowance.name;

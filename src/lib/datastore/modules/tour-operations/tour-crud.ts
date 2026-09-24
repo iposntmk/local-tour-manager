@@ -15,6 +15,7 @@ import type { TourRowWithDetails, TourPaymentRow } from '../store-types';
 import type { UserProfile } from '@/types/user';
 import { MASTER_ADMIN_EMAIL } from '@/lib/auth-constants';
 import {
+  attachAttachmentsToTours,
   attachLineTypeAttachments,
   attachTourLineAttachments,
   mapTourDestinationLine,
@@ -45,6 +46,7 @@ export class TourCrudModule {
   declare insertTourLinesBulk: (tourId: string, lines: TourBulkLines) => Promise<void>;
   declare updateTour: (id: string, tour: Partial<Tour>) => Promise<void>;
   declare listTourLineAttachments: (tourId: string) => Promise<TourLineAttachment[]>;
+  declare listTourLineAttachmentsForTours: (tourIds: string[]) => Promise<TourLineAttachment[]>;
   declare getCurrentUserProfile: () => Promise<UserProfile | undefined>;
   declare recalculateTourSummary: (tourId: string) => Promise<void>;
   declare persistTourSummary: (tour: Tour) => Promise<void>;
@@ -144,6 +146,12 @@ export class TourCrudModule {
       tour.shoppings = (typedRow.tour_shoppings || []).map((s: any) => mapTourShopping(s));
       return tour;
     });
+
+    // Chứng từ nằm ở bảng riêng nên select lồng ở trên không lấy được; nạp thêm một lượt
+    // để bản xuất Excel có cột "Số chứng từ/ảnh".
+    if (includeDetails && tours.length > 0) {
+      attachAttachmentsToTours(tours, await this.listTourLineAttachmentsForTours(tours.map((t) => t.id)));
+    }
 
     const enrichedTours = includeDetails ? enrichToursWithSummaries(tours) : tours;
     const visibleTours = enrichedTours.map((tour) => stripTourShoppingForProfile(tour, currentProfile));

@@ -35,6 +35,30 @@ export class TourAttachmentsModule {
     return (data || []).map(mapAttachment);
   }
 
+  /**
+   * Đọc chứng từ của nhiều tour trong một lượt (dùng cho listTours includeDetails và
+   * các bản xuất Excel gộp). Chia lô để tránh URL `in.(...)` quá dài.
+   */
+  async listTourLineAttachmentsForTours(tourIds: string[]): Promise<TourLineAttachment[]> {
+    const uniqueIds = Array.from(new Set(tourIds.filter(Boolean)));
+    if (!uniqueIds.length) return [];
+    const CHUNK_SIZE = 200;
+    const chunks: string[][] = [];
+    for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) chunks.push(uniqueIds.slice(i, i + CHUNK_SIZE));
+    const results = await Promise.all(
+      chunks.map(async (chunk) => {
+        const { data, error } = await (this.supabase as any)
+          .from('tour_line_attachments')
+          .select('*')
+          .in('tour_id', chunk)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return (data || []).map(mapAttachment);
+      }),
+    );
+    return results.flat();
+  }
+
   async getTourLineAttachmentUrl(filePath: string): Promise<string> {
     const { data, error } = await this.supabase.storage.from(BUCKET).createSignedUrl(filePath, 60 * 60);
     if (error) throw error;

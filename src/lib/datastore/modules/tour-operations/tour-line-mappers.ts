@@ -60,6 +60,18 @@ export const attachLineTypeAttachments = (
   });
 };
 
+/** Phân phối chứng từ của nhiều tour về đúng từng tour (dùng cho listTours includeDetails). */
+export const attachAttachmentsToTours = (tours: Tour[], attachments: TourLineAttachment[]) => {
+  if (!attachments.length) return;
+  const byTourId = new Map<string, TourLineAttachment[]>();
+  attachments.forEach((attachment) => {
+    const list = byTourId.get(attachment.tourId) || [];
+    list.push(attachment);
+    byTourId.set(attachment.tourId, list);
+  });
+  tours.forEach((tour) => attachTourLineAttachments(tour, byTourId.get(tour.id) || []));
+};
+
 export const attachTourLineAttachments = (tour: Tour, attachments: TourLineAttachment[]) => {
   attachLineTypeAttachments(tour.destinations, 'destination', attachments);
   attachLineTypeAttachments(tour.meals, 'meal', attachments);

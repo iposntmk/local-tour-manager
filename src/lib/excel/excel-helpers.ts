@@ -6,6 +6,7 @@ import {
   getWaterExpenseDays,
   isWaterExpense,
 } from '@/lib/water-expense-utils';
+import { buildAttachmentFileLabels, type LabeledAttachmentFile } from '@/lib/attachment-label';
 
 export const currencyFormat = '#,##0';
 export const workbookMimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -42,7 +43,7 @@ export interface ServiceItem {
   vatAmount?: number;
   guideNote?: string;
   attachmentCount?: number;
-  attachmentFiles?: { fileName: string; filePath: string }[];
+  attachmentFiles?: LabeledAttachmentFile[];
 }
 
 export const formatTourNationalities = (tour: Tour) => {
@@ -169,33 +170,42 @@ export const buildServiceItems = (tour: Tour): { serviceItems: ServiceItem[]; al
   const serviceItems: ServiceItem[] = [];
   const totalGuests = tour.totalGuests || tour.adults + tour.children;
   (tour.destinations || []).forEach(d => {
+    const guests = typeof d.guests === 'number' ? d.guests : undefined;
     serviceItems.push({
       kind: 'dest', name: `vé ${d.name || ''}`, baseName: d.name || '', date: d.date,
-      price: d.price || 0, guests: typeof d.guests === 'number' ? d.guests : undefined,
+      price: d.price || 0, guests,
       vatRate: d.vatRate || 0, vatAmount: d.vatAmount || 0,
       guideNote: d.guideNote || '', attachmentCount: d.attachments?.length || 0,
-      attachmentFiles: d.attachments?.map(a => ({ fileName: a.fileName, filePath: a.filePath })),
+      attachmentFiles: buildAttachmentFileLabels(d.attachments, {
+        lineName: d.name || '', lineDate: d.date, quantity: guests ?? totalGuests,
+      }),
     });
   });
   if (tour.expenses && tour.expenses.length > 0) {
     tour.expenses.forEach(e => {
       const waterQuantity = getExpenseGuestCount(e, totalGuests) * getWaterExpenseDays(e, totalGuests, tour.totalDays || 1);
+      const guests = isWaterExpense(e) ? waterQuantity : e.guests;
       serviceItems.push({
         kind: 'exp', name: e.name || '', date: e.date, price: e.price || 0,
-        guests: isWaterExpense(e) ? waterQuantity : e.guests,
+        guests,
         vatRate: e.vatRate || 0, vatAmount: e.vatAmount || 0,
         guideNote: e.guideNote || '', attachmentCount: e.attachments?.length || 0,
-        attachmentFiles: e.attachments?.map(a => ({ fileName: a.fileName, filePath: a.filePath })),
+        attachmentFiles: buildAttachmentFileLabels(e.attachments, {
+          lineName: e.name || '', lineDate: e.date, quantity: guests ?? totalGuests,
+        }),
       });
     });
   }
   (tour.meals || []).forEach(m => {
+    const guests = typeof m.guests === 'number' ? m.guests : undefined;
     serviceItems.push({
       kind: 'exp', name: m.name || '', date: m.date, price: m.price || 0,
-      guests: typeof m.guests === 'number' ? m.guests : undefined,
+      guests,
       vatRate: m.vatRate || 0, vatAmount: m.vatAmount || 0,
       guideNote: m.guideNote || '', attachmentCount: m.attachments?.length || 0,
-      attachmentFiles: m.attachments?.map(a => ({ fileName: a.fileName, filePath: a.filePath })),
+      attachmentFiles: buildAttachmentFileLabels(m.attachments, {
+        lineName: m.name || '', lineDate: m.date, quantity: guests ?? totalGuests,
+      }),
     });
   });
   const sortByDate = (a: { date?: string }, b: { date?: string }) => {

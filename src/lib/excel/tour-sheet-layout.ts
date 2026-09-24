@@ -15,7 +15,7 @@ export const TOUR_SHEET_COLUMNS = [
   { key: 'vatRate', width: 8, label: 'VAT %' },
   { key: 'vatAmount', width: 12, label: 'Tiền VAT' },
   { key: 'guideNote', width: 24, label: 'Ghi chú HDV' },
-  { key: 'attachmentCount', width: 12, label: 'Số chứng từ/ảnh' },
+  { key: 'attachmentCount', width: 34, label: 'Số chứng từ/ảnh' },
 ] as const;
 
 export const TOUR_SHEET_COLUMN_WIDTHS = TOUR_SHEET_COLUMNS.map((column) => column.width);

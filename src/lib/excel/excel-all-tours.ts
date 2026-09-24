@@ -1,14 +1,13 @@
 import type { Row, Worksheet } from 'exceljs';
-import type { Tour, TourLineAttachment } from '@/types/tour';
+import type { Tour } from '@/types/tour';
 import { formatDateDisplay } from '@/lib/date-utils';
-import { store } from '@/lib/datastore';
 import {
   currencyFormat, thinBorder, headerFill, totalsFill, infoFill,
   loadExcelJS, validateTourNumbers, getDuplicateNames, ensureUniqueSheetName,
   isTourDraftForExport, applyRowBorder, downloadWorkbook,
   formatNgayRangeForExcel, buildServiceItems, appendSummarySection,
 } from './excel-helpers';
-import { buildTourWorksheet, getAttachmentCellValue, type AttachmentUrlMap } from './excel-worksheet';
+import { buildTourWorksheet, generateAttachmentUrlsForTours, writeAttachmentCell } from './excel-worksheet';
 import { TOUR_SHEET_COLUMNS, TOUR_SHEET_HEADER2_LABELS } from './tour-sheet-layout';
 
 const writeTourTotalsRow = (
@@ -108,23 +107,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   });
   worksheet.views = [{ state: 'frozen', ySplit: 2 }];
 
-  const allPaths = new Set<string>();
-  const collectPaths = (items: { attachments?: TourLineAttachment[] }[]) =>
-    items.forEach(item => (item.attachments || []).forEach(a => allPaths.add(a.filePath)));
-  tours.forEach(t => {
-    collectPaths(t.destinations || []);
-    collectPaths(t.expenses || []);
-    collectPaths(t.meals || []);
-  });
-  const attachmentUrlMap: AttachmentUrlMap = {};
-  if (allPaths.size > 0) {
-    const entries = await Promise.allSettled(
-      Array.from(allPaths).map(async fp => [fp, await store.getTourLineAttachmentUrl(fp)] as const),
-    );
-    for (const entry of entries) {
-      if (entry.status === 'fulfilled') attachmentUrlMap[entry.value[0]] = entry.value[1];
-    }
-  }
+  const attachmentUrlMap = await generateAttachmentUrlsForTours(tours);
 
   let currentRow = 3;
   const allTourTotalCells: string[] = [];
@@ -198,12 +181,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
         row.getCell(15).numFmt = currencyFormat;
         row.getCell(16).value = service.guideNote || '';
         row.getCell(16).alignment = { wrapText: true, vertical: 'middle' };
-        const attachVal = getAttachmentCellValue(service, attachmentUrlMap);
-        row.getCell(17).value = attachVal;
-        row.getCell(17).alignment = { horizontal: 'center', vertical: 'middle' };
-        if (typeof attachVal === 'object' && attachVal !== null) {
-          row.getCell(17).font = { color: { argb: 'FF0563C1' }, underline: true };
-        }
+        writeAttachmentCell(row, service, attachmentUrlMap);
       }
       if (allowance) {
         row.getCell(8).value = allowance.name || '';
@@ -284,6 +262,7 @@ export const exportAllToursToMonthlyZip = async (tours: Tour[]) => {
     return ad - bd;
   });
   const zip = new JSZip();
+  const attachmentUrlMap = await generateAttachmentUrlsForTours(sorted);
   const ensureMonthFolder = (startDate?: string) => {
     if (!startDate) return zip.folder('unknown');
     return zip.folder(startDate.slice(0, 7));
@@ -292,7 +271,7 @@ export const exportAllToursToMonthlyZip = async (tours: Tour[]) => {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Local Tour Manager';
     workbook.calcProperties.fullCalcOnLoad = true;
-    buildTourWorksheet(workbook, tour);
+    buildTourWorksheet(workbook, tour, attachmentUrlMap);
     const buffer = await workbook.xlsx.writeBuffer();
     const folder = ensureMonthFolder(tour.startDate);
     const safeCode = String(tour.tourCode || 'Tour').replace(/[\\/:*?"<>|]/g, '-').slice(0, 60);

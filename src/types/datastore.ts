@@ -272,6 +272,7 @@ export interface DataStore {
 
   // Tour line attachments
   listTourLineAttachments(tourId: string): Promise<TourLineAttachment[]>;
+  listTourLineAttachmentsForTours(tourIds: string[]): Promise<TourLineAttachment[]>;
   uploadTourLineAttachment(
     tourId: string,
     lineType: AttachmentLineType,
