@@ -1,52 +1,32 @@
 /**
  * Chuẩn hóa file trước khi gửi OCR.
  *
- * Azure Document Intelligence (prebuilt-layout) chỉ nhận JPEG, PNG, BMP, TIFF, PDF —
- * KHÔNG nhận WebP. Nhưng dialog import ảnh lại cho chọn `image/webp`, và store gửi thẳng
- * `file.type` sang Edge Function, nên ảnh webp làm Azure trả 400. Google Vision có hỗ trợ
- * webp nên không cần đổi.
+ * - Azure Document Intelligence gói F0 chỉ nhận file ≤ 4MB, và KHÔNG nhận WebP/HEIC.
+ *   Ảnh chụp điện thoại thường 5–12MB nên bị Azure trả 400 "InvalidContentLength".
+ * - Thu nhỏ về cạnh dài tối đa 2000px + nén JPEG: bảng lịch trình vẫn được Azure nhận đủ,
+ *   payload chỉ còn vài trăm KB → upload (nhất là trên 4G) nhanh hơn nhiều.
+ * PDF giữ nguyên (không nén được ở client).
  */
 
-const AZURE_SUPPORTED_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/bmp',
-  'image/tiff',
-  'application/pdf',
-]);
+import { compressImageFile } from '@/lib/image-compress';
 
-const CONVERT_ERROR =
-  'Không đọc được ảnh để chuyển sang PNG. Vui lòng lưu ảnh dạng JPG/PNG rồi thử lại.';
+/** Giới hạn cứng của Azure gói F0. */
+export const AZURE_MAX_BYTES = 4 * 1024 * 1024;
 
-async function convertToPng(file: File): Promise<File> {
-  let bitmap: ImageBitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-  } catch {
-    throw new Error(CONVERT_ERROR);
+const OCR_COMPRESS = {
+  maxLongEdge: 2000,
+  quality: 0.8,
+  passthroughBytes: 800 * 1024,
+  errorMessage: 'Không đọc được ảnh để nén trước khi OCR. Vui lòng lưu ảnh dạng JPG/PNG rồi thử lại.',
+};
+
+/** Trả về file nhỏ gọn, đúng định dạng mà Azure đọc được. */
+export async function normalizeImageForOcr(file: File): Promise<File> {
+  if (file.type === 'application/pdf') {
+    if (file.size > AZURE_MAX_BYTES) {
+      throw new Error('File PDF lớn hơn 4MB. Hãy chụp màn hình trang chương trình tour (JPG/PNG) rồi thử lại.');
+    }
+    return file;
   }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error(CONVERT_ERROR);
-  ctx.drawImage(bitmap, 0, 0);
-  bitmap.close?.();
-
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-  if (!blob) throw new Error(CONVERT_ERROR);
-
-  const baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
-  return new File([blob], `${baseName}.png`, { type: 'image/png' });
-}
-
-/** Trả về file Azure đọc được; file đã hợp lệ hoặc provider google thì giữ nguyên. */
-export async function normalizeImageForOcr(
-  file: File,
-  provider: 'azure' | 'google' = 'azure',
-): Promise<File> {
-  if (provider === 'google') return file;
-  if (AZURE_SUPPORTED_TYPES.has(file.type)) return file;
-  return convertToPng(file);
+  return compressImageFile(file, OCR_COMPRESS);
 }

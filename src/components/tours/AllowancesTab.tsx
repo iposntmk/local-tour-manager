@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import type { Allowance, Tour } from '@/types/tour';
-import { invalidateTourAggregateCaches, upsertById } from '@/lib/query-cache';
-import type { DetailedExpense } from '@/types/master';
+import { useTourLineMutations } from '@/hooks/useTourLineMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import { AllowanceForm } from '@/components/tours/AllowanceForm';
 import { NewAllowanceDialog, ALLOWANCE_CATEGORY_IDS } from '@/components/tours/NewAllowanceDialog';
@@ -32,7 +31,6 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<Allowance>({ date: '', name: '', price: 0, quantity: 1 });
   const [showNewAllowanceDialog, setShowNewAllowanceDialog] = useState(false);
-  const queryClient = useQueryClient();
   const { isGuide, userProfile } = useAuth();
   const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
   const canEditLine = canEditAnyTourLineField(lineFieldAccess, ['name', 'price', 'date', 'quantity']);
@@ -72,62 +70,22 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     return idx === -1 ? Number.POSITIVE_INFINITY : idx;
   };
 
-  const addMutation = useMutation({
-    mutationFn: async (allowance: Allowance) => {
-      if (tourId) {
-        await store.addAllowance(tourId, allowance);
-      } else {
-        onChange?.([...allowances, allowance]);
-      }
-    },
-    onSuccess: () => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'allowances'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã thêm CTP');
-      setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
-    },
-    onError: (error) => toast.error('Thêm CTP thất bại: ' + (error instanceof Error ? error.message : 'lỗi không xác định')),
-  });
+  const resetForm = () => {
+    setEditingIndex(null);
+    setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
+  };
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ index, allowance }: { index: number; allowance: Allowance }) => {
-      if (tourId) {
-        await store.updateAllowance(tourId, index, allowance);
-      } else {
-        const newAllowances = [...allowances];
-        newAllowances[index] = allowance;
-        onChange?.(newAllowances);
-      }
-    },
-    onSuccess: () => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'allowances'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã cập nhật CTP');
-      setEditingIndex(null);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (index: number) => {
-      if (tourId) return store.removeAllowance(tourId, index);
-      return Promise.resolve();
-    },
-    onSuccess: (_, index) => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId, 'allowances'] });
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId], refetchType: 'none' });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      } else {
-        onChange?.(allowances.filter((_, i) => i !== index));
-      }
-      toast.success('Đã xóa CTP');
-    },
+  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Allowance>({
+    tourId,
+    collection: 'allowances',
+    items: allowances,
+    onChange,
+    addLine: (allowance) => store.addAllowance(tourId!, allowance),
+    updateLine: (index, allowance) => store.updateAllowance(tourId!, index, allowance),
+    removeLine: (index, allowance) => store.removeAllowance(tourId!, index, allowance?.id),
+    onOptimisticSubmit: resetForm,
+    onRestoreForm: (allowance) => setFormData(allowance),
+    messages: { added: 'Đã thêm CTP', updated: 'Đã cập nhật CTP', deleted: 'Đã xóa CTP' },
   });
 
   const handleEdit = (index: number) => {
@@ -137,10 +95,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleCancel = () => {
-    setEditingIndex(null);
-    setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
-  };
+  const handleCancel = resetForm;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,7 +104,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     if (editingIndex !== null && !canEditLine) { toast.error('Bạn không có quyền sửa trường trong dòng CTP.'); return; }
     if (!formData.name || !formData.date) { toast.error('Vui lòng điền đầy đủ các trường bắt buộc'); return; }
     if (editingIndex !== null) {
-      updateMutation.mutate({ index: editingIndex, allowance: formData });
+      updateMutation.mutate({ index: editingIndex, line: formData });
     } else {
       addMutation.mutate(formData);
     }

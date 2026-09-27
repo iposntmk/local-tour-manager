@@ -248,13 +248,13 @@ export interface DataStore {
   updateMeal(tourId: string, index: number, meal: Meal): Promise<void>;
   removeMeal(tourId: string, index: number, id?: string): Promise<void>;
 
-  addAllowance(tourId: string, allowance: Allowance): Promise<void>;
+  addAllowance(tourId: string, allowance: Allowance): Promise<string | undefined>;
   updateAllowance(tourId: string, index: number, allowance: Allowance): Promise<void>;
   removeAllowance(tourId: string, index: number, id?: string): Promise<void>;
   
-  addTourShopping(tourId: string, shopping: TourShopping): Promise<void>;
+  addTourShopping(tourId: string, shopping: TourShopping): Promise<string | undefined>;
   updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void>;
-  removeTourShopping(tourId: string, index: number): Promise<void>;
+  removeTourShopping(tourId: string, index: number, id?: string): Promise<void>;
 
   // Settlement workflow
   submitTourSettlement(tourId: string, note?: string): Promise<void>;
@@ -294,12 +294,13 @@ export interface DataStore {
   deleteCommissionPayment(id: string): Promise<void>;
 
   // Tour images
-  analyzeTourImage(file: File, provider?: 'azure' | 'google'): Promise<import('@/lib/ocr/ocr-text-utils').AnalyzeResult>;
+  analyzeTourImage(file: File): Promise<import('@/lib/ocr/ocr-text-utils').AnalyzeResult>;
   listTourImages(tourId: string): Promise<TourImage[]>;
   listAllTourImagesForDownload(): Promise<TourImageDownloadItem[]>;
-  uploadTourImage(tourId: string, file: File, storagePath: string): Promise<void>;
+  uploadTourImage(tourId: string, file: File, storagePath: string): Promise<TourImage>;
   deleteTourImage(image: TourImage): Promise<void>;
   getTourImageUrl(storagePath: string): Promise<string>;
+  getTourImageUrls(storagePaths: string[]): Promise<Record<string, string>>;
 
   // Data management
   exportData(): Promise<any>;

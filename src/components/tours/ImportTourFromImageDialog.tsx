@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Image as ImageIcon, ScanLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { store } from '@/lib/datastore';
@@ -19,22 +18,21 @@ interface ImportTourFromImageDialogProps {
   trigger?: React.ReactNode;
 }
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+// Ảnh được nén ở client trước khi OCR (xem image-normalize), nên nhận được ảnh chụp lớn.
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTourFromImageDialogProps) => {
   const [open, setOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [provider, setProvider] = useState<'azure' | 'google'>('azure');
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [company, setCompany] = useState('');
   const [nationality, setNationality] = useState('');
-  const { file, isAnalyzing, reviewItems, entityCaches, rawOcr, analyze, reset } = useTourImageOcr();
+  const { file, isAnalyzing, reviewItems, entityCaches, rawOcr, prefetch, analyze, reset } = useTourImageOcr();
   const queryClient = useQueryClient();
 
   const closeAndReset = () => {
     reset();
     setSelectedFile(null);
-    setProvider('azure');
     setCompany('');
     setNationality('');
     setOpen(false);
@@ -48,11 +46,13 @@ export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTour
       return;
     }
     if (f && f.size > MAX_IMAGE_BYTES) {
-      toast.error(`${f.name} quá lớn (tối đa 5MB)`);
+      toast.error(`${f.name} quá lớn (tối đa 20MB)`);
       e.target.value = '';
       return;
     }
     setSelectedFile(f);
+    // Bắt đầu OCR ngay trong lúc người dùng điền năm/công ty/quốc tịch.
+    prefetch(f);
   };
 
   const handleAnalyze = () => {
@@ -64,7 +64,6 @@ export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTour
       year: year.trim() || undefined,
       company: company.trim() || undefined,
       nationality: nationality.trim() || undefined,
-      provider,
     });
   };
 
@@ -120,7 +119,7 @@ export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTour
           <div className="overflow-y-auto flex-1 min-h-0 space-y-3 sm:space-y-4">
             <div>
               <Label htmlFor="ocr-image-file" className="flex items-center gap-2 cursor-pointer text-sm">
-                <ImageIcon className="h-4 w-4 shrink-0" />Ảnh hoặc PDF chương trình (tối đa 5MB)
+                <ImageIcon className="h-4 w-4 shrink-0" />Ảnh hoặc PDF chương trình (tối đa 20MB)
               </Label>
               <input
                 id="ocr-image-file"
@@ -147,24 +146,6 @@ export const ImportTourFromImageDialog = ({ onImportAsync, trigger }: ImportTour
                 <Input id="ocr-nationality" value={nationality}
                   onChange={(e) => setNationality(e.target.value)} className="mt-1" />
               </div>
-            </div>
-
-            <div>
-              <Label className="text-sm">Nhà cung cấp OCR</Label>
-              <RadioGroup
-                value={provider}
-                onValueChange={(v: 'azure' | 'google') => setProvider(v)}
-                className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-1"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="azure" id="provider-azure" />
-                  <Label htmlFor="provider-azure" className="cursor-pointer text-sm">Azure Computer Vision</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="google" id="provider-google" />
-                  <Label htmlFor="provider-google" className="cursor-pointer text-sm">Google Cloud Vision</Label>
-                </div>
-              </RadioGroup>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:justify-end gap-2">

@@ -5,6 +5,7 @@ import {
   appendTourCacheLine,
   getTourLineCacheSnapshot,
   patchTourCacheLineRef,
+  removeTourCacheLineById,
   replaceTourCacheLine,
   restoreTourLineCacheSnapshot,
   tourCollectionQueryKey,
@@ -22,14 +23,15 @@ export interface TourLineRecord {
 interface UseTourLineMutationsOptions<T extends TourLineRecord> {
   tourId?: string;
   collection: TourCollectionKey;
-  lineType: AttachmentLineType;
+  /** Chỉ các tab có chứng từ (điểm đến/chi phí/ăn uống) mới cần upload file chờ. */
+  lineType?: AttachmentLineType;
   items: T[];
   /** Tour chưa lưu: ghi thẳng vào state của form cha thay vì gọi store. */
   onChange?: (items: T[]) => void;
   addLine: (line: T) => Promise<string | undefined>;
   updateLine: (index: number, line: T) => Promise<void>;
   removeLine: (index: number, line?: T) => Promise<void>;
-  uploadPendingFiles: (lineType: AttachmentLineType, lineId?: string) => Promise<unknown>;
+  uploadPendingFiles?: (lineType: AttachmentLineType, lineId?: string) => Promise<unknown>;
   /** Dọn form ngay khi bấm lưu (không chờ server) — nguồn chính của cảm giác "nhanh". */
   onOptimisticSubmit?: () => void;
   /** Trả lại dữ liệu đang nhập khi lưu hỏng, để user không mất công gõ lại. */
@@ -96,7 +98,7 @@ export function useTourLineMutations<T extends TourLineRecord>({
       if (tourId && lineId && context?.optimisticLine) {
         patchTourCacheLineRef(queryClient, tourId, collection, context.optimisticLine, { id: lineId } as Partial<T>);
       }
-      await uploadPendingFiles(lineType, lineId);
+      if (lineType) await uploadPendingFiles?.(lineType, lineId);
       onSettledForm?.();
       toast.success(messages.added);
     },
@@ -131,7 +133,7 @@ export function useTourLineMutations<T extends TourLineRecord>({
       return { snapshot };
     },
     onSuccess: async (_result, { line }) => {
-      await uploadPendingFiles(lineType, line.id);
+      if (lineType) await uploadPendingFiles?.(lineType, line.id);
       onSettledForm?.();
       toast.success(messages.updated);
     },
@@ -143,18 +145,28 @@ export function useTourLineMutations<T extends TourLineRecord>({
     onSettled: invalidateAfterWrite,
   });
 
-  // Xóa vẫn chờ server: index dòng phải khớp thứ tự thật, xóa lạc quan dễ lệch khi
-  // user bấm xóa nhiều dòng liên tiếp.
-  const deleteMutation = useMutation<void, Error, number>({
+  // Dòng đã có id được gỡ khỏi cache ngay và server xóa theo id, nên xóa liên tiếp không lệch.
+  // Dòng lạc quan chưa có id vẫn phải chờ server (server tự dò id theo index).
+  const deleteMutation = useMutation<void, Error, number, { snapshot?: TourLineCacheSnapshot }>({
     mutationFn: async (index) => {
       if (!tourId) return;
       await removeLine(index, items[index]);
+    },
+    onMutate: (index) => {
+      const lineId = items[index]?.id;
+      if (!tourId || !lineId) return {};
+      const snapshot = getTourLineCacheSnapshot(queryClient, tourId, collection);
+      removeTourCacheLineById(queryClient, tourId, collection, lineId);
+      return { snapshot };
     },
     onSuccess: (_result, index) => {
       if (!tourId) onChange?.(items.filter((_, i) => i !== index));
       toast.success(messages.deleted);
     },
-    onError: (error) => toast.error(toVietnameseError(error, `${messages.deleted} thất bại.`)),
+    onError: (error, _index, context) => {
+      if (tourId) restoreTourLineCacheSnapshot(queryClient, tourId, collection, context?.snapshot);
+      toast.error(toVietnameseError(error, `${messages.deleted} thất bại.`));
+    },
     onSettled: invalidateAfterWrite,
   });
 

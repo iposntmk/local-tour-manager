@@ -92,6 +92,18 @@ export const patchTourCacheLineRef = <T>(
   );
 };
 
+/** Gỡ lạc quan một dòng đã có id (xóa theo id nên không lệch index khi xóa liên tiếp). */
+export const removeTourCacheLineById = (
+  queryClient: QueryClient,
+  tourId: string,
+  collection: TourCollectionKey,
+  lineId: string,
+) => {
+  queryClient.setQueryData<Array<{ id?: string }>>(tourCollectionQueryKey(tourId, collection), (rows) =>
+    rows ? rows.filter((row) => row.id !== lineId) : rows
+  );
+};
+
 export interface TourAggregateCacheSnapshot {
   previousTour?: Tour;
   previousTourLists: Array<[QueryKey, TourListResult | undefined]>;

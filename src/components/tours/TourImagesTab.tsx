@@ -7,7 +7,8 @@ import { Plus, Trash2, Upload, Image as ImageIcon, Download } from 'lucide-react
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import type { TourImage } from '@/types/tour';
-import { generateTourImageStoragePath } from '@/lib/tour-image-path';
+import { useTourImageUpload } from '@/hooks/useTourImageUpload';
+import { useTourImageUrls } from '@/hooks/useTourImageUrls';
 import { TourImageViewerDialog } from './TourImageViewerDialog';
 
 interface TourImagesTabProps {
@@ -18,7 +19,6 @@ interface TourImagesTabProps {
 }
 
 export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = true }: TourImagesTabProps) {
-  const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<TourImage | null>(null);
   const queryClient = useQueryClient();
@@ -31,36 +31,14 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
     staleTime: TOUR_IMAGE_STALE_TIME,
     gcTime: TOUR_IMAGE_GC_TIME,
   });
-  const imagePathKey = images.map((image) => `${image.id}:${image.storage_path}`).join('|');
-  const { data: imageUrls = {} } = useQuery({
-    queryKey: ['tourImageUrls', tourId, imagePathKey],
-    queryFn: async () => Object.fromEntries(
-      await Promise.all(images.map(async (image) => [image.storage_path, await store.getTourImageUrl(image.storage_path)]))
-    ),
-    enabled: images.length > 0,
-    staleTime: 30 * 60 * 1000,
-  });
-
-  // Upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const filePath = generateTourImageStoragePath(tourId, tourCode, file);
-      await store.uploadTourImage(tourId, file, filePath);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tourImages', tourId] });
-      toast.success('Image uploaded successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to upload image: ${error.message}`);
-    },
-  });
+  const getImageUrl = useTourImageUrls(tourId, images);
+  const { uploadFiles, progress, uploading } = useTourImageUpload(tourId, tourCode);
 
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (image: TourImage) => store.deleteTourImage(image),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tourImages', tourId] });
+    onSuccess: (_data, image) => {
+      queryClient.setQueryData<TourImage[]>(['tourImages', tourId], (old = []) => old.filter((item) => item.id !== image.id));
       toast.success('Image deleted successfully');
     },
     onError: (error: Error) => {
@@ -75,34 +53,10 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
       return;
     }
 
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-          toast.error(`${file.name} is not an image file`);
-          continue;
-        }
-
-        // Validate file size (5MB max)
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name} is too large (max 5MB)`);
-          continue;
-        }
-
-        await uploadMutation.mutateAsync(file);
-      }
-    } finally {
-      setUploading(false);
-      e.target.value = ''; // Reset input
-    }
-  };
-
-  const getImageUrl = (storagePath: string) => {
-    return imageUrls[storagePath] ?? '';
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ''; // Reset input
+    if (files.length === 0) return;
+    await uploadFiles(files);
   };
 
   // Reset zoom and position when image changes
@@ -213,7 +167,7 @@ export function TourImagesTab({ tourId, tourCode, canUpload = true, canDelete = 
                   {uploading ? (
                     <>
                       <Upload className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading...
+                      Uploading {progress ? `${progress.done}/${progress.total}` : ''}...
                     </>
                   ) : (
                     <>

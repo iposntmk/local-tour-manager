@@ -6,38 +6,43 @@ import type { AnalyzeResult } from '@/lib/ocr/ocr-text-utils';
 
 const TOUR_IMAGES_BUCKET = 'tour-images';
 
-const fileToBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.includes(',') ? result.slice(result.indexOf(',') + 1) : result);
-    };
-    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
+const OCR_FALLBACK_ERROR =
+  'Không thể phân tích ảnh. Hãy chắc chắn Edge Function "analyze-tour-image" đã được deploy ' +
+  'và đã set secret Azure (AZURE_FORM_RECOGNIZER_ENDPOINT / AZURE_FORM_RECOGNIZER_KEY).';
+
+/** Lỗi non-2xx của Edge Function nằm trong `error.context` (Response), không nằm ở `data`. */
+const readFunctionError = async (error: unknown): Promise<string> => {
+  const context = (error as { context?: Response })?.context;
+  if (context && typeof context.json === 'function') {
+    const body = await context.json().catch(() => null) as { error?: string } | null;
+    if (body?.error) return body.error;
+  }
+  return OCR_FALLBACK_ERROR;
+};
 
 export class TourImagesModule {
   declare protected supabase: SupabaseClient<Database>;
 
   /**
-   * Gửi ảnh/PDF chương trình tour tới Edge Function `analyze-tour-image`.
-   * Hỗ trợ hai nhà cung cấp OCR: azure (mặc định) và google.
+   * Gửi ảnh/PDF chương trình tour tới Edge Function `analyze-tour-image` (Azure OCR).
+   * Gửi nhị phân thô thay vì base64-trong-JSON: payload nhỏ hơn ~33% và function không
+   * phải decode base64.
    */
-  async analyzeTourImage(file: File, provider: 'azure' | 'google' = 'azure'): Promise<AnalyzeResult> {
-    const dataBase64 = await fileToBase64(file);
+  async analyzeTourImage(file: File): Promise<AnalyzeResult> {
     const { data, error } = await this.supabase.functions.invoke<{ analyzeResult?: AnalyzeResult; error?: string }>(
       'analyze-tour-image',
-      { body: { provider, fileName: file.name, contentType: file.type, dataBase64 } },
+      {
+        body: file,
+        // Không tự đặt Content-Type: functions-js chỉ gắn body File khi header này trống
+        // (nó tự đặt application/octet-stream). Kiểu file thật đi qua `x-content-type`.
+        headers: {
+          'x-content-type': file.type,
+          'x-file-name': encodeURIComponent(file.name),
+        },
+      },
     );
 
-    if (error) {
-      const detail = (data as { error?: string })?.error || '';
-      throw new Error(
-        detail || 'Không thể phân tích ảnh. Hãy chắc chắn Edge Function "analyze-tour-image" đã được deploy ' +
-          'và đã set secret cho provider tương ứng (Azure hoặc Google Vision).',
-      );
-    }
+    if (error) throw new Error(await readFunctionError(error));
     if (data?.error) throw new Error(data.error);
     if (!data?.analyzeResult) throw new Error('Edge Function "analyze-tour-image" không trả về kết quả OCR.');
     return data.analyzeResult;
@@ -74,7 +79,7 @@ export class TourImagesModule {
     }));
   }
 
-  async uploadTourImage(tourId: string, file: File, storagePath: string): Promise<void> {
+  async uploadTourImage(tourId: string, file: File, storagePath: string): Promise<TourImage> {
     const { error: uploadError } = await this.supabase.storage
       .from(TOUR_IMAGES_BUCKET)
       .upload(storagePath, file, {
@@ -89,7 +94,7 @@ export class TourImagesModule {
       throw uploadError;
     }
 
-    const { error: dbError } = await this.supabase
+    const { data, error: dbError } = await this.supabase
       .from('tour_images')
       .insert({
         tour_id: tourId,
@@ -97,9 +102,12 @@ export class TourImagesModule {
         file_name: file.name,
         file_size: file.size,
         mime_type: file.type,
-      });
+      })
+      .select('*')
+      .single();
 
     if (dbError) throw dbError;
+    return data;
   }
 
   async deleteTourImage(image: TourImage): Promise<void> {
@@ -124,5 +132,20 @@ export class TourImagesModule {
 
     if (error) throw error;
     return data.signedUrl;
+  }
+
+  /** Ký nhiều URL trong một request thay vì mỗi ảnh một request. */
+  async getTourImageUrls(storagePaths: string[]): Promise<Record<string, string>> {
+    if (storagePaths.length === 0) return {};
+    const { data, error } = await this.supabase.storage
+      .from(TOUR_IMAGES_BUCKET)
+      .createSignedUrls(storagePaths, 60 * 60);
+
+    if (error) throw error;
+    return Object.fromEntries(
+      (data || [])
+        .filter((item) => item.path && item.signedUrl)
+        .map((item) => [item.path as string, item.signedUrl]),
+    );
   }
 }

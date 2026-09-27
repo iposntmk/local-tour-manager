@@ -222,13 +222,14 @@ export class TourItemsModule {
     }));
   }
 
-  async addAllowance(tourId: string, allowance: Allowance): Promise<void> {
-    const { error } = await this.supabase.from('tour_allowances').insert({
+  async addAllowance(tourId: string, allowance: Allowance): Promise<string | undefined> {
+    const { data, error } = await this.supabase.from('tour_allowances').insert({
       tour_id: tourId, date: allowance.date, name: allowance.name,
       price: allowance.price, quantity: allowance.quantity || 1, category_id: allowance.categoryId ?? null,
-    });
+    }).select('id').single();
     if (error) throw error;
     await this.recalculateTourSummary(tourId);
+    return data?.id;
   }
 
   async updateAllowance(tourId: string, index: number, allowance: Allowance): Promise<void> {
@@ -253,7 +254,7 @@ export class TourItemsModule {
     return (data || []).map((row) => mapTourShopping(row as any));
   }
 
-  async addTourShopping(tourId: string, shopping: TourShopping): Promise<void> {
+  async addTourShopping(tourId: string, shopping: TourShopping): Promise<string | undefined> {
     await this.assertCanManageTourShopping(tourId);
     const { data, error } = await this.supabase.from('tour_shoppings').insert({
       tour_id: tourId, name: shopping.name, price: shopping.price, date: shopping.date,
@@ -265,6 +266,7 @@ export class TourItemsModule {
       await Promise.all(shopping.payments.map((p) => this.addCommissionPayment({ ...p, tourShoppingId: data.id })));
     }
     await this.recalculateTourSummary(tourId);
+    return data?.id;
   }
 
   async updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void> {
@@ -278,12 +280,9 @@ export class TourItemsModule {
     }
   }
 
-  async removeTourShopping(tourId: string, index: number): Promise<void> {
+  async removeTourShopping(tourId: string, index: number, id?: string): Promise<void> {
     await this.assertCanManageTourShopping(tourId);
-    const { data: rows } = await this.supabase.from('tour_shoppings').select('id').eq('tour_id', tourId).order('date');
-    if (rows && rows[index]) {
-      const { error } = await this.supabase.from('tour_shoppings').delete().eq('id', rows[index].id);
-      if (error) throw error;
+    if (await this.deleteTourLineRow('tour_shoppings', tourId, index, id)) {
       await this.recalculateTourSummary(tourId);
     }
   }

@@ -37,7 +37,7 @@ export class TourDataModule {
   declare addDestination: (tourId: string, destination: Destination) => Promise<string | undefined>;
   declare addExpense: (tourId: string, expense: Expense) => Promise<string | undefined>;
   declare addMeal: (tourId: string, meal: Meal) => Promise<string | undefined>;
-  declare addAllowance: (tourId: string, allowance: Allowance) => Promise<void>;
+  declare addAllowance: (tourId: string, allowance: Allowance) => Promise<string | undefined>;
 
   async getToursGrandTotal(): Promise<{ count: number; grandTotal: number }> {
     const currentProfile = await this.getCurrentUserProfile();

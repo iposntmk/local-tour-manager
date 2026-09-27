@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { store } from '@/lib/datastore';
 import { Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import type { CommissionPayment, PaymentMethod, Shopping, Tour } from '@/types/tour';
-import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShoppingForm } from '@/components/tours/ShoppingForm';
 import { ShoppingDesktopTable } from '@/components/tours/ShoppingDesktopTable';
@@ -16,6 +15,7 @@ import { ShoppingsMobileList } from '@/components/tours/mobile/ShoppingsMobileLi
 import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
 import { getNetCommission, getPaymentRemaining, isFullyReceived } from '@/lib/shopping-commission-utils';
 import { useShoppingCommissionMutations } from '@/hooks/useShoppingCommissionMutations';
+import { useTourLineMutations } from '@/hooks/useTourLineMutations';
 
 const REQUIRED_PIN = '0829101188';
 const DEFAULT_RECEIVE_FULL = true;
@@ -51,7 +51,6 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     date: tour?.startDate || '',
   }));
 
-  const queryClient = useQueryClient();
   const { isGuide, userProfile } = useAuth();
   const guideId = isGuide ? (userProfile?.id ?? undefined) : undefined;
 
@@ -67,54 +66,24 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     }
   }, [tour?.startDate]);
 
-  const addMutation = useMutation({
-    mutationFn: async (shopping: Shopping) => {
-      if (tourId) await store.addTourShopping(tourId, shopping);
-      else onChange?.([...shoppingRows, shopping]);
-    },
-    onSuccess: () => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã thêm mục mua sắm');
-      setFormData({ name: '', price: 0, date: tour?.startDate || '' });
-      setFormReceiveFull(DEFAULT_RECEIVE_FULL);
-      setFormCashPayment(false);
-    },
-  });
+  const resetForm = () => {
+    setEditingIndex(null);
+    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
+    setFormReceiveFull(DEFAULT_RECEIVE_FULL);
+    setFormCashPayment(false);
+  };
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ index, shopping }: { index: number; shopping: Shopping }) => {
-      if (tourId) await store.updateTourShopping(tourId, index, shopping);
-      else {
-        const updated = [...shoppingRows];
-        updated[index] = shopping;
-        onChange?.(updated);
-      }
-    },
-    onSuccess: () => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      }
-      toast.success('Đã cập nhật mục mua sắm');
-      setEditingIndex(null);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (index: number) =>
-      tourId ? store.removeTourShopping(tourId, index) : Promise.resolve(),
-    onSuccess: (_, index) => {
-      if (tourId) {
-        queryClient.invalidateQueries({ queryKey: ['tour', tourId] });
-        void invalidateTourAggregateCaches(queryClient, 'none');
-      } else {
-        onChange?.(shoppingRows.filter((_, i) => i !== index));
-      }
-      toast.success('Đã xóa mục mua sắm');
-    },
+  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Shopping>({
+    tourId,
+    collection: 'shoppings',
+    items: shoppingRows,
+    onChange,
+    addLine: (shopping) => store.addTourShopping(tourId!, shopping),
+    updateLine: (index, shopping) => store.updateTourShopping(tourId!, index, shopping),
+    removeLine: (index, shopping) => store.removeTourShopping(tourId!, index, shopping?.id),
+    onOptimisticSubmit: resetForm,
+    onRestoreForm: (shopping) => setFormData(shopping),
+    messages: { added: 'Đã thêm mục mua sắm', updated: 'Đã cập nhật mục mua sắm', deleted: 'Đã xóa mục mua sắm' },
   });
 
   const handleAddPayment = (
@@ -185,7 +154,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
           }],
         }
       : formData;
-    if (editingIndex !== null) updateMutation.mutate({ index: editingIndex, shopping: shoppingToSave });
+    if (editingIndex !== null) updateMutation.mutate({ index: editingIndex, line: shoppingToSave });
     else addMutation.mutate(shoppingToSave);
   };
 
@@ -204,12 +173,7 @@ export function ShoppingsTab({ tourId, shoppings, onChange, tour, readOnly = fal
     if (confirm('Bạn có chắc chắn muốn xóa mục mua sắm này không?')) deleteMutation.mutate(index);
   };
 
-  const handleCancel = () => {
-    setEditingIndex(null);
-    setFormData({ name: '', price: 0, date: tour?.startDate || '' });
-    setFormReceiveFull(DEFAULT_RECEIVE_FULL);
-    setFormCashPayment(false);
-  };
+  const handleCancel = resetForm;
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
