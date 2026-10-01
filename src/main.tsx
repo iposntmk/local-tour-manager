@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { installStaleChunkReload } from "./lib/stale-chunk-reload";
+
+installStaleChunkReload();
 
 // Filter out Cloudflare cookie warnings
 const originalWarn = console.warn;

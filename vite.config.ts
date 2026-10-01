@@ -8,9 +8,10 @@ import { visualizer } from "rollup-plugin-visualizer";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const rawBasePath = env.VITE_APP_BASE_PATH?.trim();
-  const normalizedBasePath = rawBasePath
-    ? `${rawBasePath.startsWith("/") ? "" : "/"}${rawBasePath.replace(/(^\/+|\/+$)/g, "")}/`
-    : "/";
+  // Always absolute ("/name/"): a relative value makes the PWA manifest resolve
+  // scope/start_url against its own URL, doubling the folder ("/name/name/").
+  const trimmedBasePath = rawBasePath?.replace(/(^\/+|\/+$)/g, "");
+  const normalizedBasePath = trimmedBasePath ? `/${trimmedBasePath}/` : "/";
 
   return {
     base: normalizedBasePath,
@@ -43,13 +44,13 @@ export default defineConfig(({ mode }) => {
             start_url: normalizedBasePath,
             icons: [
               {
-                src: "/placeholder.svg",
+                src: `${normalizedBasePath}placeholder.svg`,
                 sizes: "192x192",
                 type: "image/svg+xml",
                 purpose: "any maskable",
               },
               {
-                src: "/placeholder.svg",
+                src: `${normalizedBasePath}placeholder.svg`,
                 sizes: "512x512",
                 type: "image/svg+xml",
                 purpose: "any maskable",

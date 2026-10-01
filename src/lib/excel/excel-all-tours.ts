@@ -2,13 +2,13 @@ import type { Row, Worksheet } from 'exceljs';
 import type { Tour } from '@/types/tour';
 import { formatDateDisplay } from '@/lib/date-utils';
 import {
-  currencyFormat, thinBorder, headerFill, totalsFill, infoFill,
+  currencyFormat, thinBorder, totalsFill, infoFill,
   loadExcelJS, validateTourNumbers, getDuplicateNames, ensureUniqueSheetName,
   isTourDraftForExport, applyRowBorder, downloadWorkbook,
   formatNgayRangeForExcel, buildServiceItems, appendSummarySection,
 } from './excel-helpers';
-import { buildTourWorksheet, generateAttachmentUrlsForTours, writeAttachmentCell } from './excel-worksheet';
-import { TOUR_SHEET_COLUMNS, TOUR_SHEET_HEADER2_LABELS } from './tour-sheet-layout';
+import { buildTourWorksheet, writeWorksheetHeaders } from './excel-worksheet';
+import { generateAttachmentUrlsForTours, getAttachmentLastCol, writeAttachmentCells } from './excel-attachments';
 
 const writeTourTotalsRow = (
   worksheet: Worksheet,
@@ -71,41 +71,8 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   const worksheet = workbook.addWorksheet(
     ensureUniqueSheetName(workbook, hasUnapproved ? 'NHÁP All Tours' : 'All Tours'),
   );
-  if (hasUnapproved) {
-    worksheet.headerFooter.oddHeader = '&C&"Arial,Bold"&14&Kff0000BẢN NHÁP — CHƯA DUYỆT';
-    worksheet.headerFooter.evenHeader = worksheet.headerFooter.oddHeader;
-  }
-  worksheet.properties.defaultRowHeight = 20;
-  worksheet.columns = TOUR_SHEET_COLUMNS.map(({ key, width }) => ({ key, width }));
-
-  const h1 = worksheet.getRow(1);
-  h1.height = 40;
-  worksheet.mergeCells('A1:B1');
-  worksheet.mergeCells('C1:G1');
-  worksheet.mergeCells('H1:L1');
-  worksheet.mergeCells('N1:Q1');
-  [
-    { cell: 'A1', value: 'code', fill: headerFill },
-    { cell: 'C1', value: 'vé + ăn + uống + chi phí', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } },
-    { cell: 'H1', value: 'Công tác phí (CTP) + ngủ', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF00B050' } } },
-    { cell: 'M1', value: 'Tổng tour', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFC000' } } },
-    { cell: 'N1', value: 'VAT + chứng từ', fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFC000' } } },
-  ].forEach(({ cell, value, fill }) => {
-    const c = worksheet.getCell(cell);
-    c.value = value; c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    c.fill = fill; c.border = thinBorder;
-    c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-  });
-  for (let col = 1; col <= 17; col++) h1.getCell(col).border = thinBorder;
-
-  const h2 = worksheet.getRow(2);
-  h2.height = 40;
-  TOUR_SHEET_HEADER2_LABELS.forEach((label, idx) => {
-    const cell = h2.getCell(idx + 1);
-    cell.value = label; cell.font = { bold: true }; cell.fill = headerFill;
-    cell.border = thinBorder; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-  });
-  worksheet.views = [{ state: 'frozen', ySplit: 2 }];
+  const lastCol = getAttachmentLastCol(tours);
+  writeWorksheetHeaders(worksheet, hasUnapproved, lastCol);
 
   const attachmentUrlMap = await generateAttachmentUrlsForTours(tours);
 
@@ -114,7 +81,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
   const invalidTourCodes: string[] = [];
   const duplicateNameTourCodes: string[] = [];
   let lastMonth: string | undefined;
-  const applyBorder17 = (row: Row) => applyRowBorder(row, 1, 17);
+  const applyBorder17 = (row: Row) => applyRowBorder(row, 1, lastCol);
 
   tours.forEach((tour) => {
     const issues = validateTourNumbers(tour);
@@ -181,7 +148,7 @@ export const exportAllToursToExcel = async (tours: Tour[]) => {
         row.getCell(15).numFmt = currencyFormat;
         row.getCell(16).value = service.guideNote || '';
         row.getCell(16).alignment = { wrapText: true, vertical: 'middle' };
-        writeAttachmentCell(row, service, attachmentUrlMap);
+        writeAttachmentCells(row, service, attachmentUrlMap);
       }
       if (allowance) {
         row.getCell(8).value = allowance.name || '';

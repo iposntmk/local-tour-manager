@@ -10,6 +10,14 @@ import {
   mapTourMealLine,
 } from './tour-line-mappers';
 
+interface SummaryRecalcEntry {
+  dirty: boolean;
+  done: Promise<void>;
+}
+
+// Cấp module vì các module được trộn bằng applyMixins (field khởi tạo trong class không chạy).
+const summaryRecalcQueue = new Map<string, SummaryRecalcEntry>();
+
 /**
  * Đồng bộ các cột tổng kết/cảnh báo trên bảng `tours`. Tách riêng khỏi tour-crud vì mọi
  * thao tác thêm/sửa/xóa dòng đều đi qua đây, và đây cũng là điểm nóng về số round-trip.
@@ -47,6 +55,39 @@ export class TourSummaryModule {
     const tour = await this.getTourForSummary(tourId);
     if (!tour) return;
     await this.persistTourSummary(tour);
+  }
+
+  /**
+   * Tính lại tổng kết ở nền, gộp theo tour: thao tác dòng không phải chờ thêm 2 round-trip
+   * (đọc full tour + ghi tổng kết) mới trả id về. Nhiều lần ghi liên tiếp chỉ chạy nối tiếp
+   * tối đa một lượt bù, nên lượt ghi cuối cùng luôn đọc dữ liệu mới nhất (không ghi đè lệch).
+   */
+  scheduleTourSummaryRecalc(tourId: string): Promise<void> {
+    const queued = summaryRecalcQueue.get(tourId);
+    if (queued) {
+      queued.dirty = true;
+      return queued.done;
+    }
+    const entry: SummaryRecalcEntry = { dirty: false, done: Promise.resolve() };
+    summaryRecalcQueue.set(tourId, entry);
+    entry.done = (async () => {
+      try {
+        do {
+          entry.dirty = false;
+          await this.recalculateTourSummary(tourId);
+        } while (entry.dirty);
+      } catch (error) {
+        console.error('SupabaseStore: Failed to recalculate tour summary', error);
+      } finally {
+        summaryRecalcQueue.delete(tourId);
+      }
+    })();
+    return entry.done;
+  }
+
+  /** Chờ lượt tính lại tổng kết đang chạy nền (nếu có) — gọi trước khi đọc lại cột tổng kết. */
+  flushTourSummary(tourId: string): Promise<void> {
+    return summaryRecalcQueue.get(tourId)?.done ?? Promise.resolve();
   }
 
   /** Ghi tổng kết + cờ cảnh báo từ một tour ĐÃ đọc sẵn (tiết kiệm một lần đọc lại). */

@@ -23,7 +23,7 @@ import {
 export class TourItemsModule {
   declare protected supabase: SupabaseClient<Database>;
   declare getTour: (id: string) => Promise<Tour | null>;
-  declare recalculateTourSummary: (tourId: string) => Promise<void>;
+  declare scheduleTourSummaryRecalc: (tourId: string) => Promise<void>;
   declare addCommissionPayment: (payment: Omit<CommissionPayment, 'id'>) => Promise<CommissionPayment>;
   declare getCurrentUserProfile: () => Promise<UserProfile | undefined>;
 
@@ -138,19 +138,19 @@ export class TourItemsModule {
       if (error.code === '22007') throw new Error('Invalid destination date format');
       throw new Error(`Failed to add destination: ${error.message}`);
     }
-    await this.recalculateTourSummary(tourId);
+    void this.scheduleTourSummaryRecalc(tourId);
     return data?.id;
   }
 
   async updateDestination(tourId: string, index: number, destination: Destination): Promise<void> {
     if (await this.updateTourLineRow('tour_destinations', tourId, index, destination.id, buildLineWritePayload(destination))) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
   async removeDestination(tourId: string, index: number, id?: string): Promise<void> {
     if (await this.deleteTourLineRow('tour_destinations', tourId, index, id)) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
@@ -167,19 +167,19 @@ export class TourItemsModule {
       .select('id')
       .single();
     if (error) throw error;
-    await this.recalculateTourSummary(tourId);
+    void this.scheduleTourSummaryRecalc(tourId);
     return data?.id;
   }
 
   async updateExpense(tourId: string, index: number, expense: Expense): Promise<void> {
     if (await this.updateTourLineRow('tour_expenses', tourId, index, expense.id, buildLineWritePayload(expense))) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
   async removeExpense(tourId: string, index: number, id?: string): Promise<void> {
     if (await this.deleteTourLineRow('tour_expenses', tourId, index, id)) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
@@ -196,19 +196,19 @@ export class TourItemsModule {
       .select('id')
       .single();
     if (error) throw error;
-    await this.recalculateTourSummary(tourId);
+    void this.scheduleTourSummaryRecalc(tourId);
     return data?.id;
   }
 
   async updateMeal(tourId: string, index: number, meal: Meal): Promise<void> {
     if (await this.updateTourLineRow('tour_meals', tourId, index, meal.id, buildLineWritePayload(meal))) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
   async removeMeal(tourId: string, index: number, id?: string): Promise<void> {
     if (await this.deleteTourLineRow('tour_meals', tourId, index, id)) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
@@ -228,7 +228,7 @@ export class TourItemsModule {
       price: allowance.price, quantity: allowance.quantity || 1, category_id: allowance.categoryId ?? null,
     }).select('id').single();
     if (error) throw error;
-    await this.recalculateTourSummary(tourId);
+    void this.scheduleTourSummaryRecalc(tourId);
     return data?.id;
   }
 
@@ -237,13 +237,13 @@ export class TourItemsModule {
         date: allowance.date, name: allowance.name,
         price: allowance.price, quantity: allowance.quantity || 1, category_id: allowance.categoryId ?? null,
       })) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
   async removeAllowance(tourId: string, index: number, id?: string): Promise<void> {
     if (await this.deleteTourLineRow('tour_allowances', tourId, index, id)) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
@@ -265,7 +265,7 @@ export class TourItemsModule {
     if (data && shopping.payments && shopping.payments.length > 0) {
       await Promise.all(shopping.payments.map((p) => this.addCommissionPayment({ ...p, tourShoppingId: data.id })));
     }
-    await this.recalculateTourSummary(tourId);
+    void this.scheduleTourSummaryRecalc(tourId);
     return data?.id;
   }
 
@@ -276,14 +276,14 @@ export class TourItemsModule {
         withholds_pit: shopping.withholdsPit ?? null, pit_rate: shopping.pitRate ?? null,
         pit_amount: shopping.pitAmount ?? null, net_commission: shopping.netCommission ?? null,
       })) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 
   async removeTourShopping(tourId: string, index: number, id?: string): Promise<void> {
     await this.assertCanManageTourShopping(tourId);
     if (await this.deleteTourLineRow('tour_shoppings', tourId, index, id)) {
-      await this.recalculateTourSummary(tourId);
+      void this.scheduleTourSummaryRecalc(tourId);
     }
   }
 }
