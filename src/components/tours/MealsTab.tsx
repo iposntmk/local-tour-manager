@@ -15,6 +15,7 @@ import { NewMealDialog } from './NewMealDialog';
 import { MealsMobileList } from '@/components/tours/mobile/MealsMobileList';
 import { LineEvidenceFields } from '@/components/tours/LineEvidenceFields';
 import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
+import { QuickAddChecklist } from '@/components/tours/QuickAddChecklist';
 import {
   TOUR_LINE_ACTIONS,
   TOUR_LINE_CANCEL_BUTTON,
@@ -60,7 +61,7 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
     handleSubmit, handleEdit, handleCancel, handleDuplicate,
     handleCreateNewMeal, handleMobileGuestsChange, handleCreateNewCategory,
     sortedMeals, mealsTotalAmount, autosaveMeal,
-    pendingFiles, setPendingFiles,
+    pendingFiles, setPendingFiles, quickAdd,
   } = useMealsTab({ tourId, meals, onChange, tour, readOnly, lineFieldAccess });
   const canView = (field: TourLineFieldKey) => canViewTourLineField(lineFieldAccess, field);
   const canEdit = (field: TourLineFieldKey) => canEditTourLineField(lineFieldAccess, field);
@@ -170,6 +171,7 @@ export function MealsTab({ tourId, meals, onChange, tour, readOnly = false, edit
             </form>
           </div>
         }
+        quickAdd={<QuickAddChecklist title="Bữa ăn thông dụng" quickAdd={quickAdd} groupOrder="usage" viewStorageKey="quickAdd.view.meals" />}
         title="Danh sách bữa ăn"
         emptyMessage="Chưa có bữa ăn nào"
         itemCount={meals.length}

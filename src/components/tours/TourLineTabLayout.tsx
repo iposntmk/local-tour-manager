@@ -15,6 +15,8 @@ interface TourLineTabLayoutProps {
   formVisible?: boolean;
   autoOpenKey?: number | null;
   beforeList?: ReactNode;
+  /** Danh sách thêm nhanh, nằm giữa form và bảng. */
+  quickAdd?: ReactNode;
   title: string;
   emptyMessage: string;
   itemCount: number;
@@ -27,6 +29,7 @@ export function TourLineTabLayout({
   formVisible = false,
   autoOpenKey = null,
   beforeList,
+  quickAdd,
   title,
   emptyMessage,
   itemCount,
@@ -40,6 +43,8 @@ export function TourLineTabLayout({
       {formVisible && form && (
         <FormCollapsible autoOpenKey={autoOpenKey}>{form}</FormCollapsible>
       )}
+
+      {quickAdd}
 
       <div className={TOUR_LINE_LIST_CARD}>
         <div className={TOUR_LINE_LIST_HEADER}>

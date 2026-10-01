@@ -11,6 +11,8 @@ import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useTourLineMutations } from '@/hooks/useTourLineMutations';
+import { useQuickAddLines } from '@/hooks/useQuickAddLines';
+import { toCategorizedQuickAddSources } from '@/lib/quick-add-utils';
 import { useApplyTourLineDefaults, useTourLineFallback } from '@/hooks/useTourLineDefaults';
 import { useAuth } from '@/contexts/AuthContext';
 import { ExpenseForm } from '@/components/tours/ExpenseForm';
@@ -18,6 +20,7 @@ import { NewExpenseDialog } from '@/components/tours/NewExpenseDialog';
 import { ExpensesDesktopTable } from '@/components/tours/ExpensesDesktopTable';
 import { ExpensesMobileList } from '@/components/tours/mobile/ExpensesMobileList';
 import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
+import { QuickAddChecklist } from '@/components/tours/QuickAddChecklist';
 import {
   canEditAnyTourLineField,
   canEditTourLineField,
@@ -61,7 +64,9 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     queryFn: () => store.listDetailedExpenses({ status: 'active', guideId }),
   });
 
-  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Expense>({
+  const quickAddSources = useMemo(() => toCategorizedQuickAddSources(detailedExpenses), [detailedExpenses]);
+
+  const { addMutation, quickAddMutation, updateMutation, deleteMutation } = useTourLineMutations<Expense>({
     tourId,
     collection: 'expenses',
     lineType: 'expense',
@@ -75,6 +80,21 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
     onRestoreForm: (expense) => setFormData(expense),
     onSettledForm: clearPendingFiles,
     messages: { added: 'Đã thêm chi phí', updated: 'Đã cập nhật chi phí', deleted: 'Đã xóa chi phí' },
+  });
+
+  const quickAdd = useQuickAddLines<Expense>({
+    lineType: 'expense',
+    enabled: !readOnly && canCreateLine,
+    sources: quickAddSources,
+    lines: expenses,
+    buildLine: (source) => normalizeExpense({
+      ...fallbackExpense,
+      date: tour?.startDate || fallbackExpense.date,
+      name: source.name,
+      price: source.price,
+    }),
+    onAdd: (expense) => quickAddMutation.mutate(expense),
+    onRemove: (index) => deleteMutation.mutate(index),
   });
 
   const autosaveExpense = useTourLineAutosave<Expense>({
@@ -240,6 +260,7 @@ export function ExpensesTab({ tourId, expenses, onChange, tour, readOnly = false
             lineFieldAccess={lineFieldAccess}
           />
         }
+        quickAdd={<QuickAddChecklist title="Chi phí thông dụng" quickAdd={quickAdd} groupOrder="usage" viewStorageKey="quickAdd.view.expenses" />}
         title="Danh sách chi phí"
         emptyMessage="Chưa có chi phí nào"
         itemCount={expenses.length}

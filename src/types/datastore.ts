@@ -1,4 +1,5 @@
 import type { Guide, GuideInput, Language, LanguageInput, Company, CompanyInput, Nationality, NationalityInput, Province, ProvinceInput, TouristDestination, TouristDestinationInput, DestinationFree, DestinationFreeInput, Shopping as MasterShopping, ShoppingInput, ExpenseCategory, ExpenseCategoryInput, DetailedExpense, DetailedExpenseInput, DiaryType, DiaryTypeInput, TourDiary, TourDiaryInput, Restaurant, RestaurantInput, ShopPlace, ShopPlaceInput, Hotel, HotelInput } from './master';
+import type { FrequentTourLine, QuickAddLineType } from './quick-add';
 import type {
   Tour,
   TourInput,
@@ -251,6 +252,10 @@ export interface DataStore {
   addAllowance(tourId: string, allowance: Allowance): Promise<string | undefined>;
   updateAllowance(tourId: string, index: number, allowance: Allowance): Promise<void>;
   removeAllowance(tourId: string, index: number, id?: string): Promise<void>;
+  /** Thêm/sửa/xóa dòng tính lại tổng kết ở nền; chờ hàm này trước khi đọc lại cột tổng kết. */
+  flushTourSummary(tourId: string): Promise<void>;
+  /** Tên dòng user dùng nhiều nhất theo loại tab — cho danh sách thêm nhanh. */
+  listFrequentTourLines(lineType: QuickAddLineType, limit?: number): Promise<FrequentTourLine[]>;
   
   addTourShopping(tourId: string, shopping: TourShopping): Promise<string | undefined>;
   updateTourShopping(tourId: string, index: number, shopping: TourShopping): Promise<void>;

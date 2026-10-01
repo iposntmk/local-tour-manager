@@ -8,6 +8,8 @@ import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useTourLineMutations } from '@/hooks/useTourLineMutations';
+import { useQuickAddLines } from '@/hooks/useQuickAddLines';
+import { toCategorizedQuickAddSources } from '@/lib/quick-add-utils';
 import { useApplyTourLineDefaults, useTourLineFallback } from '@/hooks/useTourLineDefaults';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Meal, Tour } from '@/types/tour';
@@ -64,7 +66,9 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
-  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Meal>({
+  const quickAddSources = useMemo(() => toCategorizedQuickAddSources(detailedExpenses), [detailedExpenses]);
+
+  const { addMutation, quickAddMutation, updateMutation, deleteMutation } = useTourLineMutations<Meal>({
     tourId,
     collection: 'meals',
     lineType: 'meal',
@@ -78,6 +82,16 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     onRestoreForm: (meal) => setFormData(meal),
     onSettledForm: clearPendingFiles,
     messages: { added: 'Đã thêm bữa ăn', updated: 'Đã cập nhật bữa ăn', deleted: 'Đã xóa bữa ăn' },
+  });
+
+  const quickAdd = useQuickAddLines<Meal>({
+    lineType: 'meal',
+    enabled: !readOnly && canCreateLine,
+    sources: quickAddSources,
+    lines: meals,
+    buildLine: (source) => ({ ...fallbackMeal, name: source.name, price: source.price }),
+    onAdd: (meal) => quickAddMutation.mutate(meal),
+    onRemove: (index) => deleteMutation.mutate(index),
   });
 
   const autosaveMeal = useTourLineAutosave<Meal>({
@@ -205,6 +219,6 @@ export function useMealsTab({ tourId, meals, onChange, tour, readOnly, lineField
     handleCreateNewCategory: (data: ExpenseCategoryInput) => createCategoryMutation.mutate(data),
     sortedMeals, mealsTotalAmount,
     pendingFiles, setPendingFiles,
-    updateMutation, autosaveMeal, tourId,
+    updateMutation, autosaveMeal, tourId, quickAdd,
   };
 }

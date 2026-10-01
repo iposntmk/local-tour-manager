@@ -4,12 +4,15 @@ import { store } from '@/lib/datastore';
 import { toast } from 'sonner';
 import type { Allowance, Tour } from '@/types/tour';
 import { useTourLineMutations } from '@/hooks/useTourLineMutations';
+import { useQuickAddLines } from '@/hooks/useQuickAddLines';
+import { toCategorizedQuickAddSources } from '@/lib/quick-add-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { AllowanceForm } from '@/components/tours/AllowanceForm';
 import { NewAllowanceDialog, ALLOWANCE_CATEGORY_IDS } from '@/components/tours/NewAllowanceDialog';
 import { AllowancesDesktopTable } from '@/components/tours/AllowancesDesktopTable';
 import { AllowancesMobileList } from '@/components/tours/mobile/AllowancesMobileList';
 import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
+import { QuickAddChecklist } from '@/components/tours/QuickAddChecklist';
 import {
   canEditAnyTourLineField,
   canEditTourLineField,
@@ -49,9 +52,14 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     queryFn: () => store.listExpenseCategories({ status: 'active', guideId }),
   });
 
-  const detailedExpenses = allDetailedExpenses.filter(
-    (exp) => exp.categoryRef?.id && ALLOWANCE_CATEGORY_IDS.includes(exp.categoryRef.id)
+  const detailedExpenses = useMemo(
+    () => allDetailedExpenses.filter(
+      (exp) => exp.categoryRef?.id && ALLOWANCE_CATEGORY_IDS.includes(exp.categoryRef.id)
+    ),
+    [allDetailedExpenses]
   );
+
+  const quickAddSources = useMemo(() => toCategorizedQuickAddSources(detailedExpenses), [detailedExpenses]);
 
   const allowanceCategories = expenseCategories.filter((c) => ALLOWANCE_CATEGORY_IDS.includes(c.id));
 
@@ -75,7 +83,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     setFormData({ date: tour?.startDate || '', name: '', price: 0, quantity: 1 });
   };
 
-  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Allowance>({
+  const { addMutation, quickAddMutation, updateMutation, deleteMutation } = useTourLineMutations<Allowance>({
     tourId,
     collection: 'allowances',
     items: allowances,
@@ -86,6 +94,22 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
     onOptimisticSubmit: resetForm,
     onRestoreForm: (allowance) => setFormData(allowance),
     messages: { added: 'Đã thêm CTP', updated: 'Đã cập nhật CTP', deleted: 'Đã xóa CTP' },
+  });
+
+  const quickAdd = useQuickAddLines<Allowance>({
+    lineType: 'allowance',
+    enabled: !readOnly && canCreateLine,
+    sources: quickAddSources,
+    lines: allowances,
+    buildLine: (source) => ({
+      date: tour?.startDate || '',
+      name: source.name,
+      price: source.price,
+      quantity: 1,
+      categoryId: source.categoryId,
+    }),
+    onAdd: (allowance) => quickAddMutation.mutate(allowance),
+    onRemove: (index) => deleteMutation.mutate(index),
   });
 
   const handleEdit = (index: number) => {
@@ -175,6 +199,7 @@ export function AllowancesTab({ tourId, allowances, onChange, tour, readOnly = f
             lineFieldAccess={lineFieldAccess}
           />
         }
+        quickAdd={<QuickAddChecklist title="CTP thông dụng" quickAdd={quickAdd} groupOrder="usage" viewStorageKey="quickAdd.view.allowances" />}
         title="Danh sách CTP"
         emptyMessage="Chưa có phụ cấp nào"
         itemCount={allowances.length}

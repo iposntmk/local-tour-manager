@@ -8,6 +8,7 @@ import { TourPaymentsModule } from './tour-payments';
 import { TourImagesModule } from './tour-images';
 import { TourDataModule } from './tour-data';
 import { TourAttachmentsModule } from './tour-attachments';
+import { TourFrequentLinesModule } from './tour-frequent-lines';
 
 function applyMixins(derivedCtor: any, constructors: any[]) {
   constructors.forEach((baseCtor) => {
@@ -20,5 +21,5 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
 }
 
 export class TourOperationsModule {}
-export interface TourOperationsModule extends TourCrudModule, TourSummaryModule, TourReadsModule, TourItemsModule, TourSettlementModule, TourPaymentsModule, TourImagesModule, TourDataModule, TourAttachmentsModule {}
-applyMixins(TourOperationsModule, [TourCrudModule, TourSummaryModule, TourReadsModule, TourItemsModule, TourSettlementModule, TourPaymentsModule, TourImagesModule, TourDataModule, TourAttachmentsModule]);
+export interface TourOperationsModule extends TourCrudModule, TourSummaryModule, TourReadsModule, TourItemsModule, TourSettlementModule, TourPaymentsModule, TourImagesModule, TourDataModule, TourAttachmentsModule, TourFrequentLinesModule {}
+applyMixins(TourOperationsModule, [TourCrudModule, TourSummaryModule, TourReadsModule, TourItemsModule, TourSettlementModule, TourPaymentsModule, TourImagesModule, TourDataModule, TourAttachmentsModule, TourFrequentLinesModule]);

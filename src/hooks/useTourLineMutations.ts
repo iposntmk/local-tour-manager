@@ -1,5 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { store } from '@/lib/datastore';
 import { invalidateTourAggregateCaches } from '@/lib/query-cache';
 import {
   appendTourCacheLine,
@@ -69,14 +70,35 @@ export function useTourLineMutations<T extends TourLineRecord>({
 }: UseTourLineMutationsOptions<T>) {
   const queryClient = useQueryClient();
 
-  const invalidateAfterWrite = () => {
+  const mutationKey = ['tour-line', tourId ?? 'new', collection];
+
+  /**
+   * Hủy refetch đang bay trước khi vá cache: nếu không, kết quả refetch của thao tác TRƯỚC
+   * (chưa có dòng vừa thêm/vẫn còn dòng vừa xóa) sẽ ghi đè bản lạc quan → dòng nhấp nháy.
+   */
+  const cancelLineRefetch = () => {
     if (!tourId) return;
-    queryClient.invalidateQueries({ queryKey: tourCollectionQueryKey(tourId, collection) });
-    queryClient.invalidateQueries({ queryKey: ['tour', tourId], exact: true, refetchType: 'none' });
-    void invalidateTourAggregateCaches(queryClient, 'none');
+    void queryClient.cancelQueries({ queryKey: tourCollectionQueryKey(tourId, collection) });
   };
 
-  const addMutation = useMutation<string | undefined, Error, T, AddContext<T>>({
+  const invalidateAfterWrite = () => {
+    if (!tourId) return;
+    // Còn thao tác khác đang chạy thì để thao tác cuối refetch một lần, tránh ghi đè lạc quan.
+    if (queryClient.isMutating({ mutationKey }) > 1) return;
+    queryClient.invalidateQueries({ queryKey: tourCollectionQueryKey(tourId, collection) });
+    // Cột tổng kết được tính lại ở nền: chờ xong mới đánh dấu cũ để danh sách không đọc số lệch.
+    void store.flushTourSummary(tourId).finally(() => {
+      queryClient.invalidateQueries({ queryKey: ['tour', tourId], exact: true, refetchType: 'none' });
+      void invalidateTourAggregateCaches(queryClient);
+    });
+  };
+
+  /**
+   * `formEffects = false` cho thêm nhanh: dòng không đi qua form nên không được dọn form,
+   * không upload file chờ của form và không trả dữ liệu về form khi lỗi.
+   */
+  const buildAddOptions = (formEffects: boolean): UseMutationOptions<string | undefined, Error, T, AddContext<T>> => ({
+    mutationKey,
     mutationFn: async (line) => {
       if (!tourId) {
         onChange?.([...items, line]);
@@ -85,8 +107,9 @@ export function useTourLineMutations<T extends TourLineRecord>({
       return addLine(line);
     },
     onMutate: (line) => {
-      onOptimisticSubmit?.();
+      if (formEffects) onOptimisticSubmit?.();
       if (!tourId) return {};
+      cancelLineRefetch();
       const snapshot = getTourLineCacheSnapshot(queryClient, tourId, collection);
       // Bỏ id: "nhân bản dòng" truyền vào nguyên dòng gốc, giữ lại id sẽ khiến thao tác
       // sửa dòng mới (trước khi refetch xong) ghi nhầm sang dòng gốc.
@@ -98,17 +121,22 @@ export function useTourLineMutations<T extends TourLineRecord>({
       if (tourId && lineId && context?.optimisticLine) {
         patchTourCacheLineRef(queryClient, tourId, collection, context.optimisticLine, { id: lineId } as Partial<T>);
       }
-      if (lineType) await uploadPendingFiles?.(lineType, lineId);
-      onSettledForm?.();
+      if (formEffects) {
+        if (lineType) await uploadPendingFiles?.(lineType, lineId);
+        onSettledForm?.();
+      }
       toast.success(messages.added);
     },
     onError: (error, line, context) => {
       if (tourId) restoreTourLineCacheSnapshot(queryClient, tourId, collection, context?.snapshot);
-      onRestoreForm?.(line);
+      if (formEffects) onRestoreForm?.(line);
       toast.error(toVietnameseError(error, `${messages.added} thất bại.`));
     },
     onSettled: invalidateAfterWrite,
   });
+
+  const addMutation = useMutation(buildAddOptions(true));
+  const quickAddMutation = useMutation(buildAddOptions(false));
 
   const updateMutation = useMutation<
     void,
@@ -116,6 +144,7 @@ export function useTourLineMutations<T extends TourLineRecord>({
     { index: number; line: T },
     { snapshot?: TourLineCacheSnapshot }
   >({
+    mutationKey,
     mutationFn: async ({ index, line }) => {
       if (!tourId) {
         const next = [...items];
@@ -128,6 +157,7 @@ export function useTourLineMutations<T extends TourLineRecord>({
     onMutate: ({ index, line }) => {
       onOptimisticSubmit?.();
       if (!tourId) return {};
+      cancelLineRefetch();
       const snapshot = getTourLineCacheSnapshot(queryClient, tourId, collection);
       replaceTourCacheLine(queryClient, tourId, collection, index, line);
       return { snapshot };
@@ -148,6 +178,7 @@ export function useTourLineMutations<T extends TourLineRecord>({
   // Dòng đã có id được gỡ khỏi cache ngay và server xóa theo id, nên xóa liên tiếp không lệch.
   // Dòng lạc quan chưa có id vẫn phải chờ server (server tự dò id theo index).
   const deleteMutation = useMutation<void, Error, number, { snapshot?: TourLineCacheSnapshot }>({
+    mutationKey,
     mutationFn: async (index) => {
       if (!tourId) return;
       await removeLine(index, items[index]);
@@ -155,6 +186,7 @@ export function useTourLineMutations<T extends TourLineRecord>({
     onMutate: (index) => {
       const lineId = items[index]?.id;
       if (!tourId || !lineId) return {};
+      cancelLineRefetch();
       const snapshot = getTourLineCacheSnapshot(queryClient, tourId, collection);
       removeTourCacheLineById(queryClient, tourId, collection, lineId);
       return { snapshot };
@@ -170,5 +202,5 @@ export function useTourLineMutations<T extends TourLineRecord>({
     onSettled: invalidateAfterWrite,
   });
 
-  return { addMutation, updateMutation, deleteMutation };
+  return { addMutation, quickAddMutation, updateMutation, deleteMutation };
 }

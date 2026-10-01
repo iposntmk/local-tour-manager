@@ -8,12 +8,15 @@ import { usePendingLineAttachments } from '@/hooks/usePendingLineAttachments';
 import { useLineFormPersistence } from '@/hooks/useLineFormPersistence';
 import { useTourLineAutosave } from '@/hooks/useTourLineAutosave';
 import { useTourLineMutations } from '@/hooks/useTourLineMutations';
+import { useQuickAddLines } from '@/hooks/useQuickAddLines';
 import { useApplyTourLineDefaults, useTourLineFallback } from '@/hooks/useTourLineDefaults';
 import { DestinationForm } from '@/components/tours/DestinationForm';
 import { NewDestinationDialog } from '@/components/tours/NewDestinationDialog';
 import { DestinationsDesktopTable } from '@/components/tours/DestinationsDesktopTable';
 import { DestinationsMobileList } from '@/components/tours/mobile/DestinationsMobileList';
 import { TourLineTabLayout } from '@/components/tours/TourLineTabLayout';
+import { QuickAddChecklist } from '@/components/tours/QuickAddChecklist';
+import { DESTINATION_PROVINCE_ORDER, DESTINATION_QUICK_ADD_DEFAULT_VIEW } from '@/constants/province-order';
 import {
   canEditAnyTourLineField,
   canEditTourLineField,
@@ -64,6 +67,15 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     return map;
   }, [touristDestinations]);
 
+  const quickAddSources = useMemo(
+    () => touristDestinations.map((td) => ({
+      name: td.name,
+      price: td.price,
+      group: td.provinceRef?.nameAtBooking,
+    })),
+    [touristDestinations]
+  );
+
   const duplicateDestinationNames = useMemo(() => {
     const counts = new Map<string, number>();
     destinations.forEach((d) => {
@@ -106,7 +118,7 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     [destinations]
   );
 
-  const { addMutation, updateMutation, deleteMutation } = useTourLineMutations<Destination>({
+  const { addMutation, quickAddMutation, updateMutation, deleteMutation } = useTourLineMutations<Destination>({
     tourId,
     collection: 'destinations',
     lineType: 'destination',
@@ -120,6 +132,16 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
     onRestoreForm: (destination) => setFormData(destination),
     onSettledForm: clearPendingFiles,
     messages: { added: 'Đã thêm điểm đến', updated: 'Đã cập nhật điểm đến', deleted: 'Đã xóa điểm đến' },
+  });
+
+  const quickAdd = useQuickAddLines<Destination>({
+    lineType: 'destination',
+    enabled: !readOnly && canCreateLine,
+    sources: quickAddSources,
+    lines: destinations,
+    buildLine: (source) => ({ ...fallbackDestination, name: source.name, price: source.price }),
+    onAdd: (destination) => quickAddMutation.mutate(destination),
+    onRemove: (index) => deleteMutation.mutate(index),
   });
 
   const autosaveDestination = useTourLineAutosave<Destination>({
@@ -213,6 +235,16 @@ export function DestinationsTab({ tourId, destinations, onChange, tour, readOnly
             pendingFiles={pendingFiles}
             onPendingFilesChange={setPendingFiles}
             lineFieldAccess={lineFieldAccess}
+          />
+        }
+        quickAdd={
+          <QuickAddChecklist
+            title="Điểm đến thông dụng"
+            quickAdd={quickAdd}
+            groupOrder={DESTINATION_PROVINCE_ORDER}
+            groupLabel="tỉnh"
+            viewStorageKey="quickAdd.view.destinations.v2"
+            defaultView={DESTINATION_QUICK_ADD_DEFAULT_VIEW}
           />
         }
         title="Danh sách điểm đến"
