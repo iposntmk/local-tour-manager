@@ -156,6 +156,15 @@ export const baseVi = {
     imported: 'Đã nhập',
   },
 
+  pwa: {
+    installTitle: 'Cài ứng dụng về điện thoại',
+    installDescription: 'Mở nhanh từ màn hình chính, không cần vào trình duyệt.',
+    install: 'Cài đặt',
+    later: 'Để sau',
+    iosStepShare: 'Bấm',
+    iosStepAdd: 'rồi chọn "Thêm vào MH chính".',
+  },
+
   dialog: {
     areYouSure: 'Bạn có chắc chắn?',
     thisActionCannotBeUndone: 'Hành động này không thể hoàn tác.',

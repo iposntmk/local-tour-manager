@@ -10,6 +10,7 @@ import { ViewVisibilityProvider } from "@/contexts/ViewVisibilityContext";
 import { Layout } from "@/components/Layout";
 import { InactiveUserBanner } from "@/components/auth/InactiveUserBanner";
 import { RemovedUserBanner } from "@/components/auth/RemovedUserBanner";
+import { InstallPromptBanner } from "@/components/pwa/InstallPromptBanner";
 import type { Permission } from "@/types/user";
 
 const Languages = lazy(() => import("./pages/Languages"));
@@ -144,6 +145,7 @@ const App = () => {
           <Sonner />
           <InactiveUserBanner />
           <RemovedUserBanner />
+          <InstallPromptBanner />
           <AppRoutes />
         </TooltipProvider>
       </AuthProvider>

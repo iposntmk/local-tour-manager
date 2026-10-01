@@ -32,28 +32,36 @@ export default defineConfig(({ mode }) => {
       mode !== "development" &&
         VitePWA({
           registerType: "autoUpdate",
-          includeAssets: ["favicon.ico", "placeholder.svg"],
+          includeAssets: ["favicon.ico", "icons/*"],
           manifest: {
             name: "Tour Manager - Local-First Tour Management",
             short_name: "Tour Manager",
             description: "Local-first tour management system for organizing tours, guides, companies, and itineraries",
-            theme_color: "#ffffff",
+            lang: "vi",
+            theme_color: "#1d4ed8",
             background_color: "#ffffff",
             display: "standalone",
             scope: normalizedBasePath,
             start_url: normalizedBasePath,
+            // Regenerate with `npm run generate:icons`.
             icons: [
               {
-                src: `${normalizedBasePath}placeholder.svg`,
+                src: `${normalizedBasePath}icons/icon-192.png`,
                 sizes: "192x192",
-                type: "image/svg+xml",
-                purpose: "any maskable",
+                type: "image/png",
+                purpose: "any",
               },
               {
-                src: `${normalizedBasePath}placeholder.svg`,
+                src: `${normalizedBasePath}icons/icon-512.png`,
                 sizes: "512x512",
-                type: "image/svg+xml",
-                purpose: "any maskable",
+                type: "image/png",
+                purpose: "any",
+              },
+              {
+                src: `${normalizedBasePath}icons/icon-maskable-512.png`,
+                sizes: "512x512",
+                type: "image/png",
+                purpose: "maskable",
               },
             ],
           },

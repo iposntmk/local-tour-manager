@@ -18,6 +18,7 @@
     "bulk-close-tours": "node --env-file=.env scripts/bulk-close-tours.mjs",
     "ocr:tour": "node --env-file=.env scripts/azure-tour-image-to-json.mjs",
     "ocr:tour:ui": "node --env-file=.env scripts/azure-tour-image-ui.mjs",
+    "generate:icons": "node scripts/generate-pwa-icons.mjs",
     "deploy": "scripts/deploy-gh-pages.sh"
   },
   "dependencies": {
@@ -94,6 +95,7 @@
     "jsdom": "^25.0.1",
     "postcss": "^8.5.6",
     "rollup-plugin-visualizer": "^5.14.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
